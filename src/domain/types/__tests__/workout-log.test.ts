@@ -166,6 +166,15 @@ describe('L-5: Completed set must have at least one actual measurement', () => {
       }).success,
     ).toBe(true)
   })
+  it('accepts completed set with only actualHeartRate', () => {
+    expect(
+      loggedSetSchema.safeParse({
+        ...baseLoggedSet,
+        completed: true,
+        actualHeartRate: 145,
+      }).success,
+    ).toBe(true)
+  })
   it('accepts completed set with multiple actual measurements', () => {
     expect(
       loggedSetSchema.safeParse({

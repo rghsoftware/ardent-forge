@@ -136,7 +136,8 @@ export const loggedSetSchema = z
         data.actualReps !== undefined ||
         data.actualWeight !== undefined ||
         data.actualDuration !== undefined ||
-        data.actualDistance !== undefined
+        data.actualDistance !== undefined ||
+        data.actualHeartRate !== undefined
       )
     },
     {

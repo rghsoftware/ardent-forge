@@ -23,6 +23,9 @@ export const cardioModalitySchema = z.enum([
 ])
 export type CardioModality = z.infer<typeof cardioModalitySchema>
 
+// SS-2: all percentage values must be between 0.01 and 1.0
+const percentageSchema = z.number().min(0.01).max(1.0)
+
 // ---------------------------------------------------------------------------
 // LoadSpec -- 7-variant discriminated union on 'type'
 // invariant SS-2: all percentage values must be between 0.01 and 1.0
@@ -35,7 +38,7 @@ export const loadSpecSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('percentageOf1RM'),
-    percentage: z.number().min(0.01).max(1.0), // SS-2
+    percentage: percentageSchema, // SS-2
   }),
   z.object({
     type: z.literal('rpe'),
@@ -43,7 +46,7 @@ export const loadSpecSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('percentMaxReps'),
-    percentage: z.number().min(0.01).max(1.0), // SS-2
+    percentage: percentageSchema, // SS-2
   }),
   z.object({
     type: z.literal('bodyweight'),
@@ -80,7 +83,7 @@ const percentageSetsSchema = z.object({
   type: z.literal('percentageSets'),
   sets: z.number().int().positive(),
   reps: z.number().int().positive(),
-  percentageOf1RM: z.number().min(0.01).max(1.0), // SS-2
+  percentageOf1RM: percentageSchema, // SS-2
   lastSetAMRAP: z.boolean().optional(),
   restBetweenSets: durationSchema.optional(),
 })
@@ -191,7 +194,7 @@ const descendingRepsSchema = z
 // 12. PercentageOfMaxReps -- invariant SS-2: percentage must be 0.01..1.0
 const percentageOfMaxRepsSchema = z.object({
   type: z.literal('percentageOfMaxReps'),
-  percentage: z.number().min(0.01).max(1.0), // SS-2
+  percentage: percentageSchema, // SS-2
   sets: z.number().int().positive().optional(),
 })
 
@@ -220,7 +223,23 @@ export type SetScheme = z.infer<typeof setSchemeSchema>
 // parseSetScheme -- two-stage parser with better error messages than z.union()
 // ---------------------------------------------------------------------------
 
-const setSchemeVariants: Record<string, z.ZodTypeAny> = {
+const setSchemeTypeNames = [
+  'fixedSets',
+  'percentageSets',
+  'workToMax',
+  'timedHold',
+  'forReps',
+  'cardioSteadyState',
+  'cardioInterval',
+  'ruckMarch',
+  'emom',
+  'amrapTimed',
+  'descendingReps',
+  'percentageOfMaxReps',
+] as const
+type SetSchemeTypeName = (typeof setSchemeTypeNames)[number]
+
+const setSchemeVariants: Record<SetSchemeTypeName, z.ZodTypeAny> = {
   fixedSets: fixedSetsSchema,
   percentageSets: percentageSetsSchema,
   workToMax: workToMaxSchema,
@@ -249,11 +268,11 @@ export function parseSetScheme(data: unknown) {
   if (!typeResult.success) {
     return { success: false as const, error: 'Missing or invalid "type" field' }
   }
-  const variant = setSchemeVariants[typeResult.data.type]
+  const variant = setSchemeVariants[typeResult.data.type as SetSchemeTypeName]
   if (!variant) {
     return {
       success: false as const,
-      error: `Unknown SetScheme type: "${typeResult.data.type}". Valid types: ${Object.keys(setSchemeVariants).join(', ')}`,
+      error: `Unknown SetScheme type: "${typeResult.data.type}". Valid types: ${setSchemeTypeNames.join(', ')}`,
     }
   }
   return variant.safeParse(data)
