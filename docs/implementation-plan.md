@@ -128,8 +128,8 @@
 ## Parallel Tracks
 
 | Track A: React App (browser) | Track B: Supabase | Track C: Tauri + Rust |
-|---|---|---|
-| Steps 1–2, 4–7 | Step 3 (< 1 day) | Steps 8–9 |
+| ---------------------------- | ----------------- | --------------------- |
+| Steps 1–2, 4–7               | Step 3 (< 1 day)  | Steps 8–9             |
 
 Supabase setup (Track B) is a console-click + migration exercise. The real work is Track A (building the app) and Track C (wrapping it in Tauri with offline support).
 
@@ -180,28 +180,28 @@ ardent-forge/
 ├── vite.config.ts
 ├── tailwind.config.ts
 ├── tsconfig.json
-└── .env.local                  # VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+└── .env.local                  # VITE_SUPABASE_URL, VITE_SUPABASE_PUB_KEY
 ```
 
 ### Key dependency versions to pin
 
-| Library | Purpose |
-|---|---|
-| React 19 | UI framework |
-| Vite 6 | Build tool |
-| TanStack Router | File-based routing |
-| TanStack Query | Server state management |
-| Zustand | Client state (active workout) |
-| shadcn/ui | Component library |
-| Tailwind CSS 4 | Styling |
-| Zod | Runtime validation |
-| React Hook Form | Form handling |
-| dnd-kit | Drag and drop (used in Step 12) |
-| Recharts | Charts (used in Step 14) |
+| Library         | Purpose                         |
+| --------------- | ------------------------------- |
+| React 19        | UI framework                    |
+| Vite 6          | Build tool                      |
+| TanStack Router | File-based routing              |
+| TanStack Query  | Server state management         |
+| Zustand         | Client state (active workout)   |
+| shadcn/ui       | Component library               |
+| Tailwind CSS 4  | Styling                         |
+| Zod             | Runtime validation              |
+| React Hook Form | Form handling                   |
+| dnd-kit         | Drag and drop (used in Step 12) |
+| Recharts        | Charts (used in Step 14)        |
 
 ### Done when
 
-- [ ] `npm run dev` launches app in browser
+- [ ] `bun run dev` launches app in browser
 - [ ] TanStack Router renders empty index route
 - [ ] shadcn/ui Button component renders correctly
 - [ ] Responsive layout: bottom nav on mobile, sidebar on desktop
@@ -209,7 +209,7 @@ ardent-forge/
 - [ ] Zustand store creates and reads a test value
 - [ ] Environment variables load correctly
 - [ ] ESLint + Prettier pass on all files
-- [ ] Production build succeeds (`npm run build`)
+- [ ] Production build succeeds (`bun run build`)
 
 ---
 
@@ -225,65 +225,65 @@ Canonical TypeScript types and Zod validation schemas in `src/domain/`. These ar
 
 ### Type files to create
 
-| File | Contents | Source Doc |
-|---|---|---|
-| `units.ts` | Weight, Distance, Duration, Pace, NumberRange, OneRepMax | 05-domain-model.md §Value Objects |
-| `exercise.ts` | Exercise, ExerciseCategory, MovementPattern, MuscleGroup, Equipment | 05-domain-model.md §Exercise |
-| `set-scheme.ts` | SetScheme (12-variant union), LoadSpec (7-variant union) | 05-domain-model.md §SetScheme |
-| `session.ts` | SessionTemplate, ActivityGroup, Activity, GroupType, ScoringType | 05-domain-model.md §Session Template |
-| `program.ts` | Program, Block, BlockWeek, ScheduledSession, ProgramSource, BlockType | 05-domain-model.md §Program |
-| `workout-log.ts` | WorkoutLog, LoggedActivityGroup, LoggedActivity, LoggedSet, SetType | 05-domain-model.md §WorkoutLog |
-| `user.ts` | UserProfile, OneRepMaxHistory | 05-domain-model.md §UserProfile |
-| `sharing.ts` | AccountabilityGroup, GroupMember, GroupInvite, DirectConnection, ShareLink | 02-prd-sharing.md §Data Model |
+| File             | Contents                                                                   | Source Doc                           |
+| ---------------- | -------------------------------------------------------------------------- | ------------------------------------ |
+| `units.ts`       | Weight, Distance, Duration, Pace, NumberRange, OneRepMax                   | 05-domain-model.md §Value Objects    |
+| `exercise.ts`    | Exercise, ExerciseCategory, MovementPattern, MuscleGroup, Equipment        | 05-domain-model.md §Exercise         |
+| `set-scheme.ts`  | SetScheme (12-variant union), LoadSpec (7-variant union)                   | 05-domain-model.md §SetScheme        |
+| `session.ts`     | SessionTemplate, ActivityGroup, Activity, GroupType, ScoringType           | 05-domain-model.md §Session Template |
+| `program.ts`     | Program, Block, BlockWeek, ScheduledSession, ProgramSource, BlockType      | 05-domain-model.md §Program          |
+| `workout-log.ts` | WorkoutLog, LoggedActivityGroup, LoggedActivity, LoggedSet, SetType        | 05-domain-model.md §WorkoutLog       |
+| `user.ts`        | UserProfile, OneRepMaxHistory                                              | 05-domain-model.md §UserProfile      |
+| `sharing.ts`     | AccountabilityGroup, GroupMember, GroupInvite, DirectConnection, ShareLink | 02-prd-sharing.md §Data Model        |
 
 ### Enumerations to define
 
-| Enum | Values | Source Doc |
-|---|---|---|
+| Enum               | Values                                                                                      | Source Doc         |
+| ------------------ | ------------------------------------------------------------------------------------------- | ------------------ |
 | `ExerciseCategory` | BARBELL, DUMBBELL, KETTLEBELL, BODYWEIGHT, MACHINE, CABLE, CARDIO, PLYOMETRIC, LOADED_CARRY | 05-domain-model.md |
-| `MovementPattern` | PUSH, PULL, SQUAT, HINGE, CARRY, LUNGE, ROTATION, LOCOMOTION | 05-domain-model.md |
-| `SetType` | WORKING, WARMUP, DROP, AMRAP, PEAK, BACKOFF | 05-domain-model.md |
-| `GroupType` | STRAIGHT, SUPERSET, CIRCUIT, INTERVAL, EMOM, DESCENDING_LADDER, ASCENDING_LADDER | 05-domain-model.md |
-| `ScoringType` | FOR_TIME, FOR_REPS, FOR_DISTANCE, NONE | 05-domain-model.md |
-| `CardioModality` | RUNNING, CYCLING, SWIMMING, ROWING, RUCKING, JUMP_ROPE, STAIR_CLIMBER, ELLIPTICAL | 05-domain-model.md |
-| `BlockType` | STANDARD, DELOAD, PEAK, TEST, BRIDGE | 05-domain-model.md |
-| `SessionType` | STRENGTH, CONDITIONING, SE, MIXED | 05-domain-model.md |
-| `ProgramSource` | TB1, TB2, GREEN, MASS, AGELESS, CROSSFIT, CUSTOM | 05-domain-model.md |
-| `GroupRole` | COACH, MEMBER | 02-prd-sharing.md |
-| `ConnectionStatus` | PENDING, ACTIVE, DECLINED | 02-prd-sharing.md |
+| `MovementPattern`  | PUSH, PULL, SQUAT, HINGE, CARRY, LUNGE, ROTATION, LOCOMOTION                                | 05-domain-model.md |
+| `SetType`          | WORKING, WARMUP, DROP, AMRAP, PEAK, BACKOFF                                                 | 05-domain-model.md |
+| `GroupType`        | STRAIGHT, SUPERSET, CIRCUIT, INTERVAL, EMOM, DESCENDING_LADDER, ASCENDING_LADDER            | 05-domain-model.md |
+| `ScoringType`      | FOR_TIME, FOR_REPS, FOR_DISTANCE, NONE                                                      | 05-domain-model.md |
+| `CardioModality`   | RUNNING, CYCLING, SWIMMING, ROWING, RUCKING, JUMP_ROPE, STAIR_CLIMBER, ELLIPTICAL           | 05-domain-model.md |
+| `BlockType`        | STANDARD, DELOAD, PEAK, TEST, BRIDGE                                                        | 05-domain-model.md |
+| `SessionType`      | STRENGTH, CONDITIONING, SE, MIXED                                                           | 05-domain-model.md |
+| `ProgramSource`    | TB1, TB2, GREEN, MASS, AGELESS, CROSSFIT, CUSTOM                                            | 05-domain-model.md |
+| `GroupRole`        | COACH, MEMBER                                                                               | 02-prd-sharing.md  |
+| `ConnectionStatus` | PENDING, ACTIVE, DECLINED                                                                   | 02-prd-sharing.md  |
 
 ### Zod schemas with invariant enforcement
 
 Each type gets a companion Zod schema. Key invariants to encode:
 
-| Invariant | Zod Enforcement |
-|---|---|
-| SS-1: Type-field consistency | Discriminated union with `z.discriminatedUnion('type', [...])` |
-| SS-2: Percentage range | `z.number().min(0.01).max(1.0)` |
-| SS-3: Rep ladder ordering | `.refine(arr => arr.every((v, i) => i === 0 \|\| v < arr[i-1]))` |
-| SS-4: NumberRange ordering | `.refine(r => r.min <= r.max)` |
-| EX-1: Name required | `z.string().min(1).max(100)` |
-| L-6: Perceived difficulty | `z.number().int().min(1).max(10).optional()` |
-| L-7: RPE range | `z.number().int().min(1).max(10).optional()` |
-| U-1: Weight unit | `z.enum(['lb', 'kg'])` |
+| Invariant                    | Zod Enforcement                                                  |
+| ---------------------------- | ---------------------------------------------------------------- |
+| SS-1: Type-field consistency | Discriminated union with `z.discriminatedUnion('type', [...])`   |
+| SS-2: Percentage range       | `z.number().min(0.01).max(1.0)`                                  |
+| SS-3: Rep ladder ordering    | `.refine(arr => arr.every((v, i) => i === 0 \|\| v < arr[i-1]))` |
+| SS-4: NumberRange ordering   | `.refine(r => r.min <= r.max)`                                   |
+| EX-1: Name required          | `z.string().min(1).max(100)`                                     |
+| L-6: Perceived difficulty    | `z.number().int().min(1).max(10).optional()`                     |
+| L-7: RPE range               | `z.number().int().min(1).max(10).optional()`                     |
+| U-1: Weight unit             | `z.enum(['lb', 'kg'])`                                           |
 
 ### Data adapter interface
 
 Define in `src/lib/data-adapter.ts` — the contract both adapters implement:
 
-| Method | Signature | Purpose |
-|---|---|---|
-| `getExercises` | `(filters?) → Exercise[]` | Exercise dictionary |
-| `getExercise` | `(id) → Exercise` | Single exercise |
-| `createExercise` | `(exercise) → Exercise` | Custom exercise |
-| `getWorkoutLogs` | `(userId, limit?) → WorkoutLog[]` | History list |
-| `getWorkoutLog` | `(id) → WorkoutLog` | Full workout detail |
-| `saveWorkoutLog` | `(log) → WorkoutLog` | Create or update |
-| `deleteWorkoutLog` | `(id) → void` | Delete workout |
-| `saveLoggedSet` | `(set) → LoggedSet` | Save individual set |
-| `getUserProfile` | `(userId) → UserProfile` | Profile + 1RMs |
-| `updateUserProfile` | `(profile) → UserProfile` | Update profile |
-| `saveOneRepMax` | `(entry) → OneRepMaxHistory` | Record new 1RM |
+| Method              | Signature                         | Purpose             |
+| ------------------- | --------------------------------- | ------------------- |
+| `getExercises`      | `(filters?) → Exercise[]`         | Exercise dictionary |
+| `getExercise`       | `(id) → Exercise`                 | Single exercise     |
+| `createExercise`    | `(exercise) → Exercise`           | Custom exercise     |
+| `getWorkoutLogs`    | `(userId, limit?) → WorkoutLog[]` | History list        |
+| `getWorkoutLog`     | `(id) → WorkoutLog`               | Full workout detail |
+| `saveWorkoutLog`    | `(log) → WorkoutLog`              | Create or update    |
+| `deleteWorkoutLog`  | `(id) → void`                     | Delete workout      |
+| `saveLoggedSet`     | `(set) → LoggedSet`               | Save individual set |
+| `getUserProfile`    | `(userId) → UserProfile`          | Profile + 1RMs      |
+| `updateUserProfile` | `(profile) → UserProfile`         | Update profile      |
+| `saveOneRepMax`     | `(entry) → OneRepMaxHistory`      | Record new 1RM      |
 
 ### Done when
 
@@ -322,37 +322,37 @@ Create tables matching `08-erd.md` using Supabase migrations. Core tables first,
 
 **Phase 0 tables (create now):**
 
-| Table | Priority | Source |
-|---|---|---|
-| `exercises` | P0 | 08-erd.md §Core Tables |
-| `workout_logs` | P0 | 08-erd.md §Core Tables |
-| `logged_activity_groups` | P0 | 08-erd.md §Core Tables |
-| `logged_activities` | P0 | 08-erd.md §Core Tables |
-| `logged_sets` | P0 | 08-erd.md §Core Tables |
-| `user_profiles` | P0 | 08-erd.md §User Tables |
-| `one_rep_max_history` | P0 | 08-erd.md §User Tables |
+| Table                    | Priority | Source                 |
+| ------------------------ | -------- | ---------------------- |
+| `exercises`              | P0       | 08-erd.md §Core Tables |
+| `workout_logs`           | P0       | 08-erd.md §Core Tables |
+| `logged_activity_groups` | P0       | 08-erd.md §Core Tables |
+| `logged_activities`      | P0       | 08-erd.md §Core Tables |
+| `logged_sets`            | P0       | 08-erd.md §Core Tables |
+| `user_profiles`          | P0       | 08-erd.md §User Tables |
+| `one_rep_max_history`    | P0       | 08-erd.md §User Tables |
 
 **Phase 2 tables (create in Step 10):**
 
-| Table | Priority |
-|---|---|
-| `programs` | Step 10 |
-| `blocks` | Step 10 |
-| `block_weeks` | Step 10 |
-| `scheduled_sessions` | Step 10 |
-| `session_templates` | Step 10 |
-| `activity_groups` | Step 10 |
-| `activities` | Step 10 |
+| Table                | Priority |
+| -------------------- | -------- |
+| `programs`           | Step 10  |
+| `blocks`             | Step 10  |
+| `block_weeks`        | Step 10  |
+| `scheduled_sessions` | Step 10  |
+| `session_templates`  | Step 10  |
+| `activity_groups`    | Step 10  |
+| `activities`         | Step 10  |
 
 **Phase 3-4 tables (create in Steps 16-18):**
 
-| Table | Priority |
-|---|---|
-| `accountability_groups` | Step 17 |
-| `group_members` | Step 17 |
-| `group_invites` | Step 17 |
-| `direct_connections` | Step 17 |
-| `share_links` | Step 16 |
+| Table                   | Priority |
+| ----------------------- | -------- |
+| `accountability_groups` | Step 17  |
+| `group_members`         | Step 17  |
+| `group_invites`         | Step 17  |
+| `direct_connections`    | Step 17  |
+| `share_links`           | Step 16  |
 
 ### 3c. Row Level Security policies
 
@@ -411,33 +411,33 @@ Supabase adapter implementing the data adapter interface, plus basic auth screen
 
 Implements every method from the data adapter interface using `@supabase/supabase-js`:
 
-| Method | Supabase Call |
-|---|---|
-| `getExercises` | `supabase.from('exercises').select().order('name')` |
-| `saveWorkoutLog` | `supabase.from('workout_logs').upsert(log)` |
-| `saveLoggedSet` | `supabase.from('logged_sets').upsert(set)` |
+| Method           | Supabase Call                                                       |
+| ---------------- | ------------------------------------------------------------------- |
+| `getExercises`   | `supabase.from('exercises').select().order('name')`                 |
+| `saveWorkoutLog` | `supabase.from('workout_logs').upsert(log)`                         |
+| `saveLoggedSet`  | `supabase.from('logged_sets').upsert(set)`                          |
 | `getUserProfile` | `supabase.from('user_profiles').select().eq('id', userId).single()` |
 
 ### 4b. TanStack Query integration
 
 Wrap adapter calls in TanStack Query hooks:
 
-| Hook | Query Key | Adapter Method |
-|---|---|---|
-| `useExercises` | `['exercises', filters]` | `getExercises` |
-| `useWorkoutHistory` | `['workouts', userId]` | `getWorkoutLogs` |
-| `useWorkoutLog` | `['workout', id]` | `getWorkoutLog` |
-| `useUserProfile` | `['profile', userId]` | `getUserProfile` |
-| `useSaveSet` | mutation | `saveLoggedSet` |
-| `useSaveWorkout` | mutation | `saveWorkoutLog` |
+| Hook                | Query Key                | Adapter Method   |
+| ------------------- | ------------------------ | ---------------- |
+| `useExercises`      | `['exercises', filters]` | `getExercises`   |
+| `useWorkoutHistory` | `['workouts', userId]`   | `getWorkoutLogs` |
+| `useWorkoutLog`     | `['workout', id]`        | `getWorkoutLog`  |
+| `useUserProfile`    | `['profile', userId]`    | `getUserProfile` |
+| `useSaveSet`        | mutation                 | `saveLoggedSet`  |
+| `useSaveWorkout`    | mutation                 | `saveWorkoutLog` |
 
 ### 4c. Auth screens
 
-| Screen | Components |
-|---|---|
-| Sign In | Email + password form, Google OAuth button |
-| Sign Up | Email + password form |
-| Forgot Password | Email input, send reset |
+| Screen          | Components                                 |
+| --------------- | ------------------------------------------ |
+| Sign In         | Email + password form, Google OAuth button |
+| Sign Up         | Email + password form                      |
+| Forgot Password | Email input, send reset                    |
 
 ### 4d. Auth state management
 
@@ -522,13 +522,13 @@ The most important screen in the app. Active workout logging for all workout typ
 
 ### 6a. Zustand store: active workout state
 
-| State Field | Type | Purpose |
-|---|---|---|
-| `workoutLog` | `WorkoutLog \| null` | Current workout (null = no active workout) |
-| `loggedGroups` | `LoggedActivityGroup[]` | All activity groups |
-| `elapsedSeconds` | `number` | Session timer |
-| `restTimer` | `{ remaining: number, total: number } \| null` | Rest countdown |
-| `undoAction` | `{ setId: string, expiresAt: number } \| null` | 10-second undo |
+| State Field      | Type                                           | Purpose                                    |
+| ---------------- | ---------------------------------------------- | ------------------------------------------ |
+| `workoutLog`     | `WorkoutLog \| null`                           | Current workout (null = no active workout) |
+| `loggedGroups`   | `LoggedActivityGroup[]`                        | All activity groups                        |
+| `elapsedSeconds` | `number`                                       | Session timer                              |
+| `restTimer`      | `{ remaining: number, total: number } \| null` | Rest countdown                             |
+| `undoAction`     | `{ setId: string, expiresAt: number } \| null` | 10-second undo                             |
 
 ### 6b. Start workout flow
 
@@ -584,12 +584,12 @@ Circuit execution mode per `09-state-machines.md` §Circuit Execution:
 
 ### Non-functional targets (from 01-prd-core.md)
 
-| Metric | Target |
-|---|---|
+| Metric                              | Target  |
+| ----------------------------------- | ------- |
 | Set confirmation to visual feedback | < 100ms |
-| Touch targets | ≥ 48px |
-| Taps to confirm a pre-filled set | ≤ 2 |
-| Taps to log an ad-hoc set | ≤ 4 |
+| Touch targets                       | ≥ 48px  |
+| Taps to confirm a pre-filled set    | ≤ 2     |
+| Taps to log an ad-hoc set           | ≤ 4     |
 
 ### Done when
 
@@ -671,7 +671,7 @@ Wrap the React app in Tauri v2. Add Rust backend with SQLite for offline-first o
 
 ### 8a. Tauri project initialization
 
-- `npm create tauri-app` in existing project
+- `bun create tauri-app` in existing project
 - Tauri v2 configuration (`tauri.conf.json`)
 - Android target initialization (`tauri android init`)
 - Verify React app renders inside Tauri WebView
@@ -687,17 +687,17 @@ Wrap the React app in Tauri v2. Add Rust backend with SQLite for offline-first o
 
 Typed Rust functions invokable from React via `invoke()`:
 
-| Command | Purpose |
-|---|---|
-| `save_workout_log` | Insert/update workout to SQLite |
-| `get_workout_logs` | Query workout history |
-| `get_workout_log` | Get single workout with all sets |
-| `save_logged_set` | Save individual set |
-| `get_exercises` | Query exercise dictionary |
-| `create_exercise` | Insert custom exercise |
-| `get_user_profile` | Get profile + 1RMs |
-| `save_one_rep_max` | Record new 1RM |
-| `delete_workout_log` | Remove workout |
+| Command              | Purpose                          |
+| -------------------- | -------------------------------- |
+| `save_workout_log`   | Insert/update workout to SQLite  |
+| `get_workout_logs`   | Query workout history            |
+| `get_workout_log`    | Get single workout with all sets |
+| `save_logged_set`    | Save individual set              |
+| `get_exercises`      | Query exercise dictionary        |
+| `create_exercise`    | Insert custom exercise           |
+| `get_user_profile`   | Get profile + 1RMs               |
+| `save_one_rep_max`   | Record new 1RM                   |
+| `delete_workout_log` | Remove workout                   |
 
 ### 8d. Tauri data adapter
 
@@ -707,23 +707,23 @@ Implements the same data adapter interface as the Supabase adapter, but calls Ta
 // Pseudocode
 const tauriAdapter: DataAdapter = {
   async getExercises(filters) {
-    return await invoke('get_exercises', { filters });
+    return await invoke('get_exercises', { filters })
   },
   async saveLoggedSet(set) {
-    return await invoke('save_logged_set', { set });
+    return await invoke('save_logged_set', { set })
   },
   // ...
-};
+}
 ```
 
 ### 8e. Adapter switching
 
 ```typescript
-import { isTauri } from '@tauri-apps/api/core';
+import { isTauri } from '@tauri-apps/api/core'
 
 export const adapter = isTauri()
-  ? tauriAdapter     // SQLite via Rust
-  : supabaseAdapter  // Direct Supabase
+  ? tauriAdapter // SQLite via Rust
+  : supabaseAdapter // Direct Supabase
 ```
 
 All existing TanStack Query hooks use the adapter — switching is transparent.
@@ -768,12 +768,12 @@ Bidirectional sync between local SQLite and Supabase, plus background rest timer
 
 ### 9b. Sync state exposed to React
 
-| State | Meaning | UI |
-|---|---|---|
-| `offline` | No auth or no network | No indicator (app works normally) |
-| `syncing` | Push or pull in progress | Subtle sync icon |
-| `synced` | All caught up | Green dot (optional) |
-| `error` | Sync failed | Toast with retry |
+| State     | Meaning                  | UI                                |
+| --------- | ------------------------ | --------------------------------- |
+| `offline` | No auth or no network    | No indicator (app works normally) |
+| `syncing` | Push or pull in progress | Subtle sync icon                  |
+| `synced`  | All caught up            | Green dot (optional)              |
+| `error`   | Sync failed              | Toast with retry                  |
 
 ### 9c. Rest timer in Rust
 
@@ -828,20 +828,20 @@ Create program-related tables: `session_templates`, `activity_groups`, `activiti
 
 The most complex form in the app. A type selector (12 options) that dynamically shows the correct fields:
 
-| SetScheme Type | Fields Shown |
-|---|---|
-| FixedSets | Sets, reps, weight, rest, AMRAP toggle |
-| PercentageSets | Sets, reps, %1RM, rest, AMRAP toggle |
-| WorkToMax | Target rep range, optional warmup scheme |
-| CardioSteadyState | Duration or distance, intensity, modality |
-| CardioInterval | Work duration/distance, rest, rounds, modality |
-| RuckMarch | Duration or distance, load, pace target |
-| EMOM | Reps per minute, total minutes |
-| AMRAPTimed | Time cap |
-| DescendingReps | Rep ladder input (e.g., 21, 15, 9) |
-| ForReps | Target reps, optional load |
-| TimedHold | Duration, sets, rest |
-| PercentageOfMaxReps | Percentage slider |
+| SetScheme Type      | Fields Shown                                   |
+| ------------------- | ---------------------------------------------- |
+| FixedSets           | Sets, reps, weight, rest, AMRAP toggle         |
+| PercentageSets      | Sets, reps, %1RM, rest, AMRAP toggle           |
+| WorkToMax           | Target rep range, optional warmup scheme       |
+| CardioSteadyState   | Duration or distance, intensity, modality      |
+| CardioInterval      | Work duration/distance, rest, rounds, modality |
+| RuckMarch           | Duration or distance, load, pace target        |
+| EMOM                | Reps per minute, total minutes                 |
+| AMRAPTimed          | Time cap                                       |
+| DescendingReps      | Rep ladder input (e.g., 21, 15, 9)             |
+| ForReps             | Target reps, optional load                     |
+| TimedHold           | Duration, sets, rest                           |
+| PercentageOfMaxReps | Percentage slider                              |
 
 ### 10c. Session template builder
 
@@ -889,13 +889,13 @@ Create `programs`, `blocks`, `block_weeks`, `scheduled_sessions` tables. Add SQL
 
 Pre-build session templates and program structures for common TB programs:
 
-| Program | Blocks | Sessions |
-|---|---|---|
-| TB Operator (3-week) | 1 block, 3 weeks | 3×/week: squat, bench, WPU at 70/80/90% |
-| TB Operator I/A | Perpetual (no fixed duration) | Floating sessions with self-regulation |
-| TB Fighter | 1 block, 3 weeks | 2×/week: bench, squat, DL |
-| Base Building (SE) | 1 block, 5 weeks | SE circuits + LSS |
-| Base Building (Strength) | 1 block, 5 weeks | Strength + LSS |
+| Program                  | Blocks                        | Sessions                                |
+| ------------------------ | ----------------------------- | --------------------------------------- |
+| TB Operator (3-week)     | 1 block, 3 weeks              | 3×/week: squat, bench, WPU at 70/80/90% |
+| TB Operator I/A          | Perpetual (no fixed duration) | Floating sessions with self-regulation  |
+| TB Fighter               | 1 block, 3 weeks              | 2×/week: bench, squat, DL               |
+| Base Building (SE)       | 1 block, 5 weeks              | SE circuits + LSS                       |
+| Base Building (Strength) | 1 block, 5 weeks              | Strength + LSS                          |
 
 ### 11d. Program activation
 
@@ -1042,6 +1042,7 @@ Dashboard with progress charts, volume tracking, and automatic PR detection.
 ### 14c. PR detection
 
 After workout completion, scan logged sets for new bests:
+
 - New 1RM (heaviest single)
 - New 3RM, 5RM (heaviest set at rep count)
 - New max reps at a given weight
@@ -1084,11 +1085,11 @@ Three notification types only: rest timer alerts (already done in Step 9), sessi
 
 ### 15b. Notification channels (Android)
 
-| Channel | ID | Importance |
-|---|---|---|
-| Rest Timer | `rest_timer` | High (already exists from Step 9) |
-| Workout Reminders | `workout_reminders` | Default |
-| Personal Records | `personal_records` | Default |
+| Channel           | ID                  | Importance                        |
+| ----------------- | ------------------- | --------------------------------- |
+| Rest Timer        | `rest_timer`        | High (already exists from Step 9) |
+| Workout Reminders | `workout_reminders` | Default                           |
+| Personal Records  | `personal_records`  | Default                           |
 
 ### 15c. Quiet hours
 
@@ -1296,31 +1297,31 @@ Coach can create/edit programs for group members and update their 1RMs.
 
 ## Timeline Mapping
 
-| Step | Priority | Est. Effort | Can Parallel With |
-|---|---|---|---|
-| 1. Project Scaffold | P0 | 0.5 day | — |
-| 2. Domain Types + Zod | P0 | 1.5 days | 3 (Supabase setup) |
-| 3. Supabase Setup | P0 | 0.5 day | Step 2 |
-| 4. Data Adapter + Auth | P0 | 2 days | — |
-| 5. Exercise Dictionary + 1RMs | P0 | 2 days | — |
-| 6. Active Workout Logging | P0 | 4 days | — |
-| 7. Workout History | P0 | 1.5 days | — |
-| **Phase 0 subtotal** | | **~12 days** | |
-| 8. Tauri Shell + Rust/SQLite | P0 | 3 days | — |
-| 9. Sync Engine + Rest Timer | P0 | 2.5 days | — |
-| **Phase 1 subtotal** | | **~5.5 days** | |
-| 10. Session Templates + SetScheme | P0 | 3 days | — |
-| 11. Program Structure | P0 | 2 days | — |
-| 12. Program Builder (DnD) | P1 | 3 days | — |
-| 13. Programmed Workout Logging | P0 | 2.5 days | — |
-| **Phase 2 subtotal** | | **~10.5 days** | |
-| 14. Progress Analytics + PR | P1 | 2.5 days | 15 |
-| 15. Notification System | P1 | 1.5 days | 14 |
-| 16. Share Links | P1 | 1.5 days | 14, 15 |
-| 17. Accountability Groups | P2 | 3 days | — |
-| 18. Coach Write Access | P2 | 2 days | — |
-| **Phase 3-4 subtotal** | | **~11 days** | |
-| **Total** | | **~39 days** | |
+| Step                              | Priority | Est. Effort    | Can Parallel With  |
+| --------------------------------- | -------- | -------------- | ------------------ |
+| 1. Project Scaffold               | P0       | 0.5 day        | —                  |
+| 2. Domain Types + Zod             | P0       | 1.5 days       | 3 (Supabase setup) |
+| 3. Supabase Setup                 | P0       | 0.5 day        | Step 2             |
+| 4. Data Adapter + Auth            | P0       | 2 days         | —                  |
+| 5. Exercise Dictionary + 1RMs     | P0       | 2 days         | —                  |
+| 6. Active Workout Logging         | P0       | 4 days         | —                  |
+| 7. Workout History                | P0       | 1.5 days       | —                  |
+| **Phase 0 subtotal**              |          | **~12 days**   |                    |
+| 8. Tauri Shell + Rust/SQLite      | P0       | 3 days         | —                  |
+| 9. Sync Engine + Rest Timer       | P0       | 2.5 days       | —                  |
+| **Phase 1 subtotal**              |          | **~5.5 days**  |                    |
+| 10. Session Templates + SetScheme | P0       | 3 days         | —                  |
+| 11. Program Structure             | P0       | 2 days         | —                  |
+| 12. Program Builder (DnD)         | P1       | 3 days         | —                  |
+| 13. Programmed Workout Logging    | P0       | 2.5 days       | —                  |
+| **Phase 2 subtotal**              |          | **~10.5 days** |                    |
+| 14. Progress Analytics + PR       | P1       | 2.5 days       | 15                 |
+| 15. Notification System           | P1       | 1.5 days       | 14                 |
+| 16. Share Links                   | P1       | 1.5 days       | 14, 15             |
+| 17. Accountability Groups         | P2       | 3 days         | —                  |
+| 18. Coach Write Access            | P2       | 2 days         | —                  |
+| **Phase 3-4 subtotal**            |          | **~11 days**   |                    |
+| **Total**                         |          | **~39 days**   |                    |
 
 > **Critical path to browser MVP:** Steps 1 → 2/3 → 4 → 5 → 6 → 7 = ~12 days
 > **Critical path to Tauri GO/NO-GO:** + Steps 8 → 9 = ~17.5 days
@@ -1334,13 +1335,13 @@ Coach can create/edit programs for group members and update their 1RMs.
 
 At community scale (< 50 users), Ardent Forge stays well within Supabase's free tier:
 
-| Resource | Free Tier | Ardent Forge Est. Usage |
-|---|---|---|
-| Database | 500 MB | < 50 MB |
-| Auth | 50K MAU | < 50 users |
-| Realtime | 200 concurrent | < 10 |
-| Edge Functions | 500K invocations | 0 (not used) |
-| Storage | 1 GB | 0 (no file uploads) |
+| Resource       | Free Tier        | Ardent Forge Est. Usage |
+| -------------- | ---------------- | ----------------------- |
+| Database       | 500 MB           | < 50 MB                 |
+| Auth           | 50K MAU          | < 50 users              |
+| Realtime       | 200 concurrent   | < 10                    |
+| Edge Functions | 500K invocations | 0 (not used)            |
+| Storage        | 1 GB             | 0 (no file uploads)     |
 
 ### JSON Columns
 
@@ -1352,27 +1353,27 @@ Complex types (SetScheme, LoadSpec, Weight, prescribed values) are stored as JSO
 
 ### SQLite ↔ Postgres Type Mapping
 
-| SQLite | Postgres | Conversion |
-|---|---|---|
-| TEXT (UUID) | UUID | Same format |
-| INTEGER (Unix timestamp) | TIMESTAMPTZ | Convert on sync |
-| TEXT (JSON string) | JSONB | Parse/stringify on sync |
-| INTEGER (0/1) | BOOLEAN | Convert on sync |
-| TEXT (enum) | TEXT | Same format |
+| SQLite                   | Postgres    | Conversion              |
+| ------------------------ | ----------- | ----------------------- |
+| TEXT (UUID)              | UUID        | Same format             |
+| INTEGER (Unix timestamp) | TIMESTAMPTZ | Convert on sync         |
+| TEXT (JSON string)       | JSONB       | Parse/stringify on sync |
+| INTEGER (0/1)            | BOOLEAN     | Convert on sync         |
+| TEXT (enum)              | TEXT        | Same format             |
 
 ---
 
 ## Design Decisions Summary
 
-| # | Decision | Rationale |
-|---|---|---|
-| 1 | Phase 0 is browser-only against Supabase | Validates data model and UX before committing to Tauri |
-| 2 | Data adapter pattern from day one | Switching between Supabase and Tauri/SQLite is transparent |
-| 3 | SetScheme as discriminated union, not generic schema | Each workout type gets first-class field validation |
-| 4 | JSON columns for complex nested types | Avoids explosion of junction tables for SetScheme variants |
-| 5 | 1RM history is insert-only | Audit trail for progression, never lose historical data |
-| 6 | Pre-fill + confirm pattern for programmed logging | Minimizes taps (2 per set) while allowing deviation |
-| 7 | Rest timer in Rust, not JavaScript | Survives WebView backgrounding on mobile |
-| 8 | RLS expansion deferred to Steps 17-18 | Simple `user_id = auth.uid()` for Phases 0-2, complexity only when needed |
-| 9 | Coach creates programs owned by member | Member always controls their data, coach access is revocable |
-| 10 | Same React app for all platforms | Eliminates duplication between web and native |
+| #   | Decision                                             | Rationale                                                                 |
+| --- | ---------------------------------------------------- | ------------------------------------------------------------------------- |
+| 1   | Phase 0 is browser-only against Supabase             | Validates data model and UX before committing to Tauri                    |
+| 2   | Data adapter pattern from day one                    | Switching between Supabase and Tauri/SQLite is transparent                |
+| 3   | SetScheme as discriminated union, not generic schema | Each workout type gets first-class field validation                       |
+| 4   | JSON columns for complex nested types                | Avoids explosion of junction tables for SetScheme variants                |
+| 5   | 1RM history is insert-only                           | Audit trail for progression, never lose historical data                   |
+| 6   | Pre-fill + confirm pattern for programmed logging    | Minimizes taps (2 per set) while allowing deviation                       |
+| 7   | Rest timer in Rust, not JavaScript                   | Survives WebView backgrounding on mobile                                  |
+| 8   | RLS expansion deferred to Steps 17-18                | Simple `user_id = auth.uid()` for Phases 0-2, complexity only when needed |
+| 9   | Coach creates programs owned by member               | Member always controls their data, coach access is revocable              |
+| 10  | Same React app for all platforms                     | Eliminates duplication between web and native                             |
