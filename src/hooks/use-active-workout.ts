@@ -14,6 +14,8 @@ import {
   useUpdateWorkoutLog,
   useDeleteWorkoutLog,
 } from '@/hooks/use-workout-logs'
+import { getAdapter } from '@/lib/adapter'
+import { DEFAULT_REST_SECONDS } from '@/lib/workout-utils'
 import type {
   Exercise,
   GroupType,
@@ -23,15 +25,12 @@ import type {
   LoggedActivity,
 } from '@/domain/types'
 
-// Default rest time in seconds (90s per spec)
-const DEFAULT_REST_SECONDS = 90
-
 /**
  * useActiveWorkout -- bridge hook that wraps the Zustand active workout store
  * with TanStack Query mutations for DB persistence.
  *
- * Pattern: optimistic local state in Zustand, persisted to Supabase via
- * the data adapter through TanStack Query mutation hooks.
+ * Pattern: optimistic local state in Zustand, persisted via the data adapter
+ * through TanStack Query mutation hooks.
  */
 export function useActiveWorkout() {
   // ---------------------------------------------------------------------------
@@ -99,6 +98,15 @@ export function useActiveWorkout() {
   }, [undoAction, storeClearUndo])
 
   // ---------------------------------------------------------------------------
+  // Cleanup intervals on unmount
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    return () => {
+      useActiveWorkoutStore.getState().cleanup()
+    }
+  }, [])
+
+  // ---------------------------------------------------------------------------
   // Bridge actions: DB mutation + store update
   // ---------------------------------------------------------------------------
 
@@ -108,13 +116,18 @@ export function useActiveWorkout() {
    */
   const startWorkout = useCallback(
     async (userId: string) => {
-      const now = new Date().toISOString()
-      const log = await createWorkoutLogMutation.mutateAsync({
-        userId,
-        startedAt: now,
-      })
-      storeStartWorkout(userId, log)
-      return log
+      try {
+        const now = new Date().toISOString()
+        const log = await createWorkoutLogMutation.mutateAsync({
+          userId,
+          startedAt: now,
+        })
+        storeStartWorkout(userId, log)
+        return log
+      } catch (err) {
+        console.error('[workout] Failed to start workout:', { err })
+        throw err
+      }
     },
     [createWorkoutLogMutation, storeStartWorkout],
   )
@@ -125,51 +138,69 @@ export function useActiveWorkout() {
    */
   const addExercise = useCallback(
     async (exercise: Exercise, groupType: GroupType) => {
-      if (!workoutLog) {
-        throw new Error('No active workout to add exercise to')
+      try {
+        if (!workoutLog) {
+          throw new Error('No active workout to add exercise to')
+        }
+
+        const userId = workoutLog.userId
+        // Read ordinal from the store at call time to avoid stale closure
+        const nextOrdinal = useActiveWorkoutStore.getState().loggedGroups.length + 1
+
+        // Create the group in DB
+        const groupData: Omit<LoggedActivityGroup, 'id'> = {
+          workoutLogId: workoutLog.id,
+          groupType,
+          ordinal: nextOrdinal,
+        }
+        const savedGroup = await createLoggedActivityGroupMutation.mutateAsync({
+          group: groupData,
+          userId,
+        })
+
+        // Create the activity in DB (with compensating delete on failure)
+        let savedActivity: LoggedActivity
+        try {
+          const activityData: Omit<LoggedActivity, 'id'> = {
+            loggedGroupId: savedGroup.id,
+            exerciseId: exercise.id,
+            ordinal: 1,
+          }
+          savedActivity = await createLoggedActivityMutation.mutateAsync({
+            activity: activityData,
+            userId,
+          })
+        } catch (activityErr) {
+          // Compensating delete of orphaned group (best effort)
+          try {
+            const adapter = getAdapter()
+            await adapter.deleteWorkoutLog(savedGroup.id)
+          } catch {
+            // Best effort -- the group is orphaned but not critical
+          }
+          throw activityErr
+        }
+
+        // Update store with DB-assigned IDs
+        storeAddExercise(exercise, groupType, savedGroup, savedActivity)
+
+        return { group: savedGroup, activity: savedActivity }
+      } catch (err) {
+        console.error('[workout] Failed to add exercise:', {
+          workoutId: workoutLog?.id,
+          exerciseId: exercise.id,
+          err,
+        })
+        throw err
       }
-
-      const userId = workoutLog.userId
-      const nextOrdinal = loggedGroups.length + 1
-
-      // Create the group in DB
-      const groupData: Omit<LoggedActivityGroup, 'id'> = {
-        workoutLogId: workoutLog.id,
-        groupType,
-        ordinal: nextOrdinal,
-      }
-      const savedGroup = await createLoggedActivityGroupMutation.mutateAsync({
-        group: groupData,
-        userId,
-      })
-
-      // Create the activity in DB
-      const activityData: Omit<LoggedActivity, 'id'> = {
-        loggedGroupId: savedGroup.id,
-        exerciseId: exercise.id,
-        ordinal: 1,
-      }
-      const savedActivity = await createLoggedActivityMutation.mutateAsync({
-        activity: activityData,
-        userId,
-      })
-
-      // Update store with DB-assigned IDs
-      storeAddExercise(exercise, groupType, savedGroup, savedActivity)
-
-      return { group: savedGroup, activity: savedActivity }
     },
-    [
-      workoutLog,
-      loggedGroups.length,
-      createLoggedActivityGroupMutation,
-      createLoggedActivityMutation,
-      storeAddExercise,
-    ],
+    [workoutLog, createLoggedActivityGroupMutation, createLoggedActivityMutation, storeAddExercise],
   )
 
   /**
    * Confirm a set. Creates LoggedSet in DB, updates store, starts rest timer.
+   *
+   * Rest timer defaults to DEFAULT_REST_SECONDS (see docs/01-prd-core.md).
    */
   const confirmSet = useCallback(
     async (
@@ -177,61 +208,88 @@ export function useActiveWorkout() {
       setData: Omit<LoggedSet, 'id'>,
       restSeconds: number = DEFAULT_REST_SECONDS,
     ) => {
-      if (!workoutLog) {
-        throw new Error('No active workout to confirm set in')
+      try {
+        if (!workoutLog) {
+          throw new Error('No active workout to confirm set in')
+        }
+
+        const savedSet = await createLoggedSetMutation.mutateAsync({
+          ...setData,
+          workoutLogId: workoutLog.id,
+          userId: workoutLog.userId,
+        })
+
+        storeConfirmSet(loggedActivityId, savedSet)
+        storeStartRestTimer(restSeconds)
+
+        return savedSet
+      } catch (err) {
+        console.error('[workout] Failed to confirm set:', {
+          workoutId: workoutLog?.id,
+          loggedActivityId,
+          err,
+        })
+        throw err
       }
-
-      const savedSet = await createLoggedSetMutation.mutateAsync({
-        ...setData,
-        workoutLogId: workoutLog.id,
-        userId: workoutLog.userId,
-      })
-
-      storeConfirmSet(loggedActivityId, savedSet)
-      storeStartRestTimer(restSeconds)
-
-      return savedSet
     },
     [workoutLog, createLoggedSetMutation, storeConfirmSet, storeStartRestTimer],
   )
 
   /**
-   * Undo the last confirmed set. Marks the set as uncompleted in DB, removes
-   * from store.
+   * Undo the last confirmed set. Sets the set's completed flag to false in
+   * the DB (row is retained), but removes it from the in-memory store.
    */
   const undoSet = useCallback(async () => {
-    if (!workoutLog || !undoAction) return
+    try {
+      if (!workoutLog || !undoAction) return
 
-    // Find the set in local state to get its full data for the update
-    const targetSet = findSetById(loggedGroups, undoAction.setId)
-    if (!targetSet) return
+      // Find the set in local state to get its full data for the update
+      const currentGroups = useActiveWorkoutStore.getState().loggedGroups
+      const targetSet = findSetById(currentGroups, undoAction.setId)
+      if (!targetSet) return
 
-    // Mark as uncompleted in DB
-    await updateLoggedSetMutation.mutateAsync({
-      ...targetSet,
-      completed: false,
-      workoutLogId: workoutLog.id,
-      userId: workoutLog.userId,
-    })
+      // Mark as uncompleted in DB
+      await updateLoggedSetMutation.mutateAsync({
+        ...targetSet,
+        completed: false,
+        workoutLogId: workoutLog.id,
+        userId: workoutLog.userId,
+      })
 
-    storeUndoLastSet()
-  }, [workoutLog, undoAction, loggedGroups, updateLoggedSetMutation, storeUndoLastSet])
+      storeUndoLastSet()
+    } catch (err) {
+      console.error('[workout] Failed to undo set:', {
+        workoutId: workoutLog?.id,
+        setId: undoAction?.setId,
+        err,
+      })
+      throw err
+    }
+  }, [workoutLog, undoAction, updateLoggedSetMutation, storeUndoLastSet])
 
   /**
    * Finish the active workout. Updates WorkoutLog.completedAt in DB, clears store.
    */
   const finishWorkout = useCallback(async () => {
-    if (!workoutLog) {
-      throw new Error('No active workout to finish')
+    try {
+      if (!workoutLog) {
+        throw new Error('No active workout to finish')
+      }
+
+      const now = new Date().toISOString()
+      await updateWorkoutLogMutation.mutateAsync({
+        ...workoutLog,
+        completedAt: now,
+      })
+
+      storeFinishWorkout()
+    } catch (err) {
+      console.error('[workout] Failed to finish workout:', {
+        workoutId: workoutLog?.id,
+        err,
+      })
+      throw err
     }
-
-    const now = new Date().toISOString()
-    await updateWorkoutLogMutation.mutateAsync({
-      ...workoutLog,
-      completedAt: now,
-    })
-
-    storeFinishWorkout()
   }, [workoutLog, updateWorkoutLogMutation, storeFinishWorkout])
 
   /**
@@ -270,12 +328,20 @@ export function useActiveWorkout() {
    * Discard the active workout. Deletes the WorkoutLog from DB, clears store.
    */
   const discardWorkout = useCallback(async () => {
-    if (!workoutLog) {
-      throw new Error('No active workout to discard')
-    }
+    try {
+      if (!workoutLog) {
+        throw new Error('No active workout to discard')
+      }
 
-    await deleteWorkoutLogMutation.mutateAsync(workoutLog.id)
-    storeDiscardWorkout()
+      await deleteWorkoutLogMutation.mutateAsync(workoutLog.id)
+      storeDiscardWorkout()
+    } catch (err) {
+      console.error('[workout] Failed to discard workout:', {
+        workoutId: workoutLog?.id,
+        err,
+      })
+      throw err
+    }
   }, [workoutLog, deleteWorkoutLogMutation, storeDiscardWorkout])
 
   // ---------------------------------------------------------------------------

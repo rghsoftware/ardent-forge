@@ -5,6 +5,7 @@ import { useWorkoutLogs } from '@/hooks/use-workout-logs'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { CrashRecoveryDialog } from '@/components/workout/crash-recovery-dialog'
 import { Button } from '@/components/ui/button'
+import { formatDuration } from '@/lib/format-duration'
 import type { WorkoutLog } from '@/domain/types'
 
 export const Route = createFileRoute('/_authenticated/')({
@@ -102,7 +103,9 @@ function RecentWorkoutCard({ workout }: { workout: WorkoutLog }) {
     })
     .toUpperCase()
 
-  const duration = completedAt ? formatDuration(startedAt, completedAt) : null
+  const duration = completedAt
+    ? formatDuration(Math.floor((completedAt.getTime() - startedAt.getTime()) / 1000))
+    : null
 
   return (
     <div className="flex items-center justify-between bg-surface-iron px-4 py-3 milled-edge">
@@ -118,16 +121,4 @@ function RecentWorkoutCard({ workout }: { workout: WorkoutLog }) {
       )}
     </div>
   )
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function formatDuration(start: Date, end: Date): string {
-  const diffMs = end.getTime() - start.getTime()
-  const totalSeconds = Math.floor(diffMs / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }

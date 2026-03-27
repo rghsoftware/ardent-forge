@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useWorkoutLogs, useWorkoutLogFull, useDeleteWorkoutLog } from '@/hooks/use-workout-logs'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
+import { formatTimeAgo, formatDateLabel } from '@/lib/format-duration'
 import type { WorkoutLog } from '@/domain/types'
 
 interface CrashRecoveryDialogProps {
@@ -31,11 +32,14 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
   const incompleteWorkout: WorkoutLog | undefined = recentLogs.find((log) => !log.completedAt)
 
   // Fetch full workout data for the incomplete workout (groups, activities, sets)
-  const { data: fullWorkout } = useWorkoutLogFull(incompleteWorkout?.id ?? '')
+  const { data: fullWorkout, isPending: isLoadingFullWorkout } = useWorkoutLogFull(
+    incompleteWorkout?.id ?? '',
+  )
 
   const [dismissed, setDismissed] = useState(false)
   const [isResuming, setIsResuming] = useState(false)
   const [isDiscarding, setIsDiscarding] = useState(false)
+  const [discardError, setDiscardError] = useState<string | null>(null)
 
   // Derive open state -- no effect needed
   const open = Boolean(incompleteWorkout && !isActive && !dismissed)
@@ -51,13 +55,18 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
   const handleDiscard = async () => {
     if (!incompleteWorkout) return
     setIsDiscarding(true)
+    setDiscardError(null)
 
     try {
       await deleteWorkoutLogMutation.mutateAsync(incompleteWorkout.id)
       setDismissed(true)
-    } catch {
-      // Allow retry on failure
+    } catch (err) {
+      console.error('[workout] Failed to discard incomplete workout:', {
+        workoutId: incompleteWorkout.id,
+        err,
+      })
       setIsDiscarding(false)
+      setDiscardError('Failed to discard. Try again.')
     }
   }
 
@@ -83,19 +92,26 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
             RESUME SESSION?
           </DialogTitle>
           <DialogDescription className="text-warm-ash text-sm">
-            You have an unfinished workout from {dateLabel} ({timeAgo}).
+            {isLoadingFullWorkout
+              ? 'Loading session data...'
+              : `You have an unfinished workout from ${dateLabel} (${timeAgo}).`}
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter className="flex-row gap-3 sm:flex-row">
-          <Button
-            variant="ghost"
-            className="flex-1 uppercase tracking-widest text-warm-ash hover:text-warning-flare"
-            onClick={handleDiscard}
-            disabled={isDiscarding || isResuming}
-          >
-            {isDiscarding ? 'DISCARDING...' : 'DISCARD'}
-          </Button>
+        <DialogFooter className="flex-col gap-3 sm:flex-row">
+          <div className="flex flex-1 flex-col gap-1">
+            <Button
+              variant="ghost"
+              className="w-full uppercase tracking-widest text-warm-ash hover:text-warning-flare"
+              onClick={handleDiscard}
+              disabled={isDiscarding || isResuming}
+            >
+              {isDiscarding ? 'DISCARDING...' : 'DISCARD'}
+            </Button>
+            {discardError && (
+              <span className="text-center text-xs text-warning-flare">{discardError}</span>
+            )}
+          </div>
           <Button
             variant="molten"
             className="flex-1 h-12 uppercase tracking-widest"
@@ -108,32 +124,4 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
       </DialogContent>
     </Dialog>
   )
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function formatTimeAgo(date: Date): string {
-  const now = Date.now()
-  const diffMs = now - date.getTime()
-  const diffMinutes = Math.floor(diffMs / 60_000)
-  const diffHours = Math.floor(diffMs / 3_600_000)
-  const diffDays = Math.floor(diffMs / 86_400_000)
-
-  if (diffMinutes < 1) return 'just now'
-  if (diffMinutes < 60) return `${diffMinutes}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays === 1) return 'yesterday'
-  return `${diffDays}d ago`
-}
-
-function formatDateLabel(date: Date): string {
-  return date
-    .toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    })
-    .toUpperCase()
 }

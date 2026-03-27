@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { UNDO_WINDOW_MS } from '@/lib/workout-utils'
 
 interface UndoBannerProps {
   undoAction: { setId: string; expiresAt: number } | null
@@ -7,8 +8,8 @@ interface UndoBannerProps {
 }
 
 export function UndoBanner({ undoAction, onUndo }: UndoBannerProps) {
-  // Start at 10 (matches the undo window). Updates async via timers.
-  const [secondsLeft, setSecondsLeft] = useState(10)
+  // Initial countdown derived from the shared undo window constant.
+  const [secondsLeft, setSecondsLeft] = useState(UNDO_WINDOW_MS / 1000)
 
   useEffect(() => {
     if (!undoAction) return

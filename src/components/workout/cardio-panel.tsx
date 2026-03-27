@@ -1,52 +1,22 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
-import type { Exercise } from '@/domain/types'
-
-type CardioMode = 'RUN' | 'CYCLE' | 'SWIM' | 'ROW'
-
-const CARDIO_MODES: { mode: CardioMode; icon: string; label: string }[] = [
-  { mode: 'RUN', icon: 'directions_run', label: 'RUN' },
-  { mode: 'CYCLE', icon: 'pedal_bike', label: 'CYCLE' },
-  { mode: 'SWIM', icon: 'pool', label: 'SWIM' },
-  { mode: 'ROW', icon: 'rowing', label: 'ROW' },
-]
+import type { Exercise, CardioModality } from '@/domain/types'
+import { CARDIO_MODES } from '@/lib/workout-utils'
+import { formatDuration, computePaceFromString } from '@/lib/format-duration'
 
 interface CardioPanelProps {
-  loggedActivityId: string
   exercise: Exercise
   onComplete: (data: {
     durationSeconds: number
     distance: string
-    modality: CardioMode
+    modality: CardioModality
     heartRate?: string
   }) => void
 }
 
-function formatTimer(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600)
-  const m = Math.floor((totalSeconds % 3600) / 60)
-  const s = totalSeconds % 60
-  const pad = (n: number) => String(n).padStart(2, '0')
-  if (h > 0) return `${pad(h)}:${pad(m)}:${pad(s)}`
-  return `${pad(m)}:${pad(s)}`
-}
-
-function computePace(durationSeconds: number, distanceStr: string): string {
-  const dist = parseFloat(distanceStr)
-  if (!dist || dist <= 0 || durationSeconds <= 0) return '--'
-  const minutesPerUnit = durationSeconds / 60 / dist
-  const paceMin = Math.floor(minutesPerUnit)
-  const paceSec = Math.round((minutesPerUnit - paceMin) * 60)
-  return `${paceMin}:${String(paceSec).padStart(2, '0')}`
-}
-
-export function CardioPanel({
-  loggedActivityId: _loggedActivityId,
-  exercise,
-  onComplete,
-}: CardioPanelProps) {
-  const [modality, setModality] = useState<CardioMode>('RUN')
+export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
+  const [modality, setModality] = useState<CardioModality>('RUNNING')
   const [isRunning, setIsRunning] = useState(false)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [stopped, setStopped] = useState(false)
@@ -95,14 +65,14 @@ export function CardioPanel({
 
       {/* Modality selector chips */}
       <div className="flex gap-1.5 overflow-x-auto px-4 pb-3">
-        {CARDIO_MODES.map(({ mode, icon, label }) => (
+        {CARDIO_MODES.map(({ modality: m, icon, label }) => (
           <button
-            key={mode}
+            key={m}
             type="button"
-            onClick={() => !isRunning && !stopped && setModality(mode)}
+            onClick={() => !isRunning && !stopped && setModality(m)}
             disabled={isRunning || stopped}
             className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 px-3 py-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
-              modality === mode
+              modality === m
                 ? 'bg-forge text-on-forge'
                 : 'bg-surface-steel text-bone-white/70 disabled:opacity-40'
             }`}
@@ -116,7 +86,7 @@ export function CardioPanel({
       {/* Timer display */}
       <div className="flex flex-col items-center py-6">
         <span className="font-display text-5xl tabular-nums tracking-tight text-bone-white">
-          {formatTimer(elapsedSeconds)}
+          {formatDuration(elapsedSeconds)}
         </span>
       </div>
 
@@ -143,7 +113,7 @@ export function CardioPanel({
               DURATION
             </span>
             <span className="font-display text-lg tabular-nums text-bone-white">
-              {formatTimer(elapsedSeconds)}
+              {formatDuration(elapsedSeconds)}
             </span>
           </div>
 
@@ -169,7 +139,7 @@ export function CardioPanel({
                 PACE
               </span>
               <span className="font-display text-lg tabular-nums text-bone-white">
-                {computePace(elapsedSeconds, distance)} /unit
+                {computePaceFromString(elapsedSeconds, distance)} /unit
               </span>
             </div>
           )}
@@ -189,8 +159,14 @@ export function CardioPanel({
             />
           </div>
 
-          {/* Confirm button */}
-          <Button variant="default" size="lg" onClick={handleConfirm} className="mt-2 min-h-12">
+          {/* Confirm button -- disabled when timer has not run */}
+          <Button
+            variant="default"
+            size="lg"
+            onClick={handleConfirm}
+            disabled={elapsedSeconds === 0}
+            className="mt-2 min-h-12"
+          >
             LOG CARDIO
           </Button>
         </div>

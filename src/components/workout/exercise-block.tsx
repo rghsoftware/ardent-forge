@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button'
 import { SetRow } from '@/components/workout/set-row'
 import type { SetType } from '@/domain/types'
 
@@ -21,7 +20,6 @@ interface ExerciseBlockProps {
     reps: string,
     setType: SetType,
   ) => void
-  onAddSet: (loggedActivityId: string) => void
   isConfirming?: boolean
 }
 
@@ -30,7 +28,6 @@ export function ExerciseBlock({
   sets,
   loggedActivityId,
   onConfirmSet,
-  onAddSet,
   isConfirming = false,
 }: ExerciseBlockProps) {
   return (
@@ -73,18 +70,6 @@ export function ExerciseBlock({
             }
           />
         ))}
-      </div>
-
-      {/* Add set button */}
-      <div className="px-4 pt-2 pb-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onAddSet(loggedActivityId)}
-          className="text-xs"
-        >
-          + ADD SET
-        </Button>
       </div>
     </section>
   )

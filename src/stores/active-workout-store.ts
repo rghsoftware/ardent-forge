@@ -7,6 +7,7 @@ import type {
   Exercise,
   GroupType,
 } from '@/domain/types'
+import { UNDO_WINDOW_MS } from '@/lib/workout-utils'
 
 // ---------------------------------------------------------------------------
 // Nested state: groups contain activities, activities contain sets
@@ -54,11 +55,14 @@ interface ActiveWorkoutState {
 
   // Undo mechanism
   undoAction: UndoAction | null
-
-  // Internal interval refs (non-reactive plumbing)
-  _elapsedInterval: ReturnType<typeof setInterval> | null
-  _restInterval: ReturnType<typeof setInterval> | null
 }
+
+// ---------------------------------------------------------------------------
+// Module-scope interval handles (kept outside Zustand to avoid re-renders)
+// ---------------------------------------------------------------------------
+
+let _elapsedInterval: ReturnType<typeof setInterval> | null = null
+let _restInterval: ReturnType<typeof setInterval> | null = null
 
 // ---------------------------------------------------------------------------
 // Actions
@@ -68,11 +72,6 @@ interface ActiveWorkoutActions {
   // Lifecycle
   startWorkout(userId: string, workoutLog: WorkoutLog): void
   resumeWorkout(
-    workoutLog: WorkoutLog,
-    groups: LoggedActivityGroupWithActivities[],
-    elapsedSeconds: number,
-  ): void
-  setWorkoutFromDb(
     workoutLog: WorkoutLog,
     groups: LoggedActivityGroupWithActivities[],
     elapsedSeconds: number,
@@ -96,11 +95,14 @@ interface ActiveWorkoutActions {
   // Rest timer
   startRestTimer(seconds: number): void
   skipRest(): void
-  adjustRest(newTotal: number): void
+  adjustRest(delta: number): void
 
   // Timer ticks (called by intervals internally)
   tickElapsed(): void
   tickRest(): void
+
+  // Cleanup
+  cleanup(): void
 }
 
 // ---------------------------------------------------------------------------
@@ -113,8 +115,6 @@ const initialState: ActiveWorkoutState = {
   elapsedSeconds: 0,
   restTimer: null,
   undoAction: null,
-  _elapsedInterval: null,
-  _restInterval: null,
 }
 
 export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutActions>()(
@@ -133,7 +133,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       }
 
       // Start the elapsed timer
-      const interval = setInterval(() => {
+      if (_elapsedInterval) clearInterval(_elapsedInterval)
+      _elapsedInterval = setInterval(() => {
         get().tickElapsed()
       }, 1000)
 
@@ -143,8 +144,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         elapsedSeconds: 0,
         restTimer: null,
         undoAction: null,
-        _elapsedInterval: interval,
-        _restInterval: null,
       })
     },
 
@@ -154,11 +153,11 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       elapsedSeconds: number,
     ) {
       // Clear any existing intervals
-      const state = get()
-      if (state._elapsedInterval) clearInterval(state._elapsedInterval)
-      if (state._restInterval) clearInterval(state._restInterval)
+      if (_elapsedInterval) clearInterval(_elapsedInterval)
+      if (_restInterval) clearInterval(_restInterval)
+      _restInterval = null
 
-      const interval = setInterval(() => {
+      _elapsedInterval = setInterval(() => {
         get().tickElapsed()
       }, 1000)
 
@@ -168,31 +167,30 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         elapsedSeconds,
         restTimer: null,
         undoAction: null,
-        _elapsedInterval: interval,
-        _restInterval: null,
       })
     },
 
-    setWorkoutFromDb(
-      workoutLog: WorkoutLog,
-      groups: LoggedActivityGroupWithActivities[],
-      elapsedSeconds: number,
-    ) {
-      // Alias for resumeWorkout -- used for internal hydration from DB
-      get().resumeWorkout(workoutLog, groups, elapsedSeconds)
-    },
-
     finishWorkout() {
-      const state = get()
-      if (state._elapsedInterval) clearInterval(state._elapsedInterval)
-      if (state._restInterval) clearInterval(state._restInterval)
+      if (_elapsedInterval) {
+        clearInterval(_elapsedInterval)
+        _elapsedInterval = null
+      }
+      if (_restInterval) {
+        clearInterval(_restInterval)
+        _restInterval = null
+      }
       set({ ...initialState })
     },
 
     discardWorkout() {
-      const state = get()
-      if (state._elapsedInterval) clearInterval(state._elapsedInterval)
-      if (state._restInterval) clearInterval(state._restInterval)
+      if (_elapsedInterval) {
+        clearInterval(_elapsedInterval)
+        _elapsedInterval = null
+      }
+      if (_restInterval) {
+        clearInterval(_restInterval)
+        _restInterval = null
+      }
       set({ ...initialState })
     },
 
@@ -244,13 +242,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
           undoAction: {
             setId: newSet.id,
             loggedActivityId,
-            expiresAt: Date.now() + 10_000,
+            expiresAt: Date.now() + UNDO_WINDOW_MS,
           },
         }
       })
-
-      // Auto-start rest timer with default 90s
-      // The bridge hook can override this with a specific duration
     },
 
     undoLastSet() {
@@ -283,37 +278,36 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     // ------------------------------------------------------------------
 
     startRestTimer(seconds: number) {
-      const state = get()
       // Clear any existing rest interval
-      if (state._restInterval) clearInterval(state._restInterval)
+      if (_restInterval) clearInterval(_restInterval)
 
-      const interval = setInterval(() => {
+      _restInterval = setInterval(() => {
         get().tickRest()
       }, 1000)
 
       set({
         restTimer: { remaining: seconds, total: seconds },
-        _restInterval: interval,
       })
     },
 
     skipRest() {
-      const state = get()
-      if (state._restInterval) clearInterval(state._restInterval)
-      set({ restTimer: null, _restInterval: null })
+      if (_restInterval) {
+        clearInterval(_restInterval)
+        _restInterval = null
+      }
+      set({ restTimer: null })
     },
 
-    adjustRest(newTotal: number) {
-      const state = get()
-      if (state._restInterval) clearInterval(state._restInterval)
-
-      const interval = setInterval(() => {
-        get().tickRest()
-      }, 1000)
-
-      set({
-        restTimer: { remaining: newTotal, total: newTotal },
-        _restInterval: interval,
+    adjustRest(delta: number) {
+      set((state) => {
+        if (!state.restTimer) return {}
+        return {
+          restTimer: {
+            ...state.restTimer,
+            remaining: Math.max(0, state.restTimer.remaining + delta),
+            total: Math.max(0, state.restTimer.total + delta),
+          },
+        }
       })
     },
 
@@ -333,14 +327,32 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
 
       if (newRemaining <= 0) {
         // Rest complete -- auto-skip
-        if (state._restInterval) clearInterval(state._restInterval)
-        set({ restTimer: null, _restInterval: null })
+        if (_restInterval) {
+          clearInterval(_restInterval)
+          _restInterval = null
+        }
+        set({ restTimer: null })
         return
       }
 
       set({
         restTimer: { ...state.restTimer, remaining: newRemaining },
       })
+    },
+
+    // ------------------------------------------------------------------
+    // Cleanup
+    // ------------------------------------------------------------------
+
+    cleanup() {
+      if (_elapsedInterval) {
+        clearInterval(_elapsedInterval)
+        _elapsedInterval = null
+      }
+      if (_restInterval) {
+        clearInterval(_restInterval)
+        _restInterval = null
+      }
     },
   }),
 )
@@ -350,6 +362,3 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
 // ---------------------------------------------------------------------------
 
 export const selectIsActive = (state: ActiveWorkoutState): boolean => state.workoutLog !== null
-
-export const selectActiveExercises = (state: ActiveWorkoutState): LoggedActivityWithSets[] =>
-  state.loggedGroups.flatMap((group) => group.activities)

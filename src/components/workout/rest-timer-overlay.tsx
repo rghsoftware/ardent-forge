@@ -1,21 +1,16 @@
 import { Button } from '@/components/ui/button'
+import { formatCountdown } from '@/lib/format-duration'
 
 interface RestTimerOverlayProps {
   restTimer: { remaining: number; total: number } | null
   onSkip: () => void
-  onAdjust: (newTotal: number) => void
-}
-
-function formatCountdown(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${String(s).padStart(2, '0')}`
+  onAdjust: (delta: number) => void
 }
 
 export function RestTimerOverlay({ restTimer, onSkip, onAdjust }: RestTimerOverlayProps) {
   if (!restTimer) return null
 
-  const { remaining, total } = restTimer
+  const { remaining } = restTimer
 
   return (
     <div className="fixed inset-x-0 bottom-16 z-40 mx-4 mb-2 bg-surface-steel p-4">
@@ -30,23 +25,13 @@ export function RestTimerOverlay({ restTimer, onSkip, onAdjust }: RestTimerOverl
 
         {/* Controls */}
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onAdjust(Math.max(0, total - 30))}
-            className="text-xs"
-          >
+          <Button variant="ghost" size="sm" onClick={() => onAdjust(-30)} className="text-xs">
             -30S
           </Button>
           <Button variant="ghost" size="sm" onClick={onSkip} className="text-xs text-ember">
             SKIP
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onAdjust(total + 30)}
-            className="text-xs"
-          >
+          <Button variant="ghost" size="sm" onClick={() => onAdjust(30)} className="text-xs">
             +30S
           </Button>
         </div>

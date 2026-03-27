@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
+import { formatDuration, computePaceFromString } from '@/lib/format-duration'
 
 interface RuckPanelProps {
-  loggedActivityId: string
   onComplete: (data: {
     loadWeight: string
     durationSeconds: number
@@ -11,25 +11,7 @@ interface RuckPanelProps {
   }) => void
 }
 
-function formatTimer(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600)
-  const m = Math.floor((totalSeconds % 3600) / 60)
-  const s = totalSeconds % 60
-  const pad = (n: number) => String(n).padStart(2, '0')
-  if (h > 0) return `${pad(h)}:${pad(m)}:${pad(s)}`
-  return `${pad(m)}:${pad(s)}`
-}
-
-function computePace(durationSeconds: number, distanceStr: string): string {
-  const dist = parseFloat(distanceStr)
-  if (!dist || dist <= 0 || durationSeconds <= 0) return '--'
-  const minutesPerUnit = durationSeconds / 60 / dist
-  const paceMin = Math.floor(minutesPerUnit)
-  const paceSec = Math.round((minutesPerUnit - paceMin) * 60)
-  return `${paceMin}:${String(paceSec).padStart(2, '0')}`
-}
-
-export function RuckPanel({ loggedActivityId: _loggedActivityId, onComplete }: RuckPanelProps) {
+export function RuckPanel({ onComplete }: RuckPanelProps) {
   const [load, setLoad] = useState('')
   const [isRunning, setIsRunning] = useState(false)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
@@ -106,7 +88,7 @@ export function RuckPanel({ loggedActivityId: _loggedActivityId, onComplete }: R
       {/* Timer display */}
       <div className="flex flex-col items-center py-6">
         <span className="font-display text-5xl tabular-nums tracking-tight text-bone-white">
-          {formatTimer(elapsedSeconds)}
+          {formatDuration(elapsedSeconds)}
         </span>
       </div>
 
@@ -134,7 +116,7 @@ export function RuckPanel({ loggedActivityId: _loggedActivityId, onComplete }: R
               DURATION
             </span>
             <span className="font-display text-lg tabular-nums text-bone-white">
-              {formatTimer(elapsedSeconds)}
+              {formatDuration(elapsedSeconds)}
             </span>
           </div>
 
@@ -160,7 +142,7 @@ export function RuckPanel({ loggedActivityId: _loggedActivityId, onComplete }: R
                 PACE
               </span>
               <span className="font-display text-lg tabular-nums text-bone-white">
-                {computePace(elapsedSeconds, distance)} /unit
+                {computePaceFromString(elapsedSeconds, distance)} /unit
               </span>
             </div>
           )}
@@ -180,8 +162,14 @@ export function RuckPanel({ loggedActivityId: _loggedActivityId, onComplete }: R
             />
           </div>
 
-          {/* Confirm */}
-          <Button variant="default" size="lg" onClick={handleConfirm} className="mt-2 min-h-12">
+          {/* Confirm -- disabled when timer has not run */}
+          <Button
+            variant="default"
+            size="lg"
+            onClick={handleConfirm}
+            disabled={elapsedSeconds === 0}
+            className="mt-2 min-h-12"
+          >
             LOG RUCK
           </Button>
         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { formatCountdown } from '@/lib/format-duration'
 
 type CircuitPhase = 'overview' | 'exercise' | 'interExerciseRest' | 'interRoundRest' | 'done'
 
@@ -17,12 +18,6 @@ interface CircuitPanelProps {
   onComplete: (completedRounds: number) => void
 }
 
-function formatCountdown(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${String(s).padStart(2, '0')}`
-}
-
 export function CircuitPanel({
   exercises,
   rounds,
@@ -34,6 +29,7 @@ export function CircuitPanel({
   const [currentRound, setCurrentRound] = useState(1)
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0)
   const [restSeconds, setRestSeconds] = useState(0)
+  const [completedRounds, setCompletedRounds] = useState(0)
   const restIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Rest countdown effect
@@ -70,6 +66,7 @@ export function CircuitPanel({
     setPhase('exercise')
     setCurrentRound(1)
     setCurrentExerciseIndex(0)
+    setCompletedRounds(0)
   }, [])
 
   const handleExerciseDone = useCallback(() => {
@@ -77,13 +74,15 @@ export function CircuitPanel({
     const isLastRound = currentRound >= rounds
 
     if (isLastExercise && isLastRound) {
-      // Circuit complete
+      // Circuit complete -- all rounds finished
+      setCompletedRounds(currentRound)
       setPhase('done')
       return
     }
 
     if (isLastExercise) {
-      // End of round, go to inter-round rest
+      // End of round, increment completed count and go to inter-round rest
+      setCompletedRounds(currentRound)
       setRestSeconds(interRoundRestSeconds)
       setPhase('interRoundRest')
     } else {
@@ -237,12 +236,14 @@ export function CircuitPanel({
         </div>
       )}
 
-      {/* Done phase */}
+      {/* Done phase -- reports actual completedRounds, not the rounds prop */}
       {phase === 'done' && (
         <div className="flex flex-col items-center gap-4 px-4 py-8">
           <Badge variant="complete">CIRCUIT COMPLETE</Badge>
           <div className="flex items-baseline gap-2">
-            <span className="font-display text-4xl tabular-nums text-bone-white">{rounds}</span>
+            <span className="font-display text-4xl tabular-nums text-bone-white">
+              {completedRounds}
+            </span>
             <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">
               ROUNDS COMPLETED
             </span>
@@ -250,7 +251,7 @@ export function CircuitPanel({
           <Button
             variant="default"
             size="lg"
-            onClick={() => onComplete(rounds)}
+            onClick={() => onComplete(completedRounds)}
             className="mt-2 min-h-12"
           >
             DONE

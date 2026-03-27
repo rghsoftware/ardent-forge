@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import type { WorkoutLog } from '@/domain/types'
+import { formatDuration } from '@/lib/format-duration'
+import type { Weight, WorkoutLog } from '@/domain/types'
 import type {
   LoggedActivityGroupWithActivities,
   LoggedActivityWithSets,
@@ -13,20 +14,11 @@ interface WorkoutSummaryProps {
   onDone: () => void
 }
 
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = seconds % 60
-  const pad = (n: number) => String(n).padStart(2, '0')
-  if (h > 0) return `${pad(h)}:${pad(m)}:${pad(s)}`
-  return `${pad(m)}:${pad(s)}`
-}
-
 interface ExerciseSummary {
   exerciseId: string
   name: string
   setCount: number
-  topWeight: number | null
+  topWeight: Weight | null
   topReps: number | null
 }
 
@@ -66,13 +58,13 @@ export function WorkoutSummary({
     // Per-exercise breakdown
     const exerciseSummaries: ExerciseSummary[] = allActivities.map((activity) => {
       const sets = activity.sets.filter((s) => s.completed)
-      let topWeight: number | null = null
+      let topWeight: Weight | null = null
       let topReps: number | null = null
 
       for (const set of sets) {
         const w = set.actualWeight?.value ?? 0
-        if (w > (topWeight ?? 0)) {
-          topWeight = w
+        if (w > (topWeight?.value ?? 0)) {
+          topWeight = set.actualWeight ?? null
           topReps = set.actualReps ?? null
         }
       }
@@ -160,7 +152,9 @@ export function WorkoutSummary({
                 {ex.setCount}
               </span>
               <span className="w-24 text-center font-display text-sm tabular-nums text-bone-white">
-                {ex.topWeight != null ? `${ex.topWeight} x ${ex.topReps ?? '--'}` : '--'}
+                {ex.topWeight != null
+                  ? `${ex.topWeight.value} ${ex.topWeight.unit} x ${ex.topReps ?? '--'}`
+                  : '--'}
               </span>
             </div>
           ))}

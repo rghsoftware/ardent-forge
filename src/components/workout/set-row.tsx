@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Icon } from '@/components/icon'
 import type { SetType } from '@/domain/types'
@@ -26,6 +26,14 @@ export function SetRow({
   const [reps, setReps] = useState(initialReps)
   const [setType, setSetType] = useState<SetType>('WORKING')
   const [showTypeSelector, setShowTypeSelector] = useState(false)
+
+  // Sync local state when parent pre-fills new values (e.g. carry-forward from last set)
+  useEffect(() => {
+    setWeight(initialWeight)
+  }, [initialWeight])
+  useEffect(() => {
+    setReps(initialReps)
+  }, [initialReps])
 
   const handleConfirm = useCallback(() => {
     if (confirmed || isConfirming) return
@@ -111,8 +119,8 @@ export function SetRow({
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={isConfirming}
-            className="flex min-h-12 min-w-12 items-center justify-center text-ember transition-colors hover:text-forge"
+            disabled={isConfirming || confirmed || (!weight.trim() && !reps.trim())}
+            className="flex min-h-12 min-w-12 items-center justify-center text-ember transition-colors hover:text-forge disabled:opacity-40"
             aria-label={`Confirm set ${setNumber}`}
           >
             {isConfirming ? (
