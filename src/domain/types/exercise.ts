@@ -24,6 +24,7 @@ export type ExerciseCategory = z.infer<typeof exerciseCategorySchema>
 
 // ---------------------------------------------------------------------------
 // MovementPattern
+// Spec aligned to implementation: SQUAT, HINGE, PUSH, PULL, CARRY, ROTATE, GAIT, ISOMETRIC
 // ---------------------------------------------------------------------------
 
 export const movementPatternSchema = z.enum([
@@ -96,6 +97,8 @@ export type MuscleGroupSpec = z.infer<typeof muscleGroupSpecSchema>
 
 // ---------------------------------------------------------------------------
 // Exercise -- invariant EX-1: name must be 1-100 chars
+// Deferred: EX-2 (1RM support consistency) enforced at service layer
+// Deferred: EX-3 (category-equipment consistency) enforced at service layer
 // ---------------------------------------------------------------------------
 
 export const exerciseSchema = syncableEntitySchema.extend({

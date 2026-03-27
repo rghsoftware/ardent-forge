@@ -1,9 +1,10 @@
 import { z } from 'zod'
-import { syncableEntitySchema, durationSchema } from './units'
+import { entityId, syncableEntitySchema, durationSchema } from './units'
 import { setSchemeSchema } from './set-scheme'
 
 // ---------------------------------------------------------------------------
 // GroupType -- how activities within a group are structured
+// Spec aligned to implementation: STRAIGHT_SETS, SUPERSET, CIRCUIT, COMPLEX, EMOM, AMRAP, COUPLET
 // ---------------------------------------------------------------------------
 
 export const groupTypeSchema = z.enum([
@@ -19,9 +20,18 @@ export type GroupType = z.infer<typeof groupTypeSchema>
 
 // ---------------------------------------------------------------------------
 // ScoringType -- how a session's performance is scored
+// Combined spec + implementation values: NONE, FOR_TIME, TIME, FOR_REPS, ROUNDS_PLUS_REPS, FOR_DISTANCE, LOAD
 // ---------------------------------------------------------------------------
 
-export const scoringTypeSchema = z.enum(['NONE', 'TIME', 'ROUNDS_PLUS_REPS', 'LOAD'])
+export const scoringTypeSchema = z.enum([
+  'NONE',
+  'FOR_TIME',
+  'TIME',
+  'FOR_REPS',
+  'ROUNDS_PLUS_REPS',
+  'FOR_DISTANCE',
+  'LOAD',
+])
 export type ScoringType = z.infer<typeof scoringTypeSchema>
 
 // ---------------------------------------------------------------------------
@@ -50,8 +60,8 @@ export type SessionTemplate = z.infer<typeof sessionTemplateSchema>
 // ---------------------------------------------------------------------------
 
 export const activitySchema = z.object({
-  id: z.string(),
-  exerciseId: z.string(),
+  id: entityId,
+  exerciseId: entityId,
   setScheme: setSchemeSchema,
   ordinal: z.number().int().positive(), // P-5
   notes: z.string().optional(),
@@ -65,7 +75,8 @@ export type Activity = z.infer<typeof activitySchema>
 // ---------------------------------------------------------------------------
 
 export const activityGroupSchema = z.object({
-  id: z.string(),
+  id: entityId,
+  sessionTemplateId: entityId,
   groupType: groupTypeSchema,
   ordinal: z.number().int().positive(),
   rounds: z.number().int().min(1).optional(), // P-6: null or >= 1

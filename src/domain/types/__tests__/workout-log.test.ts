@@ -37,7 +37,7 @@ describe('L-1: WorkoutLog must have startedAt', () => {
 // L-2: completedAt must be after startedAt (L-2 invariant)
 // ---------------------------------------------------------------------------
 
-describe('L-2: completedAt must be after (or equal to) startedAt', () => {
+describe('L-2: completedAt must be strictly after startedAt', () => {
   it('accepts workout log without completedAt (in-progress)', () => {
     expect(workoutLogSchema.safeParse(baseWorkoutLog).success).toBe(true)
   })
@@ -49,13 +49,13 @@ describe('L-2: completedAt must be after (or equal to) startedAt', () => {
       }).success,
     ).toBe(true)
   })
-  it('accepts completedAt equal to startedAt (edge case)', () => {
+  it('rejects completedAt equal to startedAt (strict >)', () => {
     expect(
       workoutLogSchema.safeParse({
         ...baseWorkoutLog,
         completedAt: '2025-01-15T14:00:00Z',
       }).success,
-    ).toBe(true)
+    ).toBe(false)
   })
   it('rejects completedAt before startedAt', () => {
     expect(
@@ -212,6 +212,27 @@ describe('L-7: LoggedSet rpe must be 1-10', () => {
   })
   it('rejects negative rpe', () => {
     expect(loggedSetSchema.safeParse({ ...baseLoggedSet, rpe: -1 }).success).toBe(false)
+  })
+  it('accepts rpe of 7.5 (half-value)', () => {
+    expect(loggedSetSchema.safeParse({ ...baseLoggedSet, rpe: 7.5 }).success).toBe(true)
+  })
+  it('rejects rpe of 7.3 (not a half-value)', () => {
+    expect(loggedSetSchema.safeParse({ ...baseLoggedSet, rpe: 7.3 }).success).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// S2: Prescription must have at least one field
+// ---------------------------------------------------------------------------
+
+describe('S2: prescriptionSchema requires at least one field', () => {
+  it('rejects empty prescription with no fields set', () => {
+    expect(
+      loggedSetSchema.safeParse({
+        ...baseLoggedSet,
+        prescribed: {},
+      }).success,
+    ).toBe(false)
   })
 })
 

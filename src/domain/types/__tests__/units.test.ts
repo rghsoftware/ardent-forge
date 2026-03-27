@@ -5,6 +5,8 @@ import {
   paceSchema,
   numberRangeSchema,
   oneRepMaxSchema,
+  entityId,
+  isoDateTime,
 } from '@/domain/types'
 
 describe('U-1: Weight', () => {
@@ -120,7 +122,7 @@ describe('PR-1: OneRepMax', () => {
     expect(
       oneRepMaxSchema.safeParse({
         weight: { value: 225, unit: 'lb' },
-        testedAt: '2025-01-15',
+        testedAt: '2025-01-15T00:00:00Z',
         estimated: false,
       }).success,
     ).toBe(true)
@@ -129,7 +131,7 @@ describe('PR-1: OneRepMax', () => {
     expect(
       oneRepMaxSchema.safeParse({
         weight: { value: 140, unit: 'kg' },
-        testedAt: '2025-03-01',
+        testedAt: '2025-03-01T00:00:00Z',
         estimated: true,
       }).success,
     ).toBe(true)
@@ -138,7 +140,7 @@ describe('PR-1: OneRepMax', () => {
     expect(
       oneRepMaxSchema.safeParse({
         weight: { value: 0, unit: 'lb' },
-        testedAt: '2025-01-15',
+        testedAt: '2025-01-15T00:00:00Z',
         estimated: false,
       }).success,
     ).toBe(false)
@@ -147,7 +149,7 @@ describe('PR-1: OneRepMax', () => {
     expect(
       oneRepMaxSchema.safeParse({
         weight: { value: -10, unit: 'kg' },
-        testedAt: '2025-01-15',
+        testedAt: '2025-01-15T00:00:00Z',
         estimated: false,
       }).success,
     ).toBe(false)
@@ -159,5 +161,29 @@ describe('PR-1: OneRepMax', () => {
         estimated: false,
       }).success,
     ).toBe(false)
+  })
+})
+
+describe('entityId', () => {
+  it('accepts a valid non-empty string', () => {
+    expect(entityId.safeParse('abc123').success).toBe(true)
+  })
+  it('rejects an empty string', () => {
+    expect(entityId.safeParse('').success).toBe(false)
+  })
+  it('rejects undefined', () => {
+    expect(entityId.safeParse(undefined).success).toBe(false)
+  })
+})
+
+describe('isoDateTime', () => {
+  it('accepts a valid ISO 8601 datetime', () => {
+    expect(isoDateTime.safeParse('2025-01-15T14:00:00Z').success).toBe(true)
+  })
+  it('rejects a plain date without time', () => {
+    expect(isoDateTime.safeParse('2025-01-15').success).toBe(false)
+  })
+  it('rejects a non-ISO string', () => {
+    expect(isoDateTime.safeParse('not-a-date').success).toBe(false)
   })
 })

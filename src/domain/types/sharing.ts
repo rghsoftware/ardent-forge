@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { syncableEntitySchema } from './units'
+import { entityId, isoDateTime, syncableEntitySchema } from './units'
 
 // ---------------------------------------------------------------------------
 // GroupRole -- roles within an accountability group
@@ -30,7 +30,7 @@ export type ShareableEntityType = z.infer<typeof shareableEntityTypeSchema>
 export const accountabilityGroupSchema = syncableEntitySchema.extend({
   name: z.string().min(1),
   description: z.string().optional(),
-  createdBy: z.string(),
+  createdBy: entityId,
   dataRetentionDays: z.number().int().positive(),
 })
 export type AccountabilityGroup = z.infer<typeof accountabilityGroupSchema>
@@ -40,12 +40,12 @@ export type AccountabilityGroup = z.infer<typeof accountabilityGroupSchema>
 // ---------------------------------------------------------------------------
 
 export const groupMemberSchema = z.object({
-  id: z.string(),
-  groupId: z.string(),
-  userId: z.string(),
+  id: entityId,
+  groupId: entityId,
+  userId: entityId,
   role: groupRoleSchema,
   shareHistoryBeforeJoin: z.boolean(), // SH-9: history visibility opt-in
-  joinedAt: z.string(), // ISO 8601
+  joinedAt: isoDateTime,
 })
 export type GroupMember = z.infer<typeof groupMemberSchema>
 
@@ -55,11 +55,11 @@ export type GroupMember = z.infer<typeof groupMemberSchema>
 // ---------------------------------------------------------------------------
 
 export const groupInviteSchema = z.object({
-  id: z.string(),
-  groupId: z.string(),
+  id: entityId,
+  groupId: entityId,
   code: z.string().min(1),
-  createdBy: z.string(),
-  expiresAt: z.string(), // ISO 8601
+  createdBy: entityId,
+  expiresAt: isoDateTime,
   isActive: z.boolean(),
 })
 export type GroupInvite = z.infer<typeof groupInviteSchema>
@@ -69,14 +69,23 @@ export type GroupInvite = z.infer<typeof groupInviteSchema>
 // invariant SH-6: mutual visibility when status is ACTIVE
 // ---------------------------------------------------------------------------
 
-export const directConnectionSchema = syncableEntitySchema.extend({
-  requesterId: z.string(),
-  recipientId: z.string(),
-  status: connectionStatusSchema,
-  requesterGrantsWrite: z.boolean(),
-  recipientGrantsWrite: z.boolean(),
-  acceptedAt: z.string().optional(), // ISO 8601; null until accepted
-})
+export const directConnectionSchema = syncableEntitySchema
+  .extend({
+    requesterId: entityId,
+    recipientId: entityId,
+    status: connectionStatusSchema,
+    requesterGrantsWrite: z.boolean(),
+    recipientGrantsWrite: z.boolean(),
+    acceptedAt: isoDateTime.optional(), // null until accepted
+  })
+  .refine(
+    (data) => {
+      if (data.status === 'ACTIVE' && data.acceptedAt === undefined) return false
+      if (data.status === 'PENDING' && data.acceptedAt !== undefined) return false
+      return true
+    },
+    { message: 'ACTIVE status requires acceptedAt; PENDING status requires no acceptedAt' },
+  )
 export type DirectConnection = z.infer<typeof directConnectionSchema>
 
 // ---------------------------------------------------------------------------
@@ -87,8 +96,8 @@ export type DirectConnection = z.infer<typeof directConnectionSchema>
 export const shareLinkSchema = syncableEntitySchema.extend({
   token: z.string().min(1),
   entityType: shareableEntityTypeSchema,
-  entityId: z.string(),
-  createdBy: z.string(),
+  entityId: entityId,
+  createdBy: entityId,
   isActive: z.boolean(),
 })
 export type ShareLink = z.infer<typeof shareLinkSchema>

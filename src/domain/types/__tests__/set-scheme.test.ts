@@ -1,4 +1,4 @@
-import { setSchemeSchema, loadSpecSchema } from '@/domain/types'
+import { setSchemeSchema, loadSpecSchema, parseSetScheme } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // SS-1: Each SetScheme variant validates with correct fields
@@ -567,5 +567,45 @@ describe('LoadSpec variants', () => {
   })
   it('rejects unknown load spec type', () => {
     expect(loadSpecSchema.safeParse({ type: 'unknown' }).success).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// I6: parseSetScheme helper
+// ---------------------------------------------------------------------------
+
+describe('parseSetScheme helper', () => {
+  it('returns success for a valid fixedSets input', () => {
+    const result = parseSetScheme({
+      type: 'fixedSets',
+      sets: 3,
+      reps: 5,
+      load: { type: 'bodyweight' },
+      restSeconds: 180,
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('returns error for missing type field', () => {
+    const result = parseSetScheme({ sets: 3, reps: 5 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toMatch(/missing|invalid.*type/i)
+    }
+  })
+
+  it('returns error for unknown type value', () => {
+    const result = parseSetScheme({ type: 'unknownType', sets: 3 })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(typeof result.error).toBe('string')
+      expect(result.error).toMatch(/unknown setscheme type/i)
+    }
+  })
+
+  it('returns schema errors for invalid variant data', () => {
+    const result = parseSetScheme({ type: 'fixedSets', sets: -1, reps: 5 })
+    // sets must be positive; result should be a Zod error object, not our custom error string
+    expect(result.success).toBe(false)
   })
 })

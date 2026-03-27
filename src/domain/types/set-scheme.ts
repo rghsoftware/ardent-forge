@@ -62,9 +62,7 @@ export type LoadSpec = z.infer<typeof loadSpecSchema>
 // SetScheme variants -- defined individually so refine() can be applied
 // before assembly into the final union.
 //
-// NOTE: z.discriminatedUnion() is NOT used here because several variants
-// require .refine(), and Zod 4 does not accept refined schemas as members
-// of a discriminated union. z.union() is used instead.
+// z.union() is used instead of z.discriminatedUnion() because Zod does not support .refine() on discriminated union members
 // ---------------------------------------------------------------------------
 
 // 1. FixedSets -- sets/reps can be a plain number or a NumberRange
@@ -141,6 +139,7 @@ const cardioIntervalSchema = z
 
 // 8. RuckMarch -- invariant SS-1: at least one of duration/distance
 //                invariant SS-5: modality required
+// modality is typically RUCKING but left flexible for ruck-while-hiking or ruck-march variants
 const ruckMarchSchema = z
   .object({
     type: z.literal('ruckMarch'),
@@ -198,8 +197,7 @@ const percentageOfMaxRepsSchema = z.object({
 
 // ---------------------------------------------------------------------------
 // SetScheme -- union of all 12 variants
-// z.union() is used (not z.discriminatedUnion) because several variants
-// have .refine() applied, which is not supported in Zod 4 discriminated unions.
+// z.union() is used instead of z.discriminatedUnion() because Zod does not support .refine() on discriminated union members
 // ---------------------------------------------------------------------------
 
 export const setSchemeSchema = z.union([
@@ -217,3 +215,46 @@ export const setSchemeSchema = z.union([
   percentageOfMaxRepsSchema,
 ])
 export type SetScheme = z.infer<typeof setSchemeSchema>
+
+// ---------------------------------------------------------------------------
+// parseSetScheme -- two-stage parser with better error messages than z.union()
+// ---------------------------------------------------------------------------
+
+const setSchemeVariants: Record<string, z.ZodTypeAny> = {
+  fixedSets: fixedSetsSchema,
+  percentageSets: percentageSetsSchema,
+  workToMax: workToMaxSchema,
+  timedHold: timedHoldSchema,
+  forReps: forRepsSchema,
+  cardioSteadyState: cardioSteadyStateSchema,
+  cardioInterval: cardioIntervalSchema,
+  ruckMarch: ruckMarchSchema,
+  emom: emomSchema,
+  amrapTimed: amrapTimedSchema,
+  descendingReps: descendingRepsSchema,
+  percentageOfMaxReps: percentageOfMaxRepsSchema,
+}
+
+/**
+ * Two-stage SetScheme parser with better error messages than z.union().
+ * 1. Extracts the `type` discriminator field
+ * 2. Looks up the matching variant schema
+ * 3. Validates against only that one schema
+ *
+ * Use this instead of setSchemeSchema.safeParse() when you need
+ * actionable error messages for end users.
+ */
+export function parseSetScheme(data: unknown) {
+  const typeResult = z.object({ type: z.string() }).safeParse(data)
+  if (!typeResult.success) {
+    return { success: false as const, error: 'Missing or invalid "type" field' }
+  }
+  const variant = setSchemeVariants[typeResult.data.type]
+  if (!variant) {
+    return {
+      success: false as const,
+      error: `Unknown SetScheme type: "${typeResult.data.type}". Valid types: ${Object.keys(setSchemeVariants).join(', ')}`,
+    }
+  }
+  return variant.safeParse(data)
+}

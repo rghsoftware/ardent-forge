@@ -1,11 +1,13 @@
 import { z } from 'zod'
 import {
-  syncableEntitySchema,
-  weightSchema,
-  durationSchema,
   distanceSchema,
+  durationSchema,
+  entityId,
+  isoDateTime,
   paceSchema,
   programContextSchema,
+  syncableEntitySchema,
+  weightSchema,
 } from './units'
 import { groupTypeSchema } from './session'
 import { loadSpecSchema } from './set-scheme'
@@ -22,14 +24,25 @@ export type SetType = z.infer<typeof setTypeSchema>
 // prescription depends on the SetScheme type)
 // ---------------------------------------------------------------------------
 
-export const prescriptionSchema = z.object({
-  reps: z.number().int().positive().optional(),
-  weight: weightSchema.optional(),
-  duration: durationSchema.optional(),
-  distance: distanceSchema.optional(),
-  loadSpec: loadSpecSchema.optional(),
-  notes: z.string().optional(),
-})
+export const prescriptionSchema = z
+  .object({
+    reps: z.number().int().positive().optional(),
+    weight: weightSchema.optional(),
+    duration: durationSchema.optional(),
+    distance: distanceSchema.optional(),
+    loadSpec: loadSpecSchema.optional(),
+    notes: z.string().optional(),
+  })
+  .refine(
+    (data) =>
+      data.reps !== undefined ||
+      data.weight !== undefined ||
+      data.duration !== undefined ||
+      data.distance !== undefined ||
+      data.loadSpec !== undefined ||
+      data.notes !== undefined,
+    { message: 'A prescription must specify at least one prescribed value' },
+  )
 export type Prescription = z.infer<typeof prescriptionSchema>
 
 // ---------------------------------------------------------------------------
@@ -37,23 +50,27 @@ export type Prescription = z.infer<typeof prescriptionSchema>
 // invariant L-1: startedAt is required (enforced by non-optional field)
 // invariant L-2: completedAt must be after startedAt (enforced by .refine())
 // invariant L-6: perceivedDifficulty must be 1-10
+// Deferred: L-8 (one active workout per user) enforced at DB constraint level
 // ---------------------------------------------------------------------------
 
 export const workoutLogSchema = syncableEntitySchema
   .extend({
-    userId: z.string(),
-    startedAt: z.string(), // L-1: required ISO 8601
-    completedAt: z.string().optional(), // null means in-progress
-    sessionTemplateId: z.string().optional(),
+    userId: entityId,
+    startedAt: isoDateTime, // L-1: required ISO 8601
+    completedAt: isoDateTime.optional(), // null means in-progress
+    sessionTemplateId: entityId.optional(),
     programContext: programContextSchema.optional(),
     overallNotes: z.string().optional(),
     perceivedDifficulty: z.number().int().min(1).max(10).optional(), // L-6
-    bodweightAtSession: weightSchema.optional(),
+    bodyweightAtSession: weightSchema.optional(),
   })
-  .refine((data) => !data.completedAt || data.completedAt >= data.startedAt, {
-    message: 'completedAt must be after startedAt', // L-2
-    path: ['completedAt'],
-  })
+  .refine(
+    (data) => {
+      if (!data.completedAt) return true
+      return new Date(data.completedAt).getTime() > new Date(data.startedAt).getTime()
+    },
+    { message: 'completedAt must be after startedAt', path: ['completedAt'] },
+  )
 export type WorkoutLog = z.infer<typeof workoutLogSchema>
 
 // ---------------------------------------------------------------------------
@@ -61,8 +78,8 @@ export type WorkoutLog = z.infer<typeof workoutLogSchema>
 // ---------------------------------------------------------------------------
 
 export const loggedActivityGroupSchema = z.object({
-  id: z.string(),
-  workoutLogId: z.string(),
+  id: entityId,
+  workoutLogId: entityId,
   groupType: groupTypeSchema,
   ordinal: z.number().int().positive(),
   actualRoundsCompleted: z.number().int().positive().optional(),
@@ -75,9 +92,9 @@ export type LoggedActivityGroup = z.infer<typeof loggedActivityGroupSchema>
 // ---------------------------------------------------------------------------
 
 export const loggedActivitySchema = z.object({
-  id: z.string(),
-  loggedGroupId: z.string(),
-  exerciseId: z.string(),
+  id: entityId,
+  loggedGroupId: entityId,
+  exerciseId: entityId,
   ordinal: z.number().int().positive(),
   notes: z.string().optional(),
 })
@@ -92,8 +109,8 @@ export type LoggedActivity = z.infer<typeof loggedActivitySchema>
 
 export const loggedSetSchema = z
   .object({
-    id: z.string(),
-    loggedActivityId: z.string(),
+    id: entityId,
+    loggedActivityId: entityId,
     setNumber: z.number().int().min(1), // L-3
     setType: setTypeSchema,
     prescribed: prescriptionSchema.optional(),
@@ -103,7 +120,8 @@ export const loggedSetSchema = z
     actualDistance: distanceSchema.optional(),
     actualPace: paceSchema.optional(),
     actualHeartRate: z.number().int().positive().optional(),
-    rpe: z.number().min(1).max(10).optional(), // L-7
+    // L-7: RPE 1-10, half-values allowed (e.g. 7.5) per standard RPE scale
+    rpe: z.number().min(1).max(10).multipleOf(0.5).optional(),
     completed: z.boolean(),
     notes: z.string().optional(),
     ruckLoad: weightSchema.optional(),

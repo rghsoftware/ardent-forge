@@ -1,13 +1,23 @@
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
+// Shared helpers -- used by all entity and timestamp fields
+// ---------------------------------------------------------------------------
+
+// Shared non-empty string schema for all entity IDs and foreign key references
+export const entityId = z.string().min(1)
+
+// Shared ISO 8601 datetime schema for all timestamp fields
+export const isoDateTime = z.iso.datetime()
+
+// ---------------------------------------------------------------------------
 // SyncableEntity -- base fields present on all persisted, syncable entities
 // ---------------------------------------------------------------------------
 
 export const syncableEntitySchema = z.object({
-  id: z.string(),
-  createdAt: z.string(), // ISO 8601
-  updatedAt: z.string(), // ISO 8601
+  id: entityId,
+  createdAt: isoDateTime,
+  updatedAt: isoDateTime,
 })
 export type SyncableEntity = z.infer<typeof syncableEntitySchema>
 
@@ -71,7 +81,7 @@ export type NumberRange = z.infer<typeof numberRangeSchema>
 
 export const oneRepMaxSchema = z.object({
   weight: weightSchema,
-  testedAt: z.string(), // ISO date string
+  testedAt: isoDateTime,
   estimated: z.boolean(),
 })
 export type OneRepMax = z.infer<typeof oneRepMaxSchema>
@@ -81,8 +91,8 @@ export type OneRepMax = z.infer<typeof oneRepMaxSchema>
 // ---------------------------------------------------------------------------
 
 export const programContextSchema = z.object({
-  programId: z.string(),
-  blockId: z.string(),
+  programId: entityId,
+  blockId: entityId,
   weekNumber: z.number().int().min(1),
   dayLabel: z.string(),
 })

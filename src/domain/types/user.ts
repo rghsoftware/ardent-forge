@@ -1,5 +1,12 @@
 import { z } from 'zod'
-import { syncableEntitySchema, weightSchema, durationSchema, oneRepMaxSchema } from './units'
+import {
+  entityId,
+  isoDateTime,
+  syncableEntitySchema,
+  weightSchema,
+  durationSchema,
+  oneRepMaxSchema,
+} from './units'
 
 // ---------------------------------------------------------------------------
 // PreferredUnits -- user's preferred measurement system
@@ -14,10 +21,10 @@ export type PreferredUnits = z.infer<typeof preferredUnitsSchema>
 
 export const userProfileSchema = syncableEntitySchema.extend({
   // Map from exerciseId to OneRepMax -- PR-1 enforced by oneRepMaxSchema
-  exerciseMaxes: z.record(z.string(), oneRepMaxSchema),
+  exerciseMaxes: z.record(entityId, oneRepMaxSchema),
   bodyweight: weightSchema.optional(),
   // Map from exerciseId to max reps count
-  maxReps: z.record(z.string(), z.number().int().positive()),
+  maxReps: z.record(entityId, z.number().int().positive()),
   preferredUnits: preferredUnitsSchema,
   trainingAge: durationSchema.optional(),
 })
@@ -29,10 +36,10 @@ export type UserProfile = z.infer<typeof userProfileSchema>
 // ---------------------------------------------------------------------------
 
 export const oneRepMaxHistorySchema = syncableEntitySchema.extend({
-  userId: z.string(),
-  exerciseId: z.string(),
+  userId: entityId,
+  exerciseId: entityId,
   weight: weightSchema, // PR-1: weight.value > 0 enforced by weightSchema positive()
   estimated: z.boolean(),
-  recordedAt: z.string(), // ISO 8601
+  recordedAt: isoDateTime,
 })
 export type OneRepMaxHistory = z.infer<typeof oneRepMaxHistorySchema>
