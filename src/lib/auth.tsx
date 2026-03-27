@@ -25,32 +25,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ user: null, session: null, loading: true })
 
   useEffect(() => {
-    const client = getSupabaseClient()
-
     // Hydrate initial session
-    client.auth.getSession().then(({ data: { session } }) => {
-      setState({ user: session?.user ?? null, session, loading: false })
-    })
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        setState({ user: session?.user ?? null, session, loading: false })
+      })
+      .catch((err) => {
+        console.error('[auth] Failed to hydrate session:', err)
+        setState({ user: null, session: null, loading: false })
+      })
 
     // Subscribe to auth changes
     const {
       data: { subscription },
-    } = client.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       setState({ user: session?.user ?? null, session, loading: false })
 
-      // Auto-create user_profiles row on first sign-in
       if (event === 'SIGNED_IN' && session?.user) {
-        await client
-          .from('user_profiles')
-          .upsert(
-            { id: session.user.id, preferred_units: 'IMPERIAL' },
-            { onConflict: 'id', ignoreDuplicates: true },
-          )
+        try {
+          // Auto-create user_profiles row on first sign-in.
+          // IMPERIAL is the default unit system per product spec.
+          // ignoreDuplicates ensures existing profiles are preserved on subsequent sign-ins.
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .upsert(
+              { id: session.user.id, preferred_units: 'IMPERIAL' },
+              { onConflict: 'id', ignoreDuplicates: true },
+            )
+          if (profileError) {
+            console.error('[auth] Failed to create user profile on sign-in:', profileError)
+          }
+        } catch (err) {
+          console.error('[auth] Unexpected error creating profile:', err)
+        }
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [supabase])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })

@@ -7,13 +7,11 @@ import type {
   UserProfile,
   OneRepMaxHistory,
 } from '@/domain/types'
-import type { ExerciseCategory, MovementPattern, MuscleGroup, Equipment } from '@/domain/types'
+import type { ExerciseCategory, MovementPattern } from '@/domain/types'
 
 export interface ExerciseFilters {
   category?: ExerciseCategory
   movementPattern?: MovementPattern
-  muscleGroup?: MuscleGroup
-  equipment?: Equipment
   searchQuery?: string
   isCustom?: boolean
 }
@@ -26,8 +24,8 @@ export interface ExerciseFilters {
  * - List operations return an empty array when no matches exist.
  * - Infrastructure errors (network, DB) should throw and are handled by callers.
  *
- * Phase 1 scope: exercises, workout logs, user profiles, and 1RM history.
- * Program, session template, and sharing operations will be added in later phases.
+ * Current scope (Steps 3-4): exercises, workout logs, user profiles, and 1RM history.
+ * Program, session template, and sharing operations will be added in later steps.
  */
 export interface DataAdapter {
   // Exercise operations
@@ -55,8 +53,8 @@ export interface DataAdapter {
     activity: Omit<LoggedActivity, 'id'>,
     userId: string,
   ): Promise<LoggedActivity>
-  createLoggedSet(set: Omit<LoggedSet, 'id'>): Promise<LoggedSet>
-  updateLoggedSet(set: LoggedSet): Promise<LoggedSet>
+  createLoggedSet(set: Omit<LoggedSet, 'id'>, userId: string): Promise<LoggedSet>
+  updateLoggedSet(set: LoggedSet, userId: string): Promise<LoggedSet>
 
   // User profile operations
   getUserProfile(userId: string): Promise<UserProfile | null>

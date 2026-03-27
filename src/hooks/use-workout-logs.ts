@@ -56,8 +56,10 @@ export function useDeleteWorkoutLog() {
 
   return useMutation({
     mutationFn: (id: string) => getAdapter().deleteWorkoutLog(id),
-    onSettled: () => {
+    onSettled: (_data, _err, id) => {
       queryClient.invalidateQueries({ queryKey: ['workouts'] })
+      queryClient.invalidateQueries({ queryKey: ['workout', id] })
+      queryClient.invalidateQueries({ queryKey: ['workout-full', id] })
     },
   })
 }
@@ -77,9 +79,14 @@ export function useCreateLoggedActivityGroup() {
 }
 
 export function useCreateLoggedActivity() {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationFn: ({ activity, userId }: { activity: Omit<LoggedActivity, 'id'>; userId: string }) =>
       getAdapter().createLoggedActivity(activity, userId),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['workout-full'] })
+    },
   })
 }
 
@@ -94,8 +101,8 @@ export function useCreateLoggedSet() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (set: Omit<LoggedSet, 'id'> & { workoutLogId: string }) =>
-      getAdapter().createLoggedSet(set),
+    mutationFn: (set: Omit<LoggedSet, 'id'> & { workoutLogId: string; userId: string }) =>
+      getAdapter().createLoggedSet(set, set.userId),
     onMutate: async (newSet) => {
       await queryClient.cancelQueries({ queryKey: ['workout-full', newSet.workoutLogId] })
       const previous = queryClient.getQueryData<WorkoutLogFull>([
@@ -108,8 +115,11 @@ export function useCreateLoggedSet() {
       })
       return { previous }
     },
-    onError: (_err, newSet, context) => {
-      queryClient.setQueryData(['workout-full', newSet.workoutLogId], context?.previous)
+    onError: (err, newSet, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['workout-full', newSet.workoutLogId], context.previous)
+      }
+      console.error('[workout] Failed to save set, rolling back:', err)
     },
     onSettled: (_data, _err, newSet) => {
       queryClient.invalidateQueries({ queryKey: ['workout-full', newSet.workoutLogId] })
@@ -121,7 +131,8 @@ export function useUpdateLoggedSet() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (set: LoggedSet & { workoutLogId: string }) => getAdapter().updateLoggedSet(set),
+    mutationFn: (set: LoggedSet & { workoutLogId: string; userId: string }) =>
+      getAdapter().updateLoggedSet(set, set.userId),
     onMutate: async (updatedSet) => {
       await queryClient.cancelQueries({ queryKey: ['workout-full', updatedSet.workoutLogId] })
       const previous = queryClient.getQueryData<WorkoutLogFull>([
@@ -137,8 +148,11 @@ export function useUpdateLoggedSet() {
       })
       return { previous }
     },
-    onError: (_err, updatedSet, context) => {
-      queryClient.setQueryData(['workout-full', updatedSet.workoutLogId], context?.previous)
+    onError: (err, updatedSet, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['workout-full', updatedSet.workoutLogId], context.previous)
+      }
+      console.error('[workout] Failed to save set, rolling back:', err)
     },
     onSettled: (_data, _err, updatedSet) => {
       queryClient.invalidateQueries({ queryKey: ['workout-full', updatedSet.workoutLogId] })

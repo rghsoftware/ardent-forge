@@ -259,6 +259,15 @@ describe('DirectConnection schema', () => {
     expect(directConnectionSchema.safeParse(declined).success).toBe(true)
   })
 
+  it('rejects DECLINED status with acceptedAt (S3 refine)', () => {
+    const bad = {
+      ...baseDirectConnection,
+      status: 'DECLINED',
+      acceptedAt: '2025-02-01T12:00:00Z',
+    }
+    expect(directConnectionSchema.safeParse(bad).success).toBe(false)
+  })
+
   it('accepts requesterGrantsWrite as true', () => {
     const grants = { ...baseDirectConnection, requesterGrantsWrite: true }
     expect(directConnectionSchema.safeParse(grants).success).toBe(true)

@@ -1,26 +1,30 @@
+import { z } from 'zod'
 import type {
   Exercise,
-  ExerciseCategory,
-  MovementPattern,
-  MuscleGroupSpec,
-  Equipment,
   WorkoutLog,
   LoggedActivityGroup,
   LoggedActivity,
   LoggedSet,
-  SetType,
-  Prescription,
-  Weight,
-  Duration,
-  Distance,
-  Pace,
-  ProgramContext,
   UserProfile,
-  PreferredUnits,
-  OneRepMax,
   OneRepMaxHistory,
 } from '@/domain/types'
-import type { GroupType } from '@/domain/types'
+import {
+  entityId,
+  exerciseCategorySchema,
+  movementPatternSchema,
+  muscleGroupSpecSchema,
+  equipmentSchema,
+  weightSchema,
+  durationSchema,
+  distanceSchema,
+  paceSchema,
+  programContextSchema,
+  prescriptionSchema,
+  groupTypeSchema,
+  setTypeSchema,
+  preferredUnitsSchema,
+  oneRepMaxSchema,
+} from '@/domain/types'
 import type {
   ExerciseRow,
   WorkoutLogRow,
@@ -30,6 +34,21 @@ import type {
   UserProfileRow,
   OneRepMaxHistoryRow,
 } from './database.types'
+
+/**
+ * Bidirectional mappers between database row types and domain types.
+ *
+ * Naming convention:
+ * - `toXxx()` converts a database row to a domain type (DB -> Domain)
+ * - `fromXxx()` converts a domain type to a partial database row (Domain -> DB)
+ *
+ * Null/undefined conversion strategy:
+ * - DB null -> Domain undefined (optional fields absent in domain model)
+ * - Domain undefined -> DB null (explicit nulls for SQL columns)
+ *
+ * JSON columns use Zod schema validation (`.parse()`) instead of `as` casts
+ * to catch data corruption at the persistence boundary.
+ */
 
 // ---------------------------------------------------------------------------
 // Exercise
@@ -41,13 +60,13 @@ export function toExercise(row: ExerciseRow): Exercise {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     name: row.name,
-    aliases: row.aliases as string[],
-    category: row.category as ExerciseCategory,
-    movementPattern: row.movement_pattern as MovementPattern,
-    muscleGroups: row.muscle_groups as MuscleGroupSpec,
+    aliases: z.array(z.string()).parse(row.aliases),
+    category: exerciseCategorySchema.parse(row.category),
+    movementPattern: movementPatternSchema.parse(row.movement_pattern),
+    muscleGroups: muscleGroupSpecSchema.parse(row.muscle_groups),
     isBilateral: row.is_bilateral,
     supports1RM: row.supports_1rm,
-    equipmentRequired: row.equipment_required as Equipment[],
+    equipmentRequired: z.array(equipmentSchema).parse(row.equipment_required),
     isCustom: row.is_custom,
   }
 }
@@ -82,9 +101,11 @@ export function toWorkoutLog(row: WorkoutLogRow): WorkoutLog {
     startedAt: row.started_at,
     completedAt: row.completed_at ?? undefined,
     sessionTemplateId: row.session_template_id ?? undefined,
-    programContext: (row.program_context as ProgramContext) ?? undefined,
+    programContext:
+      row.program_context != null ? programContextSchema.parse(row.program_context) : undefined,
     perceivedDifficulty: row.perceived_difficulty ?? undefined,
-    bodyweightAtSession: (row.bodyweight_at_session as Weight) ?? undefined,
+    bodyweightAtSession:
+      row.bodyweight_at_session != null ? weightSchema.parse(row.bodyweight_at_session) : undefined,
     overallNotes: row.overall_notes ?? undefined,
   }
 }
@@ -113,10 +134,11 @@ export function toLoggedActivityGroup(row: LoggedActivityGroupRow): LoggedActivi
   return {
     id: row.id,
     workoutLogId: row.workout_log_id,
-    groupType: row.group_type as GroupType,
+    groupType: groupTypeSchema.parse(row.group_type),
     ordinal: row.ordinal,
     actualRoundsCompleted: row.actual_rounds_completed ?? undefined,
-    completionTime: (row.completion_time as Duration) ?? undefined,
+    completionTime:
+      row.completion_time != null ? durationSchema.parse(row.completion_time) : undefined,
   }
 }
 
@@ -170,19 +192,22 @@ export function toLoggedSet(row: LoggedSetRow): LoggedSet {
     id: row.id,
     loggedActivityId: row.logged_activity_id,
     setNumber: row.set_number,
-    setType: row.set_type as SetType,
-    prescribed: (row.prescribed as Prescription) ?? undefined,
+    setType: setTypeSchema.parse(row.set_type),
+    prescribed: row.prescribed != null ? prescriptionSchema.parse(row.prescribed) : undefined,
     actualReps: row.actual_reps ?? undefined,
-    actualWeight: (row.actual_weight as Weight) ?? undefined,
-    actualDuration: (row.actual_duration as Duration) ?? undefined,
-    actualDistance: (row.actual_distance as Distance) ?? undefined,
-    actualPace: (row.actual_pace as Pace) ?? undefined,
+    actualWeight: row.actual_weight != null ? weightSchema.parse(row.actual_weight) : undefined,
+    actualDuration:
+      row.actual_duration != null ? durationSchema.parse(row.actual_duration) : undefined,
+    actualDistance:
+      row.actual_distance != null ? distanceSchema.parse(row.actual_distance) : undefined,
+    actualPace: row.actual_pace != null ? paceSchema.parse(row.actual_pace) : undefined,
     actualHeartRate: row.actual_heart_rate ?? undefined,
     rpe: row.rpe ?? undefined,
     completed: row.completed,
     notes: row.notes ?? undefined,
-    ruckLoad: (row.ruck_load as Weight) ?? undefined,
-    elevationGain: (row.elevation_gain as Distance) ?? undefined,
+    ruckLoad: row.ruck_load != null ? weightSchema.parse(row.ruck_load) : undefined,
+    elevationGain:
+      row.elevation_gain != null ? distanceSchema.parse(row.elevation_gain) : undefined,
   }
 }
 
@@ -217,11 +242,17 @@ export function toUserProfile(row: UserProfileRow): UserProfile {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     displayName: row.display_name ?? undefined,
-    preferredUnits: row.preferred_units as PreferredUnits,
-    bodyweight: (row.bodyweight as Weight) ?? undefined,
-    trainingAge: (row.training_age as Duration) ?? undefined,
-    exerciseMaxes: (row.exercise_maxes as Record<string, OneRepMax>) ?? {},
-    maxReps: (row.max_reps as Record<string, number>) ?? {},
+    preferredUnits: preferredUnitsSchema.parse(row.preferred_units),
+    bodyweight: row.bodyweight != null ? weightSchema.parse(row.bodyweight) : undefined,
+    trainingAge: row.training_age != null ? durationSchema.parse(row.training_age) : undefined,
+    exerciseMaxes:
+      row.exercise_maxes != null
+        ? z.record(entityId, oneRepMaxSchema).parse(row.exercise_maxes)
+        : {},
+    maxReps:
+      row.max_reps != null
+        ? z.record(entityId, z.number().int().positive()).parse(row.max_reps)
+        : {},
   }
 }
 
@@ -248,17 +279,16 @@ export function toOneRepMaxHistory(row: OneRepMaxHistoryRow): OneRepMaxHistory {
   return {
     id: row.id,
     createdAt: row.created_at,
-    updatedAt: row.created_at,
     userId: row.user_id,
     exerciseId: row.exercise_id,
-    weight: row.weight as Weight,
+    weight: weightSchema.parse(row.weight),
     estimated: row.estimated,
     recordedAt: row.recorded_at,
   }
 }
 
 export function fromOneRepMaxHistory(
-  entry: Omit<OneRepMaxHistory, 'id' | 'createdAt' | 'updatedAt'>,
+  entry: Omit<OneRepMaxHistory, 'id' | 'createdAt'>,
 ): Partial<OneRepMaxHistoryRow> {
   return {
     user_id: entry.userId,

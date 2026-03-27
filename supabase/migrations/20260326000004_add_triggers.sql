@@ -7,7 +7,7 @@
 
 -- ---------------------------------------------------------------------------
 -- 1. Automatic updated_at trigger function
---    Applied to all tables with an updated_at column.
+--    Applied to all tables with an updated_at column (excludes one_rep_max_history, which is append-only per PR-2).
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -34,9 +34,6 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON logged_activities
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON logged_sets
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER set_updated_at BEFORE UPDATE ON one_rep_max_history
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ---------------------------------------------------------------------------

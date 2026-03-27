@@ -4,7 +4,8 @@ import { getSupabaseClient } from './supabase'
 
 let _adapter: DataAdapter | null = null
 
-// Phase 0: always Supabase. Phase 1 (Step 8): detect Tauri environment and return TauriAdapter.
+// Returns SupabaseAdapter for browser-only mode. When Tauri is integrated (Step 8), this factory
+// will detect the runtime environment and return the appropriate adapter.
 export function getAdapter(): DataAdapter {
   if (!_adapter) {
     _adapter = new SupabaseAdapter(getSupabaseClient())

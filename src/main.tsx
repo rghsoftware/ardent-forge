@@ -1,8 +1,10 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { routeTree } from './routeTree.gen'
-import type { RouterContext } from '@/lib/auth'
+import { AuthProvider, useAuth, type RouterContext } from '@/lib/auth'
+import { queryClient } from '@/lib/query-client'
 import './index.css'
 
 const router = createRouter({
@@ -18,8 +20,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
+function InnerApp() {
+  const auth = useAuth()
+  return <RouterProvider router={router} context={{ auth }} />
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <InnerApp />
+      </AuthProvider>
+    </QueryClientProvider>
   </React.StrictMode>,
 )

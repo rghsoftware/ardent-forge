@@ -35,6 +35,10 @@ import {
   fromOneRepMaxHistory,
 } from './data-mapper'
 
+function escapeLikePattern(s: string): string {
+  return s.replace(/[%_\\]/g, '\\$&')
+}
+
 export class SupabaseAdapter implements DataAdapter {
   private client: SupabaseClient
 
@@ -64,7 +68,7 @@ export class SupabaseAdapter implements DataAdapter {
       query = query.eq('movement_pattern', filters.movementPattern)
     }
     if (filters?.searchQuery) {
-      query = query.ilike('name', `%${filters.searchQuery}%`)
+      query = query.ilike('name', `%${escapeLikePattern(filters.searchQuery)}%`)
     }
     if (filters?.isCustom !== undefined) {
       query = query.eq('is_custom', filters.isCustom)
@@ -89,6 +93,7 @@ export class SupabaseAdapter implements DataAdapter {
     exercise: Omit<Exercise, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<Exercise> {
     const userId = await this.getCurrentUserId()
+    // RLS policy blocks non-custom inserts from client; force is_custom: true as defense-in-depth
     const row = {
       ...fromExercise(exercise),
       is_custom: true,
@@ -256,8 +261,7 @@ export class SupabaseAdapter implements DataAdapter {
   // LoggedSet
   // ---------------------------------------------------------------------------
 
-  async createLoggedSet(set: Omit<LoggedSet, 'id'>): Promise<LoggedSet> {
-    const userId = await this.getCurrentUserId()
+  async createLoggedSet(set: Omit<LoggedSet, 'id'>, userId: string): Promise<LoggedSet> {
     const row = fromLoggedSet(set, userId)
 
     const { data, error } = await this.client.from('logged_sets').insert(row).select().single()
@@ -265,8 +269,7 @@ export class SupabaseAdapter implements DataAdapter {
     return toLoggedSet(data as LoggedSetRow)
   }
 
-  async updateLoggedSet(set: LoggedSet): Promise<LoggedSet> {
-    const userId = await this.getCurrentUserId()
+  async updateLoggedSet(set: LoggedSet, userId: string): Promise<LoggedSet> {
     const row = fromLoggedSet(set, userId)
 
     const { data, error } = await this.client

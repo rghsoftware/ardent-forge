@@ -56,9 +56,13 @@ function SignInPage() {
         <CardContent className="space-y-4">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             className="min-h-12 w-full"
-            onClick={() => auth.signInWithGoogle()}
+            onClick={async () => {
+              setAuthError(null)
+              const { error } = await auth.signInWithGoogle()
+              if (error) setAuthError(error.message)
+            }}
           >
             Continue with Google
           </Button>
