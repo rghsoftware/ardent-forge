@@ -23,7 +23,6 @@ const baseUserProfile = {
 const baseOneRepMaxHistory = {
   id: 'ormh-1',
   createdAt: '2025-01-01T00:00:00Z',
-  updatedAt: '2025-01-01T00:00:00Z',
   userId: 'user-1',
   exerciseId: 'ex-squat',
   weight: { value: 405, unit: 'lb' },
@@ -160,5 +159,10 @@ describe('OneRepMaxHistory schema', () => {
       weight: { value: -100, unit: 'kg' },
     }
     expect(oneRepMaxHistorySchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects missing createdAt', () => {
+    const { createdAt: _, ...noCreatedAt } = baseOneRepMaxHistory as Record<string, unknown>
+    expect(oneRepMaxHistorySchema.safeParse(noCreatedAt).success).toBe(false)
   })
 })

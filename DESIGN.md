@@ -268,8 +268,8 @@ A barely-perceptible dot grid that reinforces the precision instrument aesthetic
 ## 6. Iconography
 
 - **Icon set:** Material Symbols Outlined (Google Fonts).
-- **Variation settings:** `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24`.
-- **Style rule:** Icons must serve a functional purpose. If a text label in `label-medium` is clearer, use text. Avoid thin-stroke "friendly" icon sets. When icons are necessary, they should be solid-fill and heavy.
+- **Variation settings:** `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' <size>` where `opsz` tracks the rendered size dynamically (default 24).
+- **Style rule:** Icons must serve a functional purpose. If a text label in `label-medium` is clearer, use text. Avoid thin-stroke "friendly" icon sets. When icons are necessary, they should be outlined by default (`FILL 0`), switching to filled (`FILL 1`) only for active/selected states.
 - **Key icons in use:** `fitness_center`, `timer`, `menu_book`, `inventory_2`, `cloud_done`, `precision_manufacturing`, `grid_view`, `construction`, `monitoring`, `library_books`, `settings`, `check_circle`, `open_with`, `drag_indicator`, `add`.
 
 ---

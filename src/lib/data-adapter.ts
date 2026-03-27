@@ -18,7 +18,7 @@ export interface ExerciseFilters {
  * - List operations return an empty array when no matches exist.
  * - Infrastructure errors (network, DB) should throw and are handled by callers.
  *
- * Phase 1 scope: exercises, workout logs, user profiles, and 1RM history.
+ * Initial scope: exercises, workout logs, user profiles, and 1RM history.
  * Program, session template, and sharing operations will be added in later phases.
  */
 export interface DataAdapter {
@@ -39,7 +39,5 @@ export interface DataAdapter {
   // User profile operations
   getUserProfile(userId: string): Promise<UserProfile | null>
   updateUserProfile(profile: Partial<UserProfile> & { id: string }): Promise<UserProfile>
-  saveOneRepMax(
-    entry: Omit<OneRepMaxHistory, 'id' | 'createdAt' | 'updatedAt'>,
-  ): Promise<OneRepMaxHistory>
+  saveOneRepMax(entry: Omit<OneRepMaxHistory, 'id' | 'createdAt'>): Promise<OneRepMaxHistory>
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Icon } from '@/components/icon'
+import { cn } from '@/lib/utils'
 
 const navItems = [
   { label: 'DASHBOARD', icon: 'grid_view', to: '/' },
@@ -15,8 +16,10 @@ export function SidebarNav() {
 
   return (
     <aside
-      className="flex flex-col bg-surface-pit h-full shrink-0 transition-none"
-      style={{ width: collapsed ? 64 : 240 }}
+      className={cn(
+        'flex flex-col bg-surface-pit h-full shrink-0 transition-none',
+        collapsed ? 'w-16' : 'w-60',
+      )}
     >
       {/* Toggle button */}
       <button

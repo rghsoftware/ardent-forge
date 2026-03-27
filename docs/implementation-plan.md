@@ -134,9 +134,9 @@
 
 ## Parallel Tracks
 
-| Track A: React App (browser)   | Track B: Supabase | Track C: Tauri + Rust |
-| ------------------------------ | ----------------- | --------------------- |
-| Steps 1–1.5–2, 4–7             | Step 3 (< 1 day)  | Steps 8–9             |
+| Track A: React App (browser) | Track B: Supabase | Track C: Tauri + Rust |
+| ---------------------------- | ----------------- | --------------------- |
+| Steps 1–1.5–2, 4–7           | Step 3 (< 1 day)  | Steps 8–9             |
 
 Supabase setup (Track B) is a console-click + migration exercise. The real work is Track A (building the app) and Track C (wrapping it in Tauri with offline support).
 
@@ -189,7 +189,7 @@ ardent-forge/
 ├── vite.config.ts
 ├── tsconfig.json
 ├── components.json             # shadcn/ui config
-└── .env.local                  # VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY
+└── .env.local                  # VITE_SUPABASE_URL, VITE_SUPABASE_PUB_KEY
 ```
 
 ### Key dependency versions (as installed)
@@ -247,35 +247,35 @@ Map every token from DESIGN.md §2 into CSS custom properties and register them 
 
 **Surface Hierarchy — "The Milled Block":**
 
-| Token               | Hex       | Role                                      |
-| -------------------- | --------- | ----------------------------------------- |
-| `surface-pit`        | `#0E0E0E` | Deepest recess. Nav trays, sidebar bg.    |
-| `surface-anvil`      | `#131313` | Primary canvas. Default page background.  |
-| `surface-charcoal`   | `#1C1B1B` | Alternating row stripes in data tables.   |
-| `surface-iron`       | `#201F1F` | Card backgrounds, content sections.       |
-| `surface-gunmetal`   | `#2A2A2A` | Active form fields, elevated modules.     |
-| `surface-steel`      | `#353534` | Timers, active set cards, scrollbar.      |
-| `surface-slag`       | `#393939` | Floating overlays, surface highlights.    |
+| Token              | Hex       | Role                                     |
+| ------------------ | --------- | ---------------------------------------- |
+| `surface-pit`      | `#0E0E0E` | Deepest recess. Nav trays, sidebar bg.   |
+| `surface-anvil`    | `#131313` | Primary canvas. Default page background. |
+| `surface-charcoal` | `#1C1B1B` | Alternating row stripes in data tables.  |
+| `surface-iron`     | `#201F1F` | Card backgrounds, content sections.      |
+| `surface-gunmetal` | `#2A2A2A` | Active form fields, elevated modules.    |
+| `surface-steel`    | `#353534` | Timers, active set cards, scrollbar.     |
+| `surface-slag`     | `#393939` | Floating overlays, surface highlights.   |
 
 **Primary — "Molten" Accent:**
 
-| Token        | Hex       | Role                                      |
-| ------------ | --------- | ----------------------------------------- |
-| `ember`      | `#FFB59C` | Text accents, active underlines, icons.   |
-| `forge`      | `#FB5C1C` | High-impact CTA backgrounds.             |
-| `on-ember`   | `#5C1900` | Text on primary surfaces.                |
-| `on-forge`   | `#511500` | Text on CTA backgrounds.                 |
+| Token      | Hex       | Role                                    |
+| ---------- | --------- | --------------------------------------- |
+| `ember`    | `#FFB59C` | Text accents, active underlines, icons. |
+| `forge`    | `#FB5C1C` | High-impact CTA backgrounds.            |
+| `on-ember` | `#5C1900` | Text on primary surfaces.               |
+| `on-forge` | `#511500` | Text on CTA backgrounds.                |
 
 **Secondary, Tertiary, Error, Text:** Full mapping in `DESIGN.md` §2. All tokens mapped to both Iron & Ember names and shadcn compatibility variables (`--background`, `--primary`, `--card`, etc.).
 
 **Critical overrides:**
 
-| Property        | Value | Rationale                                 |
-| --------------- | ----- | ----------------------------------------- |
-| `--radius`      | `0px` | The Hard Edge Rule — no rounded corners   |
-| `--border`      | Ghost | 15% opacity `outline-variant` only        |
-| Font display    | Space Grotesk | Headlines, numbers, readouts       |
-| Font body       | Inter | Body text, labels, data tables            |
+| Property     | Value         | Rationale                               |
+| ------------ | ------------- | --------------------------------------- |
+| `--radius`   | `0px`         | The Hard Edge Rule — no rounded corners |
+| `--border`   | Ghost         | 15% opacity `outline-variant` only      |
+| Font display | Space Grotesk | Headlines, numbers, readouts            |
+| Font body    | Inter         | Body text, labels, data tables          |
 
 ### 1.5b. Font Setup
 
@@ -303,13 +303,13 @@ Override every shadcn component in `src/components/ui/` to match DESIGN.md spec:
 
 **Button variants:**
 
-| Variant       | Background               | Text        | Notes                        |
-| ------------- | ------------------------ | ----------- | ---------------------------- |
-| `default`     | `#FB5C1C` (forge)        | `#511500`   | High-contrast CTA            |
-| `molten`      | Molten gradient (135deg) | `#511500`   | New variant — hero CTA       |
-| `secondary`   | `#334A55` (deep-slate)   | `#A0B9C5`   | Supporting actions            |
-| `ghost`       | Transparent              | `#FFB59C`   | ALL-CAPS text-only            |
-| `destructive` | `#93000A`                | `#FFDAD6`   | Destructive actions           |
+| Variant       | Background               | Text      | Notes                  |
+| ------------- | ------------------------ | --------- | ---------------------- |
+| `default`     | `#FB5C1C` (forge)        | `#511500` | High-contrast CTA      |
+| `molten`      | Molten gradient (135deg) | `#511500` | New variant — hero CTA |
+| `secondary`   | `#334A55` (deep-slate)   | `#A0B9C5` | Supporting actions     |
+| `ghost`       | Transparent              | `#FFB59C` | ALL-CAPS text-only     |
+| `destructive` | `#93000A`                | `#FFDAD6` | Destructive actions    |
 
 All: 0px radius, no shadows, no transitions. Active: `filter: brightness(1.25)`.
 
@@ -327,24 +327,24 @@ All: 0px radius, no shadows, no transitions. Active: `filter: brightness(1.25)`.
 
 **Mobile (< 768px) — Bottom navigation:**
 
-| Tab     | Icon           | Route      |
-| ------- | -------------- | ---------- |
-| FORGE   | `construction` | `/`        |
-| TRACKER | `timer`        | `/tracker` |
-| LIBRARY | `library_books`| `/library` |
-| VAULT   | `monitoring`   | `/vault`   |
+| Tab     | Icon            | Route      |
+| ------- | --------------- | ---------- |
+| FORGE   | `construction`  | `/`        |
+| TRACKER | `timer`         | `/tracker` |
+| LIBRARY | `library_books` | `/library` |
+| VAULT   | `monitoring`    | `/vault`   |
 
 Background: `surface-pit`. Active: `ember`. Touch targets ≥ 48px. Fixed bottom with heat-blur. Labels: ALL-CAPS `label-small`.
 
 **Desktop (≥ 1024px) — Left sidebar:**
 
-| Item             | Icon                      | Route      |
-| ---------------- | ------------------------- | ---------- |
-| DASHBOARD        | `grid_view`               | `/`        |
-| PROGRAM BUILDER  | `precision_manufacturing` | `/builder` |
-| ANALYTICS        | `monitoring`              | `/vault`   |
-| LIBRARY          | `library_books`           | `/library` |
-| SETTINGS         | `settings`                | `/settings`|
+| Item            | Icon                      | Route       |
+| --------------- | ------------------------- | ----------- |
+| DASHBOARD       | `grid_view`               | `/`         |
+| PROGRAM BUILDER | `precision_manufacturing` | `/builder`  |
+| ANALYTICS       | `monitoring`              | `/vault`    |
+| LIBRARY         | `library_books`           | `/library`  |
+| SETTINGS        | `settings`                | `/settings` |
 
 Background: `surface-pit`. Collapsed: 64px icon-only. Expanded: 240px icon+text.
 
@@ -501,11 +501,11 @@ Wrap adapter calls in TanStack Query hooks:
 
 ### 4c. Auth screens
 
-| Screen          | Components                                 | Design Notes (Iron & Ember)           |
-| --------------- | ------------------------------------------ | ------------------------------------- |
-| Sign In         | Email + password form, Google OAuth button | Underline inputs, `forge` CTA button  |
-| Sign Up         | Email + password form                      | `surface-iron` card, 0px radius       |
-| Forgot Password | Email input, send reset                    | Minimal, `surface-anvil` background   |
+| Screen          | Components                                 | Design Notes (Iron & Ember)          |
+| --------------- | ------------------------------------------ | ------------------------------------ |
+| Sign In         | Email + password form, Google OAuth button | Underline inputs, `forge` CTA button |
+| Sign Up         | Email + password form                      | `surface-iron` card, 0px radius      |
+| Forgot Password | Email input, send reset                    | Minimal, `surface-anvil` background  |
 
 Auth screens use the industrial vocabulary: "AUTHENTICATE", "ACCESS FORGE", not "Welcome back!"
 
@@ -833,12 +833,12 @@ Bidirectional sync between local SQLite and Supabase, plus background rest timer
 
 ### 9b. Sync state exposed to React
 
-| State     | Meaning                  | UI Indicator (Iron & Ember)                   |
-| --------- | ------------------------ | --------------------------------------------- |
-| `offline` | No auth or no network    | No indicator (app works normally)              |
-| `syncing` | Push or pull in progress | `cloud_done` icon pulsing in `ember`           |
-| `synced`  | All caught up            | `cloud_done` icon solid in `steel-blue`        |
-| `error`   | Sync failed              | `error` icon in `error` color, toast with retry|
+| State     | Meaning                  | UI Indicator (Iron & Ember)                     |
+| --------- | ------------------------ | ----------------------------------------------- |
+| `offline` | No auth or no network    | No indicator (app works normally)               |
+| `syncing` | Push or pull in progress | `cloud_done` icon pulsing in `ember`            |
+| `synced`  | All caught up            | `cloud_done` icon solid in `steel-blue`         |
+| `error`   | Sync failed              | `error` icon in `error` color, toast with retry |
 
 ### 9c. Rest timer in Rust
 
@@ -1374,32 +1374,32 @@ Coach can create/edit programs for group members and update their 1RMs.
 
 ## Timeline Mapping
 
-| Step                              | Priority | Est. Effort    | Can Parallel With  |
-| --------------------------------- | -------- | -------------- | ------------------ |
-| 1. Project Scaffold               | P0       | 0.5 day        | —                  |
-| **1.5. Design System (Iron & Ember)** | **P0** | **1 day**    | —                  |
-| 2. Domain Types + Zod             | P0       | 1.5 days       | 3 (Supabase setup) |
-| 3. Supabase Setup                 | P0       | 0.5 day        | Step 2             |
-| 4. Data Adapter + Auth            | P0       | 2 days         | —                  |
-| 5. Exercise Dictionary + 1RMs     | P0       | 2 days         | —                  |
-| 6. Active Workout Logging         | P0       | 4 days         | —                  |
-| 7. Workout History                | P0       | 1.5 days       | —                  |
-| **Phase 0 subtotal**              |          | **~13 days**   |                    |
-| 8. Tauri Shell + Rust/SQLite      | P0       | 3 days         | —                  |
-| 9. Sync Engine + Rest Timer       | P0       | 2.5 days       | —                  |
-| **Phase 1 subtotal**              |          | **~5.5 days**  |                    |
-| 10. Session Templates + SetScheme | P0       | 3 days         | —                  |
-| 11. Program Structure             | P0       | 2 days         | —                  |
-| 12. Program Builder (DnD)         | P1       | 3 days         | —                  |
-| 13. Programmed Workout Logging    | P0       | 2.5 days       | —                  |
-| **Phase 2 subtotal**              |          | **~10.5 days** |                    |
-| 14. Progress Analytics + PR       | P1       | 2.5 days       | 15                 |
-| 15. Notification System           | P1       | 1.5 days       | 14                 |
-| 16. Share Links                   | P1       | 1.5 days       | 14, 15             |
-| 17. Accountability Groups         | P2       | 3 days         | —                  |
-| 18. Coach Write Access            | P2       | 2 days         | —                  |
-| **Phase 3-4 subtotal**            |          | **~11 days**   |                    |
-| **Total**                         |          | **~40 days**   |                    |
+| Step                                  | Priority | Est. Effort    | Can Parallel With  |
+| ------------------------------------- | -------- | -------------- | ------------------ |
+| 1. Project Scaffold                   | P0       | 0.5 day        | —                  |
+| **1.5. Design System (Iron & Ember)** | **P0**   | **1 day**      | —                  |
+| 2. Domain Types + Zod                 | P0       | 1.5 days       | 3 (Supabase setup) |
+| 3. Supabase Setup                     | P0       | 0.5 day        | Step 2             |
+| 4. Data Adapter + Auth                | P0       | 2 days         | —                  |
+| 5. Exercise Dictionary + 1RMs         | P0       | 2 days         | —                  |
+| 6. Active Workout Logging             | P0       | 4 days         | —                  |
+| 7. Workout History                    | P0       | 1.5 days       | —                  |
+| **Phase 0 subtotal**                  |          | **~13 days**   |                    |
+| 8. Tauri Shell + Rust/SQLite          | P0       | 3 days         | —                  |
+| 9. Sync Engine + Rest Timer           | P0       | 2.5 days       | —                  |
+| **Phase 1 subtotal**                  |          | **~5.5 days**  |                    |
+| 10. Session Templates + SetScheme     | P0       | 3 days         | —                  |
+| 11. Program Structure                 | P0       | 2 days         | —                  |
+| 12. Program Builder (DnD)             | P1       | 3 days         | —                  |
+| 13. Programmed Workout Logging        | P0       | 2.5 days       | —                  |
+| **Phase 2 subtotal**                  |          | **~10.5 days** |                    |
+| 14. Progress Analytics + PR           | P1       | 2.5 days       | 15                 |
+| 15. Notification System               | P1       | 1.5 days       | 14                 |
+| 16. Share Links                       | P1       | 1.5 days       | 14, 15             |
+| 17. Accountability Groups             | P2       | 3 days         | —                  |
+| 18. Coach Write Access                | P2       | 2 days         | —                  |
+| **Phase 3-4 subtotal**                |          | **~11 days**   |                    |
+| **Total**                             |          | **~40 days**   |                    |
 
 > **Critical path to browser MVP:** Steps 1 → 1.5 → 2/3 → 4 → 5 → 6 → 7 = ~13 days
 > **Critical path to Tauri GO/NO-GO:** + Steps 8 → 9 = ~18.5 days
@@ -1447,21 +1447,21 @@ Complex types (SetScheme, LoadSpec, Weight, prescribed values) are stored as JSO
 
 ## Design Decisions Summary
 
-| #   | Decision                                             | Rationale                                                                 |
-| --- | ---------------------------------------------------- | ------------------------------------------------------------------------- |
-| 1   | Phase 0 is browser-only against Supabase             | Validates data model and UX before committing to Tauri                    |
-| 2   | Data adapter pattern from day one                    | Switching between Supabase and Tauri/SQLite is transparent                |
-| 3   | SetScheme as discriminated union, not generic schema | Each workout type gets first-class field validation                       |
-| 4   | JSON columns for complex nested types                | Avoids explosion of junction tables for SetScheme variants                |
-| 5   | 1RM history is insert-only                           | Audit trail for progression, never lose historical data                   |
-| 6   | Pre-fill + confirm pattern for programmed logging    | Minimizes taps (2 per set) while allowing deviation                       |
-| 7   | Rest timer in Rust, not JavaScript                   | Survives WebView backgrounding on mobile                                  |
-| 8   | RLS expansion deferred to Steps 17-18                | Simple `user_id = auth.uid()` for Phases 0-2, complexity only when needed |
-| 9   | Coach creates programs owned by member               | Member always controls their data, coach access is revocable              |
-| 10  | Same React app for all platforms                     | Eliminates duplication between web and native                             |
-| 11  | Iron & Ember design system before feature work       | Full shadcn overrides upfront prevent style debt across 14 feature steps  |
-| 12  | Publishable key over legacy anon key                 | Independently rotatable, no JWT secret coupling, Supabase recommended     |
-| 13  | Bun over npm                                         | Faster installs, native TypeScript, simpler toolchain                     |
-| 14  | TanStack Router (not Start) for Tauri compatibility  | Start requires a server for SSR; Tauri runs in a serverless WebView       |
+| #   | Decision                                             | Rationale                                                                      |
+| --- | ---------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 1   | Phase 0 is browser-only against Supabase             | Validates data model and UX before committing to Tauri                         |
+| 2   | Data adapter pattern from day one                    | Switching between Supabase and Tauri/SQLite is transparent                     |
+| 3   | SetScheme as discriminated union, not generic schema | Each workout type gets first-class field validation                            |
+| 4   | JSON columns for complex nested types                | Avoids explosion of junction tables for SetScheme variants                     |
+| 5   | 1RM history is insert-only                           | Audit trail for progression, never lose historical data                        |
+| 6   | Pre-fill + confirm pattern for programmed logging    | Minimizes taps (2 per set) while allowing deviation                            |
+| 7   | Rest timer in Rust, not JavaScript                   | Survives WebView backgrounding on mobile                                       |
+| 8   | RLS expansion deferred to Steps 17-18                | Simple `user_id = auth.uid()` for Phases 0-2, complexity only when needed      |
+| 9   | Coach creates programs owned by member               | Member always controls their data, coach access is revocable                   |
+| 10  | Same React app for all platforms                     | Eliminates duplication between web and native                                  |
+| 11  | Iron & Ember design system before feature work       | Full shadcn overrides upfront prevent style debt across 14 feature steps       |
+| 12  | Publishable key over legacy anon key                 | Independently rotatable, no JWT secret coupling, Supabase recommended          |
+| 13  | Bun over npm                                         | Faster installs, native TypeScript, simpler toolchain                          |
+| 14  | TanStack Router (not Start) for Tauri compatibility  | Start requires a server for SSR; Tauri runs in a serverless WebView            |
 | 15  | Material Symbols + Lucide dual icon strategy         | Material Symbols for app icons (fitness-specific), Lucide for shadcn internals |
-| 16  | Fonts bundled locally in Tauri builds                | No Google Fonts network dependency in native offline-first builds         |
+| 16  | Fonts bundled locally in Tauri builds                | No Google Fonts network dependency in native offline-first builds              |

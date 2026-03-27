@@ -8,6 +8,12 @@ interface IconProps {
 }
 
 export function Icon({ name, size = 24, fill = false, className }: IconProps) {
+  if (import.meta.env.DEV && !name.match(/^[a-z][a-z0-9_]*$/)) {
+    console.warn(
+      `[Icon] Suspicious icon name: "${name}". Material Symbols names use lowercase_snake_case.`,
+    )
+  }
+
   return (
     <span
       className={cn('material-symbols-outlined', className)}

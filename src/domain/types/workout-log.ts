@@ -132,11 +132,14 @@ export const loggedSetSchema = z
     (data) => {
       if (!data.completed) return true
       // L-5: a completed set must have at least one actual measurement
+      // (actualReps, actualWeight, actualDuration, actualDistance, actualHeartRate, or actualPace)
       return (
         data.actualReps !== undefined ||
         data.actualWeight !== undefined ||
         data.actualDuration !== undefined ||
-        data.actualDistance !== undefined
+        data.actualDistance !== undefined ||
+        data.actualHeartRate !== undefined ||
+        data.actualPace !== undefined
       )
     },
     {

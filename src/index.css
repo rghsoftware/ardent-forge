@@ -108,7 +108,7 @@
   --radius-4xl: 0px;
 }
 
-/* Dark-only: no :root light mode, no .dark toggle */
+/* Dark-only: no :root light mode, no .dark toggle. The .dark class on <html> and @custom-variant are retained for shadcn/ui compatibility. */
 :root {
   /* Background & surfaces */
   --background: #131313;

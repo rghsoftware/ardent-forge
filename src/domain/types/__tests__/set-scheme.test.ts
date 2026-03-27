@@ -1,4 +1,9 @@
-import { setSchemeSchema, loadSpecSchema, parseSetScheme } from '@/domain/types'
+import {
+  setSchemeSchema,
+  loadSpecSchema,
+  parseSetScheme,
+  type ParseSetSchemeResult,
+} from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // SS-1: Each SetScheme variant validates with correct fields
@@ -571,7 +576,7 @@ describe('LoadSpec variants', () => {
 })
 
 // ---------------------------------------------------------------------------
-// I6: parseSetScheme helper
+// parseSetScheme two-stage parser
 // ---------------------------------------------------------------------------
 
 describe('parseSetScheme helper', () => {
@@ -581,7 +586,6 @@ describe('parseSetScheme helper', () => {
       sets: 3,
       reps: 5,
       load: { type: 'bodyweight' },
-      restSeconds: 180,
     })
     expect(result.success).toBe(true)
   })
@@ -604,8 +608,46 @@ describe('parseSetScheme helper', () => {
   })
 
   it('returns schema errors for invalid variant data', () => {
-    const result = parseSetScheme({ type: 'fixedSets', sets: -1, reps: 5 })
-    // sets must be positive; result should be a Zod error object, not our custom error string
+    const result: ParseSetSchemeResult = parseSetScheme({ type: 'fixedSets', sets: -1, reps: 5 })
+    // sets must be positive; error branch now returns { success: false, error: string }
     expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(typeof result.error).toBe('string')
+    }
+  })
+
+  it('returns data field on success result', () => {
+    const result: ParseSetSchemeResult = parseSetScheme({
+      type: 'fixedSets',
+      sets: 3,
+      reps: 5,
+      load: { type: 'bodyweight' },
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data).toHaveProperty('type', 'fixedSets')
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// I5: LoadSpec RPE multipleOf(0.5) constraint
+// ---------------------------------------------------------------------------
+
+describe('LoadSpec RPE multipleOf(0.5)', () => {
+  it('accepts RPE target of 7.5 (valid half-value)', () => {
+    expect(loadSpecSchema.safeParse({ type: 'rpe', target: 7.5 }).success).toBe(true)
+  })
+
+  it('rejects RPE target of 7.3 (not a multiple of 0.5)', () => {
+    expect(loadSpecSchema.safeParse({ type: 'rpe', target: 7.3 }).success).toBe(false)
+  })
+
+  it('accepts RPE target of 10 (integer, valid multiple of 0.5)', () => {
+    expect(loadSpecSchema.safeParse({ type: 'rpe', target: 10 }).success).toBe(true)
+  })
+
+  it('accepts RPE target of 1 (minimum, valid multiple of 0.5)', () => {
+    expect(loadSpecSchema.safeParse({ type: 'rpe', target: 1 }).success).toBe(true)
   })
 })

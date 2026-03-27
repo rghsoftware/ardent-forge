@@ -36,7 +36,9 @@ export type UserProfile = z.infer<typeof userProfileSchema>
 // invariant PR-1: weight.value > 0 enforced by weightSchema
 // ---------------------------------------------------------------------------
 
-export const oneRepMaxHistorySchema = syncableEntitySchema.extend({
+export const oneRepMaxHistorySchema = z.object({
+  id: entityId,
+  createdAt: isoDateTime,
   userId: entityId,
   exerciseId: entityId,
   weight: weightSchema, // PR-1: weight.value > 0 enforced by weightSchema positive()

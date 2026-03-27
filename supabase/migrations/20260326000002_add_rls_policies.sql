@@ -23,7 +23,8 @@ CREATE POLICY "exercises_insert"
 
 CREATE POLICY "exercises_update"
     ON exercises FOR UPDATE
-    USING (user_id = auth.uid());
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid() AND is_custom = true);
 
 CREATE POLICY "exercises_delete"
     ON exercises FOR DELETE
