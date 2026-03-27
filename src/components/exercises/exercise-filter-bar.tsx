@@ -1,49 +1,11 @@
 import { useRef } from 'react'
+import { exerciseCategorySchema, movementPatternSchema, muscleGroupSchema } from '@/domain/types'
 import type { ExerciseCategory, MuscleGroup, MovementPattern } from '@/domain/types'
+import { formatLabel } from '@/lib/utils'
 
-const CATEGORIES: ExerciseCategory[] = [
-  'BARBELL',
-  'DUMBBELL',
-  'KETTLEBELL',
-  'BODYWEIGHT',
-  'MACHINE',
-  'CABLE',
-  'CARDIO',
-  'PLYOMETRIC',
-  'LOADED_CARRY',
-]
-
-const MUSCLE_GROUPS: MuscleGroup[] = [
-  'CHEST',
-  'BACK',
-  'SHOULDERS',
-  'BICEPS',
-  'TRICEPS',
-  'QUADS',
-  'HAMSTRINGS',
-  'GLUTES',
-  'CALVES',
-  'CORE',
-  'FOREARMS',
-  'TRAPS',
-  'LATS',
-  'FULL_BODY',
-]
-
-const MOVEMENT_PATTERNS: MovementPattern[] = [
-  'SQUAT',
-  'HINGE',
-  'PUSH',
-  'PULL',
-  'CARRY',
-  'ROTATE',
-  'GAIT',
-  'ISOMETRIC',
-]
-
-function formatLabel(value: string): string {
-  return value.replace(/_/g, ' ')
-}
+const CATEGORIES = exerciseCategorySchema.options
+const MUSCLE_GROUPS = muscleGroupSchema.options
+const MOVEMENT_PATTERNS = movementPatternSchema.options
 
 interface FilterChipProps {
   label: string

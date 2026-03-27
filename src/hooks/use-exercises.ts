@@ -14,7 +14,7 @@ export function useExercise(id: string) {
   return useQuery({
     queryKey: ['exercise', id],
     queryFn: () => getAdapter().getExercise(id),
-    enabled: !!id,
+    enabled: !!id && id.length > 0,
   })
 }
 
@@ -23,7 +23,10 @@ export function useCreateExercise() {
   return useMutation({
     mutationFn: (exercise: Omit<Exercise, 'id' | 'createdAt' | 'updatedAt'>) =>
       getAdapter().createExercise(exercise),
-    onSuccess: () => {
+    onError: (err) => {
+      console.error('[exercises] Failed to create exercise:', err)
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['exercises'] })
     },
   })
@@ -38,7 +41,9 @@ export function useRecentlyUsedExercises(userId: string | undefined) {
       if (ids.length === 0) return []
       // Fetch all exercises and filter to just the recently used ones
       const exercises = await adapter.getExercises()
-      return ids.map((id) => exercises.find((e) => e.id === id)).filter(Boolean) as Exercise[]
+      return ids
+        .map((id) => exercises.find((e) => e.id === id))
+        .filter((e): e is Exercise => e !== undefined)
     },
     enabled: !!userId,
   })

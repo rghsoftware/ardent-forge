@@ -4,8 +4,14 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '@/lib/auth'
+import { formatLabel } from '@/lib/utils'
 import { useExercise, useExerciseWorkoutHistory } from '@/hooks/use-exercises'
-import { useUserProfile, useOneRepMaxHistory, useSaveOneRepMax } from '@/hooks/use-user-profile'
+import {
+  useUserProfile,
+  useUpdateUserProfile,
+  useOneRepMaxHistory,
+  useSaveOneRepMax,
+} from '@/hooks/use-user-profile'
 import { OneRmChart } from '@/components/exercises/one-rm-chart'
 import { ExerciseHistoryList } from '@/components/exercises/exercise-history-list'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -26,10 +32,6 @@ export const Route = createFileRoute('/_authenticated/exercises/$exerciseId')({
   component: ExerciseDetailPage,
 })
 
-function formatLabel(value: string): string {
-  return value.replace(/_/g, ' ')
-}
-
 const oneRmSchema = z.object({
   weight: z.number().positive('Weight must be greater than 0'),
   estimated: z.boolean(),
@@ -42,15 +44,17 @@ function ExerciseDetailPage() {
   const { user } = useAuth()
   const userId = user?.id
 
-  const { data: exercise, isLoading: isLoadingExercise } = useExercise(exerciseId)
+  const { data: exercise, isLoading: isLoadingExercise, isError: isExerciseError } = useExercise(exerciseId)
   const { data: profile } = useUserProfile(userId ?? '')
   const { data: oneRmHistory } = useOneRepMaxHistory(userId, exerciseId)
   const { data: workoutHistory } = useExerciseWorkoutHistory(userId, exerciseId, 10)
   const saveOneRepMax = useSaveOneRepMax()
+  const updateProfile = useUpdateUserProfile()
 
   const [showOneRmDialog, setShowOneRmDialog] = useState(false)
 
   const currentOneRm = profile?.exerciseMaxes?.[exerciseId]
+  const weightUnit = profile?.preferredUnits === 'METRIC' ? 'kg' : 'lb'
 
   const {
     register,
@@ -70,16 +74,43 @@ function ExerciseDetailPage() {
   const estimatedValue = watch('estimated')
 
   const onSubmitOneRm = async (values: OneRmFormValues) => {
-    if (!userId) return
-    await saveOneRepMax.mutateAsync({
-      userId,
-      exerciseId,
-      weight: { value: values.weight, unit: 'lb' },
-      estimated: values.estimated,
-      recordedAt: new Date().toISOString(),
-    })
-    reset()
-    setShowOneRmDialog(false)
+    if (!userId) {
+      console.error('[exercises] Cannot save 1RM: no authenticated user')
+      return
+    }
+
+    const weightUnitConst = profile?.preferredUnits === 'METRIC' ? ('kg' as const) : ('lb' as const)
+    const now = new Date().toISOString()
+
+    try {
+      await saveOneRepMax.mutateAsync({
+        userId,
+        exerciseId,
+        weight: { value: values.weight, unit: weightUnitConst },
+        estimated: values.estimated,
+        recordedAt: now,
+      })
+
+      if (profile) {
+        const updatedMaxes = {
+          ...profile.exerciseMaxes,
+          [exerciseId]: {
+            weight: { value: values.weight, unit: weightUnitConst },
+            testedAt: now,
+            estimated: values.estimated,
+          },
+        }
+        await updateProfile.mutateAsync({
+          id: profile.id,
+          exerciseMaxes: updatedMaxes,
+        })
+      }
+
+      reset()
+      setShowOneRmDialog(false)
+    } catch {
+      // Error states available via saveOneRepMax.isError / updateProfile.isError
+    }
   }
 
   if (isLoadingExercise) {
@@ -88,6 +119,21 @@ function ExerciseDetailPage() {
         <Skeleton className="mb-4 h-8 w-48 rounded-none bg-surface-steel" />
         <Skeleton className="mb-2 h-4 w-32 rounded-none bg-surface-steel" />
         <Skeleton className="h-4 w-64 rounded-none bg-surface-steel" />
+      </div>
+    )
+  }
+
+  if (isExerciseError) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
+        <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">cloud_off</span>
+        <p className="font-display text-sm uppercase tracking-widest text-warning-flare">
+          FAILED TO LOAD EXERCISE
+        </p>
+        <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
+        <Link to="/exercises" className="mt-4 text-xs uppercase tracking-widest text-ember">
+          BACK TO LIBRARY
+        </Link>
       </div>
     )
   }
@@ -277,7 +323,7 @@ function ExerciseDetailPage() {
             {/* Weight input */}
             <div className="space-y-1">
               <Label className="text-xs font-medium uppercase tracking-widest text-warm-ash">
-                WEIGHT (LB)
+                WEIGHT ({weightUnit.toUpperCase()})
               </Label>
               <input
                 type="number"
@@ -327,6 +373,9 @@ function ExerciseDetailPage() {
             >
               {isSubmitting ? 'SAVING...' : 'SAVE 1RM'}
             </Button>
+            {(saveOneRepMax.isError || updateProfile.isError) && (
+              <p className="text-xs text-warning-flare">Failed to save 1RM. Please try again.</p>
+            )}
           </form>
         </DialogContent>
       </Dialog>

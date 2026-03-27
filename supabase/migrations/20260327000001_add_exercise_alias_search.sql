@@ -5,7 +5,8 @@
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- GIN index on exercises.aliases for containment queries on the JSONB array.
+-- GIN index on exercises.aliases for future JSONB containment queries (e.g. aliases @> ...).
+-- Note: the search_exercises function uses ILIKE and does not use this index.
 -- ---------------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_exercises_aliases_gin ON exercises USING gin (aliases);
 
@@ -32,6 +33,6 @@ AS $$
   SELECT DISTINCT e.*
   FROM exercises e
   LEFT JOIN LATERAL jsonb_array_elements_text(e.aliases) AS alias ON true
-  WHERE e.name ILIKE '%' || query_text || '%'
-     OR alias ILIKE '%' || query_text || '%';
+  WHERE e.name ILIKE '%' || replace(replace(replace(query_text, '\', '\\'), '%', '\%'), '_', '\_') || '%'
+     OR alias ILIKE '%' || replace(replace(replace(query_text, '\', '\\'), '%', '\%'), '_', '\_') || '%';
 $$;

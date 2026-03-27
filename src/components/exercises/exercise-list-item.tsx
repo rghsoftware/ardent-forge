@@ -1,13 +1,10 @@
 import { Link } from '@tanstack/react-router'
 import type { Exercise } from '@/domain/types'
+import { formatLabel } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 
 interface ExerciseListItemProps {
   exercise: Exercise
-}
-
-function formatLabel(value: string): string {
-  return value.replace(/_/g, ' ')
 }
 
 export function ExerciseListItem({ exercise }: ExerciseListItemProps) {

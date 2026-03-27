@@ -17,7 +17,7 @@ function ProfilePage() {
   const auth = useAuth()
   const router = useRouter()
   const userId = auth.user?.id ?? ''
-  const { data: profile, isLoading } = useUserProfile(userId)
+  const { data: profile, isLoading, isError } = useUserProfile(userId)
   const updateProfile = useUpdateUserProfile()
 
   const [displayName, setDisplayName] = useState<string | null>(null)
@@ -44,18 +44,36 @@ function ProfilePage() {
       updates.bodyweight = { value: bodyweightValue, unit: bodyweightUnit }
     }
 
-    await updateProfile.mutateAsync(updates)
+    try {
+      await updateProfile.mutateAsync(updates)
 
-    // Reset local overrides after save
-    setDisplayName(null)
-    setBodyweight(null)
-    setPreferredUnits(null)
+      // Reset local overrides after save
+      setDisplayName(null)
+      setBodyweight(null)
+      setPreferredUnits(null)
+    } catch {
+      // Error state available via updateProfile.isError
+    }
   }
 
   const handleSignOut = async () => {
     const supabase = getSupabaseClient()
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('[auth] Sign out failed:', error)
+      return
+    }
     router.navigate({ to: '/sign-in' })
+  }
+
+  if (!auth.user?.id) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-surface-pit px-4">
+        <p className="font-display text-sm uppercase tracking-widest text-warm-ash">
+          Please sign in to view your profile.
+        </p>
+      </div>
+    )
   }
 
   if (isLoading) {
@@ -67,6 +85,20 @@ function ProfilePage() {
           <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
           <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
         </div>
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-surface-pit px-4">
+        <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
+          cloud_off
+        </span>
+        <p className="font-display text-sm uppercase tracking-widest text-warning-flare">
+          FAILED TO LOAD PROFILE
+        </p>
+        <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
       </div>
     )
   }
@@ -163,6 +195,11 @@ function ProfilePage() {
           >
             {updateProfile.isPending ? 'SAVING...' : 'SAVE SETTINGS'}
           </Button>
+          {updateProfile.isError && (
+            <p className="mt-2 text-xs text-warning-flare">
+              Failed to save settings. Please try again.
+            </p>
+          )}
         </div>
       </section>
 
@@ -175,7 +212,11 @@ function ProfilePage() {
         </div>
 
         <div className="mt-4">
-          <OneRmManagement userId={userId} exerciseMaxes={profile?.exerciseMaxes ?? {}} />
+          <OneRmManagement
+            userId={userId}
+            exerciseMaxes={profile?.exerciseMaxes ?? {}}
+            preferredUnits={profile?.preferredUnits ?? 'IMPERIAL'}
+          />
         </div>
       </section>
 

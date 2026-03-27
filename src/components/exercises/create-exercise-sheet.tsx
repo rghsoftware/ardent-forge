@@ -5,11 +5,12 @@ import {
   exerciseCategorySchema,
   movementPatternSchema,
   muscleGroupSchema,
+  equipmentSchema,
   type ExerciseCategory,
   type MovementPattern,
   type MuscleGroup,
-  type Equipment,
 } from '@/domain/types'
+import { formatLabel } from '@/lib/utils'
 import { useCreateExercise } from '@/hooks/use-exercises'
 import {
   Sheet,
@@ -29,35 +30,17 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 
-const EQUIPMENT_OPTIONS: Equipment[] = [
-  'BARBELL',
-  'DUMBBELL',
-  'KETTLEBELL',
-  'CABLE_MACHINE',
-  'BENCH',
-  'SQUAT_RACK',
-  'PULL_UP_BAR',
-  'DIP_BARS',
-  'RESISTANCE_BAND',
-  'TREADMILL',
-  'ROWER',
-  'BIKE',
-]
-
+const EQUIPMENT_OPTIONS = equipmentSchema.options.filter((e) => e !== 'NONE')
 const CATEGORIES = exerciseCategorySchema.options
 const MOVEMENT_PATTERNS = movementPatternSchema.options
 const MUSCLE_GROUPS = muscleGroupSchema.options
-
-function formatLabel(value: string): string {
-  return value.replace(/_/g, ' ')
-}
 
 const createExerciseSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be 100 characters or less'),
   category: exerciseCategorySchema,
   movementPattern: movementPatternSchema,
   primaryMuscles: z.array(muscleGroupSchema).min(1, 'Select at least one primary muscle group'),
-  equipment: z.array(z.string()),
+  equipment: z.array(equipmentSchema),
   supports1RM: z.boolean(),
   isBilateral: z.boolean(),
 })
@@ -77,7 +60,6 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
     handleSubmit,
     control,
     reset,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateExerciseFormValues>({
     resolver: zodResolver(createExerciseSchema),
@@ -92,29 +74,28 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
     },
   })
 
-  const category = watch('category')
-
   const onSubmit = async (values: CreateExerciseFormValues) => {
-    await createExercise.mutateAsync({
-      name: values.name,
-      aliases: [],
-      category: values.category,
-      movementPattern: values.movementPattern,
-      muscleGroups: {
-        primary: values.primaryMuscles,
-        secondary: [],
-      },
-      equipmentRequired: values.equipment as Equipment[],
-      supports1RM: values.supports1RM,
-      isBilateral: values.isBilateral,
-      isCustom: true,
-    })
-    reset()
-    onOpenChange(false)
+    try {
+      await createExercise.mutateAsync({
+        name: values.name,
+        aliases: [],
+        category: values.category,
+        movementPattern: values.movementPattern,
+        muscleGroups: {
+          primary: values.primaryMuscles,
+          secondary: [],
+        },
+        equipmentRequired: values.equipment,
+        supports1RM: values.supports1RM,
+        isBilateral: values.isBilateral,
+        isCustom: true,
+      })
+      reset()
+      onOpenChange(false)
+    } catch {
+      // Error state is available via createExercise.isError
+    }
   }
-
-  // Auto-adjust supports1RM default when category changes
-  const isCardioCategory = category === 'CARDIO'
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -281,18 +262,30 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
           {/* Toggles row */}
           <div className="flex gap-6">
             <label className="flex min-h-12 cursor-pointer items-center gap-2">
-              <Checkbox
-                {...register('supports1RM')}
-                defaultChecked={!isCardioCategory}
-                className="border-surface-steel data-[state=checked]:border-ember data-[state=checked]:bg-ember data-[state=checked]:text-on-ember"
+              <Controller
+                name="supports1RM"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    className="border-surface-steel data-[state=checked]:border-ember data-[state=checked]:bg-ember data-[state=checked]:text-on-ember"
+                  />
+                )}
               />
               <span className="text-xs uppercase tracking-wider text-bone-white">SUPPORTS 1RM</span>
             </label>
             <label className="flex min-h-12 cursor-pointer items-center gap-2">
-              <Checkbox
-                {...register('isBilateral')}
-                defaultChecked
-                className="border-surface-steel data-[state=checked]:border-ember data-[state=checked]:bg-ember data-[state=checked]:text-on-ember"
+              <Controller
+                name="isBilateral"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    className="border-surface-steel data-[state=checked]:border-ember data-[state=checked]:bg-ember data-[state=checked]:text-on-ember"
+                  />
+                )}
               />
               <span className="text-xs uppercase tracking-wider text-bone-white">BILATERAL</span>
             </label>
@@ -306,6 +299,11 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
           >
             {isSubmitting ? 'CREATING...' : 'CREATE EXERCISE'}
           </Button>
+          {createExercise.isError && (
+            <p className="text-xs text-warning-flare">
+              Failed to create exercise. Please try again.
+            </p>
+          )}
         </form>
       </SheetContent>
     </Sheet>

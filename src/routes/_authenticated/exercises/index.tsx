@@ -48,7 +48,11 @@ function ExercisesPage() {
   const hasActiveFilters =
     !!debouncedQuery || !!activeCategory || !!activeMuscleGroup || !!activeMovementPattern
 
-  const { data: exercises, isLoading: isLoadingExercises } = useExercises({
+  const {
+    data: exercises,
+    isLoading: isLoadingExercises,
+    isError,
+  } = useExercises({
     searchQuery: debouncedQuery || undefined,
     category: activeCategory,
     muscleGroup: activeMuscleGroup,
@@ -89,6 +93,16 @@ function ExercisesPage() {
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <ExerciseListSkeleton />
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center px-4 py-16">
+            <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
+              cloud_off
+            </span>
+            <p className="font-display text-sm uppercase tracking-widest text-warning-flare">
+              FAILED TO LOAD EXERCISES
+            </p>
+            <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
+          </div>
         ) : hasActiveFilters ? (
           /* Filtered/search results -- no section headers */
           <>

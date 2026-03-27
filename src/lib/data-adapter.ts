@@ -9,6 +9,8 @@ import type {
 } from '@/domain/types'
 import type { ExerciseCategory, MovementPattern, MuscleGroup } from '@/domain/types'
 
+export type WorkoutWithSets = { log: WorkoutLog; sets: LoggedSet[] }
+
 export interface ExerciseFilters {
   category?: ExerciseCategory
   movementPattern?: MovementPattern
@@ -25,7 +27,7 @@ export interface ExerciseFilters {
  * - List operations return an empty array when no matches exist.
  * - Infrastructure errors (network, DB) should throw and are handled by callers.
  *
- * Current scope (Steps 3-4): exercises, workout logs, user profiles, and 1RM history.
+ * Current scope (Steps 3-5): exercises, workout logs, user profiles, and 1RM history.
  * Program, session template, and sharing operations will be added in later steps.
  */
 export interface DataAdapter {
@@ -70,7 +72,7 @@ export interface DataAdapter {
     userId: string,
     exerciseId: string,
     limit?: number,
-  ): Promise<{ log: WorkoutLog; sets: LoggedSet[] }[]>
+  ): Promise<WorkoutWithSets[]>
 
   // User profile operations
   getUserProfile(userId: string): Promise<UserProfile | null>

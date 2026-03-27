@@ -16,9 +16,10 @@ import type { OneRepMax } from '@/domain/types'
 interface OneRmManagementProps {
   userId: string
   exerciseMaxes: Record<string, OneRepMax>
+  preferredUnits: 'IMPERIAL' | 'METRIC'
 }
 
-export function OneRmManagement({ userId, exerciseMaxes }: OneRmManagementProps) {
+export function OneRmManagement({ userId, exerciseMaxes, preferredUnits }: OneRmManagementProps) {
   const { data: exercises } = useExercises()
   const saveOneRepMax = useSaveOneRepMax()
   const updateProfile = useUpdateUserProfile()
@@ -26,6 +27,7 @@ export function OneRmManagement({ userId, exerciseMaxes }: OneRmManagementProps)
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(null)
   const [editWeight, setEditWeight] = useState('')
   const [editEstimated, setEditEstimated] = useState<'TESTED' | 'ESTIMATED'>('TESTED')
+  const [weightError, setWeightError] = useState<string | null>(null)
 
   // Build a lookup map from exercise ID to exercise name
   const exerciseLookup = useMemo(() => {
@@ -45,43 +47,52 @@ export function OneRmManagement({ userId, exerciseMaxes }: OneRmManagementProps)
     setEditingExerciseId(null)
     setEditWeight('')
     setEditEstimated('TESTED')
+    setWeightError(null)
   }
 
   const handleSave = async () => {
     if (!editingExerciseId) return
     const weightValue = parseFloat(editWeight)
-    if (isNaN(weightValue) || weightValue <= 0) return
+    if (isNaN(weightValue) || weightValue <= 0) {
+      setWeightError('Enter a valid weight greater than 0')
+      return
+    }
+    setWeightError(null)
 
     const currentMax = exerciseMaxes[editingExerciseId]
-    const unit = currentMax?.weight.unit ?? 'lb'
+    const unit = currentMax?.weight.unit ?? (preferredUnits === 'METRIC' ? 'kg' : 'lb')
     const isEstimated = editEstimated === 'ESTIMATED'
     const now = new Date().toISOString()
 
-    // Save to 1RM history (append-only per PR-2)
-    await saveOneRepMax.mutateAsync({
-      userId,
-      exerciseId: editingExerciseId,
-      weight: { value: weightValue, unit },
-      estimated: isEstimated,
-      recordedAt: now,
-    })
-
-    // Update exerciseMaxes map on user profile
-    const updatedMaxes = {
-      ...exerciseMaxes,
-      [editingExerciseId]: {
+    try {
+      // Save to 1RM history (append-only per PR-2)
+      await saveOneRepMax.mutateAsync({
+        userId,
+        exerciseId: editingExerciseId,
         weight: { value: weightValue, unit },
-        testedAt: now,
         estimated: isEstimated,
-      },
+        recordedAt: now,
+      })
+
+      // Update exerciseMaxes map on user profile
+      const updatedMaxes = {
+        ...exerciseMaxes,
+        [editingExerciseId]: {
+          weight: { value: weightValue, unit },
+          testedAt: now,
+          estimated: isEstimated,
+        },
+      }
+
+      await updateProfile.mutateAsync({
+        id: userId,
+        exerciseMaxes: updatedMaxes,
+      })
+
+      closeEditDialog()
+    } catch {
+      // Error states available via saveOneRepMax.isError / updateProfile.isError
     }
-
-    await updateProfile.mutateAsync({
-      id: userId,
-      exerciseMaxes: updatedMaxes,
-    })
-
-    closeEditDialog()
   }
 
   const editingMax = editingExerciseId ? exerciseMaxes[editingExerciseId] : null
@@ -141,7 +152,11 @@ export function OneRmManagement({ userId, exerciseMaxes }: OneRmManagementProps)
             {/* Weight input -- underline style */}
             <div className="space-y-2">
               <label className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
-                WEIGHT ({editingMax?.weight.unit ?? 'lb'})
+                WEIGHT (
+                {(
+                  editingMax?.weight.unit ?? (preferredUnits === 'METRIC' ? 'kg' : 'lb')
+                ).toUpperCase()}
+                )
               </label>
               <input
                 type="number"
@@ -152,6 +167,7 @@ export function OneRmManagement({ userId, exerciseMaxes }: OneRmManagementProps)
                 onChange={(e) => setEditWeight(e.target.value)}
                 className="w-full border-b-2 border-surface-steel bg-transparent px-0 py-2 font-display text-3xl text-bone-white outline-none transition-colors focus:border-ember"
               />
+              {weightError && <p className="text-xs text-warning-flare">{weightError}</p>}
             </div>
 
             {/* Tested vs Estimated toggle */}
@@ -186,13 +202,18 @@ export function OneRmManagement({ userId, exerciseMaxes }: OneRmManagementProps)
           </div>
 
           <DialogFooter>
-            <Button
-              className="min-h-[48px] w-full bg-forge text-on-forge hover:bg-forge/80"
-              onClick={handleSave}
-              disabled={saveOneRepMax.isPending || updateProfile.isPending}
-            >
-              {saveOneRepMax.isPending || updateProfile.isPending ? 'SAVING...' : 'SAVE'}
-            </Button>
+            <div className="w-full space-y-2">
+              <Button
+                className="min-h-[48px] w-full bg-forge text-on-forge hover:bg-forge/80"
+                onClick={handleSave}
+                disabled={saveOneRepMax.isPending || updateProfile.isPending}
+              >
+                {saveOneRepMax.isPending || updateProfile.isPending ? 'SAVING...' : 'SAVE'}
+              </Button>
+              {(saveOneRepMax.isError || updateProfile.isError) && (
+                <p className="text-xs text-warning-flare">Failed to save 1RM. Please try again.</p>
+              )}
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
