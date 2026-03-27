@@ -864,6 +864,70 @@ ON CONFLICT (name) DO UPDATE SET
 WHERE exercises.is_custom = false;
 
 -- ---------------------------------------------------------------------------
+-- RUCKING (4 exercises)
+-- ---------------------------------------------------------------------------
+
+INSERT INTO exercises (id, name, aliases, category, movement_pattern, muscle_groups, is_bilateral, supports_1rm, equipment_required, is_custom, user_id)
+VALUES (gen_random_uuid(), 'Ruck March', '["rucking", "loaded carry walk", "weighted march", "ruck walk"]'::jsonb, 'CARDIO', 'GAIT',
+  '{"primary": ["GLUTES", "HAMSTRINGS", "QUADS", "CALVES"], "secondary": ["CORE", "TRAPS", "ERECTORS"]}'::jsonb,
+  true, false, '["RUCK_PLATE"]'::jsonb, false, NULL)
+ON CONFLICT (name) DO UPDATE SET
+  aliases = EXCLUDED.aliases,
+  category = EXCLUDED.category,
+  movement_pattern = EXCLUDED.movement_pattern,
+  muscle_groups = EXCLUDED.muscle_groups,
+  is_bilateral = EXCLUDED.is_bilateral,
+  supports_1rm = EXCLUDED.supports_1rm,
+  equipment_required = EXCLUDED.equipment_required,
+  updated_at = now()
+WHERE exercises.is_custom = false;
+
+INSERT INTO exercises (id, name, aliases, category, movement_pattern, muscle_groups, is_bilateral, supports_1rm, equipment_required, is_custom, user_id)
+VALUES (gen_random_uuid(), 'Ruck Run', '["rucking run", "loaded run", "weighted run"]'::jsonb, 'CARDIO', 'GAIT',
+  '{"primary": ["GLUTES", "HAMSTRINGS", "QUADS", "CALVES"], "secondary": ["CORE", "TRAPS", "ERECTORS"]}'::jsonb,
+  true, false, '["RUCK_PLATE"]'::jsonb, false, NULL)
+ON CONFLICT (name) DO UPDATE SET
+  aliases = EXCLUDED.aliases,
+  category = EXCLUDED.category,
+  movement_pattern = EXCLUDED.movement_pattern,
+  muscle_groups = EXCLUDED.muscle_groups,
+  is_bilateral = EXCLUDED.is_bilateral,
+  supports_1rm = EXCLUDED.supports_1rm,
+  equipment_required = EXCLUDED.equipment_required,
+  updated_at = now()
+WHERE exercises.is_custom = false;
+
+INSERT INTO exercises (id, name, aliases, category, movement_pattern, muscle_groups, is_bilateral, supports_1rm, equipment_required, is_custom, user_id)
+VALUES (gen_random_uuid(), 'Weighted Vest Walk', '["vest walk", "plate carrier walk", "weighted carry"]'::jsonb, 'CARDIO', 'GAIT',
+  '{"primary": ["GLUTES", "HAMSTRINGS", "QUADS", "CALVES"], "secondary": ["CORE", "TRAPS"]}'::jsonb,
+  true, false, '["WEIGHT_VEST"]'::jsonb, false, NULL)
+ON CONFLICT (name) DO UPDATE SET
+  aliases = EXCLUDED.aliases,
+  category = EXCLUDED.category,
+  movement_pattern = EXCLUDED.movement_pattern,
+  muscle_groups = EXCLUDED.muscle_groups,
+  is_bilateral = EXCLUDED.is_bilateral,
+  supports_1rm = EXCLUDED.supports_1rm,
+  equipment_required = EXCLUDED.equipment_required,
+  updated_at = now()
+WHERE exercises.is_custom = false;
+
+INSERT INTO exercises (id, name, aliases, category, movement_pattern, muscle_groups, is_bilateral, supports_1rm, equipment_required, is_custom, user_id)
+VALUES (gen_random_uuid(), 'Weighted Vest Run', '["vest run", "plate carrier run", "weighted running"]'::jsonb, 'CARDIO', 'GAIT',
+  '{"primary": ["GLUTES", "HAMSTRINGS", "QUADS", "CALVES"], "secondary": ["CORE", "TRAPS"]}'::jsonb,
+  true, false, '["WEIGHT_VEST"]'::jsonb, false, NULL)
+ON CONFLICT (name) DO UPDATE SET
+  aliases = EXCLUDED.aliases,
+  category = EXCLUDED.category,
+  movement_pattern = EXCLUDED.movement_pattern,
+  muscle_groups = EXCLUDED.muscle_groups,
+  is_bilateral = EXCLUDED.is_bilateral,
+  supports_1rm = EXCLUDED.supports_1rm,
+  equipment_required = EXCLUDED.equipment_required,
+  updated_at = now()
+WHERE exercises.is_custom = false;
+
+-- ---------------------------------------------------------------------------
 -- PLYOMETRIC (3 exercises)
 -- ---------------------------------------------------------------------------
 
