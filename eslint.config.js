@@ -19,5 +19,26 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { varsIgnorePattern: '^_', argsIgnorePattern: '^_' },
+      ],
+      'react-refresh/only-export-components': [
+        'error',
+        {
+          allowConstantExport: true,
+          allowExportNames: ['buttonVariants', 'useAuth', 'RouterContext'],
+        },
+      ],
+    },
+  },
+  {
+    // TanStack Router route files always export a non-component `Route` object alongside the
+    // component. The react-refresh rule cannot model this pattern, so we disable it for routes.
+    files: ['src/routes/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
   },
 ])

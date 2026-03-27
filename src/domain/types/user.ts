@@ -3,6 +3,7 @@ import {
   entityId,
   isoDateTime,
   syncableEntitySchema,
+  appendOnlyEntitySchema,
   weightSchema,
   durationSchema,
   oneRepMaxSchema,
@@ -33,12 +34,12 @@ export type UserProfile = z.infer<typeof userProfileSchema>
 
 // ---------------------------------------------------------------------------
 // OneRepMaxHistory -- historical record of 1RM entries (insert-only per PR-2)
+// Uses appendOnlyEntitySchema because this entity has no updated_at column
+// and is immutable once inserted (enforced by DB trigger).
 // invariant PR-1: weight.value > 0 enforced by weightSchema
 // ---------------------------------------------------------------------------
 
-export const oneRepMaxHistorySchema = z.object({
-  id: entityId,
-  createdAt: isoDateTime,
+export const oneRepMaxHistorySchema = appendOnlyEntitySchema.extend({
   userId: entityId,
   exerciseId: entityId,
   weight: weightSchema, // PR-1: weight.value > 0 enforced by weightSchema positive()

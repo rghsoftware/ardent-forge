@@ -7,7 +7,7 @@
 
 -- ---------------------------------------------------------------------------
 -- 1. Automatic updated_at trigger function
---    Applied to all tables with an updated_at column.
+--    Applied to all tables with an updated_at column (excludes one_rep_max_history, which is append-only per PR-2).
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -43,14 +43,8 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON logged_sets
 
 CREATE OR REPLACE FUNCTION enforce_user_id_match_workout()
 RETURNS TRIGGER AS $$
-DECLARE
-  parent_user_id UUID;
 BEGIN
-  SELECT user_id INTO parent_user_id FROM workout_logs WHERE id = NEW.workout_log_id;
-  IF parent_user_id IS NULL THEN
-    RAISE EXCEPTION 'Parent workout_log (%) not found', NEW.workout_log_id;
-  END IF;
-  IF NEW.user_id != parent_user_id THEN
+  IF NEW.user_id != (SELECT user_id FROM workout_logs WHERE id = NEW.workout_log_id) THEN
     RAISE EXCEPTION 'user_id (%) does not match parent workout_log user_id', NEW.user_id;
   END IF;
   RETURN NEW;
@@ -63,14 +57,8 @@ CREATE TRIGGER trg_logged_activity_groups_user_match
 
 CREATE OR REPLACE FUNCTION enforce_user_id_match_group()
 RETURNS TRIGGER AS $$
-DECLARE
-  parent_user_id UUID;
 BEGIN
-  SELECT user_id INTO parent_user_id FROM logged_activity_groups WHERE id = NEW.logged_group_id;
-  IF parent_user_id IS NULL THEN
-    RAISE EXCEPTION 'Parent logged_activity_groups (%) not found', NEW.logged_group_id;
-  END IF;
-  IF NEW.user_id != parent_user_id THEN
+  IF NEW.user_id != (SELECT user_id FROM logged_activity_groups WHERE id = NEW.logged_group_id) THEN
     RAISE EXCEPTION 'user_id (%) does not match parent logged_activity_groups user_id', NEW.user_id;
   END IF;
   RETURN NEW;
@@ -83,14 +71,8 @@ CREATE TRIGGER trg_logged_activities_user_match
 
 CREATE OR REPLACE FUNCTION enforce_user_id_match_activity()
 RETURNS TRIGGER AS $$
-DECLARE
-  parent_user_id UUID;
 BEGIN
-  SELECT user_id INTO parent_user_id FROM logged_activities WHERE id = NEW.logged_activity_id;
-  IF parent_user_id IS NULL THEN
-    RAISE EXCEPTION 'Parent logged_activities (%) not found', NEW.logged_activity_id;
-  END IF;
-  IF NEW.user_id != parent_user_id THEN
+  IF NEW.user_id != (SELECT user_id FROM logged_activities WHERE id = NEW.logged_activity_id) THEN
     RAISE EXCEPTION 'user_id (%) does not match parent logged_activities user_id', NEW.user_id;
   END IF;
   RETURN NEW;

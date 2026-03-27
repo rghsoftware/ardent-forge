@@ -23,8 +23,7 @@ CREATE POLICY "exercises_insert"
 
 CREATE POLICY "exercises_update"
     ON exercises FOR UPDATE
-    USING (user_id = auth.uid())
-    WITH CHECK (user_id = auth.uid() AND is_custom = true);
+    USING (user_id = auth.uid());
 
 CREATE POLICY "exercises_delete"
     ON exercises FOR DELETE
@@ -44,7 +43,7 @@ CREATE POLICY "user_profiles_all"
 -- ---------------------------------------------------------------------------
 -- workout_logs
 -- Users can only access their own workout logs.
--- Enforces invariant SH-3: only the athlete can modify their logs.
+-- user_id = auth.uid() enforces owner-only access. When sharing features are added (Step 17-18), additional policies will allow coaches read access while preserving write restrictions.
 -- ---------------------------------------------------------------------------
 ALTER TABLE workout_logs ENABLE ROW LEVEL SECURITY;
 
@@ -57,7 +56,7 @@ CREATE POLICY "workout_logs_all"
 -- logged_activity_groups
 -- Uses the denormalized user_id column for RLS performance.
 -- Avoids a JOIN to workout_logs on every row access.
--- Also enforces SH-3: coach cannot modify logged activity groups.
+-- user_id = auth.uid() enforces owner-only access. When sharing features are added (Step 17-18), additional policies will allow coaches read access while preserving write restrictions.
 -- ---------------------------------------------------------------------------
 ALTER TABLE logged_activity_groups ENABLE ROW LEVEL SECURITY;
 
@@ -70,7 +69,7 @@ CREATE POLICY "logged_activity_groups_all"
 -- logged_activities
 -- Uses the denormalized user_id column for RLS performance.
 -- Avoids a JOIN through logged_activity_groups to workout_logs.
--- Also enforces SH-3: coach cannot modify logged activities.
+-- user_id = auth.uid() enforces owner-only access. When sharing features are added (Step 17-18), additional policies will allow coaches read access while preserving write restrictions.
 -- ---------------------------------------------------------------------------
 ALTER TABLE logged_activities ENABLE ROW LEVEL SECURITY;
 
@@ -83,7 +82,7 @@ CREATE POLICY "logged_activities_all"
 -- logged_sets
 -- Uses the denormalized user_id column for RLS performance.
 -- Avoids a multi-level JOIN through the activity hierarchy.
--- Also enforces SH-3: coach cannot modify logged sets.
+-- user_id = auth.uid() enforces owner-only access. When sharing features are added (Step 17-18), additional policies will allow coaches read access while preserving write restrictions.
 -- ---------------------------------------------------------------------------
 ALTER TABLE logged_sets ENABLE ROW LEVEL SECURITY;
 

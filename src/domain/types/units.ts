@@ -22,6 +22,17 @@ export const syncableEntitySchema = z.object({
 export type SyncableEntity = z.infer<typeof syncableEntitySchema>
 
 // ---------------------------------------------------------------------------
+// AppendOnlyEntity -- base fields for insert-only entities (no updatedAt)
+// Used by entities like OneRepMaxHistory that are immutable per PR-2.
+// ---------------------------------------------------------------------------
+
+export const appendOnlyEntitySchema = z.object({
+  id: entityId,
+  createdAt: isoDateTime,
+})
+export type AppendOnlyEntity = z.infer<typeof appendOnlyEntitySchema>
+
+// ---------------------------------------------------------------------------
 // Weight -- invariant U-1: value > 0, unit must be 'lb' | 'kg'
 // ---------------------------------------------------------------------------
 

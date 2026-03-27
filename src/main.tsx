@@ -1,10 +1,18 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { routeTree } from './routeTree.gen'
+import { AuthProvider, useAuth, type RouterContext } from '@/lib/auth'
+import { queryClient } from '@/lib/query-client'
 import './index.css'
 
-const router = createRouter({ routeTree })
+const router = createRouter({
+  routeTree,
+  context: {
+    auth: { user: null, session: null, loading: true },
+  } satisfies RouterContext,
+})
 
 declare module '@tanstack/react-router' {
   interface Register {
@@ -12,12 +20,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
-const rootElement = document.getElementById('root')
-if (!rootElement) {
-  throw new Error('Root element #root not found. Verify index.html contains <div id="root"></div>.')
+// eslint-disable-next-line react-refresh/only-export-components
+function InnerApp() {
+  const auth = useAuth()
+  return <RouterProvider router={router} context={{ auth }} />
 }
-ReactDOM.createRoot(rootElement).render(
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <InnerApp />
+      </AuthProvider>
+    </QueryClientProvider>
   </React.StrictMode>,
 )

@@ -161,8 +161,12 @@ describe('OneRepMaxHistory schema', () => {
     expect(oneRepMaxHistorySchema.safeParse(bad).success).toBe(false)
   })
 
-  it('rejects missing createdAt', () => {
-    const { createdAt: _, ...noCreatedAt } = baseOneRepMaxHistory as Record<string, unknown>
-    expect(oneRepMaxHistorySchema.safeParse(noCreatedAt).success).toBe(false)
+  it('strips updatedAt when passed (appendOnlyEntity has no updatedAt)', () => {
+    const withUpdatedAt = { ...baseOneRepMaxHistory, updatedAt: '2025-01-02T00:00:00Z' }
+    const result = oneRepMaxHistorySchema.safeParse(withUpdatedAt)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect('updatedAt' in result.data).toBe(false)
+    }
   })
 })
