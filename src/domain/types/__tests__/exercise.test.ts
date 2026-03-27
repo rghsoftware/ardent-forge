@@ -124,6 +124,15 @@ describe('Exercise muscleGroups', () => {
       }).success,
     ).toBe(false)
   })
+
+  it('rejects empty primary muscle groups array (min 1 required)', () => {
+    expect(
+      exerciseSchema.safeParse({
+        ...baseExercise,
+        muscleGroups: { primary: [], secondary: ['GLUTES'] },
+      }).success,
+    ).toBe(false)
+  })
 })
 
 describe('Exercise boolean fields', () => {
@@ -149,5 +158,9 @@ describe('Exercise aliases', () => {
   })
   it('accepts exercise with empty aliases array', () => {
     expect(exerciseSchema.safeParse({ ...baseExercise, aliases: [] }).success).toBe(true)
+  })
+
+  it('rejects alias with empty string (min 1 character required)', () => {
+    expect(exerciseSchema.safeParse({ ...baseExercise, aliases: [''] }).success).toBe(false)
   })
 })

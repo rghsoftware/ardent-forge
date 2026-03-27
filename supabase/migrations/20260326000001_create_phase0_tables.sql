@@ -202,6 +202,7 @@ CREATE TABLE one_rep_max_history (
     exercise_id         UUID        NOT NULL REFERENCES exercises ON DELETE RESTRICT,
     weight              JSONB       NOT NULL CHECK (
         weight ? 'value' AND weight ? 'unit'
+        AND weight->>'value' ~ '^\d+(\.\d+)?$'
         AND (weight->>'value')::numeric > 0
         AND weight->>'unit' IN ('lb', 'kg')
     ),

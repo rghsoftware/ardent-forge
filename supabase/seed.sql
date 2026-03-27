@@ -1031,7 +1031,7 @@ DECLARE
 BEGIN
   SELECT COUNT(*) INTO exercise_count FROM exercises WHERE is_custom = false;
   IF exercise_count < 65 THEN
-    RAISE WARNING 'Expected at least 65 built-in exercises, found %. Some inserts may have been skipped.', exercise_count;
+    RAISE EXCEPTION 'Expected at least 65 built-in exercises, found %. Some inserts may have been skipped.', exercise_count;
   END IF;
 END $$;
 

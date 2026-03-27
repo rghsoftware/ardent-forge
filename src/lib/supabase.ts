@@ -27,6 +27,13 @@ export function getSupabaseClient(): SupabaseClient {
     )
   }
 
-  _client = createClient(supabaseUrl, supabaseAnonKey)
+  try {
+    _client = createClient(supabaseUrl, supabaseAnonKey)
+  } catch (error) {
+    throw new Error(
+      'Failed to initialize Supabase client. Verify VITE_SUPABASE_URL and VITE_SUPABASE_PUB_KEY in .env.local are correct.',
+      { cause: error },
+    )
+  }
   return _client
 }
