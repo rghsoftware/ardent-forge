@@ -277,3 +277,6 @@ export function parseSetScheme(data: unknown) {
   }
   return variant.safeParse(data)
 }
+
+/** Convenience type for the return value of `parseSetScheme`. */
+export type ParseSetSchemeResult = ReturnType<typeof parseSetScheme>

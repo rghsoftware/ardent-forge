@@ -6,7 +6,7 @@ export function useUserProfile(userId: string) {
   return useQuery({
     queryKey: ['profile', userId],
     queryFn: () => getAdapter().getUserProfile(userId),
-    enabled: !!userId,
+    enabled: !!userId && userId.length > 0,
   })
 }
 
@@ -16,6 +16,9 @@ export function useUpdateUserProfile() {
   return useMutation({
     mutationFn: (profile: Partial<UserProfile> & { id: string }) =>
       getAdapter().updateUserProfile(profile),
+    onError: (err) => {
+      console.error('[profile] Failed to update profile:', err)
+    },
     onSettled: (_data, _err, profile) => {
       queryClient.invalidateQueries({ queryKey: ['profile', profile.id] })
     },
@@ -28,8 +31,20 @@ export function useSaveOneRepMax() {
   return useMutation({
     mutationFn: (entry: Omit<OneRepMaxHistory, 'id' | 'createdAt' | 'updatedAt'>) =>
       getAdapter().saveOneRepMax(entry),
+    onError: (err) => {
+      console.error('[profile] Failed to save 1RM:', err)
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] })
+      queryClient.invalidateQueries({ queryKey: ['one-rep-max-history'] })
     },
+  })
+}
+
+export function useOneRepMaxHistory(userId: string | undefined, exerciseId: string | undefined) {
+  return useQuery({
+    queryKey: ['one-rep-max-history', userId, exerciseId],
+    queryFn: () => getAdapter().getOneRepMaxHistory(userId!, exerciseId!),
+    enabled: !!userId && !!exerciseId,
   })
 }

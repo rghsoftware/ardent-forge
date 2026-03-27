@@ -5,23 +5,28 @@ import { Slot } from 'radix-ui'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex shrink-0 items-center justify-center text-sm font-medium whitespace-nowrap outline-none select-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*="size-"])]:size-4 rounded-none',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
-        default: 'bg-forge text-on-forge',
-        molten: 'molten-gradient text-on-forge',
-        secondary: 'bg-deep-slate text-on-deep-slate',
-        ghost: 'bg-transparent text-ember uppercase tracking-wider',
-        destructive: 'bg-alarm-red text-on-alarm',
-        link: 'text-primary underline-offset-4 hover:underline',
+        default: 'bg-forge text-on-forge hover:bg-forge/90',
+        molten: 'molten-gradient text-on-forge hover:opacity-90',
+        secondary: 'bg-deep-slate text-on-deep-slate hover:bg-deep-slate/80',
+        ghost: 'bg-transparent text-ember uppercase tracking-wider hover:bg-surface-steel/10',
+        destructive: 'bg-alarm-red text-on-alarm hover:bg-alarm-red/90',
+        outline:
+          'border border-surface-steel bg-transparent text-on-surface hover:bg-surface-steel/10 rounded-none',
+        link: 'text-ember underline-offset-4 hover:underline',
       },
       size: {
-        default:
-          'h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2',
-        sm: 'h-8 gap-1 px-2.5 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5',
-        lg: 'h-10 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-3 has-data-[icon=inline-start]:pl-3',
-        icon: 'size-9',
+        default: 'h-10 px-4 py-2',
+        sm: 'h-9 px-3',
+        lg: 'h-11 px-8',
+        xs: 'h-7 px-2 text-xs',
+        icon: 'h-10 w-10',
+        'icon-xs': 'h-6 w-6',
+        'icon-sm': 'h-8 w-8',
+        'icon-lg': 'h-12 w-12',
       },
     },
     defaultVariants: {
@@ -46,8 +51,6 @@ function Button({
   return (
     <Comp
       data-slot="button"
-      data-variant={variant}
-      data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

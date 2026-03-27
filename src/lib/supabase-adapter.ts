@@ -35,10 +35,6 @@ import {
   fromOneRepMaxHistory,
 } from './data-mapper'
 
-function escapeLikePattern(s: string): string {
-  return s.replace(/[%_\\]/g, '\\$&')
-}
-
 export class SupabaseAdapter implements DataAdapter {
   private client: SupabaseClient
 
@@ -59,6 +55,34 @@ export class SupabaseAdapter implements DataAdapter {
   // ---------------------------------------------------------------------------
 
   async getExercises(filters?: ExerciseFilters): Promise<Exercise[]> {
+    // When a search query is provided, use the search_exercises Postgres function
+    // which searches both name and aliases. Additional filters are applied client-side
+    // since the RPC returns full exercise rows.
+    if (filters?.searchQuery) {
+      const { data, error } = await this.client.rpc('search_exercises', {
+        query_text: filters.searchQuery,
+      })
+      if (error) throw error
+
+      let exercises = (data as ExerciseRow[]).map(toExercise)
+
+      if (filters.category) {
+        exercises = exercises.filter((e) => e.category === filters.category)
+      }
+      if (filters.movementPattern) {
+        exercises = exercises.filter((e) => e.movementPattern === filters.movementPattern)
+      }
+      if (filters.muscleGroup) {
+        exercises = exercises.filter((e) => e.muscleGroups.primary.includes(filters.muscleGroup!))
+      }
+      if (filters.isCustom !== undefined) {
+        exercises = exercises.filter((e) => e.isCustom === filters.isCustom)
+      }
+
+      return exercises.sort((a, b) => a.name.localeCompare(b.name))
+    }
+
+    // No search query -- use standard table query with column filters
     let query = this.client.from('exercises').select('*')
 
     if (filters?.category) {
@@ -67,8 +91,8 @@ export class SupabaseAdapter implements DataAdapter {
     if (filters?.movementPattern) {
       query = query.eq('movement_pattern', filters.movementPattern)
     }
-    if (filters?.searchQuery) {
-      query = query.ilike('name', `%${escapeLikePattern(filters.searchQuery)}%`)
+    if (filters?.muscleGroup) {
+      query = query.contains('muscle_groups', { primary: [filters.muscleGroup] })
     }
     if (filters?.isCustom !== undefined) {
       query = query.eq('is_custom', filters.isCustom)
@@ -320,5 +344,89 @@ export class SupabaseAdapter implements DataAdapter {
       .single()
     if (error) throw error
     return toOneRepMaxHistory(data as OneRepMaxHistoryRow)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Exercise history operations
+  // ---------------------------------------------------------------------------
+
+  async getOneRepMaxHistory(userId: string, exerciseId: string): Promise<OneRepMaxHistory[]> {
+    const { data, error } = await this.client
+      .from('one_rep_max_history')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('exercise_id', exerciseId)
+      .order('recorded_at', { ascending: true })
+    if (error) throw error
+    return (data as OneRepMaxHistoryRow[]).map(toOneRepMaxHistory)
+  }
+
+  async getRecentlyUsedExerciseIds(userId: string, limit = 10): Promise<string[]> {
+    const { data, error } = await this.client
+      .from('logged_activities')
+      .select('exercise_id, workout_logs!inner(user_id, started_at)')
+      .eq('workout_logs.user_id', userId)
+      .order('started_at', { ascending: false, referencedTable: 'workout_logs' })
+      .limit(limit * 5) // fetch more to account for deduplication
+    if (error) throw error
+
+    // Deduplicate exercise_ids preserving most-recent-first order
+    const seen = new Set<string>()
+    const uniqueIds: string[] = []
+    for (const row of data as Array<{ exercise_id: string }>) {
+      if (!seen.has(row.exercise_id)) {
+        seen.add(row.exercise_id)
+        uniqueIds.push(row.exercise_id)
+      }
+      if (uniqueIds.length >= limit) break
+    }
+
+    return uniqueIds
+  }
+
+  async getExerciseWorkoutHistory(
+    userId: string,
+    exerciseId: string,
+    limit = 10,
+  ): Promise<{ log: WorkoutLog; sets: LoggedSet[] }[]> {
+    // Find logged activities for this exercise, joined with their workout logs and sets
+    const { data, error } = await this.client
+      .from('logged_activities')
+      .select('id, workout_log_id, exercise_id, workout_logs!inner(*), logged_sets(*)')
+      .eq('exercise_id', exerciseId)
+      .eq('workout_logs.user_id', userId)
+      .order('started_at', { ascending: false, referencedTable: 'workout_logs' })
+      .limit(limit)
+    if (error) throw error
+
+    // Supabase returns !inner joins as a single object, but the inferred generic
+    // types use an array.  Cast through unknown to the actual runtime shape.
+    type ActivityWithJoins = {
+      id: string
+      workout_log_id: string
+      exercise_id: string
+      workout_logs: WorkoutLogRow
+      logged_sets: LoggedSetRow[]
+    }
+    const rows = data as unknown as ActivityWithJoins[]
+
+    // Group by workout_log_id and map to domain types
+    const grouped = new Map<string, { log: WorkoutLog; sets: LoggedSet[] }>()
+
+    for (const row of rows) {
+      const logId = row.workout_log_id
+      if (!grouped.has(logId)) {
+        grouped.set(logId, {
+          log: toWorkoutLog(row.workout_logs),
+          sets: [],
+        })
+      }
+      const entry = grouped.get(logId)!
+      for (const setRow of row.logged_sets) {
+        entry.sets.push(toLoggedSet(setRow))
+      }
+    }
+
+    return Array.from(grouped.values())
   }
 }
