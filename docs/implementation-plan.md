@@ -313,7 +313,7 @@ Supabase project configuration and database schema. Primarily console/migration 
 - Create Supabase project
 - Enable email/password auth
 - Optional: enable Google OAuth provider
-- Copy project URL and anon key to `.env.local`
+- Copy project URL and publishable key to `.env.local`
 - Install `@supabase/supabase-js` client
 
 ### 3b. Database schema via migrations

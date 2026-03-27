@@ -56,6 +56,7 @@ export type Prescription = z.infer<typeof prescriptionSchema>
 export const workoutLogSchema = syncableEntitySchema
   .extend({
     userId: entityId,
+    title: z.string().optional(),
     startedAt: isoDateTime, // L-1: required ISO 8601
     completedAt: isoDateTime.optional(), // null means in-progress
     sessionTemplateId: entityId.optional(),
