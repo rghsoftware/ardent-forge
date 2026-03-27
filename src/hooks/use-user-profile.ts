@@ -30,6 +30,15 @@ export function useSaveOneRepMax() {
       getAdapter().saveOneRepMax(entry),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] })
+      queryClient.invalidateQueries({ queryKey: ['one-rep-max-history'] })
     },
+  })
+}
+
+export function useOneRepMaxHistory(userId: string | undefined, exerciseId: string | undefined) {
+  return useQuery({
+    queryKey: ['one-rep-max-history', userId, exerciseId],
+    queryFn: () => getAdapter().getOneRepMaxHistory(userId!, exerciseId!),
+    enabled: !!userId && !!exerciseId,
   })
 }

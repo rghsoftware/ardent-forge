@@ -7,11 +7,12 @@ import type {
   UserProfile,
   OneRepMaxHistory,
 } from '@/domain/types'
-import type { ExerciseCategory, MovementPattern } from '@/domain/types'
+import type { ExerciseCategory, MovementPattern, MuscleGroup } from '@/domain/types'
 
 export interface ExerciseFilters {
   category?: ExerciseCategory
   movementPattern?: MovementPattern
+  muscleGroup?: MuscleGroup
   searchQuery?: string
   isCustom?: boolean
 }
@@ -55,6 +56,21 @@ export interface DataAdapter {
   ): Promise<LoggedActivity>
   createLoggedSet(set: Omit<LoggedSet, 'id'>, userId: string): Promise<LoggedSet>
   updateLoggedSet(set: LoggedSet, userId: string): Promise<LoggedSet>
+
+  // Exercise history operations
+
+  /** Returns all 1RM entries for an exercise ordered by recordedAt ascending (chronological for chart). */
+  getOneRepMaxHistory(userId: string, exerciseId: string): Promise<OneRepMaxHistory[]>
+
+  /** Returns recently used exercise IDs ordered by most recent usage. */
+  getRecentlyUsedExerciseIds(userId: string, limit?: number): Promise<string[]>
+
+  /** Returns past workouts containing a specific exercise with their sets. */
+  getExerciseWorkoutHistory(
+    userId: string,
+    exerciseId: string,
+    limit?: number,
+  ): Promise<{ log: WorkoutLog; sets: LoggedSet[] }[]>
 
   // User profile operations
   getUserProfile(userId: string): Promise<UserProfile | null>

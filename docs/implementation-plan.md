@@ -222,7 +222,7 @@ ardent-forge/
 
 ---
 
-## STEP 1.5: Design System Integration — "Iron & Ember"
+## STEP 1.5: Design System Integration — "Iron & Ember" ✅ COMPLETE
 
 **Dependencies:** Step 1 (project scaffold with shadcn/ui installed), `DESIGN.md`
 **Priority:** P0
@@ -372,23 +372,23 @@ src/routes/
 - Milled edge: `box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.05)` utility class
 - Hard tap: `button:active { filter: brightness(1.25) }` — no transitions
 
-### Done when
+### Done ✅
 
-- [ ] `bun run dev` renders app with Iron & Ember color scheme
-- [ ] Space Grotesk renders on headlines, Inter on body text
-- [ ] Material Symbols icons render (test: `<Icon name="fitness_center" />`)
-- [ ] All `border-radius` is 0px across shadcn components
-- [ ] Button variants match spec: default (forge), molten (gradient), secondary (slate), ghost (text-only)
-- [ ] Input fields use underline-only style (no boxed borders)
-- [ ] Cards use tonal layering (no shadows, no line borders)
-- [ ] Mobile: bottom nav renders with 4 tabs, active state highlights in ember
-- [ ] Desktop: sidebar renders with 5 items, collapse/expand works
-- [ ] Responsive breakpoint switches nav correctly (< 768px bottom, ≥ 1024px sidebar)
-- [ ] Touch targets ≥ 48px on mobile nav
-- [ ] Scrollbar styled (narrow, molten hover)
-- [ ] No light mode — dark only
-- [ ] Frosted glass (heat-blur) effect works on sticky elements
-- [ ] Production build succeeds
+- [x] `bun run dev` renders app with Iron & Ember color scheme
+- [x] Space Grotesk renders on headlines, Inter on body text
+- [x] Material Symbols icons render (test: `<Icon name="fitness_center" />`)
+- [x] All `border-radius` is 0px across shadcn components
+- [x] Button variants match spec: default (forge), molten (gradient), secondary (slate), ghost (text-only)
+- [x] Input fields use underline-only style (no boxed borders)
+- [x] Cards use tonal layering (no shadows, no line borders)
+- [x] Mobile: bottom nav renders with 4 tabs, active state highlights in ember
+- [x] Desktop: sidebar renders with 5 items, collapse/expand works
+- [x] Responsive breakpoint switches nav correctly (< 768px bottom, ≥ 1024px sidebar)
+- [x] Touch targets ≥ 48px on mobile nav
+- [x] Scrollbar styled (narrow, molten hover)
+- [x] No light mode — dark only
+- [x] Frosted glass (heat-blur) effect works on sticky elements
+- [x] Production build succeeds
 
 ---
 
@@ -465,7 +465,7 @@ RLS enabled with simple user isolation: `user_id = auth.uid()`. Indices for key 
 
 ---
 
-## STEP 4: Supabase Data Adapter + Auth UI
+## STEP 4: Supabase Data Adapter + Auth UI ✅ COMPLETE
 
 **Dependencies:** Step 2 (types), Step 3 (Supabase schema), Step 1.5 (design system for auth screens)
 **Priority:** P0
@@ -516,17 +516,17 @@ Auth screens use the industrial vocabulary: "AUTHENTICATE", "ACCESS FORGE", not 
 - Authenticated → show main app with Iron & Ember layout
 - Sign out clears session
 
-### Done when
+### Done ✅
 
-- [ ] User can sign up, sign in, sign out
-- [ ] Auth screens match Iron & Ember design (underline inputs, forge buttons, industrial copy)
-- [ ] Supabase adapter implements all data adapter methods
-- [ ] TanStack Query hooks fetch and cache data correctly
-- [ ] Exercises query returns seeded exercises
-- [ ] Saving a workout log persists to Supabase and is retrievable
-- [ ] RLS prevents accessing other users' data
-- [ ] Optimistic updates work for set logging mutations
-- [ ] Error states handled (network error, auth error)
+- [x] User can sign up, sign in, sign out
+- [x] Auth screens match Iron & Ember design (underline inputs, forge buttons, industrial copy)
+- [x] Supabase adapter implements all data adapter methods
+- [x] TanStack Query hooks fetch and cache data correctly
+- [x] Exercises query returns seeded exercises
+- [x] Saving a workout log persists to Supabase and is retrievable
+- [x] RLS prevents accessing other users' data
+- [x] Optimistic updates work for set logging mutations
+- [x] Error states handled (network error, auth error)
 
 ---
 
