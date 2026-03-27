@@ -21,14 +21,18 @@ CREATE TABLE exercises (
                             'SQUAT', 'HINGE', 'PUSH', 'PULL',
                             'CARRY', 'ROTATE', 'GAIT', 'ISOMETRIC'
                         )),
-    muscle_groups       JSONB       NOT NULL,
+    muscle_groups       JSONB       NOT NULL CHECK (muscle_groups ? 'primary' AND muscle_groups ? 'secondary'),
     is_bilateral        BOOLEAN     NOT NULL DEFAULT true,
     supports_1rm        BOOLEAN     NOT NULL DEFAULT false,
     equipment_required  JSONB       NOT NULL DEFAULT '[]',
     is_custom           BOOLEAN     NOT NULL DEFAULT false,
     user_id             UUID        REFERENCES auth.users ON DELETE CASCADE,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT exercises_custom_user_check CHECK (
+        (is_custom = true AND user_id IS NOT NULL) OR
+        (is_custom = false AND user_id IS NULL)
+    )
 );
 
 COMMENT ON TABLE exercises IS 'Exercise dictionary: built-in (is_custom=false) and user-created (is_custom=true) exercises.';
@@ -57,6 +61,7 @@ CREATE TABLE user_profiles (
 );
 
 COMMENT ON TABLE user_profiles IS 'User settings and training data. One row per auth.users entry.';
+COMMENT ON COLUMN user_profiles.display_name IS 'User-facing display name. Optional.';
 COMMENT ON COLUMN user_profiles.bodyweight IS 'JSONB Weight object: {"value": number, "unit": "lb"|"kg"}.';
 COMMENT ON COLUMN user_profiles.training_age IS 'JSONB Duration object: {"seconds": number}.';
 COMMENT ON COLUMN user_profiles.exercise_maxes IS 'JSONB map of exerciseId to OneRepMax objects.';
@@ -68,7 +73,7 @@ COMMENT ON COLUMN user_profiles.max_reps IS 'JSONB map of exerciseId to max reps
 --    Invariant L-1: started_at is required (NOT NULL).
 --    Invariant L-6: perceived_difficulty must be 1-10 when present.
 --    Note: session_template_id has no FK constraint yet; session_templates
---    table is created in Step 10 (Program Management phase).
+--    table constraint deferred: table not yet created.
 -- ---------------------------------------------------------------------------
 CREATE TABLE workout_logs (
     id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -80,15 +85,19 @@ CREATE TABLE workout_logs (
     program_context         JSONB,
     perceived_difficulty    INTEGER     CHECK (perceived_difficulty BETWEEN 1 AND 10),
     bodyweight_at_session   JSONB,
-    notes                   TEXT,
+    overall_notes            TEXT,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT workout_logs_completion_check CHECK (
+        completed_at IS NULL OR completed_at > started_at
+    )
 );
 
 COMMENT ON TABLE workout_logs IS 'Training sessions. completed_at=NULL means the workout is in progress.';
-COMMENT ON COLUMN workout_logs.session_template_id IS 'FK to session_templates (deferred until Step 10). NULL for ad-hoc workouts.';
+COMMENT ON COLUMN workout_logs.session_template_id IS 'FK to session_templates (constraint deferred: table not yet created). NULL for ad-hoc workouts.';
 COMMENT ON COLUMN workout_logs.program_context IS 'JSONB ProgramContext: {"programId","blockId","weekNumber","dayLabel"}.';
 COMMENT ON COLUMN workout_logs.bodyweight_at_session IS 'JSONB Weight object recorded at time of workout.';
+COMMENT ON COLUMN workout_logs.title IS 'Optional user-defined workout title (e.g. "Monday Upper Body").';
 
 -- ---------------------------------------------------------------------------
 -- 4. logged_activity_groups
@@ -105,6 +114,7 @@ CREATE TABLE logged_activity_groups (
                         )),
     ordinal             INTEGER     NOT NULL CHECK (ordinal >= 1),
     completion_time     JSONB,
+    actual_rounds_completed INTEGER CHECK (actual_rounds_completed >= 1),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -148,16 +158,28 @@ CREATE TABLE logged_sets (
                             'AMRAP', 'PEAK', 'BACKOFF'
                         )),
     prescribed          JSONB,
-    actual_reps         INTEGER,
+    actual_reps         INTEGER     CHECK (actual_reps >= 0),
     actual_weight       JSONB,
     actual_duration     JSONB,
     actual_distance     JSONB,
     actual_pace         JSONB,
-    rpe                 NUMERIC     CHECK (rpe BETWEEN 1 AND 10),
+    actual_heart_rate   INTEGER     CHECK (actual_heart_rate > 0),
+    ruck_load           JSONB,
+    elevation_gain      JSONB,
+    rpe                 NUMERIC     CHECK (rpe BETWEEN 1 AND 10 AND rpe * 2 = FLOOR(rpe * 2)),
     completed           BOOLEAN     NOT NULL DEFAULT false,
     notes               TEXT,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT logged_sets_completed_check CHECK (
+        completed = false OR (
+            actual_reps IS NOT NULL OR
+            actual_weight IS NOT NULL OR
+            actual_duration IS NOT NULL OR
+            actual_distance IS NOT NULL OR
+            actual_heart_rate IS NOT NULL
+        )
+    )
 );
 
 COMMENT ON TABLE logged_sets IS 'Individual sets within a logged activity. user_id denormalized for RLS.';
@@ -166,24 +188,28 @@ COMMENT ON COLUMN logged_sets.actual_weight IS 'JSONB Weight object: {"value": n
 COMMENT ON COLUMN logged_sets.actual_duration IS 'JSONB Duration object: {"seconds": number}.';
 COMMENT ON COLUMN logged_sets.actual_distance IS 'JSONB Distance object: {"value": number, "unit": "mi"|"km"|"m"|"yd"}.';
 COMMENT ON COLUMN logged_sets.actual_pace IS 'JSONB Pace object: {"minutesPerUnit": number, "unit": "mi"|"km"}.';
-COMMENT ON COLUMN logged_sets.rpe IS 'Rate of Perceived Exertion, 1-10 scale. Half values (e.g. 7.5) allowed.';
+COMMENT ON COLUMN logged_sets.rpe IS 'Rate of Perceived Exertion, 1-10 scale. Half-step values only (e.g. 7.5) enforced by CHECK constraint.';
 
 -- ---------------------------------------------------------------------------
 -- 7. one_rep_max_history
 --    Historical 1RM records. Insert-only per invariant PR-2.
---    Invariant PR-1: weight must be positive (enforced via application layer
---    since JSONB cannot have CHECK constraints on nested values).
+--    Invariant PR-1: weight must be positive (enforced via JSONB CHECK
+--    constraint on the weight column).
 -- ---------------------------------------------------------------------------
 CREATE TABLE one_rep_max_history (
     id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id             UUID        NOT NULL REFERENCES auth.users ON DELETE CASCADE,
-    exercise_id         UUID        NOT NULL REFERENCES exercises ON DELETE CASCADE,
-    weight              JSONB       NOT NULL,
+    exercise_id         UUID        NOT NULL REFERENCES exercises ON DELETE RESTRICT,
+    weight              JSONB       NOT NULL CHECK (
+        weight ? 'value' AND weight ? 'unit'
+        AND (weight->>'value')::numeric > 0
+        AND weight->>'unit' IN ('lb', 'kg')
+    ),
     estimated           BOOLEAN     NOT NULL DEFAULT false,
     recorded_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE one_rep_max_history IS 'Append-only 1RM history. Per PR-2, rows are never updated or deleted.';
-COMMENT ON COLUMN one_rep_max_history.weight IS 'JSONB Weight object: {"value": number, "unit": "lb"|"kg"}. Must be positive (PR-1).';
+COMMENT ON COLUMN one_rep_max_history.weight IS 'JSONB Weight object: {"value": number, "unit": "lb"|"kg"}. Positive value enforced by CHECK constraint (PR-1).';
 COMMENT ON COLUMN one_rep_max_history.estimated IS 'True if this 1RM was calculated from a rep-max formula rather than directly tested.';

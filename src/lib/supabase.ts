@@ -1,14 +1,32 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUB_KEY
+let _client: SupabaseClient | null = null
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing Supabase environment variables. ' +
-      'Ensure VITE_SUPABASE_URL and VITE_SUPABASE_PUB_KEY are set in .env.local',
-  )
+// TODO: Add `createClient<Database>` type parameter once `supabase gen types typescript`
+// has been run against a live Supabase instance.
+
+export function getSupabaseClient(): SupabaseClient {
+  if (_client) return _client
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUB_KEY?.trim()
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      'Missing Supabase environment variables. ' +
+        'Ensure VITE_SUPABASE_URL and VITE_SUPABASE_PUB_KEY are set in .env.local',
+    )
+  }
+
+  try {
+    new URL(supabaseUrl)
+  } catch {
+    throw new Error(
+      `VITE_SUPABASE_URL is not a valid URL: "${supabaseUrl}". ` +
+        'Expected format: "https://<project-ref>.supabase.co".',
+    )
+  }
+
+  _client = createClient(supabaseUrl, supabaseAnonKey)
+  return _client
 }
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-export default supabase
