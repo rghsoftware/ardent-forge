@@ -1,4 +1,13 @@
-import { createFileRoute, Link, Outlet, redirect, useRouterState } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  redirect,
+  useNavigate,
+  useRouterState,
+} from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { useAuth } from '@/lib/auth'
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ context }) => {
@@ -22,40 +31,53 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 function AuthenticatedLayout() {
+  const { user, loading } = useAuth()
+  const navigate = useNavigate()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
+  // beforeLoad only fires on navigation, not on auth state changes.
+  // This effect handles the case where auth resolves after the initial render.
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate({ to: '/sign-in' })
+    }
+  }, [loading, user, navigate])
+  const isWorkoutRoute = pathname.startsWith('/log/')
+
   return (
-    <div className="min-h-screen pb-16">
+    <div className={`min-h-screen ${isWorkoutRoute ? '' : 'pb-16'}`}>
       <Outlet />
 
-      {/* Bottom navigation bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 flex h-16 items-stretch border-t border-surface-steel bg-surface-pit">
-        {NAV_ITEMS.map((item) => {
-          const isActive = item.to === '/' ? pathname === '/' : pathname.startsWith(item.to)
+      {/* Bottom navigation bar -- hidden during active workout */}
+      {!isWorkoutRoute && (
+        <nav className="fixed inset-x-0 bottom-0 z-50 flex h-16 items-stretch border-t border-surface-steel bg-surface-pit">
+          {NAV_ITEMS.map((item) => {
+            const isActive = item.to === '/' ? pathname === '/' : pathname.startsWith(item.to)
 
-          return (
-            <Link
-              key={item.to}
-              to={item.to as '/'}
-              className={`flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors ${
-                isActive ? 'text-ember' : 'text-warm-ash'
-              }`}
-            >
-              <span
-                className="material-symbols-outlined text-[24px]"
-                style={{
-                  fontVariationSettings: isActive
-                    ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
-                    : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
-                }}
+            return (
+              <Link
+                key={item.to}
+                to={item.to as '/'}
+                className={`flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors ${
+                  isActive ? 'text-ember' : 'text-warm-ash'
+                }`}
               >
-                {item.icon}
-              </span>
-              <span className="font-sans text-xs font-medium">{item.label}</span>
-            </Link>
-          )
-        })}
-      </nav>
+                <span
+                  className="material-symbols-outlined text-[24px]"
+                  style={{
+                    fontVariationSettings: isActive
+                      ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
+                      : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
+                  }}
+                >
+                  {item.icon}
+                </span>
+                <span className="font-sans text-xs font-medium">{item.label}</span>
+              </Link>
+            )
+          })}
+        </nav>
+      )}
     </div>
   )
 }

@@ -1,0 +1,93 @@
+import { Button } from '@/components/ui/button'
+import { SetRow } from '@/components/workout/set-row'
+import type { SetType } from '@/domain/types'
+
+interface SetRowData {
+  id: string
+  setNumber: number
+  weight?: string
+  reps?: string
+  confirmed: boolean
+}
+
+interface ExerciseBlockProps {
+  exerciseName: string
+  sets: SetRowData[]
+  loggedActivityId: string
+  onConfirmSet: (
+    loggedActivityId: string,
+    setNumber: number,
+    weight: string,
+    reps: string,
+    setType: SetType,
+  ) => void
+  onAddSet: (loggedActivityId: string) => void
+  isConfirming?: boolean
+}
+
+export function ExerciseBlock({
+  exerciseName,
+  sets,
+  loggedActivityId,
+  onConfirmSet,
+  onAddSet,
+  isConfirming = false,
+}: ExerciseBlockProps) {
+  return (
+    <section className="bg-surface-iron" aria-label={`${exerciseName} exercise`}>
+      {/* Exercise name header */}
+      <div className="px-4 pt-4 pb-2">
+        <h3 className="font-display text-xs font-medium uppercase tracking-widest text-ember">
+          {exerciseName}
+        </h3>
+      </div>
+
+      {/* Column headers */}
+      <div className="flex items-center gap-2 px-4 py-1">
+        <span className="w-12 shrink-0 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+          SET
+        </span>
+        <span className="flex-1 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+          WEIGHT
+        </span>
+        <span className="flex-1 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+          REPS
+        </span>
+        <span className="w-14 shrink-0 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+          STATUS
+        </span>
+      </div>
+
+      {/* Set rows */}
+      <div className="flex flex-col gap-[0.4rem]">
+        {sets.map((set) => (
+          <SetRow
+            key={set.id}
+            setNumber={set.setNumber}
+            initialWeight={set.weight}
+            initialReps={set.reps}
+            confirmed={set.confirmed}
+            isConfirming={isConfirming}
+            onConfirm={(weight, reps, setType) =>
+              onConfirmSet(loggedActivityId, set.setNumber, weight, reps, setType)
+            }
+          />
+        ))}
+      </div>
+
+      {/* Add set button */}
+      <div className="px-4 pt-2 pb-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onAddSet(loggedActivityId)}
+          className="text-xs"
+        >
+          + ADD SET
+        </Button>
+      </div>
+    </section>
+  )
+}
+
+export type { SetRowData }
