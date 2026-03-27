@@ -90,7 +90,7 @@ export type Equipment = z.infer<typeof equipmentSchema>
 // ---------------------------------------------------------------------------
 
 export const muscleGroupSpecSchema = z.object({
-  primary: z.array(muscleGroupSchema),
+  primary: z.array(muscleGroupSchema).min(1),
   secondary: z.array(muscleGroupSchema),
 })
 export type MuscleGroupSpec = z.infer<typeof muscleGroupSpecSchema>
@@ -103,7 +103,7 @@ export type MuscleGroupSpec = z.infer<typeof muscleGroupSpecSchema>
 
 export const exerciseSchema = syncableEntitySchema.extend({
   name: z.string().min(1).max(100), // EX-1
-  aliases: z.array(z.string()),
+  aliases: z.array(z.string().min(1)),
   category: exerciseCategorySchema,
   movementPattern: movementPatternSchema,
   muscleGroups: muscleGroupSpecSchema,

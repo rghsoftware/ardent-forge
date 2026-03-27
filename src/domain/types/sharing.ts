@@ -86,6 +86,9 @@ export const directConnectionSchema = syncableEntitySchema
     },
     { message: 'ACTIVE status requires acceptedAt; PENDING status requires no acceptedAt' },
   )
+  .refine((data) => data.requesterId !== data.recipientId, {
+    message: 'requesterId and recipientId must be different (no self-connections)',
+  })
 export type DirectConnection = z.infer<typeof directConnectionSchema>
 
 // ---------------------------------------------------------------------------

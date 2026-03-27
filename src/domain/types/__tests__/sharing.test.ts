@@ -4,6 +4,7 @@ import {
   connectionStatusSchema,
   shareableEntityTypeSchema,
   accountabilityGroupSchema,
+  groupMemberSchema,
   groupInviteSchema,
   shareLinkSchema,
   directConnectionSchema,
@@ -51,6 +52,15 @@ const baseDirectConnection = {
   status: 'PENDING',
   requesterGrantsWrite: false,
   recipientGrantsWrite: false,
+}
+
+const baseGroupMember = {
+  id: 'gm-1',
+  groupId: 'grp-1',
+  userId: 'user-1',
+  role: 'MEMBER',
+  shareHistoryBeforeJoin: false,
+  joinedAt: '2025-01-15T09:00:00Z',
 }
 
 // ---------------------------------------------------------------------------
@@ -282,5 +292,59 @@ describe('DirectConnection schema', () => {
   it('rejects missing recipientId', () => {
     const { recipientId: _, ...noRec } = baseDirectConnection as Record<string, unknown>
     expect(directConnectionSchema.safeParse(noRec).success).toBe(false)
+  })
+
+  it('rejects self-connection where requesterId equals recipientId', () => {
+    const selfConnection = {
+      ...baseDirectConnection,
+      requesterId: 'user-1',
+      recipientId: 'user-1',
+    }
+    expect(directConnectionSchema.safeParse(selfConnection).success).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// groupMemberSchema
+// ---------------------------------------------------------------------------
+
+describe('groupMemberSchema', () => {
+  it('accepts valid member with all required fields', () => {
+    expect(groupMemberSchema.safeParse(baseGroupMember).success).toBe(true)
+  })
+
+  it('accepts member with COACH role', () => {
+    const coach = { ...baseGroupMember, role: 'COACH' }
+    expect(groupMemberSchema.safeParse(coach).success).toBe(true)
+  })
+
+  it('rejects missing groupId', () => {
+    const { groupId: _, ...noGroupId } = baseGroupMember as Record<string, unknown>
+    expect(groupMemberSchema.safeParse(noGroupId).success).toBe(false)
+  })
+
+  it('rejects missing userId', () => {
+    const { userId: _, ...noUserId } = baseGroupMember as Record<string, unknown>
+    expect(groupMemberSchema.safeParse(noUserId).success).toBe(false)
+  })
+
+  it('rejects invalid role', () => {
+    const bad = { ...baseGroupMember, role: 'ADMIN' }
+    expect(groupMemberSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects shareHistoryBeforeJoin as string (must be boolean)', () => {
+    const bad = { ...baseGroupMember, shareHistoryBeforeJoin: 'true' }
+    expect(groupMemberSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects missing shareHistoryBeforeJoin', () => {
+    const { shareHistoryBeforeJoin: _, ...noShare } = baseGroupMember as Record<string, unknown>
+    expect(groupMemberSchema.safeParse(noShare).success).toBe(false)
+  })
+
+  it('rejects invalid joinedAt (not ISO datetime)', () => {
+    const bad = { ...baseGroupMember, joinedAt: 'not-a-date' }
+    expect(groupMemberSchema.safeParse(bad).success).toBe(false)
   })
 })

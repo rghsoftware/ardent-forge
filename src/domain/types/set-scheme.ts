@@ -39,7 +39,7 @@ export const loadSpecSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('rpe'),
-    target: z.number().min(1).max(10),
+    target: z.number().min(1).max(10).multipleOf(0.5),
   }),
   z.object({
     type: z.literal('percentMaxReps'),
@@ -62,7 +62,7 @@ export type LoadSpec = z.infer<typeof loadSpecSchema>
 // SetScheme variants -- defined individually so refine() can be applied
 // before assembly into the final union.
 //
-// z.union() is used instead of z.discriminatedUnion() because Zod does not support .refine() on discriminated union members
+// z.union() is used instead of z.discriminatedUnion() because .refine() produces ZodEffects, which is incompatible with discriminatedUnion member types (Zod v3 and v4)
 // ---------------------------------------------------------------------------
 
 // 1. FixedSets -- sets/reps can be a plain number or a NumberRange
@@ -197,7 +197,7 @@ const percentageOfMaxRepsSchema = z.object({
 
 // ---------------------------------------------------------------------------
 // SetScheme -- union of all 12 variants
-// z.union() is used instead of z.discriminatedUnion() because Zod does not support .refine() on discriminated union members
+// z.union() is used instead of z.discriminatedUnion() because .refine() produces ZodEffects, which is incompatible with discriminatedUnion member types (Zod v3 and v4)
 // ---------------------------------------------------------------------------
 
 export const setSchemeSchema = z.union([
@@ -244,7 +244,11 @@ const setSchemeVariants: Record<string, z.ZodTypeAny> = {
  * Use this instead of setSchemeSchema.safeParse() when you need
  * actionable error messages for end users.
  */
-export function parseSetScheme(data: unknown) {
+export type ParseSetSchemeResult =
+  | { success: true; data: SetScheme }
+  | { success: false; error: string }
+
+export function parseSetScheme(data: unknown): ParseSetSchemeResult {
   const typeResult = z.object({ type: z.string() }).safeParse(data)
   if (!typeResult.success) {
     return { success: false as const, error: 'Missing or invalid "type" field' }
@@ -256,5 +260,9 @@ export function parseSetScheme(data: unknown) {
       error: `Unknown SetScheme type: "${typeResult.data.type}". Valid types: ${Object.keys(setSchemeVariants).join(', ')}`,
     }
   }
-  return variant.safeParse(data)
+  const result = variant.safeParse(data)
+  if (result.success) {
+    return { success: true, data: result.data as SetScheme }
+  }
+  return { success: false, error: result.error.issues.map((i) => i.message).join('; ') }
 }

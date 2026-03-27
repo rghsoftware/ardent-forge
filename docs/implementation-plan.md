@@ -4,9 +4,11 @@
 
 **Key Constraint:** Solo developer using AI coding agents heavily. Steps are scoped so each is a self-contained prompt-friendly unit with clear inputs, outputs, and validation criteria.
 
-**Stack:** Tauri v2 + React + TypeScript + Rust + Supabase. One React app serves all platforms (Android, iOS, desktop, web browser).
+**Stack:** Tauri v2 + React + TypeScript + Rust + Supabase. One React app serves all platforms (Android, iOS, desktop, web browser). Bun as package manager and runtime.
 
 **Critical Architecture Decision:** Phase 0 builds a browser-only React app against Supabase. Phase 1 wraps it in Tauri and adds the Rust/SQLite backend. This means the React app must be designed from day one to work through a data adapter that can switch between Supabase (browser) and Tauri commands (native).
+
+**Design System:** "Iron & Ember" — Industrial Brutalism aesthetic. Dark-only, zero border-radius, tonal depth via surface layering, dual-font (Space Grotesk + Inter). Full spec in `DESIGN.md`.
 
 ---
 
@@ -16,6 +18,11 @@
                         ┌──────────────────────────────────┐
                         │  STEP 1: Project Scaffold         │
                         │  React + Vite + TanStack          │
+                        └──────────┬───────────────────────┘
+                                   │
+                        ┌──────────┴───────────────────────┐
+                        │  STEP 1.5: Design System          │
+                        │  "Iron & Ember" + shadcn overrides│
                         └──────────┬───────────────────────┘
                                    │
                           ┌────────┴────────┐
@@ -129,32 +136,31 @@
 
 | Track A: React App (browser) | Track B: Supabase | Track C: Tauri + Rust |
 | ---------------------------- | ----------------- | --------------------- |
-| Steps 1–2, 4–7               | Step 3 (< 1 day)  | Steps 8–9             |
+| Steps 1–1.5–2, 4–7           | Step 3 (< 1 day)  | Steps 8–9             |
 
 Supabase setup (Track B) is a console-click + migration exercise. The real work is Track A (building the app) and Track C (wrapping it in Tauri with offline support).
 
-**Critical path to browser MVP:** Steps 1 → 2 → 3 → 4 → 5 → 6 → 7 (~12 days)
-**Critical path to Tauri GO/NO-GO:** Steps 1–7 → 8 → 9 (~16 days)
-**Critical path to programmed workouts:** Steps 1–9 → 10 → 11 → 12 → 13 (~25 days)
+**Critical path to browser MVP:** Steps 1 → 1.5 → 2/3 → 4 → 5 → 6 → 7 (~13 days)
+**Critical path to Tauri GO/NO-GO:** Steps 1–7 → 8 → 9 (~18.5 days)
+**Critical path to programmed workouts:** Steps 1–9 → 10 → 11 → 12 → 13 (~27 days)
 
 ---
 
-## STEP 1: Project Scaffold
+## STEP 1: Project Scaffold ✅ COMPLETE
 
 **Dependencies:** None
 **Priority:** P0
 **Docs:** `07-architecture.md` §High-Level Architecture
 
-### What to build
+### What was built
 
-- Vite + React + TypeScript project
-- TanStack Router with file-based routing (empty shells)
+- Vite + React 19 + TypeScript project (scaffolded with `bun create vite`)
+- TanStack Router with file-based routing via `@tanstack/router-plugin` Vite plugin
 - TanStack Query provider
 - Zustand store skeleton
-- shadcn/ui setup + Tailwind CSS
+- shadcn/ui setup (Radix + Vega preset) + Tailwind CSS 4 (CSS-first, no `tailwind.config.ts`)
 - ESLint + Prettier configuration
-- Basic responsive layout shell (mobile bottom nav + desktop sidebar)
-- Environment variable setup (Supabase URL, anon key)
+- Environment variable setup (Supabase URL, publishable key)
 
 ### Project skeleton
 
@@ -167,63 +173,236 @@ ardent-forge/
 │   ├── components/
 │   │   └── ui/                 # shadcn/ui components
 │   ├── lib/
+│   │   ├── supabase.ts         # Supabase client
 │   │   ├── data-adapter.ts     # Interface (empty)
 │   │   └── utils.ts
 │   ├── domain/
-│   │   └── types/              # Empty, built in Step 2
+│   │   └── types/              # Built in Step 2
 │   ├── hooks/
 │   ├── stores/
 │   │   └── active-workout.ts   # Zustand skeleton
-│   └── main.tsx
+│   ├── main.tsx
+│   └── index.css               # Tailwind v4 + theme tokens
 ├── src-tauri/                  # Created in Step 8 (not now)
+├── supabase/                   # CLI + migrations
 ├── package.json
 ├── vite.config.ts
-├── tailwind.config.ts
 ├── tsconfig.json
+├── components.json             # shadcn/ui config
 └── .env.local                  # VITE_SUPABASE_URL, VITE_SUPABASE_PUB_KEY
 ```
 
-### Key dependency versions to pin
+### Key dependency versions (as installed)
 
-| Library         | Purpose                         |
-| --------------- | ------------------------------- |
-| React 19        | UI framework                    |
-| Vite 6          | Build tool                      |
-| TanStack Router | File-based routing              |
-| TanStack Query  | Server state management         |
-| Zustand         | Client state (active workout)   |
-| shadcn/ui       | Component library               |
-| Tailwind CSS 4  | Styling                         |
-| Zod             | Runtime validation              |
-| React Hook Form | Form handling                   |
-| dnd-kit         | Drag and drop (used in Step 12) |
-| Recharts        | Charts (used in Step 14)        |
+| Library              | Purpose                         |
+| -------------------- | ------------------------------- |
+| React 19             | UI framework                    |
+| Vite (latest stable) | Build tool                      |
+| TanStack Router      | File-based routing              |
+| TanStack Query       | Server state management         |
+| Zustand              | Client state (active workout)   |
+| shadcn/ui (Radix)    | Component library               |
+| Tailwind CSS 4       | Styling (CSS-first config)      |
+| Zod                  | Runtime validation              |
+| React Hook Form      | Form handling                   |
+| dnd-kit              | Drag and drop (used in Step 12) |
+| Recharts             | Charts (used in Step 14)        |
+| Bun                  | Package manager + runtime       |
 
-### Done when
+### Done ✅
 
-- [ ] `bun run dev` launches app in browser
-- [ ] TanStack Router renders empty index route
-- [ ] shadcn/ui Button component renders correctly
-- [ ] Responsive layout: bottom nav on mobile, sidebar on desktop
-- [ ] TanStack Query provider wraps app
-- [ ] Zustand store creates and reads a test value
-- [ ] Environment variables load correctly
-- [ ] ESLint + Prettier pass on all files
-- [ ] Production build succeeds (`bun run build`)
+- [x] `bun run dev` launches app in browser
+- [x] TanStack Router renders empty index route
+- [x] shadcn/ui Button component renders correctly
+- [x] TanStack Query provider wraps app
+- [x] Zustand store creates and reads a test value
+- [x] Environment variables load correctly
+- [x] ESLint + Prettier pass on all files
+- [x] Production build succeeds (`bun run build`)
 
 ---
 
-## STEP 2: Domain Types + Zod Schemas
+## STEP 1.5: Design System Integration — "Iron & Ember"
+
+**Dependencies:** Step 1 (project scaffold with shadcn/ui installed), `DESIGN.md`
+**Priority:** P0
+**Docs:** `DESIGN.md` (full design system spec)
+**Estimated effort:** 1 day
+
+> **Why this step exists:** The DESIGN.md spec requires full overrides of shadcn/ui defaults — zero border-radius, no shadows, underline inputs, custom color tokens, dual-font system, and a dark-only theme. Doing this before any feature UI work prevents compounding style debt across Steps 4–18.
+
+### What to build
+
+- Tailwind CSS 4 theme tokens mapped from DESIGN.md color palette
+- Dual-font setup: Space Grotesk (headlines) + Inter (body)
+- Material Symbols Outlined icon setup (alongside Lucide for shadcn internals)
+- Global style overrides: scrollbar, no-line rule, frosted glass utilities
+- shadcn component overrides: buttons, cards, inputs, badges, dialogs, navigation
+- Responsive layout shell: mobile bottom nav + desktop sidebar
+- All route shells for navigation targets
+
+### 1.5a. Tailwind CSS 4 Theme Tokens
+
+Map every token from DESIGN.md §2 into CSS custom properties and register them with Tailwind's `@theme inline` directive in `src/index.css`.
+
+**Surface Hierarchy — "The Milled Block":**
+
+| Token              | Hex       | Role                                     |
+| ------------------ | --------- | ---------------------------------------- |
+| `surface-pit`      | `#0E0E0E` | Deepest recess. Nav trays, sidebar bg.   |
+| `surface-anvil`    | `#131313` | Primary canvas. Default page background. |
+| `surface-charcoal` | `#1C1B1B` | Alternating row stripes in data tables.  |
+| `surface-iron`     | `#201F1F` | Card backgrounds, content sections.      |
+| `surface-gunmetal` | `#2A2A2A` | Active form fields, elevated modules.    |
+| `surface-steel`    | `#353534` | Timers, active set cards, scrollbar.     |
+| `surface-slag`     | `#393939` | Floating overlays, surface highlights.   |
+
+**Primary — "Molten" Accent:**
+
+| Token      | Hex       | Role                                    |
+| ---------- | --------- | --------------------------------------- |
+| `ember`    | `#FFB59C` | Text accents, active underlines, icons. |
+| `forge`    | `#FB5C1C` | High-impact CTA backgrounds.            |
+| `on-ember` | `#5C1900` | Text on primary surfaces.               |
+| `on-forge` | `#511500` | Text on CTA backgrounds.                |
+
+**Secondary, Tertiary, Error, Text:** Full mapping in `DESIGN.md` §2. All tokens mapped to both Iron & Ember names and shadcn compatibility variables (`--background`, `--primary`, `--card`, etc.).
+
+**Critical overrides:**
+
+| Property     | Value         | Rationale                               |
+| ------------ | ------------- | --------------------------------------- |
+| `--radius`   | `0px`         | The Hard Edge Rule — no rounded corners |
+| `--border`   | Ghost         | 15% opacity `outline-variant` only      |
+| Font display | Space Grotesk | Headlines, numbers, readouts            |
+| Font body    | Inter         | Body text, labels, data tables          |
+
+### 1.5b. Font Setup
+
+Fonts loaded via Google Fonts `@import` in CSS. Tailwind tokens: `--font-display` (Space Grotesk), `--font-body` (Inter).
+
+Usage: `font-display` for headlines/numbers/readouts, `font-body` for body/labels/data.
+
+Custom utility classes for typography scale: `.text-readout` (3.5rem Space Grotesk), `.text-industrial` (uppercase, 5% letter-spacing).
+
+### 1.5c. Material Symbols Setup
+
+```bash
+bun add material-symbols
+```
+
+Material Symbols Outlined for app-level icons. Lucide remains for shadcn component internals only.
+
+Create `src/components/icon.tsx` — wrapper component with `name`, `size`, `fill` props and correct `fontVariationSettings`.
+
+Key icons from DESIGN.md: `fitness_center`, `timer`, `menu_book`, `inventory_2`, `cloud_done`, `precision_manufacturing`, `grid_view`, `construction`, `monitoring`, `library_books`, `settings`, `check_circle`, `open_with`, `drag_indicator`, `add`.
+
+### 1.5d. shadcn Component Overrides
+
+Override every shadcn component in `src/components/ui/` to match DESIGN.md spec:
+
+**Button variants:**
+
+| Variant       | Background               | Text      | Notes                  |
+| ------------- | ------------------------ | --------- | ---------------------- |
+| `default`     | `#FB5C1C` (forge)        | `#511500` | High-contrast CTA      |
+| `molten`      | Molten gradient (135deg) | `#511500` | New variant — hero CTA |
+| `secondary`   | `#334A55` (deep-slate)   | `#A0B9C5` | Supporting actions     |
+| `ghost`       | Transparent              | `#FFB59C` | ALL-CAPS text-only     |
+| `destructive` | `#93000A`                | `#FFDAD6` | Destructive actions    |
+
+All: 0px radius, no shadows, no transitions. Active: `filter: brightness(1.25)`.
+
+**Input fields:** Convert to underline-only (no boxed borders). Default: no border, `surface-gunmetal` bg. Focus: 2px bottom bar in `ember`. Error: `error` text with `surface-steel` bg.
+
+**Cards:** 0px radius, `surface-iron` bg, no borders (no-line rule), no shadows. Optional `.milled-edge` for top-edge definition.
+
+**Badges:** Flat rectangles, 0px radius, ALL-CAPS. COMPLETE: `forge` bg. PENDING: `surface-steel` bg.
+
+**Dialogs/Sheets:** 0px radius, `surface-iron` or `surface-gunmetal` bg, heat-blur overlay.
+
+**Tables:** ALL-CAPS headers in `label-medium` Inter. Alternating rows `surface-charcoal`/`surface-anvil`. Ghost borders only for accessibility. Header vocabulary: SET, PRESCRIBED, ACTUAL, VARIANCE, STATUS.
+
+### 1.5e. Layout Shell
+
+**Mobile (< 768px) — Bottom navigation:**
+
+| Tab     | Icon            | Route      |
+| ------- | --------------- | ---------- |
+| FORGE   | `construction`  | `/`        |
+| TRACKER | `timer`         | `/tracker` |
+| LIBRARY | `library_books` | `/library` |
+| VAULT   | `monitoring`    | `/vault`   |
+
+Background: `surface-pit`. Active: `ember`. Touch targets ≥ 48px. Fixed bottom with heat-blur. Labels: ALL-CAPS `label-small`.
+
+**Desktop (≥ 1024px) — Left sidebar:**
+
+| Item            | Icon                      | Route       |
+| --------------- | ------------------------- | ----------- |
+| DASHBOARD       | `grid_view`               | `/`         |
+| PROGRAM BUILDER | `precision_manufacturing` | `/builder`  |
+| ANALYTICS       | `monitoring`              | `/vault`    |
+| LIBRARY         | `library_books`           | `/library`  |
+| SETTINGS        | `settings`                | `/settings` |
+
+Background: `surface-pit`. Collapsed: 64px icon-only. Expanded: 240px icon+text.
+
+### 1.5f. Route Shells
+
+Create empty route files for all navigation targets:
+
+```
+src/routes/
+├── __root.tsx          # Root layout with responsive nav
+├── index.tsx           # FORGE / Dashboard
+├── tracker.tsx         # Active workout (empty shell)
+├── library.tsx         # Program library (empty shell)
+├── vault.tsx           # Analytics / 1RM (empty shell)
+├── builder.tsx         # Program builder — desktop (empty shell)
+└── settings.tsx        # Settings (empty shell)
+```
+
+### 1.5g. Global Styles
+
+- Scrollbar: 4px narrow, `surface-steel` thumb, `forge` hover
+- Heat-blur: `rgba(19,19,19,0.8)` + `backdrop-filter: blur(20px)` utility class
+- Molten gradient: `linear-gradient(135deg, #FFB59C 0%, #FB5C1C 100%)` utility class
+- Industrial grid: `radial-gradient(circle, #201f1f 1px, transparent 1px)` at 30px for desktop backgrounds
+- Milled edge: `box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.05)` utility class
+- Hard tap: `button:active { filter: brightness(1.25) }` — no transitions
+
+### Done when
+
+- [ ] `bun run dev` renders app with Iron & Ember color scheme
+- [ ] Space Grotesk renders on headlines, Inter on body text
+- [ ] Material Symbols icons render (test: `<Icon name="fitness_center" />`)
+- [ ] All `border-radius` is 0px across shadcn components
+- [ ] Button variants match spec: default (forge), molten (gradient), secondary (slate), ghost (text-only)
+- [ ] Input fields use underline-only style (no boxed borders)
+- [ ] Cards use tonal layering (no shadows, no line borders)
+- [ ] Mobile: bottom nav renders with 4 tabs, active state highlights in ember
+- [ ] Desktop: sidebar renders with 5 items, collapse/expand works
+- [ ] Responsive breakpoint switches nav correctly (< 768px bottom, ≥ 1024px sidebar)
+- [ ] Touch targets ≥ 48px on mobile nav
+- [ ] Scrollbar styled (narrow, molten hover)
+- [ ] No light mode — dark only
+- [ ] Frosted glass (heat-blur) effect works on sticky elements
+- [ ] Production build succeeds
+
+---
+
+## STEP 2: Domain Types + Zod Schemas ✅ COMPLETE
 
 **Dependencies:** Step 1 (project structure exists)
 **Priority:** P0
 **Docs:** `05-domain-model.md` (full entity definitions), `06-invariants.md` (constraints), `09-state-machines.md` (valid transitions)
 
-### What to build
+### What was built
 
 Canonical TypeScript types and Zod validation schemas in `src/domain/`. These are the source of truth for the entire application — Rust structs and Supabase schemas are derived from these.
 
-### Type files to create
+### Type files created
 
 | File             | Contents                                                                   | Source Doc                           |
 | ---------------- | -------------------------------------------------------------------------- | ------------------------------------ |
@@ -236,176 +415,65 @@ Canonical TypeScript types and Zod validation schemas in `src/domain/`. These ar
 | `user.ts`        | UserProfile, OneRepMaxHistory                                              | 05-domain-model.md §UserProfile      |
 | `sharing.ts`     | AccountabilityGroup, GroupMember, GroupInvite, DirectConnection, ShareLink | 02-prd-sharing.md §Data Model        |
 
-### Enumerations to define
+### Done ✅
 
-| Enum               | Values                                                                                      | Source Doc         |
-| ------------------ | ------------------------------------------------------------------------------------------- | ------------------ |
-| `ExerciseCategory` | BARBELL, DUMBBELL, KETTLEBELL, BODYWEIGHT, MACHINE, CABLE, CARDIO, PLYOMETRIC, LOADED_CARRY | 05-domain-model.md |
-| `MovementPattern`  | PUSH, PULL, SQUAT, HINGE, CARRY, LUNGE, ROTATION, LOCOMOTION                                | 05-domain-model.md |
-| `SetType`          | WORKING, WARMUP, DROP, AMRAP, PEAK, BACKOFF                                                 | 05-domain-model.md |
-| `GroupType`        | STRAIGHT, SUPERSET, CIRCUIT, INTERVAL, EMOM, DESCENDING_LADDER, ASCENDING_LADDER            | 05-domain-model.md |
-| `ScoringType`      | FOR_TIME, FOR_REPS, FOR_DISTANCE, NONE                                                      | 05-domain-model.md |
-| `CardioModality`   | RUNNING, CYCLING, SWIMMING, ROWING, RUCKING, JUMP_ROPE, STAIR_CLIMBER, ELLIPTICAL           | 05-domain-model.md |
-| `BlockType`        | STANDARD, DELOAD, PEAK, TEST, BRIDGE                                                        | 05-domain-model.md |
-| `SessionType`      | STRENGTH, CONDITIONING, SE, MIXED                                                           | 05-domain-model.md |
-| `ProgramSource`    | TB1, TB2, GREEN, MASS, AGELESS, CROSSFIT, CUSTOM                                            | 05-domain-model.md |
-| `GroupRole`        | COACH, MEMBER                                                                               | 02-prd-sharing.md  |
-| `ConnectionStatus` | PENDING, ACTIVE, DECLINED                                                                   | 02-prd-sharing.md  |
-
-### Zod schemas with invariant enforcement
-
-Each type gets a companion Zod schema. Key invariants to encode:
-
-| Invariant                    | Zod Enforcement                                                  |
-| ---------------------------- | ---------------------------------------------------------------- |
-| SS-1: Type-field consistency | Discriminated union with `z.discriminatedUnion('type', [...])`   |
-| SS-2: Percentage range       | `z.number().min(0.01).max(1.0)`                                  |
-| SS-3: Rep ladder ordering    | `.refine(arr => arr.every((v, i) => i === 0 \|\| v < arr[i-1]))` |
-| SS-4: NumberRange ordering   | `.refine(r => r.min <= r.max)`                                   |
-| EX-1: Name required          | `z.string().min(1).max(100)`                                     |
-| L-6: Perceived difficulty    | `z.number().int().min(1).max(10).optional()`                     |
-| L-7: RPE range               | `z.number().int().min(1).max(10).optional()`                     |
-| U-1: Weight unit             | `z.enum(['lb', 'kg'])`                                           |
-
-### Data adapter interface
-
-Define in `src/lib/data-adapter.ts` — the contract both adapters implement:
-
-| Method              | Signature                         | Purpose             |
-| ------------------- | --------------------------------- | ------------------- |
-| `getExercises`      | `(filters?) → Exercise[]`         | Exercise dictionary |
-| `getExercise`       | `(id) → Exercise`                 | Single exercise     |
-| `createExercise`    | `(exercise) → Exercise`           | Custom exercise     |
-| `getWorkoutLogs`    | `(userId, limit?) → WorkoutLog[]` | History list        |
-| `getWorkoutLog`     | `(id) → WorkoutLog`               | Full workout detail |
-| `saveWorkoutLog`    | `(log) → WorkoutLog`              | Create or update    |
-| `deleteWorkoutLog`  | `(id) → void`                     | Delete workout      |
-| `saveLoggedSet`     | `(set) → LoggedSet`               | Save individual set |
-| `getUserProfile`    | `(userId) → UserProfile`          | Profile + 1RMs      |
-| `updateUserProfile` | `(profile) → UserProfile`         | Update profile      |
-| `saveOneRepMax`     | `(entry) → OneRepMaxHistory`      | Record new 1RM      |
-
-### Done when
-
-- [ ] All types compile with no errors
-- [ ] SetScheme discriminated union covers all 12 variants
-- [ ] LoadSpec discriminated union covers all 7 variants
-- [ ] Zod schemas validate correct data and reject invalid data
-- [ ] Unit tests for: SS-2 (percentage range), SS-3 (rep ladder), SS-4 (number range)
-- [ ] Unit tests for SetScheme type-field consistency (SS-1): each variant rejects fields from other variants
-- [ ] Data adapter interface defined with all methods
-- [ ] `domain/` directory has zero React or framework dependencies (pure TypeScript)
+- [x] All types compile with no errors
+- [x] SetScheme discriminated union covers all 12 variants
+- [x] LoadSpec discriminated union covers all 7 variants
+- [x] Zod schemas validate correct data and reject invalid data
+- [x] Unit tests for: SS-2 (percentage range), SS-3 (rep ladder), SS-4 (number range)
+- [x] Unit tests for SetScheme type-field consistency (SS-1)
+- [x] Data adapter interface defined with all methods
+- [x] `domain/` directory has zero React or framework dependencies
 
 ---
 
-## STEP 3: Supabase Project Setup
+## STEP 3: Supabase Project Setup ✅ COMPLETE
 
 **Dependencies:** Step 2 (types for schema alignment). Can be done in parallel with Step 2.
 **Priority:** P0
 **Docs:** `08-erd.md` §Remote Schema, `06-invariants.md` §Sync Invariants
 
-### What to build
+### What was built
 
-Supabase project configuration and database schema. Primarily console/migration work.
+Supabase project configuration and database schema. Uses the new publishable key (`sb_publishable_...`) instead of legacy `anon` JWT key.
 
 ### 3a. Supabase project + Auth
 
-- Create Supabase project
-- Enable email/password auth
-- Optional: enable Google OAuth provider
-- Copy project URL and anon key to `.env.local`
-- Install `@supabase/supabase-js` client
+- Supabase project created
+- Email/password auth enabled
+- Project URL and publishable key in `.env.local`
+- `@supabase/supabase-js` client installed and connected
+- Supabase CLI initialized and linked for migration management
 
-### 3b. Database schema via migrations
+### 3b–3e. Schema, RLS, Indices, Seed Data
 
-Create tables matching `08-erd.md` using Supabase migrations. Core tables first, program tables can wait for Step 10.
+Phase 0 tables created via migrations: `exercises`, `workout_logs`, `logged_activity_groups`, `logged_activities`, `logged_sets`, `user_profiles`, `one_rep_max_history`.
 
-**Phase 0 tables (create now):**
+RLS enabled with simple user isolation: `user_id = auth.uid()`. Indices for key query patterns. Exercise dictionary seeded with 50+ common exercises.
 
-| Table                    | Priority | Source                 |
-| ------------------------ | -------- | ---------------------- |
-| `exercises`              | P0       | 08-erd.md §Core Tables |
-| `workout_logs`           | P0       | 08-erd.md §Core Tables |
-| `logged_activity_groups` | P0       | 08-erd.md §Core Tables |
-| `logged_activities`      | P0       | 08-erd.md §Core Tables |
-| `logged_sets`            | P0       | 08-erd.md §Core Tables |
-| `user_profiles`          | P0       | 08-erd.md §User Tables |
-| `one_rep_max_history`    | P0       | 08-erd.md §User Tables |
+### Done ✅
 
-**Phase 2 tables (create in Step 10):**
-
-| Table                | Priority |
-| -------------------- | -------- |
-| `programs`           | Step 10  |
-| `blocks`             | Step 10  |
-| `block_weeks`        | Step 10  |
-| `scheduled_sessions` | Step 10  |
-| `session_templates`  | Step 10  |
-| `activity_groups`    | Step 10  |
-| `activities`         | Step 10  |
-
-**Phase 3-4 tables (create in Steps 16-18):**
-
-| Table                   | Priority |
-| ----------------------- | -------- |
-| `accountability_groups` | Step 17  |
-| `group_members`         | Step 17  |
-| `group_invites`         | Step 17  |
-| `direct_connections`    | Step 17  |
-| `share_links`           | Step 16  |
-
-### 3c. Row Level Security policies
-
-**Phase 0 policies (simple user isolation):**
-
-```sql
--- Pattern for all Phase 0 tables
-ALTER TABLE workout_logs ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can only access own data"
-    ON workout_logs FOR ALL
-    USING (user_id = auth.uid());
-```
-
-Apply to all tables. Group/connection-aware policies added in Steps 17-18.
-
-### 3d. Indices
-
-Create indices from `08-erd.md` §Indices for Phase 0 tables:
-
-```sql
-CREATE INDEX idx_workout_logs_user_started ON workout_logs(user_id, started_at DESC);
-CREATE INDEX idx_logged_sets_activity ON logged_sets(logged_activity_id);
-CREATE INDEX idx_logged_activities_exercise ON logged_activities(exercise_id);
-CREATE INDEX idx_1rm_history ON one_rep_max_history(user_id, exercise_id, recorded_at DESC);
-```
-
-### 3e. Seed exercise dictionary
-
-Insert default exercises (barbell, bodyweight, cardio, kettlebell basics). ~50-80 common exercises to start.
-
-### Done when
-
-- [ ] Supabase project exists with Auth enabled
-- [ ] `.env.local` has correct project URL and anon key
-- [ ] All Phase 0 tables created via migrations
-- [ ] RLS enabled and tested — authenticated user can only access own data
-- [ ] Unauthenticated requests rejected
-- [ ] Exercise dictionary seeded with 50+ common exercises
-- [ ] Indices created for key queries
-- [ ] Supabase client connects from React app
+- [x] Supabase project exists with Auth enabled
+- [x] `.env.local` has correct project URL and publishable key
+- [x] All Phase 0 tables created via migrations
+- [x] RLS enabled and tested
+- [x] Unauthenticated requests rejected
+- [x] Exercise dictionary seeded with 50+ common exercises
+- [x] Indices created for key queries
+- [x] Supabase client connects from React app
 
 ---
 
 ## STEP 4: Supabase Data Adapter + Auth UI
 
-**Dependencies:** Step 2 (types), Step 3 (Supabase schema)
+**Dependencies:** Step 2 (types), Step 3 (Supabase schema), Step 1.5 (design system for auth screens)
 **Priority:** P0
-**Docs:** `07-architecture.md` §Data Layer, `10-user-flows.md` §Flow 9
+**Docs:** `07-architecture.md` §Data Layer, `10-user-flows.md` §Flow 9, `DESIGN.md`
 
 ### What to build
 
-Supabase adapter implementing the data adapter interface, plus basic auth screens. This is the browser-mode data layer — Tauri adapter comes in Step 8.
+Supabase adapter implementing the data adapter interface, plus basic auth screens styled with Iron & Ember.
 
 ### 4a. Supabase adapter
 
@@ -433,22 +501,25 @@ Wrap adapter calls in TanStack Query hooks:
 
 ### 4c. Auth screens
 
-| Screen          | Components                                 |
-| --------------- | ------------------------------------------ |
-| Sign In         | Email + password form, Google OAuth button |
-| Sign Up         | Email + password form                      |
-| Forgot Password | Email input, send reset                    |
+| Screen          | Components                                 | Design Notes (Iron & Ember)          |
+| --------------- | ------------------------------------------ | ------------------------------------ |
+| Sign In         | Email + password form, Google OAuth button | Underline inputs, `forge` CTA button |
+| Sign Up         | Email + password form                      | `surface-iron` card, 0px radius      |
+| Forgot Password | Email input, send reset                    | Minimal, `surface-anvil` background  |
+
+Auth screens use the industrial vocabulary: "AUTHENTICATE", "ACCESS FORGE", not "Welcome back!"
 
 ### 4d. Auth state management
 
 - Supabase auth listener wraps app
 - Unauthenticated → show auth screen
-- Authenticated → show main app
+- Authenticated → show main app with Iron & Ember layout
 - Sign out clears session
 
 ### Done when
 
 - [ ] User can sign up, sign in, sign out
+- [ ] Auth screens match Iron & Ember design (underline inputs, forge buttons, industrial copy)
 - [ ] Supabase adapter implements all data adapter methods
 - [ ] TanStack Query hooks fetch and cache data correctly
 - [ ] Exercises query returns seeded exercises
@@ -463,30 +534,30 @@ Wrap adapter calls in TanStack Query hooks:
 
 **Dependencies:** Step 4 (data adapter working)
 **Priority:** P0
-**Docs:** `01-prd-core.md` §FR-5, `05-domain-model.md` §Exercise + §UserProfile
+**Docs:** `01-prd-core.md` §FR-5, `05-domain-model.md` §Exercise + §UserProfile, `DESIGN.md` §4 Data Tables
 
 ### What to build
 
-Exercise search, filtering, custom exercise creation, and 1RM tracking.
+Exercise search, filtering, custom exercise creation, and 1RM tracking. All UI uses Iron & Ember design tokens.
 
 ### 5a. Exercise search screen
 
 - Search by name and aliases (debounced, 200ms)
-- Filter by category, muscle group, movement pattern
+- Filter by category, muscle group, movement pattern — use flat `surface-steel` badges for filter chips
 - "Recently used" exercises shown first (query by `logged_activities`)
 - Create custom exercise option at bottom of results
 
 ### 5b. Exercise detail screen
 
-- Exercise metadata (category, muscles, equipment)
-- 1RM history chart (line chart over time)
-- "Update 1RM" button
+- Exercise metadata (category, muscles, equipment) in `label-medium` Inter, ALL-CAPS
+- 1RM history chart — line chart using `arc` (#86CFFF) for primary data line, `ember` for secondary (Recharts with Iron & Ember palette)
+- "UPDATE 1RM" button in `forge` CTA style
 - Per-exercise workout history (last N sessions with this exercise)
 
 ### 5c. 1RM management
 
-- Profile screen section showing current 1RMs for all tested exercises
-- Update 1RM: enter weight, mark tested vs estimated
+- Profile screen section showing current 1RMs — large numbers in `text-readout` (Space Grotesk 3.5rem)
+- Update 1RM: underline input for weight, mark tested vs estimated
 - Historical entries preserved (insert-only, never modified per PR-2)
 - 1RM changes cascade to all percentage-based calculations
 
@@ -504,8 +575,8 @@ Exercise search, filtering, custom exercise creation, and 1RM tracking.
 - [ ] Recently used exercises appear first
 - [ ] Custom exercise creation works
 - [ ] 1RM entry saves to `one_rep_max_history`
-- [ ] 1RM history displayed as line chart (Recharts)
-- [ ] Profile screen shows all current 1RMs
+- [ ] 1RM history displayed as line chart with `arc` color
+- [ ] Profile screen shows all current 1RMs in `text-readout` scale
 - [ ] Exercise detail shows per-exercise workout history
 
 ---
@@ -514,11 +585,11 @@ Exercise search, filtering, custom exercise creation, and 1RM tracking.
 
 **Dependencies:** Step 5 (exercise dictionary for adding exercises)
 **Priority:** P0
-**Docs:** `01-prd-core.md` §UC-1 + §UC-3 + §UC-4 + §UC-5 + §FR-1 + §FR-2 + §FR-3, `09-state-machines.md` §Active Workout + §Set Logging + §Circuit Execution, `10-user-flows.md` §Flow 3 + §Flow 4 + §Flow 5 + §Flow 6
+**Docs:** `01-prd-core.md` §UC-1 + §UC-3 + §UC-4 + §UC-5 + §FR-1 + §FR-2 + §FR-3, `09-state-machines.md` §Active Workout + §Set Logging + §Circuit Execution, `10-user-flows.md` §Flow 3 + §Flow 4 + §Flow 5 + §Flow 6, `DESIGN.md` §4 Data Tables + §5 Layout
 
 ### What to build
 
-The most important screen in the app. Active workout logging for all workout types: barbell sets, cardio, rucking, SE circuits.
+The most important screen in the app. Active workout logging for all workout types: barbell sets, cardio, rucking, SE circuits. This screen is data-dense per the density philosophy — use `body-small` and `label-medium` Inter.
 
 ### 6a. Zustand store: active workout state
 
@@ -532,31 +603,33 @@ The most important screen in the app. Active workout logging for all workout typ
 
 ### 6b. Start workout flow
 
-- "Start Workout" button on Today screen
+- "EXECUTE WORKOUT" button on Today screen (molten gradient CTA)
 - Creates `WorkoutLog` with `startedAt = now()`
 - Saves to database immediately (crash recovery)
 - Navigates to active workout screen
-- Starts elapsed timer
+- Starts elapsed timer — displayed in `text-readout` Space Grotesk
 
 ### 6c. Add exercise + log sets (barbell/dumbbell/bodyweight)
 
-- Tap "+ Add Exercise" → exercise search (from Step 5)
-- First set row appears empty for ad-hoc
-- Enter weight and reps, tap checkmark to confirm
+- Tap "+ ADD EXERCISE" → exercise search (from Step 5)
+- Set logging table with ALL-CAPS column headers: SET, PRESCRIBED, ACTUAL, STATUS
+- Enter weight and reps, tap `check_circle` icon to confirm
 - Set saved to database immediately
 - Next set row pre-fills from previous set values
 - Rest timer starts automatically (default: 2 min, configurable)
+- Rest timer displayed in `surface-steel` card with countdown in Space Grotesk
+- COMPLETE status badge: flat `forge` rectangle
 
 ### 6d. Log cardio session
 
-- Select cardio modality (run, cycle, swim, row)
-- Running timer display
-- Manual entry: distance and/or duration after completion
+- Select cardio modality (run, cycle, swim, row) — icon chips
+- Running timer display in `text-readout`
+- Manual entry: distance and/or duration after completion (underline inputs)
 - Optional: heart rate, intensity level
 
 ### 6e. Log ruck
 
-- Enter ruck load weight
+- Enter ruck load weight (underline input)
 - Running timer
 - After completion: distance, optional elevation gain
 - Pace auto-calculated from duration and distance
@@ -565,21 +638,21 @@ The most important screen in the app. Active workout logging for all workout typ
 
 Circuit execution mode per `09-state-machines.md` §Circuit Execution:
 
-- Show circuit overview (exercises, target reps, rounds)
+- Show circuit overview (exercises, target reps, rounds) — data table format
 - Step through: exercise → confirm reps → inter-exercise rest → next exercise
-- Between rounds: inter-round rest with countdown
+- Between rounds: inter-round rest with countdown in `surface-steel` card
 - Summary after all rounds complete
 
 ### 6g. Finish workout
 
-- "Finish Workout" button sets `completedAt`
-- Show workout summary (duration, exercises, total sets, volume)
+- "FINISH" button sets `completedAt`
+- Show workout summary — duration in `text-readout`, exercises, total sets, volume
 - Navigate back to Today screen
 
 ### 6h. Crash recovery
 
 - Active workout with no `completedAt` detected on app launch
-- Prompt: "Resume your workout?" with Resume/Discard options
+- Prompt: "RESUME SESSION?" with RESUME/DISCARD options
 - Resume restores full state from database
 
 ### Non-functional targets (from 01-prd-core.md)
@@ -602,12 +675,13 @@ Circuit execution mode per `09-state-machines.md` §Circuit Execution:
 - [ ] Cardio logging: duration + distance entry with pace calculation
 - [ ] Ruck logging: load weight + duration + distance + optional elevation
 - [ ] SE circuit mode: step through exercises with rest timers between
-- [ ] Elapsed session timer runs throughout
-- [ ] "Finish Workout" shows summary with duration, exercises, volume
+- [ ] Elapsed session timer runs in `text-readout` Space Grotesk
+- [ ] "FINISH" shows summary with duration, exercises, volume
 - [ ] Set type classification works (working, warmup, drop, backoff)
 - [ ] Only one active workout at a time (L-8)
 - [ ] Crash recovery prompt on relaunch with incomplete workout
 - [ ] All data persists to Supabase on every set confirmation
+- [ ] UI matches Iron & Ember: tonal layering, no borders, industrial vocabulary
 
 ---
 
@@ -615,47 +689,50 @@ Circuit execution mode per `09-state-machines.md` §Circuit Execution:
 
 **Dependencies:** Step 6 (workouts exist to view)
 **Priority:** P0
-**Docs:** `01-prd-core.md` §FR-6
+**Docs:** `01-prd-core.md` §FR-6, `DESIGN.md` §4 Data Tables + §5 Layout
 
 ### What to build
 
-History list, workout detail view, and per-exercise history.
+History list, workout detail view, and per-exercise history. The VAULT screen houses analytics in later steps, but history is accessible from FORGE (dashboard).
 
 ### 7a. History list
 
 - Reverse chronological list of completed workouts
-- Each entry: date, duration, exercise names, set count
+- Each entry on `surface-iron` card: date, duration, exercise names, set count
+- Alternating rows with `surface-charcoal` for density
 - Virtualized list for performance (large histories)
 - Tap to view full detail
 
 ### 7b. Workout detail view
 
 - Full workout reconstruction: exercises → sets → reps/weight
+- Data table with SET / ACTUAL / STATUS columns (ALL-CAPS headers)
 - Program context shown if applicable (block, week, day)
 - Notes and perceived difficulty
-- Duration and volume totals
+- Duration and volume totals in `text-readout` scale
 
 ### 7c. Per-exercise history
 
 - Navigate from exercise detail screen
 - Last N sessions with this exercise
-- Set-by-set comparison across sessions
-- Volume trend (tonnage per session over time)
+- Set-by-set comparison across sessions — alternating row stripes
+- Volume trend: horizontal load bars (`ember` on `surface-steel` track), not circular charts
 
 ### Done when
 
 - [ ] History list shows all completed workouts in reverse chronological order
 - [ ] Workout detail shows full set-by-set breakdown
 - [ ] Per-exercise history shows last 10+ sessions
-- [ ] Volume trend chart renders correctly
+- [ ] Volume trend renders as horizontal load bars (not circular)
 - [ ] Virtualized list performs well with 100+ workouts
 - [ ] Delete workout available with confirmation dialog
+- [ ] All UI uses Iron & Ember tonal layering and typography
 
 ---
 
 ## ═══ PHASE 0 COMPLETE ═══
 
-**Checkpoint:** The React app runs in the browser. Users can sign up, search exercises, set 1RMs, log any workout type (barbell, cardio, ruck, circuit), view history, and see per-exercise trends. Data is stored in Supabase. Take your phone to the gym and log a workout in the mobile browser.
+**Checkpoint:** The React app runs in the browser with Iron & Ember design system. Users can sign up, search exercises, set 1RMs, log any workout type (barbell, cardio, ruck, circuit), view history, and see per-exercise trends. Data is stored in Supabase. Take your phone to the gym and log a workout in the mobile browser.
 
 ---
 
@@ -669,12 +746,14 @@ History list, workout detail view, and per-exercise history.
 
 Wrap the React app in Tauri v2. Add Rust backend with SQLite for offline-first operation. Create the Tauri data adapter.
 
+**Design note:** Bundle Space Grotesk, Inter, and Material Symbols font files locally for Tauri builds to avoid Google Fonts network dependency. The heat-blur frosted glass effect may need testing in Tauri WebView — `backdrop-filter` support varies.
+
 ### 8a. Tauri project initialization
 
 - `bun create tauri-app` in existing project
 - Tauri v2 configuration (`tauri.conf.json`)
 - Android target initialization (`tauri android init`)
-- Verify React app renders inside Tauri WebView
+- Verify React app renders inside Tauri WebView with Iron & Ember styling intact
 
 ### 8b. Rust SQLite setup
 
@@ -701,29 +780,13 @@ Typed Rust functions invokable from React via `invoke()`:
 
 ### 8d. Tauri data adapter
 
-Implements the same data adapter interface as the Supabase adapter, but calls Tauri commands:
-
-```typescript
-// Pseudocode
-const tauriAdapter: DataAdapter = {
-  async getExercises(filters) {
-    return await invoke('get_exercises', { filters })
-  },
-  async saveLoggedSet(set) {
-    return await invoke('save_logged_set', { set })
-  },
-  // ...
-}
-```
+Implements the same data adapter interface as the Supabase adapter, but calls Tauri commands.
 
 ### 8e. Adapter switching
 
 ```typescript
 import { isTauri } from '@tauri-apps/api/core'
-
-export const adapter = isTauri()
-  ? tauriAdapter // SQLite via Rust
-  : supabaseAdapter // Direct Supabase
+export const adapter = isTauri() ? tauriAdapter : supabaseAdapter
 ```
 
 All existing TanStack Query hooks use the adapter — switching is transparent.
@@ -737,6 +800,7 @@ All existing TanStack Query hooks use the adapter — switching is transparent.
 ### Done when
 
 - [ ] React app renders inside Tauri WebView (desktop and Android)
+- [ ] Iron & Ember styling renders correctly in WebView (fonts, colors, heat-blur)
 - [ ] SQLite database creates all tables on first launch
 - [ ] All Tauri commands work: CRUD for workouts, exercises, profile
 - [ ] Tauri adapter passes the same functional tests as Supabase adapter
@@ -745,6 +809,7 @@ All existing TanStack Query hooks use the adapter — switching is transparent.
 - [ ] Existing workout logging flow works identically in Tauri mode
 - [ ] Data persists across app restarts (SQLite)
 - [ ] App works with airplane mode (offline-first validated)
+- [ ] Fonts bundled locally (no Google Fonts dependency in native builds)
 
 ---
 
@@ -768,12 +833,12 @@ Bidirectional sync between local SQLite and Supabase, plus background rest timer
 
 ### 9b. Sync state exposed to React
 
-| State     | Meaning                  | UI                                |
-| --------- | ------------------------ | --------------------------------- |
-| `offline` | No auth or no network    | No indicator (app works normally) |
-| `syncing` | Push or pull in progress | Subtle sync icon                  |
-| `synced`  | All caught up            | Green dot (optional)              |
-| `error`   | Sync failed              | Toast with retry                  |
+| State     | Meaning                  | UI Indicator (Iron & Ember)                     |
+| --------- | ------------------------ | ----------------------------------------------- |
+| `offline` | No auth or no network    | No indicator (app works normally)               |
+| `syncing` | Push or pull in progress | `cloud_done` icon pulsing in `ember`            |
+| `synced`  | All caught up            | `cloud_done` icon solid in `steel-blue`         |
+| `error`   | Sync failed              | `error` icon in `error` color, toast with retry |
 
 ### 9c. Rest timer in Rust
 
@@ -783,7 +848,7 @@ The rest timer must survive screen lock and WebView backgrounding:
 - Rust starts async timer
 - Rust emits `timer_tick` event every second
 - Rust emits `timer_expired` event + triggers platform notification
-- React subscribes to events for UI countdown display
+- React subscribes to events for UI countdown display in `surface-steel` card, Space Grotesk
 
 ### 9d. Notification for timer expiry
 
@@ -796,8 +861,8 @@ The rest timer must survive screen lock and WebView backgrounding:
 - [ ] Workout logged offline (airplane mode) → go online → data appears in Supabase
 - [ ] Workout logged on web (Supabase) → appears on Tauri app via sync
 - [ ] Conflict: same workout edited on both → last-write-wins correctly
-- [ ] Sync state indicator reflects actual state
-- [ ] Rest timer runs in Rust, counts down in React UI
+- [ ] Sync state indicator uses correct Iron & Ember icons and colors
+- [ ] Rest timer runs in Rust, counts down in React UI (Space Grotesk)
 - [ ] Rest timer survives screen lock on Android
 - [ ] Timer expiry triggers notification with sound/vibration
 - [ ] Timer can be skipped or adjusted from React UI
@@ -814,7 +879,7 @@ The rest timer must survive screen lock and WebView backgrounding:
 
 **Dependencies:** Step 9 (Tauri + sync working)
 **Priority:** P0
-**Docs:** `05-domain-model.md` §SessionTemplate + §SetScheme, `10-user-flows.md` §Flow 7 §SetScheme Editor
+**Docs:** `05-domain-model.md` §SessionTemplate + §SetScheme, `10-user-flows.md` §Flow 7 §SetScheme Editor, `DESIGN.md` §4
 
 ### What to build
 
@@ -826,7 +891,7 @@ Create program-related tables: `session_templates`, `activity_groups`, `activiti
 
 ### 10b. SetScheme editor component
 
-The most complex form in the app. A type selector (12 options) that dynamically shows the correct fields:
+The most complex form in the app. A type selector (12 options) that dynamically shows the correct fields. All form fields use underline-only inputs per Iron & Ember spec.
 
 | SetScheme Type      | Fields Shown                                   |
 | ------------------- | ---------------------------------------------- |
@@ -845,21 +910,22 @@ The most complex form in the app. A type selector (12 options) that dynamically 
 
 ### 10c. Session template builder
 
-- Name the session
-- Add activity groups (straight, circuit, superset, interval)
+- Name the session (underline input, Space Grotesk)
+- Add activity groups (straight, circuit, superset, interval) — `secondary` buttons
 - Within each group: add exercises, configure set scheme per exercise
 - Configure group-level settings (rounds, rest between activities)
-- Save template
+- Save template — `forge` CTA
 
 ### Done when
 
 - [ ] SetScheme editor renders correct fields for all 12 types
 - [ ] Switching type clears irrelevant fields
-- [ ] Zod validation runs on save, shows inline errors
+- [ ] Zod validation runs on save, shows inline errors in `error` color
 - [ ] Session template saves with nested activity groups and activities
 - [ ] Session template loads and displays correctly
 - [ ] Edit existing template works
 - [ ] Templates sync via Supabase
+- [ ] All form inputs use Iron & Ember underline style
 
 ---
 
@@ -899,7 +965,7 @@ Pre-build session templates and program structures for common TB programs:
 
 ### 11d. Program activation
 
-- User selects "Activate" on a program
+- User selects "ACTIVATE" on a program (forge CTA)
 - System tracks current position (block index, week number, next session)
 - Only one active program at a time
 
@@ -919,21 +985,21 @@ Pre-build session templates and program structures for common TB programs:
 
 **Dependencies:** Step 11 (program data structure exists)
 **Priority:** P1
-**Docs:** `10-user-flows.md` §Flow 7
+**Docs:** `10-user-flows.md` §Flow 7, `DESIGN.md` §5 Layout (Desktop)
 
 ### What to build
 
-Visual drag-and-drop program builder. This is primarily a desktop/web experience — the wide viewport is needed for the complexity.
+Visual drag-and-drop program builder. Primarily a desktop/web experience — uses the multi-column layout from the desktop sidebar. Uses `drag_indicator` Material Symbol for drag handles.
 
 ### 12a. Block editor
 
-- Add/remove/reorder blocks (dnd-kit)
-- Set block type (standard, deload, peak)
+- Add/remove/reorder blocks (dnd-kit) — `drag_indicator` icon for handles
+- Set block type (standard, deload, peak) — flat `surface-steel` badges
 - Set duration (weeks)
 
 ### 12b. Week editor
 
-- Visual week grid showing days
+- Visual week grid showing days on `surface-iron` cards
 - Drag session templates onto days
 - Copy week to fill a block quickly
 
@@ -941,13 +1007,13 @@ Visual drag-and-drop program builder. This is primarily a desktop/web experience
 
 - Assign existing session templates to days
 - Create new session template inline
-- Preview session content (exercises, set schemes)
+- Preview session content (exercises, set schemes) in `surface-charcoal` panel
 
 ### 12d. Program preview
 
 - Read-only view of entire program structure
-- Week-by-week, session-by-session breakdown
-- Working weights shown based on current 1RMs
+- Week-by-week, session-by-session breakdown in data table format
+- Working weights shown based on current 1RMs — Space Grotesk numbers
 
 ### Done when
 
@@ -957,6 +1023,7 @@ Visual drag-and-drop program builder. This is primarily a desktop/web experience
 - [ ] Program preview shows full structure with calculated weights
 - [ ] Mobile: simplified list-based editor (no drag-drop)
 - [ ] Saved programs appear in library
+- [ ] Desktop layout uses sidebar + multi-column grid per DESIGN.md
 
 ---
 
@@ -964,7 +1031,7 @@ Visual drag-and-drop program builder. This is primarily a desktop/web experience
 
 **Dependencies:** Step 11 (programs exist), Step 6 (logging infrastructure)
 **Priority:** P0
-**Docs:** `01-prd-core.md` §UC-2, `10-user-flows.md` §Flow 3
+**Docs:** `01-prd-core.md` §UC-2, `10-user-flows.md` §Flow 3, `DESIGN.md` §4 Data Tables
 
 ### What to build
 
@@ -972,9 +1039,9 @@ The "Today's Workout" flow: load prescribed session, calculate weights from 1RMs
 
 ### 13a. Today screen: program context
 
-- If active program → show "Today's Session" card
-- Display: session name, exercise list, set/rep/weight summary
-- "Start Today's Workout" button
+- If active program → show "TODAY'S SESSION" card on `surface-iron`
+- Display: session name in Space Grotesk, exercise list, set/rep/weight summary
+- "EXECUTE SESSION" button (molten gradient CTA)
 
 ### 13b. Percentage → weight calculation
 
@@ -985,21 +1052,22 @@ The "Today's Workout" flow: load prescribed session, calculate weights from 1RMs
 
 ### 13c. Pre-filled workout experience
 
-- All sets appear pre-populated
-- User taps checkmark to confirm (2-tap logging)
+- All sets appear pre-populated in data table: SET / PRESCRIBED / ACTUAL columns
+- User taps `check_circle` to confirm (2-tap logging)
 - User can edit any value before confirming (deviation from prescription)
 - AMRAP sets show "5+" notation
 - Prescribed values stored alongside actual values in LoggedSet
+- VARIANCE column shows deviation: green (`arc`) if matched/exceeded, `error` color if under
 
 ### 13d. Program position advancement
 
 - After completing the workout, advance to next session
 - Track: current block, current week, next session day label
-- Deload week awareness (visual indicator)
+- Deload week awareness — visual indicator using `steel-blue` badge
 
 ### Done when
 
-- [ ] Today screen shows "Today's Session" when program is active
+- [ ] Today screen shows "TODAY'S SESSION" when program is active
 - [ ] Percentage calculations resolve to plate-rounded weights
 - [ ] All sets pre-filled with prescribed values
 - [ ] Confirming a pre-filled set takes 1 tap (checkmark)
@@ -1008,12 +1076,13 @@ The "Today's Workout" flow: load prescribed session, calculate weights from 1RMs
 - [ ] Workout links to program context (block, week, day)
 - [ ] Program position advances after workout completion
 - [ ] Plate calculator available (visual plate loading guide)
+- [ ] SET / PRESCRIBED / ACTUAL / VARIANCE table matches Iron & Ember spec
 
 ---
 
 ## ═══ PHASE 2 COMPLETE ═══
 
-**Checkpoint:** Users can create programs, build session templates with all 12 SetScheme types, follow structured multi-week periodized programs with percentage-based loading, and log workouts with prescribed-vs-actual tracking. The TB template library provides ready-made programs.
+**Checkpoint:** Users can create programs, build session templates with all 12 SetScheme types, follow structured multi-week periodized programs with percentage-based loading, and log workouts with prescribed-vs-actual tracking. The TB template library provides ready-made programs. All UI follows Iron & Ember design system.
 
 ---
 
@@ -1021,23 +1090,24 @@ The "Today's Workout" flow: load prescribed session, calculate weights from 1RMs
 
 **Dependencies:** Step 7 (workout history exists)
 **Priority:** P1
-**Docs:** `05-domain-model.md` §Domain Events (PersonalRecordSet), `11-notification-design.md` §Type 3
+**Docs:** `05-domain-model.md` §Domain Events (PersonalRecordSet), `11-notification-design.md` §Type 3, `DESIGN.md` §4 Progress & Metrics
 
 ### What to build
 
-Dashboard with progress charts, volume tracking, and automatic PR detection.
+The VAULT screen: progress charts, volume tracking, and automatic PR detection.
 
 ### 14a. 1RM trends
 
 - Line chart: 1RM over time per exercise (Recharts)
+- Chart palette per DESIGN.md: `arc` (#86CFFF) primary data line, `ember` (#FFB59C) secondary, `steel-blue` (#B1CAD7) tertiary
 - Filter by exercise, date range
 - Show tested vs estimated markers
 
 ### 14b. Volume tracking
 
 - Weekly tonnage by exercise or muscle group
-- Bar chart: volume per week over time
-- Sets per muscle group distribution (radar/pie chart)
+- **Horizontal load bars** (`ember` on `surface-steel` track) — no circular progress rings per DESIGN.md
+- Large metric readouts (12.4T volume, 94% adherence) in Space Grotesk `text-readout` scale
 
 ### 14c. PR detection
 
@@ -1050,18 +1120,20 @@ After workout completion, scan logged sets for new bests:
 
 ### 14d. PR celebration
 
-- In-app celebration animation when PR detected
-- Notification (from `11-notification-design.md` §Type 3): "New PR: Squat — 275lb × 5"
+- PR notification styled with molten gradient banner
+- Notification: "NEW PR: SQUAT — 275LB × 5" (industrial vocabulary)
 - PR history list in exercise detail
 
 ### Done when
 
-- [ ] 1RM trend chart renders correctly
-- [ ] Volume tracking shows weekly tonnage
+- [ ] 1RM trend chart renders with `arc` / `ember` / `steel-blue` palette
+- [ ] Volume tracking shows weekly tonnage as horizontal load bars
+- [ ] Large metrics in Space Grotesk `text-readout`
 - [ ] PR detection runs after every workout completion
 - [ ] PR notification fires for new bests
 - [ ] PR history visible in exercise detail
-- [ ] Dashboard renders well on both mobile and desktop viewports
+- [ ] VAULT screen renders well on both mobile and desktop viewports
+- [ ] No circular progress rings — horizontal bars only
 
 ---
 
@@ -1081,7 +1153,7 @@ Three notification types only: rest timer alerts (already done in Step 9), sessi
 - Configurable time (default: 30 min before typical training time)
 - Only fires when: active program + session today + not yet completed
 - Content: session name + exercise summary
-- Actions: "Start Workout" / "Later"
+- Actions: "EXECUTE" / "LATER" (industrial vocabulary)
 
 ### 15b. Notification channels (Android)
 
@@ -1099,14 +1171,15 @@ Three notification types only: rest timer alerts (already done in Step 9), sessi
 ### 15d. Forbidden messaging (from 06-invariants.md)
 
 - Never: "You missed your workout", "Don't skip leg day", streaks
-- Always: neutral, actionable, informational
+- Always: neutral, actionable, informational — commands, not conversations
 
 ### Done when
 
 - [ ] Session reminder fires at configured time when workout is due
-- [ ] "Start Workout" action opens pre-filled workout
+- [ ] "EXECUTE" action opens pre-filled workout
 - [ ] Quiet hours prevent non-timer notifications
 - [ ] All notification text passes shame-free review
+- [ ] All notification text uses industrial vocabulary (no exclamation points, no emoji)
 - [ ] Notification settings screen with per-type toggles and quiet hours
 
 ---
@@ -1123,7 +1196,7 @@ Generate share links for programs and workout logs. No RLS changes needed — us
 
 ### 16a. Share link generation
 
-- "Share" button on program detail and workout detail screens
+- "SHARE" button (`secondary` style) on program detail and workout detail screens
 - Generate random 12-character alphanumeric token
 - Store in `share_links` table with entity type and entity ID
 - Display copyable URL: `https://ardentforge.app/s/{token}`
@@ -1132,11 +1205,11 @@ Generate share links for programs and workout logs. No RLS changes needed — us
 
 - Public route `/s/:token` — no auth required to view
 - Fetch shared entity via token lookup (bypasses RLS)
-- Read-only display of program structure or workout log
+- Read-only display of program structure or workout log, styled with Iron & Ember
 
 ### 16c. Clone shared program
 
-- "Clone to My Programs" button (requires auth)
+- "CLONE TO LIBRARY" button (forge CTA, requires auth)
 - Deep copy: program + blocks + weeks + sessions + templates
 - Owned by the cloning user (`user_id` = their ID)
 
@@ -1147,12 +1220,13 @@ Generate share links for programs and workout logs. No RLS changes needed — us
 
 ### Done when
 
-- [ ] "Share" button generates a working link
+- [ ] "SHARE" button generates a working link
 - [ ] Shared program viewable without authentication
 - [ ] Shared workout log viewable without authentication
-- [ ] "Clone" copies program to authenticated user's account
+- [ ] "CLONE" copies program to authenticated user's account
 - [ ] Author can revoke share links
 - [ ] Revoked links return 404
+- [ ] Shared view renders with Iron & Ember styling
 
 ---
 
@@ -1190,7 +1264,7 @@ Update RLS policies from simple `user_id = auth.uid()` to include group membersh
 ### 17d. Group activity feed
 
 - Chronological list of group members' recent workouts
-- Entry: member name, date, session name, exercise summary
+- Entry: member name, date, session name, exercise summary — data table on `surface-iron` cards
 - Tap to expand full set-by-set detail
 - Private fields excluded: perceived difficulty, bodyweight, notes
 
@@ -1229,14 +1303,14 @@ Coach can create/edit programs for group members and update their 1RMs.
 
 ### 18a. Coach program creation
 
-- Coach opens group → selects member → "Create Program"
+- Coach opens group → selects member → "CREATE PROGRAM"
 - Standard program builder (from Step 12) with `user_id = member` and `created_by = coach`
-- Member receives notification: "Coach created a program for you"
+- Member receives notification: "COACH ASSIGNED PROGRAM: [name]"
 
 ### 18b. Coach session editing
 
 - Coach can modify upcoming scheduled sessions for a member
-- Changes reflected when member opens "Today's Workout"
+- Changes reflected when member opens "TODAY'S SESSION"
 - Member notification on changes
 
 ### 18c. Coach 1RM updates
@@ -1274,16 +1348,19 @@ Coach can create/edit programs for group members and update their 1RMs.
 
 - Log a barbell workout in mobile browser → data persists in Supabase
 - **This validates the end-to-end pipeline. Do it ASAP.**
+- Verify Iron & Ember design renders correctly on actual mobile device
 
 ### Milestone 2: First Workout in Tauri (after Step 8)
 
 - Log same workout in Tauri Android APK → data in local SQLite
 - Verify offline → go online → data appears in Supabase
+- Verify fonts load from local bundle (no network dependency)
 
 ### Milestone 3: Programmed Workout Round-Trip (after Step 13)
 
 - Create TB Operator program → activate → log Day 1 with pre-filled sets
 - Verify prescribed vs actual tracking works
+- Verify PRESCRIBED / ACTUAL / VARIANCE columns display correctly
 
 ### Milestone 4: Cross-User Visibility (after Step 17)
 
@@ -1297,35 +1374,36 @@ Coach can create/edit programs for group members and update their 1RMs.
 
 ## Timeline Mapping
 
-| Step                              | Priority | Est. Effort    | Can Parallel With  |
-| --------------------------------- | -------- | -------------- | ------------------ |
-| 1. Project Scaffold               | P0       | 0.5 day        | —                  |
-| 2. Domain Types + Zod             | P0       | 1.5 days       | 3 (Supabase setup) |
-| 3. Supabase Setup                 | P0       | 0.5 day        | Step 2             |
-| 4. Data Adapter + Auth            | P0       | 2 days         | —                  |
-| 5. Exercise Dictionary + 1RMs     | P0       | 2 days         | —                  |
-| 6. Active Workout Logging         | P0       | 4 days         | —                  |
-| 7. Workout History                | P0       | 1.5 days       | —                  |
-| **Phase 0 subtotal**              |          | **~12 days**   |                    |
-| 8. Tauri Shell + Rust/SQLite      | P0       | 3 days         | —                  |
-| 9. Sync Engine + Rest Timer       | P0       | 2.5 days       | —                  |
-| **Phase 1 subtotal**              |          | **~5.5 days**  |                    |
-| 10. Session Templates + SetScheme | P0       | 3 days         | —                  |
-| 11. Program Structure             | P0       | 2 days         | —                  |
-| 12. Program Builder (DnD)         | P1       | 3 days         | —                  |
-| 13. Programmed Workout Logging    | P0       | 2.5 days       | —                  |
-| **Phase 2 subtotal**              |          | **~10.5 days** |                    |
-| 14. Progress Analytics + PR       | P1       | 2.5 days       | 15                 |
-| 15. Notification System           | P1       | 1.5 days       | 14                 |
-| 16. Share Links                   | P1       | 1.5 days       | 14, 15             |
-| 17. Accountability Groups         | P2       | 3 days         | —                  |
-| 18. Coach Write Access            | P2       | 2 days         | —                  |
-| **Phase 3-4 subtotal**            |          | **~11 days**   |                    |
-| **Total**                         |          | **~39 days**   |                    |
+| Step                                  | Priority | Est. Effort    | Can Parallel With  |
+| ------------------------------------- | -------- | -------------- | ------------------ |
+| 1. Project Scaffold                   | P0       | 0.5 day        | —                  |
+| **1.5. Design System (Iron & Ember)** | **P0**   | **1 day**      | —                  |
+| 2. Domain Types + Zod                 | P0       | 1.5 days       | 3 (Supabase setup) |
+| 3. Supabase Setup                     | P0       | 0.5 day        | Step 2             |
+| 4. Data Adapter + Auth                | P0       | 2 days         | —                  |
+| 5. Exercise Dictionary + 1RMs         | P0       | 2 days         | —                  |
+| 6. Active Workout Logging             | P0       | 4 days         | —                  |
+| 7. Workout History                    | P0       | 1.5 days       | —                  |
+| **Phase 0 subtotal**                  |          | **~13 days**   |                    |
+| 8. Tauri Shell + Rust/SQLite          | P0       | 3 days         | —                  |
+| 9. Sync Engine + Rest Timer           | P0       | 2.5 days       | —                  |
+| **Phase 1 subtotal**                  |          | **~5.5 days**  |                    |
+| 10. Session Templates + SetScheme     | P0       | 3 days         | —                  |
+| 11. Program Structure                 | P0       | 2 days         | —                  |
+| 12. Program Builder (DnD)             | P1       | 3 days         | —                  |
+| 13. Programmed Workout Logging        | P0       | 2.5 days       | —                  |
+| **Phase 2 subtotal**                  |          | **~10.5 days** |                    |
+| 14. Progress Analytics + PR           | P1       | 2.5 days       | 15                 |
+| 15. Notification System               | P1       | 1.5 days       | 14                 |
+| 16. Share Links                       | P1       | 1.5 days       | 14, 15             |
+| 17. Accountability Groups             | P2       | 3 days         | —                  |
+| 18. Coach Write Access                | P2       | 2 days         | —                  |
+| **Phase 3-4 subtotal**                |          | **~11 days**   |                    |
+| **Total**                             |          | **~40 days**   |                    |
 
-> **Critical path to browser MVP:** Steps 1 → 2/3 → 4 → 5 → 6 → 7 = ~12 days
-> **Critical path to Tauri GO/NO-GO:** + Steps 8 → 9 = ~17.5 days
-> **Critical path to programmed workouts:** + Steps 10 → 11 → 13 = ~25 days
+> **Critical path to browser MVP:** Steps 1 → 1.5 → 2/3 → 4 → 5 → 6 → 7 = ~13 days
+> **Critical path to Tauri GO/NO-GO:** + Steps 8 → 9 = ~18.5 days
+> **Critical path to programmed workouts:** + Steps 10 → 11 → 13 = ~26 days
 
 ---
 
@@ -1342,6 +1420,10 @@ At community scale (< 50 users), Ardent Forge stays well within Supabase's free 
 | Realtime       | 200 concurrent   | < 10                    |
 | Edge Functions | 500K invocations | 0 (not used)            |
 | Storage        | 1 GB             | 0 (no file uploads)     |
+
+### API Keys
+
+Ardent Forge uses the new Supabase publishable key (`sb_publishable_...`) instead of the legacy `anon` JWT key. The publishable key is sent in the `apikey` header by the Supabase client library. Benefits: independently rotatable, no JWT secret coupling, shorter and easier to manage. Legacy `anon` key still works but is deprecated.
 
 ### JSON Columns
 
@@ -1365,15 +1447,21 @@ Complex types (SetScheme, LoadSpec, Weight, prescribed values) are stored as JSO
 
 ## Design Decisions Summary
 
-| #   | Decision                                             | Rationale                                                                 |
-| --- | ---------------------------------------------------- | ------------------------------------------------------------------------- |
-| 1   | Phase 0 is browser-only against Supabase             | Validates data model and UX before committing to Tauri                    |
-| 2   | Data adapter pattern from day one                    | Switching between Supabase and Tauri/SQLite is transparent                |
-| 3   | SetScheme as discriminated union, not generic schema | Each workout type gets first-class field validation                       |
-| 4   | JSON columns for complex nested types                | Avoids explosion of junction tables for SetScheme variants                |
-| 5   | 1RM history is insert-only                           | Audit trail for progression, never lose historical data                   |
-| 6   | Pre-fill + confirm pattern for programmed logging    | Minimizes taps (2 per set) while allowing deviation                       |
-| 7   | Rest timer in Rust, not JavaScript                   | Survives WebView backgrounding on mobile                                  |
-| 8   | RLS expansion deferred to Steps 17-18                | Simple `user_id = auth.uid()` for Phases 0-2, complexity only when needed |
-| 9   | Coach creates programs owned by member               | Member always controls their data, coach access is revocable              |
-| 10  | Same React app for all platforms                     | Eliminates duplication between web and native                             |
+| #   | Decision                                             | Rationale                                                                      |
+| --- | ---------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 1   | Phase 0 is browser-only against Supabase             | Validates data model and UX before committing to Tauri                         |
+| 2   | Data adapter pattern from day one                    | Switching between Supabase and Tauri/SQLite is transparent                     |
+| 3   | SetScheme as discriminated union, not generic schema | Each workout type gets first-class field validation                            |
+| 4   | JSON columns for complex nested types                | Avoids explosion of junction tables for SetScheme variants                     |
+| 5   | 1RM history is insert-only                           | Audit trail for progression, never lose historical data                        |
+| 6   | Pre-fill + confirm pattern for programmed logging    | Minimizes taps (2 per set) while allowing deviation                            |
+| 7   | Rest timer in Rust, not JavaScript                   | Survives WebView backgrounding on mobile                                       |
+| 8   | RLS expansion deferred to Steps 17-18                | Simple `user_id = auth.uid()` for Phases 0-2, complexity only when needed      |
+| 9   | Coach creates programs owned by member               | Member always controls their data, coach access is revocable                   |
+| 10  | Same React app for all platforms                     | Eliminates duplication between web and native                                  |
+| 11  | Iron & Ember design system before feature work       | Full shadcn overrides upfront prevent style debt across 14 feature steps       |
+| 12  | Publishable key over legacy anon key                 | Independently rotatable, no JWT secret coupling, Supabase recommended          |
+| 13  | Bun over npm                                         | Faster installs, native TypeScript, simpler toolchain                          |
+| 14  | TanStack Router (not Start) for Tauri compatibility  | Start requires a server for SSR; Tauri runs in a serverless WebView            |
+| 15  | Material Symbols + Lucide dual icon strategy         | Material Symbols for app icons (fitness-specific), Lucide for shadcn internals |
+| 16  | Fonts bundled locally in Tauri builds                | No Google Fonts network dependency in native offline-first builds              |
