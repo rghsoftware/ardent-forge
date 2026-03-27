@@ -1,4 +1,12 @@
-import type { Exercise, WorkoutLog, LoggedSet, UserProfile, OneRepMaxHistory } from '@/domain/types'
+import type {
+  Exercise,
+  WorkoutLog,
+  LoggedActivityGroup,
+  LoggedActivity,
+  LoggedSet,
+  UserProfile,
+  OneRepMaxHistory,
+} from '@/domain/types'
 import type { ExerciseCategory, MovementPattern, MuscleGroup, Equipment } from '@/domain/types'
 
 export interface ExerciseFilters {
@@ -30,9 +38,23 @@ export interface DataAdapter {
   // Workout log operations
   getWorkoutLogs(userId: string, limit?: number): Promise<WorkoutLog[]>
   getWorkoutLog(id: string): Promise<WorkoutLog | null>
+  getWorkoutLogFull(id: string): Promise<{
+    log: WorkoutLog
+    groups: LoggedActivityGroup[]
+    activities: LoggedActivity[]
+    sets: LoggedSet[]
+  } | null>
   createWorkoutLog(log: Omit<WorkoutLog, 'id' | 'createdAt' | 'updatedAt'>): Promise<WorkoutLog>
   updateWorkoutLog(log: WorkoutLog): Promise<WorkoutLog>
   deleteWorkoutLog(id: string): Promise<void>
+  createLoggedActivityGroup(
+    group: Omit<LoggedActivityGroup, 'id'>,
+    userId: string,
+  ): Promise<LoggedActivityGroup>
+  createLoggedActivity(
+    activity: Omit<LoggedActivity, 'id'>,
+    userId: string,
+  ): Promise<LoggedActivity>
   createLoggedSet(set: Omit<LoggedSet, 'id'>): Promise<LoggedSet>
   updateLoggedSet(set: LoggedSet): Promise<LoggedSet>
 
