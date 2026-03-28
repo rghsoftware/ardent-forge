@@ -6,6 +6,9 @@ import type {
   LoggedSet,
   UserProfile,
   OneRepMaxHistory,
+  SessionTemplate,
+  ActivityGroup,
+  Activity,
 } from '@/domain/types'
 import type { ExerciseCategory, MovementPattern, MuscleGroup } from '@/domain/types'
 
@@ -91,4 +94,36 @@ export interface DataAdapter {
   saveOneRepMax(
     entry: Omit<OneRepMaxHistory, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<OneRepMaxHistory>
+
+  // Session template operations
+  getSessionTemplates(userId: string): Promise<SessionTemplate[]>
+  getSessionTemplate(id: string): Promise<SessionTemplate | null>
+  getSessionTemplateFull(id: string): Promise<{
+    template: SessionTemplate
+    groups: Array<Omit<ActivityGroup, 'activities'>>
+    activities: Activity[]
+  } | null>
+  createSessionTemplateFull(
+    template: Omit<SessionTemplate, 'id' | 'createdAt' | 'updatedAt'>,
+    groups: Array<{
+      group: Omit<ActivityGroup, 'id' | 'activities'>
+      activities: Array<Omit<Activity, 'id'>>
+    }>,
+  ): Promise<{
+    template: SessionTemplate
+    groups: Array<Omit<ActivityGroup, 'activities'>>
+    activities: Activity[]
+  }>
+  updateSessionTemplateFull(
+    template: SessionTemplate,
+    groups: Array<{
+      group: Omit<ActivityGroup, 'activities'>
+      activities: Array<Omit<Activity, 'id'>>
+    }>,
+  ): Promise<{
+    template: SessionTemplate
+    groups: Array<Omit<ActivityGroup, 'activities'>>
+    activities: Activity[]
+  }>
+  deleteSessionTemplate(id: string): Promise<void>
 }

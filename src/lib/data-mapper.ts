@@ -7,6 +7,9 @@ import type {
   LoggedSet,
   UserProfile,
   OneRepMaxHistory,
+  SessionTemplate,
+  ActivityGroup,
+  Activity,
 } from '@/domain/types'
 import {
   entityId,
@@ -24,6 +27,9 @@ import {
   setTypeSchema,
   preferredUnitsSchema,
   oneRepMaxSchema,
+  sessionTypeSchema,
+  scoringTypeSchema,
+  setSchemeSchema,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -33,6 +39,9 @@ import type {
   LoggedSetRow,
   UserProfileRow,
   OneRepMaxHistoryRow,
+  SessionTemplateRow,
+  ActivityGroupRow,
+  ActivityRow,
 } from './database.types'
 
 /**
@@ -296,5 +305,108 @@ export function fromOneRepMaxHistory(
     weight: entry.weight,
     estimated: entry.estimated,
     recorded_at: entry.recordedAt,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SessionTemplate
+// ---------------------------------------------------------------------------
+
+export function toSessionTemplate(row: SessionTemplateRow): SessionTemplate {
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    userId: row.user_id ?? '',
+    name: row.name,
+    description: row.description ?? undefined,
+    category: sessionTypeSchema.parse(row.category),
+    restBetweenGroups:
+      row.rest_between_groups != null
+        ? durationSchema.parse(JSON.parse(row.rest_between_groups))
+        : undefined,
+    timeCap: row.time_cap != null ? durationSchema.parse(JSON.parse(row.time_cap)) : undefined,
+    scoring: scoringTypeSchema.parse(row.scoring ?? 'NONE'),
+  }
+}
+
+export function fromSessionTemplate(
+  template: Omit<SessionTemplate, 'id' | 'createdAt' | 'updatedAt'>,
+): Partial<SessionTemplateRow> {
+  return {
+    user_id: template.userId ?? null,
+    name: template.name,
+    description: template.description ?? null,
+    category: template.category,
+    rest_between_groups: template.restBetweenGroups
+      ? JSON.stringify(template.restBetweenGroups)
+      : null,
+    time_cap: template.timeCap ? JSON.stringify(template.timeCap) : null,
+    scoring: template.scoring,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ActivityGroup (flat -- without nested activities)
+// ---------------------------------------------------------------------------
+
+export function toActivityGroupFlat(row: ActivityGroupRow): Omit<ActivityGroup, 'activities'> {
+  return {
+    id: row.id,
+    sessionTemplateId: row.session_template_id,
+    groupType: groupTypeSchema.parse(row.group_type),
+    ordinal: row.ordinal,
+    rounds: row.rounds ?? undefined,
+    restBetweenRounds:
+      row.rest_between_rounds != null
+        ? durationSchema.parse(JSON.parse(row.rest_between_rounds))
+        : undefined,
+    restBetweenActivities:
+      row.rest_between_activities != null
+        ? durationSchema.parse(JSON.parse(row.rest_between_activities))
+        : undefined,
+  }
+}
+
+export function fromActivityGroup(
+  group: Omit<ActivityGroup, 'activities'> | Omit<ActivityGroup, 'id' | 'activities'>,
+  templateId?: string,
+): Partial<ActivityGroupRow> {
+  return {
+    session_template_id: templateId ?? group.sessionTemplateId,
+    group_type: group.groupType,
+    ordinal: group.ordinal,
+    rounds: group.rounds ?? null,
+    rest_between_rounds: group.restBetweenRounds ? JSON.stringify(group.restBetweenRounds) : null,
+    rest_between_activities: group.restBetweenActivities
+      ? JSON.stringify(group.restBetweenActivities)
+      : null,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Activity
+// ---------------------------------------------------------------------------
+
+export function toActivity(row: ActivityRow): Activity {
+  return {
+    id: row.id,
+    exerciseId: row.exercise_id,
+    ordinal: row.ordinal,
+    setScheme: setSchemeSchema.parse(JSON.parse(row.set_scheme)),
+    notes: row.notes ?? undefined,
+  }
+}
+
+export function fromActivity(
+  activity: Omit<Activity, 'id'>,
+  groupId?: string,
+): Partial<ActivityRow> {
+  return {
+    activity_group_id: groupId,
+    exercise_id: activity.exerciseId,
+    ordinal: activity.ordinal,
+    set_scheme: JSON.stringify(activity.setScheme),
+    notes: activity.notes ?? null,
   }
 }

@@ -16,6 +16,7 @@ const baseSessionTemplate = {
   id: 'st-1',
   createdAt: '2025-01-01T00:00:00Z',
   updatedAt: '2025-01-01T00:00:00Z',
+  userId: 'user-1',
   name: 'Upper Body Strength',
   category: 'STRENGTH',
   scoring: 'NONE',

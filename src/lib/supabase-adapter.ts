@@ -8,6 +8,9 @@ import type {
   LoggedSet,
   UserProfile,
   OneRepMaxHistory,
+  SessionTemplate,
+  ActivityGroup,
+  Activity,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -17,6 +20,9 @@ import type {
   LoggedSetRow,
   UserProfileRow,
   OneRepMaxHistoryRow,
+  SessionTemplateRow,
+  ActivityGroupRow,
+  ActivityRow,
 } from './database.types'
 import {
   toExercise,
@@ -33,6 +39,12 @@ import {
   fromUserProfile,
   toOneRepMaxHistory,
   fromOneRepMaxHistory,
+  toSessionTemplate,
+  fromSessionTemplate,
+  toActivityGroupFlat,
+  fromActivityGroup,
+  toActivity,
+  fromActivity,
 } from './data-mapper'
 
 export class SupabaseAdapter implements DataAdapter {
@@ -501,5 +513,191 @@ export class SupabaseAdapter implements DataAdapter {
     }
 
     return Array.from(grouped.values())
+  }
+
+  // ---------------------------------------------------------------------------
+  // Session template operations
+  // ---------------------------------------------------------------------------
+
+  async getSessionTemplates(userId: string): Promise<SessionTemplate[]> {
+    const { data, error } = await this.client
+      .from('session_templates')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return (data as SessionTemplateRow[]).map(toSessionTemplate)
+  }
+
+  async getSessionTemplate(id: string): Promise<SessionTemplate | null> {
+    const { data, error } = await this.client
+      .from('session_templates')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    if (error) throw error
+    return data ? toSessionTemplate(data as SessionTemplateRow) : null
+  }
+
+  async getSessionTemplateFull(id: string): Promise<{
+    template: SessionTemplate
+    groups: Array<Omit<ActivityGroup, 'activities'>>
+    activities: Activity[]
+  } | null> {
+    const { data: templateData, error: templateError } = await this.client
+      .from('session_templates')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    if (templateError) throw templateError
+    if (!templateData) return null
+
+    const { data: groupData, error: groupError } = await this.client
+      .from('activity_groups')
+      .select('*')
+      .eq('session_template_id', id)
+      .order('ordinal')
+    if (groupError) throw groupError
+    const groups = (groupData as ActivityGroupRow[]).map(toActivityGroupFlat)
+    const groupIds = groups.map((g) => g.id)
+
+    if (groupIds.length === 0) {
+      return {
+        template: toSessionTemplate(templateData as SessionTemplateRow),
+        groups,
+        activities: [],
+      }
+    }
+
+    const { data: actData, error: actError } = await this.client
+      .from('activities')
+      .select('*')
+      .in('activity_group_id', groupIds)
+      .order('ordinal')
+    if (actError) throw actError
+    const activities = (actData as ActivityRow[]).map(toActivity)
+
+    return {
+      template: toSessionTemplate(templateData as SessionTemplateRow),
+      groups,
+      activities,
+    }
+  }
+
+  async createSessionTemplateFull(
+    template: Omit<SessionTemplate, 'id' | 'createdAt' | 'updatedAt'>,
+    groups: Array<{
+      group: Omit<ActivityGroup, 'id' | 'activities'>
+      activities: Array<Omit<Activity, 'id'>>
+    }>,
+  ): Promise<{
+    template: SessionTemplate
+    groups: Array<Omit<ActivityGroup, 'activities'>>
+    activities: Activity[]
+  }> {
+    const templateRow = fromSessionTemplate(template)
+
+    const { data: tData, error: tError } = await this.client
+      .from('session_templates')
+      .insert(templateRow)
+      .select()
+      .single()
+    if (tError) throw tError
+    const createdTemplate = toSessionTemplate(tData as SessionTemplateRow)
+
+    const allGroups: Array<Omit<ActivityGroup, 'activities'>> = []
+    const allActivities: Activity[] = []
+
+    for (const groupInput of groups) {
+      const groupRow = fromActivityGroup(groupInput.group, createdTemplate.id)
+
+      const { data: gData, error: gError } = await this.client
+        .from('activity_groups')
+        .insert(groupRow)
+        .select()
+        .single()
+      if (gError) throw gError
+      const createdGroup = toActivityGroupFlat(gData as ActivityGroupRow)
+      allGroups.push(createdGroup)
+
+      for (const actInput of groupInput.activities) {
+        const actRow = fromActivity(actInput, createdGroup.id)
+
+        const { data: aData, error: aError } = await this.client
+          .from('activities')
+          .insert(actRow)
+          .select()
+          .single()
+        if (aError) throw aError
+        allActivities.push(toActivity(aData as ActivityRow))
+      }
+    }
+
+    return { template: createdTemplate, groups: allGroups, activities: allActivities }
+  }
+
+  async updateSessionTemplateFull(
+    template: SessionTemplate,
+    groups: Array<{
+      group: Omit<ActivityGroup, 'activities'>
+      activities: Array<Omit<Activity, 'id'>>
+    }>,
+  ): Promise<{
+    template: SessionTemplate
+    groups: Array<Omit<ActivityGroup, 'activities'>>
+    activities: Activity[]
+  }> {
+    const templateRow = fromSessionTemplate(template)
+
+    const { data: tData, error: tError } = await this.client
+      .from('session_templates')
+      .update(templateRow)
+      .eq('id', template.id)
+      .select()
+      .single()
+    if (tError) throw tError
+    const updatedTemplate = toSessionTemplate(tData as SessionTemplateRow)
+
+    // Delete existing groups (cascade handles activities)
+    const { error: delError } = await this.client
+      .from('activity_groups')
+      .delete()
+      .eq('session_template_id', template.id)
+    if (delError) throw delError
+
+    const allGroups: Array<Omit<ActivityGroup, 'activities'>> = []
+    const allActivities: Activity[] = []
+
+    for (const groupInput of groups) {
+      const groupRow = fromActivityGroup(groupInput.group, template.id)
+
+      const { data: gData, error: gError } = await this.client
+        .from('activity_groups')
+        .insert(groupRow)
+        .select()
+        .single()
+      if (gError) throw gError
+      const createdGroup = toActivityGroupFlat(gData as ActivityGroupRow)
+      allGroups.push(createdGroup)
+
+      for (const actInput of groupInput.activities) {
+        const actRow = fromActivity(actInput, createdGroup.id)
+
+        const { data: aData, error: aError } = await this.client
+          .from('activities')
+          .insert(actRow)
+          .select()
+          .single()
+        if (aError) throw aError
+        allActivities.push(toActivity(aData as ActivityRow))
+      }
+    }
+
+    return { template: updatedTemplate, groups: allGroups, activities: allActivities }
+  }
+
+  async deleteSessionTemplate(id: string): Promise<void> {
+    const { error } = await this.client.from('session_templates').delete().eq('id', id)
+    if (error) throw error
   }
 }
