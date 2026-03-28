@@ -11,6 +11,13 @@ import type { ExerciseCategory, MovementPattern, MuscleGroup } from '@/domain/ty
 
 export type WorkoutWithSets = { log: WorkoutLog; sets: LoggedSet[] }
 
+export type WorkoutLogSummary = {
+  log: WorkoutLog
+  exerciseNames: string[]
+  setCount: number
+  exerciseCount: number
+}
+
 export interface ExerciseFilters {
   category?: ExerciseCategory
   movementPattern?: MovementPattern
@@ -38,6 +45,10 @@ export interface DataAdapter {
 
   // Workout log operations
   getWorkoutLogs(userId: string, limit?: number): Promise<WorkoutLog[]>
+  getWorkoutLogsSummary(
+    userId: string,
+    options?: { limit?: number; offset?: number },
+  ): Promise<WorkoutLogSummary[]>
   getWorkoutLog(id: string): Promise<WorkoutLog | null>
   getWorkoutLogFull(id: string): Promise<{
     log: WorkoutLog
