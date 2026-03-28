@@ -20,6 +20,11 @@ pub const SYNCABLE_TABLES: &[&str] = &[
     "session_templates",
     "activity_groups",
     "activities",
+    "programs",
+    "blocks",
+    "block_weeks",
+    "scheduled_sessions",
+    "program_activations",
 ];
 
 #[derive(Debug, Clone, serde::Serialize)]

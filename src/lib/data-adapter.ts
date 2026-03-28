@@ -9,6 +9,11 @@ import type {
   SessionTemplate,
   ActivityGroup,
   Activity,
+  Program,
+  Block,
+  BlockWeek,
+  ScheduledSession,
+  ProgramActivation,
 } from '@/domain/types'
 import type { ExerciseCategory, MovementPattern, MuscleGroup } from '@/domain/types'
 
@@ -25,6 +30,13 @@ export type SessionTemplateFull = {
   template: SessionTemplate
   groups: Array<Omit<ActivityGroup, 'activities'>>
   activities: Activity[]
+}
+
+export type ProgramFull = {
+  program: Program
+  blocks: Block[]
+  blockWeeks: BlockWeek[]
+  scheduledSessions: ScheduledSession[]
 }
 
 export interface ExerciseFilters {
@@ -120,4 +132,38 @@ export interface DataAdapter {
     }>,
   ): Promise<SessionTemplateFull>
   deleteSessionTemplate(id: string): Promise<void>
+
+  // Program operations
+  getPrograms(userId: string): Promise<Program[]>
+  getProgramFull(id: string): Promise<ProgramFull | null>
+  createProgramFull(
+    program: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>,
+    blocks: Array<{
+      block: Omit<Block, 'id' | 'programId'>
+      weeks: Array<{
+        week: Omit<BlockWeek, 'id' | 'blockId'>
+        sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
+      }>
+    }>,
+  ): Promise<ProgramFull>
+  updateProgramFull(
+    program: Program,
+    blocks: Array<{
+      block: Omit<Block, 'programId'>
+      weeks: Array<{
+        week: Omit<BlockWeek, 'blockId'>
+        sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
+      }>
+    }>,
+  ): Promise<ProgramFull>
+  deleteProgram(id: string): Promise<void>
+
+  // Program activation operations
+  getActiveProgram(userId: string): Promise<ProgramActivation | null>
+  setActiveProgram(
+    userId: string,
+    programId: string,
+    startDate?: string,
+  ): Promise<ProgramActivation>
+  clearActiveProgram(userId: string): Promise<void>
 }

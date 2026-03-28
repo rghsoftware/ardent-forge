@@ -44,6 +44,7 @@ export {
   blockSchema,
   blockWeekSchema,
   scheduledSessionSchema,
+  programActivationSchema,
 } from './program'
 export type {
   ProgramSource,
@@ -52,4 +53,5 @@ export type {
   Block,
   BlockWeek,
   ScheduledSession,
+  ProgramActivation,
 } from './program'

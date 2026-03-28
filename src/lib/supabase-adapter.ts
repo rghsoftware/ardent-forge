@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   DataAdapter,
   ExerciseFilters,
+  ProgramFull,
   SessionTemplateFull,
   WorkoutLogSummary,
 } from './data-adapter'
@@ -16,6 +17,11 @@ import type {
   SessionTemplate,
   ActivityGroup,
   Activity,
+  Program,
+  Block,
+  BlockWeek,
+  ScheduledSession,
+  ProgramActivation,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -28,6 +34,11 @@ import type {
   SessionTemplateRow,
   ActivityGroupRow,
   ActivityRow,
+  ProgramRow,
+  BlockRow,
+  BlockWeekRow,
+  ScheduledSessionRow,
+  ProgramActivationRow,
 } from './database.types'
 import {
   toExercise,
@@ -50,6 +61,15 @@ import {
   fromActivityGroup,
   toActivity,
   fromActivity,
+  toProgram,
+  fromProgram,
+  toBlock,
+  fromBlock,
+  toBlockWeek,
+  fromBlockWeek,
+  toScheduledSession,
+  fromScheduledSession,
+  toProgramActivation,
 } from './data-mapper'
 
 export class SupabaseAdapter implements DataAdapter {
@@ -693,6 +713,271 @@ export class SupabaseAdapter implements DataAdapter {
 
   async deleteSessionTemplate(id: string): Promise<void> {
     const { error } = await this.client.from('session_templates').delete().eq('id', id)
+    if (error) throw error
+  }
+
+  // ---------------------------------------------------------------------------
+  // Program operations
+  // ---------------------------------------------------------------------------
+
+  async getPrograms(userId: string): Promise<Program[]> {
+    const { data, error } = await this.client
+      .from('programs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return (data as ProgramRow[]).map(toProgram)
+  }
+
+  async getProgramFull(id: string): Promise<ProgramFull | null> {
+    const { data: programData, error: programError } = await this.client
+      .from('programs')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    if (programError) throw programError
+    if (!programData) return null
+
+    const { data: blockData, error: blockError } = await this.client
+      .from('blocks')
+      .select('*')
+      .eq('program_id', id)
+      .order('ordinal', { ascending: true })
+    if (blockError) throw blockError
+    const blocks = (blockData as BlockRow[]).map(toBlock)
+    const blockIds = blocks.map((b) => b.id)
+
+    if (blockIds.length === 0) {
+      return {
+        program: toProgram(programData as ProgramRow),
+        blocks: [],
+        blockWeeks: [],
+        scheduledSessions: [],
+      }
+    }
+
+    const { data: weekData, error: weekError } = await this.client
+      .from('block_weeks')
+      .select('*')
+      .in('block_id', blockIds)
+      .order('week_number', { ascending: true })
+    if (weekError) throw weekError
+    const blockWeeks = (weekData as BlockWeekRow[]).map(toBlockWeek)
+    const weekIds = blockWeeks.map((w) => w.id)
+
+    if (weekIds.length === 0) {
+      return {
+        program: toProgram(programData as ProgramRow),
+        blocks,
+        blockWeeks: [],
+        scheduledSessions: [],
+      }
+    }
+
+    const { data: sessionData, error: sessionError } = await this.client
+      .from('scheduled_sessions')
+      .select('*')
+      .in('block_week_id', weekIds)
+    if (sessionError) throw sessionError
+    const scheduledSessions = (sessionData as ScheduledSessionRow[]).map(toScheduledSession)
+
+    return {
+      program: toProgram(programData as ProgramRow),
+      blocks,
+      blockWeeks,
+      scheduledSessions,
+    }
+  }
+
+  // TODO: These writes are non-atomic. Migrate to a Supabase RPC stored procedure to ensure consistency.
+  async createProgramFull(
+    program: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>,
+    blocks: Array<{
+      block: Omit<Block, 'id' | 'programId'>
+      weeks: Array<{
+        week: Omit<BlockWeek, 'id' | 'blockId'>
+        sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
+      }>
+    }>,
+  ): Promise<ProgramFull> {
+    const programId = crypto.randomUUID()
+    const programRow = {
+      id: programId,
+      ...fromProgram(program),
+    }
+
+    const { error: pError } = await this.client
+      .from('programs')
+      .insert(programRow)
+      .select()
+      .single()
+    if (pError) throw pError
+
+    for (const blockEntry of blocks) {
+      const blockId = crypto.randomUUID()
+      const blockRow = {
+        id: blockId,
+        ...fromBlock(blockEntry.block, programId),
+      }
+
+      const { error: bError } = await this.client.from('blocks').insert(blockRow).select().single()
+      if (bError) throw bError
+
+      for (const weekEntry of blockEntry.weeks) {
+        const weekId = crypto.randomUUID()
+        const weekRow = {
+          id: weekId,
+          ...fromBlockWeek(weekEntry.week, blockId),
+        }
+
+        const { error: wError } = await this.client
+          .from('block_weeks')
+          .insert(weekRow)
+          .select()
+          .single()
+        if (wError) throw wError
+
+        for (const sessionInput of weekEntry.sessions) {
+          const sessionId = crypto.randomUUID()
+          const sessionRow = {
+            id: sessionId,
+            ...fromScheduledSession(sessionInput, weekId),
+          }
+
+          const { error: sError } = await this.client
+            .from('scheduled_sessions')
+            .insert(sessionRow)
+            .select()
+            .single()
+          if (sError) throw sError
+        }
+      }
+    }
+
+    const result = await this.getProgramFull(programId)
+    if (!result) throw new Error('Failed to fetch newly created program')
+    return result
+  }
+
+  // TODO: These writes are non-atomic. Migrate to a Supabase RPC stored procedure to ensure consistency.
+  async updateProgramFull(
+    program: Program,
+    blocks: Array<{
+      block: Omit<Block, 'programId'>
+      weeks: Array<{
+        week: Omit<BlockWeek, 'blockId'>
+        sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
+      }>
+    }>,
+  ): Promise<ProgramFull> {
+    const { error: pError } = await this.client
+      .from('programs')
+      .update({ ...fromProgram(program) })
+      .eq('id', program.id)
+    if (pError) throw pError
+
+    // Delete existing blocks (cascade handles weeks and sessions)
+    const { error: delError } = await this.client
+      .from('blocks')
+      .delete()
+      .eq('program_id', program.id)
+    if (delError) throw delError
+
+    // Re-insert all blocks, weeks, and sessions
+    for (const blockEntry of blocks) {
+      const blockId = blockEntry.block.id ?? crypto.randomUUID()
+      const blockRow = {
+        id: blockId,
+        ...fromBlock(blockEntry.block, program.id),
+      }
+
+      const { error: bError } = await this.client.from('blocks').insert(blockRow).select().single()
+      if (bError) throw bError
+
+      for (const weekEntry of blockEntry.weeks) {
+        const weekId = weekEntry.week.id ?? crypto.randomUUID()
+        const weekRow = {
+          id: weekId,
+          ...fromBlockWeek(weekEntry.week, blockId),
+        }
+
+        const { error: wError } = await this.client
+          .from('block_weeks')
+          .insert(weekRow)
+          .select()
+          .single()
+        if (wError) throw wError
+
+        for (const sessionInput of weekEntry.sessions) {
+          const sessionId = crypto.randomUUID()
+          const sessionRow = {
+            id: sessionId,
+            ...fromScheduledSession(sessionInput, weekId),
+          }
+
+          const { error: sError } = await this.client
+            .from('scheduled_sessions')
+            .insert(sessionRow)
+            .select()
+            .single()
+          if (sError) throw sError
+        }
+      }
+    }
+
+    const result = await this.getProgramFull(program.id)
+    if (!result) throw new Error('Failed to fetch updated program')
+    return result
+  }
+
+  async deleteProgram(id: string): Promise<void> {
+    const { error } = await this.client.from('programs').delete().eq('id', id)
+    if (error) throw error
+  }
+
+  // ---------------------------------------------------------------------------
+  // Program activation operations
+  // ---------------------------------------------------------------------------
+
+  async getActiveProgram(userId: string): Promise<ProgramActivation | null> {
+    const { data, error } = await this.client
+      .from('program_activations')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (error) throw error
+    return data ? toProgramActivation(data as ProgramActivationRow) : null
+  }
+
+  async setActiveProgram(
+    userId: string,
+    programId: string,
+    startDate?: string,
+  ): Promise<ProgramActivation> {
+    const { data, error } = await this.client
+      .from('program_activations')
+      .upsert(
+        {
+          id: crypto.randomUUID(),
+          user_id: userId,
+          program_id: programId,
+          current_block_ordinal: 1,
+          current_week_number: 1,
+          start_date: startDate ?? new Date().toISOString().split('T')[0],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' },
+      )
+      .select()
+      .single()
+    if (error) throw error
+    return toProgramActivation(data as ProgramActivationRow)
+  }
+
+  async clearActiveProgram(userId: string): Promise<void> {
+    const { error } = await this.client.from('program_activations').delete().eq('user_id', userId)
     if (error) throw error
   }
 }

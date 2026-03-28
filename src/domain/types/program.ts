@@ -94,3 +94,16 @@ export const scheduledSessionSchema = z.object({
   notes: z.string().optional(),
 })
 export type ScheduledSession = z.infer<typeof scheduledSessionSchema>
+
+// ---------------------------------------------------------------------------
+// ProgramActivation -- tracks a user's active program and current position
+// ---------------------------------------------------------------------------
+
+export const programActivationSchema = syncableEntitySchema.extend({
+  userId: entityId,
+  programId: entityId,
+  currentBlockOrdinal: z.number().int().positive(),
+  currentWeekNumber: z.number().int().positive(),
+  startDate: z.string(),
+})
+export type ProgramActivation = z.infer<typeof programActivationSchema>
