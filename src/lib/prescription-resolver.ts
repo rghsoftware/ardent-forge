@@ -1,7 +1,7 @@
 // src/lib/prescription-resolver.ts
-// Resolves a SessionTemplateFull into pre-filled LoggedSet arrays so the
-// Active Workout screen can present prescribed values before the user logs
-// actual performance.
+// Resolves a SessionTemplateFull into pre-filled set/activity/group structures
+// so the Active Workout screen can present prescribed values before the user
+// logs actual performance.
 
 import type {
   LoggedSet,
@@ -45,8 +45,9 @@ function fractionToPercent(fraction: number): number {
   return fraction * 100
 }
 
-/** Build a Weight value object. */
-function makeWeight(value: number, unit: 'lb' | 'kg'): Weight {
+/** Build a Weight value object. Returns undefined when value <= 0. */
+function makeWeight(value: number, unit: 'lb' | 'kg'): Weight | undefined {
+  if (value <= 0) return undefined
   return { value, unit }
 }
 
@@ -57,8 +58,8 @@ function makeDuration(seconds: number): Duration {
 
 /**
  * Resolve a LoadSpec into a prescribed weight (if possible).
- * Returns undefined when the load cannot be resolved to a concrete weight
- * (e.g. RPE, bodyweight, unspecified, or missing 1RM for percentage).
+ * The returned object's `weight` field is present when a concrete weight can
+ * be determined (e.g. absolute load or a percentage with a known 1RM).
  */
 function resolveLoadSpec(
   loadSpec: LoadSpec,
@@ -97,6 +98,9 @@ function resolveLoadSpec(
 
     case 'unspecified':
       return { loadSpec }
+
+    default:
+      throw new Error(`Unhandled LoadSpec type: ${(loadSpec as { type: string }).type}`)
   }
 }
 
@@ -404,6 +408,9 @@ function resolveSetsForActivity(
       return resolveDescendingReps(scheme, eid, exerciseMaxes, preferredUnit)
     case 'percentageOfMaxReps':
       return resolvePercentageOfMaxReps(scheme, eid, maxReps)
+
+    default:
+      throw new Error(`Unhandled SetScheme type: ${(scheme as { type: string }).type}`)
   }
 }
 
@@ -415,8 +422,9 @@ function resolveSetsForActivity(
  * Resolve a full session template into pre-filled groups, activities, and sets.
  *
  * The output is ready to be inserted into the active workout store. Each set
- * carries a `prescribed` field describing what the program calls for; the
- * `actual*` fields remain undefined until the user logs performance.
+ * carries a `prescribed` field describing what the program calls for. The
+ * output omits `actual*` fields -- these are populated later when the user
+ * logs performance.
  */
 export function resolveSessionTemplate(
   templateFull: SessionTemplateFull,

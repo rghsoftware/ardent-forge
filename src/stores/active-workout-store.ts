@@ -107,6 +107,7 @@ interface ActiveWorkoutActions {
 
   // Set management
   confirmSet(loggedActivityId: string, newSet: LoggedSet): void
+  updateSetInPlace(loggedActivityId: string, updatedSet: LoggedSet): void
   undoLastSet(): void
   clearUndo(): void
 
@@ -166,6 +167,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     },
 
     startProgrammedWorkout(workoutLog: WorkoutLog, groups: LoggedActivityGroupWithActivities[]) {
+      if (!workoutLog.programContext) {
+        throw new Error('startProgrammedWorkout requires a WorkoutLog with programContext')
+      }
+
       const state = get()
       if (state.workoutLog !== null) {
         // Invariant L-8: only one active workout at a time
@@ -283,6 +288,30 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
           loggedGroups: updatedGroups,
           undoAction: {
             setId: newSet.id,
+            loggedActivityId,
+            expiresAt: Date.now() + UNDO_WINDOW_MS,
+          },
+        }
+      })
+    },
+
+    updateSetInPlace(loggedActivityId: string, updatedSet: LoggedSet) {
+      set((state) => {
+        const updatedGroups = state.loggedGroups.map((group) => ({
+          ...group,
+          activities: group.activities.map((activity) => {
+            if (activity.id !== loggedActivityId) return activity
+            return {
+              ...activity,
+              sets: activity.sets.map((s) => (s.id === updatedSet.id ? updatedSet : s)),
+            }
+          }),
+        }))
+
+        return {
+          loggedGroups: updatedGroups,
+          undoAction: {
+            setId: updatedSet.id,
             loggedActivityId,
             expiresAt: Date.now() + UNDO_WINDOW_MS,
           },

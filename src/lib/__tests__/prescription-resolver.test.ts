@@ -581,3 +581,143 @@ describe('resolveSessionTemplate -- forReps', () => {
     expect(sets[0].prescribed?.reps).toBe(50)
   })
 })
+
+// ---------------------------------------------------------------------------
+// LoadSpec variants -- RPE, bodyweight, bodyweightPlus
+// ---------------------------------------------------------------------------
+
+describe('resolveSessionTemplate -- fixedSets with RPE load', () => {
+  it('sets notes containing RPE target', () => {
+    const full = makeFull(
+      [makeGroup()],
+      [
+        makeActivity({
+          setScheme: {
+            type: 'fixedSets',
+            sets: 3,
+            reps: 5,
+            load: { type: 'rpe', target: 8 },
+          },
+        }),
+      ],
+    )
+
+    const result = resolveSessionTemplate(full, {}, {}, 'lb')
+    const sets = result[0].activities[0].sets
+
+    expect(sets).toHaveLength(3)
+    for (const s of sets) {
+      expect(s.prescribed?.notes).toContain('RPE')
+      expect(s.prescribed?.notes).toContain('8')
+      // RPE load should not produce a concrete weight
+      expect(s.prescribed?.weight).toBeUndefined()
+    }
+  })
+})
+
+describe('resolveSessionTemplate -- fixedSets with bodyweight load', () => {
+  it('does not set a prescribed weight', () => {
+    const full = makeFull(
+      [makeGroup()],
+      [
+        makeActivity({
+          setScheme: {
+            type: 'fixedSets',
+            sets: 3,
+            reps: 10,
+            load: { type: 'bodyweight' },
+          },
+        }),
+      ],
+    )
+
+    const result = resolveSessionTemplate(full, {}, {}, 'lb')
+    const sets = result[0].activities[0].sets
+
+    expect(sets).toHaveLength(3)
+    for (const s of sets) {
+      expect(s.prescribed?.weight).toBeUndefined()
+      expect(s.prescribed?.reps).toBe(10)
+    }
+  })
+})
+
+describe('resolveSessionTemplate -- fixedSets with bodyweightPlus load', () => {
+  it('sets prescribed weight to the additional weight', () => {
+    const full = makeFull(
+      [makeGroup()],
+      [
+        makeActivity({
+          setScheme: {
+            type: 'fixedSets',
+            sets: 3,
+            reps: 8,
+            load: { type: 'bodyweightPlus', additionalWeight: { value: 25, unit: 'lb' } },
+          },
+        }),
+      ],
+    )
+
+    const result = resolveSessionTemplate(full, {}, {}, 'lb')
+    const sets = result[0].activities[0].sets
+
+    expect(sets).toHaveLength(3)
+    for (const s of sets) {
+      expect(s.prescribed?.weight).toEqual({ value: 25, unit: 'lb' })
+      expect(s.prescribed?.reps).toBe(8)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Range sets and reps inputs
+// ---------------------------------------------------------------------------
+
+describe('resolveSessionTemplate -- fixedSets with range sets', () => {
+  it('uses min value when sets is a range (3-5 produces 3 sets)', () => {
+    const full = makeFull(
+      [makeGroup()],
+      [
+        makeActivity({
+          setScheme: {
+            type: 'fixedSets',
+            sets: { min: 3, max: 5 },
+            reps: 8,
+            load: { type: 'unspecified' },
+          },
+        }),
+      ],
+    )
+
+    const result = resolveSessionTemplate(full, {}, {}, 'lb')
+    const sets = result[0].activities[0].sets
+
+    expect(sets).toHaveLength(3)
+  })
+})
+
+describe('resolveSessionTemplate -- fixedSets with range reps', () => {
+  it('uses min value when reps is a range (8-12 prescribes 8)', () => {
+    const full = makeFull(
+      [makeGroup()],
+      [
+        makeActivity({
+          setScheme: {
+            type: 'fixedSets',
+            sets: 3,
+            reps: { min: 8, max: 12 },
+            load: { type: 'unspecified' },
+          },
+        }),
+      ],
+    )
+
+    const result = resolveSessionTemplate(full, {}, {}, 'lb')
+    const sets = result[0].activities[0].sets
+
+    expect(sets).toHaveLength(3)
+    for (const s of sets) {
+      expect(s.prescribed?.reps).toBe(8)
+    }
+  })
+})

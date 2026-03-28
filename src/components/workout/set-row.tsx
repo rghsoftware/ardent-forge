@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Icon } from '@/components/icon'
+import { computeVariance } from '@/lib/set-variance'
 import type { SetType } from '@/domain/types'
 
 const SET_TYPES: SetType[] = ['WORKING', 'WARMUP', 'DROP', 'AMRAP', 'PEAK', 'BACKOFF']
@@ -12,47 +13,8 @@ interface SetRowProps {
   onConfirm: (weight: string, reps: string, setType: SetType) => void
   confirmed: boolean
   isConfirming?: boolean
-  prescribedWeight?: string
-  prescribedReps?: string
-}
-
-/**
- * Parse a prescribed string like "120 lb" or "5" to extract the numeric value.
- * Returns NaN if no number can be extracted.
- */
-function parseNumeric(value: string | undefined): number {
-  if (!value) return NaN
-  const match = value.match(/[\d.]+/)
-  return match ? parseFloat(match[0]) : NaN
-}
-
-/**
- * Determine variance: actual vs prescribed.
- * Returns 'met' if actual >= prescribed for both weight and reps,
- * 'under' if either is below, or null if comparison is not possible.
- */
-function computeVariance(
-  actualWeight: string,
-  actualReps: string,
-  prescribedWeight: string | undefined,
-  prescribedReps: string | undefined,
-): 'met' | 'under' | null {
-  const hasPrescription = prescribedWeight != null || prescribedReps != null
-  if (!hasPrescription) return null
-
-  const aw = parseNumeric(actualWeight)
-  const ar = parseNumeric(actualReps)
-  const pw = parseNumeric(prescribedWeight)
-  const pr = parseNumeric(prescribedReps)
-
-  // If we have no actual values to compare, cannot determine
-  if (isNaN(aw) && isNaN(ar)) return null
-
-  // Check each dimension that has a prescribed target
-  if (!isNaN(pw) && !isNaN(aw) && aw < pw) return 'under'
-  if (!isNaN(pr) && !isNaN(ar) && ar < pr) return 'under'
-
-  return 'met'
+  prescribedWeight?: { value: number; unit: string }
+  prescribedReps?: number
 }
 
 export function SetRow({
@@ -87,12 +49,21 @@ export function SetRow({
 
   // Prescribed label text (e.g. "120 lb x 5")
   const prescribedLabel = hasPrescription
-    ? [prescribedWeight, prescribedReps].filter(Boolean).join(' x ')
+    ? [
+        prescribedWeight ? `${prescribedWeight.value} ${prescribedWeight.unit}` : null,
+        prescribedReps != null ? String(prescribedReps) : null,
+      ]
+        .filter(Boolean)
+        .join(' x ')
     : null
 
   // Variance calculation for confirmed sets
+  const prescribedWeightStr = prescribedWeight
+    ? `${prescribedWeight.value} ${prescribedWeight.unit}`
+    : undefined
+  const prescribedRepsStr = prescribedReps != null ? String(prescribedReps) : undefined
   const variance = confirmed
-    ? computeVariance(weight, reps, prescribedWeight, prescribedReps)
+    ? computeVariance(prescribedWeightStr, prescribedRepsStr, weight, reps)
     : null
 
   return (
@@ -142,15 +113,9 @@ export function SetRow({
         <>
           {/* Prescribed column */}
           <div className="flex flex-1 flex-col items-center justify-center">
-            {confirmed ? (
-              <span className="text-[10px] uppercase tracking-wider text-warm-ash/40">
-                {prescribedLabel}
-              </span>
-            ) : (
-              <span className="text-[10px] uppercase tracking-wider text-warm-ash/40">
-                {prescribedLabel}
-              </span>
-            )}
+            <span className="text-[10px] uppercase tracking-wider text-warm-ash/40">
+              {prescribedLabel}
+            </span>
           </div>
 
           {/* Actual column -- weight x reps inline */}

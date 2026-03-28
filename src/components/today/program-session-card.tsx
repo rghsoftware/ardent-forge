@@ -8,7 +8,6 @@ interface ProgramSessionCardProps {
   totalWeeks: number
   sessionName?: string
   sessionType?: string
-  exerciseCount?: number
   onStartSession: () => void
   isLoading?: boolean
   isRestDay?: boolean
@@ -83,7 +82,6 @@ export function ProgramSessionCard({
   totalWeeks,
   sessionName,
   sessionType,
-  exerciseCount,
   onStartSession,
   isLoading = false,
   isRestDay = false,
@@ -125,11 +123,6 @@ export function ProgramSessionCard({
                   className={`inline-flex items-center px-2 py-0.5 text-[10px] font-heading uppercase tracking-widest ${badgeColor}`}
                 >
                   {sessionType}
-                </span>
-              )}
-              {exerciseCount != null && exerciseCount > 0 && (
-                <span className="text-xs text-warm-ash/40 uppercase tracking-wider">
-                  {exerciseCount} {exerciseCount === 1 ? 'EXERCISE' : 'EXERCISES'}
                 </span>
               )}
             </div>

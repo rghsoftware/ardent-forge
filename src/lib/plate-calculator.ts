@@ -11,13 +11,14 @@ export const PLATE_INCREMENT_KG = 2.5
  * Uses floor division so weights always round DOWN (conservative).
  */
 export function roundToPlates(targetWeight: number, unit: 'lb' | 'kg'): number {
+  if (targetWeight < 0) return 0
   const increment = unit === 'lb' ? PLATE_INCREMENT_LB : PLATE_INCREMENT_KG
   return Math.floor(targetWeight / increment) * increment
 }
 
 /**
- * Calculate a working weight from a 1RM and percentage.
- * Applies floor(1RM * percentage / 100) then rounds down to nearest plate increment.
+ * Calculate a working weight from a 1RM and percentage, then round down to
+ * the nearest plate increment.
  */
 export function calculateWorkingWeight(
   oneRepMax: number,

@@ -141,10 +141,16 @@ function ActiveWorkoutPage() {
       blockName: programBannerProps?.blockName,
     }
     try {
-      await finishWorkout()
+      const result = await finishWorkout()
       setSummaryData(snapshot)
       setShowSummary(true)
-    } catch {
+      if (result?.advancementFailed) {
+        setPageError(
+          'Workout saved, but program position could not update. Check your connection.',
+        )
+      }
+    } catch (err) {
+      console.error('[workout-page] handleFinish:', err)
       setPageError('Failed to save workout. Please try again.')
     }
   }, [workoutLog, loggedGroups, finishWorkout, programBannerProps])
@@ -154,14 +160,20 @@ function ActiveWorkoutPage() {
       await discardWorkout()
       setShowDiscardDialog(false)
       navigate({ to: '/' })
-    } catch {
+    } catch (err) {
+      console.error('[workout-page] handleDiscard:', err)
       setPageError('Failed to discard workout.')
     }
   }, [discardWorkout, navigate])
 
   const handleAddExercise = useCallback(
     async (exercise: Exercise, groupType: GroupType) => {
-      await addExercise(exercise, groupType)
+      try {
+        await addExercise(exercise, groupType)
+      } catch (err) {
+        console.error('[workout-page] handleAddExercise:', err)
+        setPageError('Failed to add exercise. Please try again.')
+      }
     },
     [addExercise],
   )
@@ -179,26 +191,35 @@ function ActiveWorkoutPage() {
       const weightValue = parseNumericInput(weight)
       const repsValue = parseNumericInput(reps)
 
+      // Determine unit from prescription or default
+      const existingSet = loggedGroups
+        .flatMap((g) => g.activities)
+        .find((a) => a.id === loggedActivityId)
+        ?.sets.find((s) => s.setNumber === setNumber)
+      const unit = existingSet?.prescribed?.weight?.unit ?? 'lb'
+
       try {
         await confirmSet(loggedActivityId, {
           loggedActivityId,
           setNumber,
           setType,
           completed: true,
-          actualWeight: weightValue ? { value: weightValue, unit: 'lb' } : undefined,
+          actualWeight: weightValue ? { value: weightValue, unit } : undefined,
           actualReps: repsValue ? Math.round(repsValue) : undefined,
         })
-      } catch {
+      } catch (err) {
+        console.error('[workout-page] handleConfirmSet:', err)
         setPageError('Failed to save set.')
       }
     },
-    [workoutLog, confirmSet],
+    [workoutLog, loggedGroups, confirmSet],
   )
 
   const handleUndoSet = useCallback(async () => {
     try {
       await undoSet()
-    } catch {
+    } catch (err) {
+      console.error('[workout-page] handleUndoSet:', err)
       setPageError('Failed to undo. The set was already saved.')
     }
   }, [undoSet])
@@ -291,7 +312,8 @@ function ActiveWorkoutPage() {
                           : undefined,
                         actualHeartRate: data.heartRate ? parseInt(data.heartRate, 10) : undefined,
                       })
-                    } catch {
+                    } catch (err) {
+                      console.error('[workout-page] cardio confirmSet:', err)
                       setPageError('Failed to save cardio session.')
                     }
                   }}
@@ -322,7 +344,8 @@ function ActiveWorkoutPage() {
                           ? { value: parseFloat(data.elevation), unit: 'm' }
                           : undefined,
                       })
-                    } catch {
+                    } catch (err) {
+                      console.error('[workout-page] ruck confirmSet:', err)
                       setPageError('Failed to save ruck session.')
                     }
                   }}
@@ -369,24 +392,15 @@ function ActiveWorkoutPage() {
 
             // Build set row data: confirmed sets + one empty row for the next set
             const setRows: SetRowData[] = [
-              ...activity.sets.map((set, idx) => {
-                const prescribedWeight =
-                  set.prescribed?.weight?.value != null
-                    ? `${set.prescribed.weight.value} ${set.prescribed.weight.unit}`
-                    : undefined
-                const prescribedReps =
-                  set.prescribed?.reps != null ? `${set.prescribed.reps}` : undefined
-
-                return {
-                  id: set.id,
-                  setNumber: idx + 1,
-                  weight: set.actualWeight?.value?.toString(),
-                  reps: set.actualReps?.toString(),
-                  confirmed: set.completed,
-                  prescribedWeight,
-                  prescribedReps,
-                }
-              }),
+              ...activity.sets.map((set, idx) => ({
+                id: set.id,
+                setNumber: idx + 1,
+                weight: set.actualWeight?.value?.toString(),
+                reps: set.actualReps?.toString(),
+                confirmed: set.completed,
+                prescribedWeight: set.prescribed?.weight ?? undefined,
+                prescribedReps: set.prescribed?.reps ?? undefined,
+              })),
             ]
 
             // Add an empty row for the next set to log.
@@ -396,22 +410,20 @@ function ActiveWorkoutPage() {
               .reverse()
               .find((s) => s.prescribed != null)
             const nextPrescribedWeight =
-              lastSetWithPrescription?.prescribed?.weight?.value != null
-                ? `${lastSetWithPrescription.prescribed.weight.value} ${lastSetWithPrescription.prescribed.weight.unit}`
-                : undefined
+              lastSetWithPrescription?.prescribed?.weight ?? undefined
             const nextPrescribedReps =
-              lastSetWithPrescription?.prescribed?.reps != null
-                ? `${lastSetWithPrescription.prescribed.reps}`
-                : undefined
+              lastSetWithPrescription?.prescribed?.reps ?? undefined
 
             const nextSetNumber = setRows.length + 1
             setRows.push({
               id: `pending-${activity.id}-${nextSetNumber}`,
               setNumber: nextSetNumber,
               weight:
-                lastConfirmedSet?.actualWeight?.value?.toString() ?? nextPrescribedWeight?.replace(/\s.*/, ''),
+                lastConfirmedSet?.actualWeight?.value?.toString()
+                ?? nextPrescribedWeight?.value?.toString(),
               reps:
-                lastConfirmedSet?.actualReps?.toString() ?? nextPrescribedReps,
+                lastConfirmedSet?.actualReps?.toString()
+                ?? (nextPrescribedReps != null ? String(nextPrescribedReps) : undefined),
               confirmed: false,
               prescribedWeight: nextPrescribedWeight,
               prescribedReps: nextPrescribedReps,

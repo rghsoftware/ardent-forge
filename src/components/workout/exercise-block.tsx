@@ -7,8 +7,8 @@ interface SetRowData {
   weight?: string
   reps?: string
   confirmed: boolean
-  prescribedWeight?: string
-  prescribedReps?: string
+  prescribedWeight?: { value: number; unit: string }
+  prescribedReps?: number
 }
 
 interface ExerciseBlockProps {

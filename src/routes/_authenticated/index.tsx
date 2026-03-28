@@ -19,24 +19,40 @@ export const Route = createFileRoute('/_authenticated/')({
 // Helpers -- resolve today's session from the program structure
 // ---------------------------------------------------------------------------
 
-function resolveTodaySession(programFull: ProgramFull, blockOrdinal: number, weekNumber: number) {
+type TodaySessionResult = {
+  block: ProgramFull['blocks'][number] | null
+  week: ProgramFull['blockWeeks'][number] | null
+  session: ProgramFull['scheduledSessions'][number] | null
+  error?: 'block-not-found' | 'week-not-found'
+}
+
+function resolveTodaySession(
+  programFull: ProgramFull,
+  blockOrdinal: number,
+  weekNumber: number,
+): TodaySessionResult {
   const todayDow = new Date().getDay() // 0=Sun .. 6=Sat
 
   // Find the current block by ordinal
   const currentBlock = programFull.blocks.find((b) => b.ordinal === blockOrdinal)
-  if (!currentBlock) return null
+  if (!currentBlock) {
+    return { block: null, week: null, session: null, error: 'block-not-found' }
+  }
 
   // Find the current week within that block
   const currentWeek = programFull.blockWeeks.find(
     (bw) => bw.blockId === currentBlock.id && bw.weekNumber === weekNumber,
   )
-  if (!currentWeek) return null
+  if (!currentWeek) {
+    return { block: currentBlock, week: null, session: null, error: 'week-not-found' }
+  }
 
   // Find a scheduled session for today's day of week
   const todaySession = programFull.scheduledSessions.find(
     (ss) => ss.blockWeekId === currentWeek.id && ss.dayOfWeek === todayDow,
   )
 
+  // No error -- if no session, it is a genuine rest day
   return {
     block: currentBlock,
     week: currentWeek,
@@ -82,14 +98,22 @@ function TodayPage() {
     try {
       const workoutLog = await startWorkout(userId)
       navigate({ to: '/log/$workoutId', params: { workoutId: workoutLog.id } })
-    } catch {
+    } catch (err) {
+      console.error('[today-page] handleStartWorkout:', err)
       setStartError('Failed to start workout. Check your connection and try again.')
     }
   }
 
   const handleStartProgrammedSession = async () => {
-    if (!userId || !todayContext?.session?.sessionTemplateId || !activation || !todayContext.block)
+    if (
+      !userId ||
+      !todayContext?.session?.sessionTemplateId ||
+      !activation ||
+      !todayContext.block
+    ) {
+      setStartError('Unable to start session. Program data may be incomplete.')
       return
+    }
     setStartError(null)
     try {
       const workoutLog = await startProgrammedWorkout(
@@ -99,19 +123,20 @@ function TodayPage() {
           programId: activation.programId,
           blockId: todayContext.block.id,
           weekNumber: activation.currentWeekNumber,
-          dayLabel: todayContext.session.dayLabel ?? '',
+          dayLabel: todayContext.session.dayLabel,
         },
       )
       navigate({ to: '/log/$workoutId', params: { workoutId: workoutLog.id } })
-    } catch {
+    } catch (err) {
+      console.error('[today-page] handleStartProgrammedSession:', err)
       setStartError('Failed to start session. Check your connection and try again.')
     }
   }
 
   // Compute total weeks for current block
   const totalWeeksInBlock = useMemo(() => {
-    if (!todayContext?.block || !programFull) return 0
-    return programFull.blockWeeks.filter((bw) => bw.blockId === todayContext.block.id).length
+    if (!todayContext?.block?.id || !programFull) return 0
+    return programFull.blockWeeks.filter((bw) => bw.blockId === todayContext.block!.id).length
   }, [todayContext, programFull])
 
   return (
@@ -119,8 +144,18 @@ function TodayPage() {
       {/* Crash recovery check */}
       <CrashRecoveryDialog userId={userId} />
 
+      {/* Data mismatch error banner */}
+      {todayContext?.error && (
+        <div
+          role="alert"
+          className="mt-8 bg-amber-900/30 border border-amber-600/40 px-4 py-3 text-xs text-amber-300 uppercase tracking-wider text-center"
+        >
+          Your program data may be out of sync. Try reactivating your program.
+        </div>
+      )}
+
       {/* Active program context card */}
-      {(isProgramLoading || hasActiveProgram) && (
+      {(isProgramLoading || hasActiveProgram) && !todayContext?.error && (
         <div className="mt-8">
           <ProgramSessionCard
             programName={programFull?.program.name ?? ''}
@@ -131,7 +166,7 @@ function TodayPage() {
             sessionType={todayContext?.session?.sessionType}
             onStartSession={handleStartProgrammedSession}
             isLoading={isProgramLoading}
-            isRestDay={hasActiveProgram && !todayContext?.session}
+            isRestDay={hasActiveProgram && !todayContext?.session && !todayContext?.error}
           />
         </div>
       )}
