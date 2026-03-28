@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import type {
   DataAdapter,
   ExerciseFilters,
+  ProgramFull,
   SessionTemplateFull,
   WorkoutLogSummary,
   WorkoutWithSets,
@@ -17,6 +18,11 @@ import type {
   SessionTemplate,
   ActivityGroup,
   Activity,
+  Program,
+  Block,
+  BlockWeek,
+  ScheduledSession,
+  ProgramActivation,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -29,6 +35,11 @@ import type {
   SessionTemplateRow,
   ActivityGroupRow,
   ActivityRow,
+  ProgramRow,
+  BlockRow,
+  BlockWeekRow,
+  ScheduledSessionRow,
+  ProgramActivationRow,
 } from './database.types'
 import {
   toExercise,
@@ -51,6 +62,11 @@ import {
   fromActivityGroup,
   toActivity,
   fromActivity,
+  toProgram,
+  toBlock,
+  toBlockWeek,
+  toScheduledSession,
+  toProgramActivation,
 } from './data-mapper'
 
 // ---------------------------------------------------------------------------
@@ -215,6 +231,68 @@ interface TauriSessionTemplateFull {
   template: TauriSessionTemplateResponse
   groups: TauriActivityGroupResponse[]
   activities: TauriActivityResponse[]
+}
+
+interface TauriProgramResponse {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  source: string
+  duration_weeks: number | null
+  is_public: number // 0 or 1 in SQLite
+  created_by: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TauriBlockResponse {
+  id: string
+  program_id: string
+  name: string
+  ordinal: number
+  duration_weeks: number
+  block_type: string
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TauriBlockWeekResponse {
+  id: string
+  block_id: string
+  week_number: number
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TauriScheduledSessionResponse {
+  id: string
+  block_week_id: string
+  day_of_week: number | null
+  day_label: string
+  session_type: string
+  session_template_id: string
+  notes: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TauriProgramActivationResponse {
+  id: string
+  user_id: string
+  program_id: string
+  current_block_ordinal: number
+  current_week_number: number
+  start_date: string
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TauriProgramFullResponse {
+  program: TauriProgramResponse
+  blocks: TauriBlockResponse[]
+  block_weeks: TauriBlockWeekResponse[]
+  scheduled_sessions: TauriScheduledSessionResponse[]
 }
 
 // ---------------------------------------------------------------------------
@@ -468,6 +546,81 @@ function toActivityRowFromTauri(r: TauriActivityResponse): ActivityRow {
     ordinal: r.ordinal,
     set_scheme: r.set_scheme,
     notes: r.notes,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+function toProgramRowFromTauri(r: TauriProgramResponse): ProgramRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on program row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on program row', r)
+  return {
+    id: r.id,
+    user_id: r.user_id,
+    name: r.name,
+    description: r.description,
+    source: r.source,
+    duration_weeks: r.duration_weeks,
+    is_public: r.is_public !== 0,
+    created_by: r.created_by,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+function toBlockRowFromTauri(r: TauriBlockResponse): BlockRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on block row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on block row', r)
+  return {
+    id: r.id,
+    program_id: r.program_id,
+    name: r.name,
+    ordinal: r.ordinal,
+    duration_weeks: r.duration_weeks,
+    block_type: r.block_type,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+function toBlockWeekRowFromTauri(r: TauriBlockWeekResponse): BlockWeekRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on block_week row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on block_week row', r)
+  return {
+    id: r.id,
+    block_id: r.block_id,
+    week_number: r.week_number,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+function toScheduledSessionRowFromTauri(r: TauriScheduledSessionResponse): ScheduledSessionRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on scheduled_session row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on scheduled_session row', r)
+  return {
+    id: r.id,
+    block_week_id: r.block_week_id,
+    day_of_week: r.day_of_week,
+    day_label: r.day_label,
+    session_type: r.session_type,
+    session_template_id: r.session_template_id,
+    notes: r.notes,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+function toProgramActivationRowFromTauri(r: TauriProgramActivationResponse): ProgramActivationRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on program_activation row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on program_activation row', r)
+  return {
+    id: r.id,
+    user_id: r.user_id,
+    program_id: r.program_id,
+    current_block_ordinal: r.current_block_ordinal,
+    current_week_number: r.current_week_number,
+    start_date: r.start_date,
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -1048,5 +1201,175 @@ export class TauriAdapter implements DataAdapter {
 
   async deleteSessionTemplate(id: string): Promise<void> {
     await invokeCommand<void>('delete_session_template', { id })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Program operations
+  // ---------------------------------------------------------------------------
+
+  async getPrograms(userId: string): Promise<Program[]> {
+    const rows = await invokeCommand<TauriProgramResponse[]>('get_programs', {
+      user_id: userId,
+    })
+    return rows.map((r) => toProgram(toProgramRowFromTauri(r)))
+  }
+
+  async getProgramFull(id: string): Promise<ProgramFull | null> {
+    const result = await invokeCommand<TauriProgramFullResponse | null>('get_program_full', { id })
+    if (!result) return null
+    return {
+      program: toProgram(toProgramRowFromTauri(result.program)),
+      blocks: result.blocks.map((r) => toBlock(toBlockRowFromTauri(r))),
+      blockWeeks: result.block_weeks.map((r) => toBlockWeek(toBlockWeekRowFromTauri(r))),
+      scheduledSessions: result.scheduled_sessions.map((r) =>
+        toScheduledSession(toScheduledSessionRowFromTauri(r)),
+      ),
+    }
+  }
+
+  async createProgramFull(
+    program: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>,
+    blocks: Array<{
+      block: Omit<Block, 'id' | 'programId'>
+      weeks: Array<{
+        week: Omit<BlockWeek, 'id' | 'blockId'>
+        sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
+      }>
+    }>,
+  ): Promise<ProgramFull> {
+    const input = {
+      program: {
+        id: null,
+        user_id: program.userId,
+        name: program.name,
+        description: program.description ?? null,
+        source: program.source,
+        duration_weeks: program.durationWeeks ?? null,
+        is_public: program.isPublic,
+        created_by: program.createdBy ?? null,
+      },
+      blocks: blocks.map(({ block, weeks }) => ({
+        block: {
+          id: null,
+          name: block.name,
+          ordinal: block.ordinal,
+          duration_weeks: block.durationWeeks,
+          block_type: block.blockType,
+        },
+        weeks: weeks.map(({ week, sessions }) => ({
+          week: {
+            id: null,
+            week_number: week.weekNumber,
+          },
+          sessions: sessions.map((s) => ({
+            id: null,
+            day_of_week: s.dayOfWeek ?? null,
+            day_label: s.dayLabel,
+            session_type: s.sessionType,
+            session_template_id: s.sessionTemplateId,
+            notes: s.notes ?? null,
+          })),
+        })),
+      })),
+    }
+
+    const result = await invokeCommand<TauriProgramFullResponse>('create_program_full', input)
+    return {
+      program: toProgram(toProgramRowFromTauri(result.program)),
+      blocks: result.blocks.map((r) => toBlock(toBlockRowFromTauri(r))),
+      blockWeeks: result.block_weeks.map((r) => toBlockWeek(toBlockWeekRowFromTauri(r))),
+      scheduledSessions: result.scheduled_sessions.map((r) =>
+        toScheduledSession(toScheduledSessionRowFromTauri(r)),
+      ),
+    }
+  }
+
+  async updateProgramFull(
+    program: Program,
+    blocks: Array<{
+      block: Omit<Block, 'programId'>
+      weeks: Array<{
+        week: Omit<BlockWeek, 'blockId'>
+        sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
+      }>
+    }>,
+  ): Promise<ProgramFull> {
+    const input = {
+      program: {
+        id: program.id,
+        user_id: program.userId,
+        name: program.name,
+        description: program.description ?? null,
+        source: program.source,
+        duration_weeks: program.durationWeeks ?? null,
+        is_public: program.isPublic,
+        created_by: program.createdBy ?? null,
+      },
+      blocks: blocks.map(({ block, weeks }) => ({
+        block: {
+          id: block.id || null,
+          name: block.name,
+          ordinal: block.ordinal,
+          duration_weeks: block.durationWeeks,
+          block_type: block.blockType,
+        },
+        weeks: weeks.map(({ week, sessions }) => ({
+          week: {
+            id: week.id || null,
+            week_number: week.weekNumber,
+          },
+          sessions: sessions.map((s) => ({
+            id: null,
+            day_of_week: s.dayOfWeek ?? null,
+            day_label: s.dayLabel,
+            session_type: s.sessionType,
+            session_template_id: s.sessionTemplateId,
+            notes: s.notes ?? null,
+          })),
+        })),
+      })),
+    }
+
+    const result = await invokeCommand<TauriProgramFullResponse>('update_program_full', input)
+    return {
+      program: toProgram(toProgramRowFromTauri(result.program)),
+      blocks: result.blocks.map((r) => toBlock(toBlockRowFromTauri(r))),
+      blockWeeks: result.block_weeks.map((r) => toBlockWeek(toBlockWeekRowFromTauri(r))),
+      scheduledSessions: result.scheduled_sessions.map((r) =>
+        toScheduledSession(toScheduledSessionRowFromTauri(r)),
+      ),
+    }
+  }
+
+  async deleteProgram(id: string): Promise<void> {
+    await invokeCommand<void>('delete_program', { id })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Program activation operations
+  // ---------------------------------------------------------------------------
+
+  async getActiveProgram(userId: string): Promise<ProgramActivation | null> {
+    const row = await invokeCommand<TauriProgramActivationResponse | null>('get_active_program', {
+      user_id: userId,
+    })
+    return row ? toProgramActivation(toProgramActivationRowFromTauri(row)) : null
+  }
+
+  async setActiveProgram(
+    userId: string,
+    programId: string,
+    startDate?: string,
+  ): Promise<ProgramActivation> {
+    const row = await invokeCommand<TauriProgramActivationResponse>('set_active_program', {
+      user_id: userId,
+      program_id: programId,
+      start_date: startDate ?? null,
+    })
+    return toProgramActivation(toProgramActivationRowFromTauri(row))
+  }
+
+  async clearActiveProgram(userId: string): Promise<void> {
+    await invokeCommand<void>('clear_active_program', { user_id: userId })
   }
 }

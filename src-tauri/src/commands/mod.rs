@@ -1,4 +1,5 @@
 pub mod exercises;
+pub mod programs;
 pub mod rest_timer;
 pub mod session_templates;
 pub mod sync;

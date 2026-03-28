@@ -10,6 +10,11 @@ import type {
   SessionTemplate,
   ActivityGroup,
   Activity,
+  Program,
+  Block,
+  BlockWeek,
+  ScheduledSession,
+  ProgramActivation,
 } from '@/domain/types'
 import {
   entityId,
@@ -30,6 +35,8 @@ import {
   sessionTypeSchema,
   scoringTypeSchema,
   setSchemeSchema,
+  programSourceSchema,
+  blockTypeSchema,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -42,6 +49,11 @@ import type {
   SessionTemplateRow,
   ActivityGroupRow,
   ActivityRow,
+  ProgramRow,
+  BlockRow,
+  BlockWeekRow,
+  ScheduledSessionRow,
+  ProgramActivationRow,
 } from './database.types'
 
 /**
@@ -410,5 +422,165 @@ export function fromActivity(
     ordinal: activity.ordinal,
     set_scheme: JSON.stringify(activity.setScheme),
     notes: activity.notes ?? null,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Program
+// ---------------------------------------------------------------------------
+
+export function toProgram(row: ProgramRow): Program {
+  try {
+    return {
+      id: row.id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      userId: row.user_id,
+      name: row.name,
+      description: row.description ?? undefined,
+      source: programSourceSchema.parse(row.source),
+      durationWeeks: row.duration_weeks ?? undefined,
+      isPublic: row.is_public,
+      createdBy: row.created_by ?? row.user_id,
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map program "${row.name}" (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+}
+
+export function fromProgram(
+  program: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>,
+): Partial<ProgramRow> {
+  return {
+    user_id: program.userId,
+    name: program.name,
+    description: program.description ?? null,
+    source: program.source,
+    duration_weeks: program.durationWeeks ?? null,
+    is_public: program.isPublic,
+    created_by: program.createdBy ?? null,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Block
+// ---------------------------------------------------------------------------
+
+export function toBlock(row: BlockRow): Block {
+  try {
+    return {
+      id: row.id,
+      programId: row.program_id,
+      name: row.name,
+      ordinal: row.ordinal,
+      durationWeeks: row.duration_weeks,
+      blockType: blockTypeSchema.parse(row.block_type),
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map block "${row.name}" (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+}
+
+export function fromBlock(
+  block: Omit<Block, 'id'> | Omit<Block, 'id' | 'programId'>,
+  programId?: string,
+): Partial<BlockRow> {
+  return {
+    program_id: programId ?? ('programId' in block ? block.programId : undefined),
+    name: block.name,
+    ordinal: block.ordinal,
+    duration_weeks: block.durationWeeks,
+    block_type: block.blockType,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// BlockWeek
+// ---------------------------------------------------------------------------
+
+export function toBlockWeek(row: BlockWeekRow): BlockWeek {
+  return {
+    id: row.id,
+    blockId: row.block_id,
+    weekNumber: row.week_number,
+  }
+}
+
+export function fromBlockWeek(
+  week: Omit<BlockWeek, 'id'> | Omit<BlockWeek, 'id' | 'blockId'>,
+  blockId?: string,
+): Partial<BlockWeekRow> {
+  return {
+    block_id: blockId ?? ('blockId' in week ? week.blockId : undefined),
+    week_number: week.weekNumber,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ScheduledSession
+// ---------------------------------------------------------------------------
+
+export function toScheduledSession(row: ScheduledSessionRow): ScheduledSession {
+  try {
+    return {
+      id: row.id,
+      blockWeekId: row.block_week_id,
+      dayOfWeek: row.day_of_week ?? undefined,
+      dayLabel: row.day_label,
+      sessionType: sessionTypeSchema.parse(row.session_type),
+      sessionTemplateId: row.session_template_id,
+      notes: row.notes ?? undefined,
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map scheduled session (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+}
+
+export function fromScheduledSession(
+  session: Omit<ScheduledSession, 'id'> | Omit<ScheduledSession, 'id' | 'blockWeekId'>,
+  blockWeekId?: string,
+): Partial<ScheduledSessionRow> {
+  return {
+    block_week_id: blockWeekId ?? ('blockWeekId' in session ? session.blockWeekId : undefined),
+    day_of_week: session.dayOfWeek ?? null,
+    day_label: session.dayLabel,
+    session_type: session.sessionType,
+    session_template_id: session.sessionTemplateId,
+    notes: session.notes ?? null,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ProgramActivation
+// ---------------------------------------------------------------------------
+
+export function toProgramActivation(row: ProgramActivationRow): ProgramActivation {
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    userId: row.user_id,
+    programId: row.program_id,
+    currentBlockOrdinal: row.current_block_ordinal,
+    currentWeekNumber: row.current_week_number,
+    startDate: row.start_date,
+  }
+}
+
+export function fromProgramActivation(
+  activation: Omit<ProgramActivation, 'id' | 'createdAt' | 'updatedAt'>,
+): Partial<ProgramActivationRow> {
+  return {
+    user_id: activation.userId,
+    program_id: activation.programId,
+    current_block_ordinal: activation.currentBlockOrdinal,
+    current_week_number: activation.currentWeekNumber,
+    start_date: activation.startDate,
   }
 }

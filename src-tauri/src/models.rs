@@ -215,3 +215,90 @@ pub struct SessionTemplateFull {
     pub groups: Vec<ActivityGroupRow>,
     pub activities: Vec<ActivityRow>,
 }
+
+// ============================================================
+// Program row structs -- mirror SQLite tables 1:1
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct ProgramRow {
+    pub id: String,
+    pub user_id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub source: String,
+    pub duration_weeks: Option<i64>,
+    pub is_public: i64,
+    pub created_by: Option<String>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct BlockRow {
+    pub id: String,
+    pub program_id: String,
+    pub name: String,
+    pub ordinal: i64,
+    pub duration_weeks: i64,
+    pub block_type: String,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct BlockWeekRow {
+    pub id: String,
+    pub block_id: String,
+    pub week_number: i64,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct ScheduledSessionRow {
+    pub id: String,
+    pub block_week_id: String,
+    pub day_of_week: Option<i64>,
+    pub day_label: String,
+    pub session_type: String,
+    pub session_template_id: String,
+    pub notes: Option<String>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct ProgramActivationRow {
+    pub id: String,
+    pub user_id: String,
+    pub program_id: String,
+    pub current_block_ordinal: i64,
+    pub current_week_number: i64,
+    pub start_date: String,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub updated_at: Option<i64>,
+}
+
+// ============================================================
+// Program composite structs
+// ============================================================
+
+/// Full nested program for detail/editor view.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ProgramFull {
+    pub program: ProgramRow,
+    pub blocks: Vec<BlockRow>,
+    pub block_weeks: Vec<BlockWeekRow>,
+    pub scheduled_sessions: Vec<ScheduledSessionRow>,
+}

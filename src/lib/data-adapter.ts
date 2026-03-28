@@ -9,6 +9,11 @@ import type {
   SessionTemplate,
   ActivityGroup,
   Activity,
+  Program,
+  Block,
+  BlockWeek,
+  ScheduledSession,
+  ProgramActivation,
 } from '@/domain/types'
 import type { ExerciseCategory, MovementPattern, MuscleGroup } from '@/domain/types'
 
@@ -27,6 +32,13 @@ export type SessionTemplateFull = {
   activities: Activity[]
 }
 
+export type ProgramFull = {
+  program: Program
+  blocks: Block[]
+  blockWeeks: BlockWeek[]
+  scheduledSessions: ScheduledSession[]
+}
+
 export interface ExerciseFilters {
   category?: ExerciseCategory
   movementPattern?: MovementPattern
@@ -43,8 +55,7 @@ export interface ExerciseFilters {
  * - List operations return an empty array when no matches exist.
  * - Infrastructure errors (network, DB) should throw and are handled by callers.
  *
- * Current scope (Steps 3-5): exercises, workout logs, user profiles, and 1RM history.
- * Program, session template, and sharing operations will be added in later steps.
+ * Scope grows with each implementation step; see interface methods below for current operations.
  */
 export interface DataAdapter {
   // Exercise operations
@@ -120,4 +131,38 @@ export interface DataAdapter {
     }>,
   ): Promise<SessionTemplateFull>
   deleteSessionTemplate(id: string): Promise<void>
+
+  // Program operations
+  getPrograms(userId: string): Promise<Program[]>
+  getProgramFull(id: string): Promise<ProgramFull | null>
+  createProgramFull(
+    program: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>,
+    blocks: Array<{
+      block: Omit<Block, 'id' | 'programId'>
+      weeks: Array<{
+        week: Omit<BlockWeek, 'id' | 'blockId'>
+        sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
+      }>
+    }>,
+  ): Promise<ProgramFull>
+  updateProgramFull(
+    program: Program,
+    blocks: Array<{
+      block: Omit<Block, 'programId'>
+      weeks: Array<{
+        week: Omit<BlockWeek, 'blockId'>
+        sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
+      }>
+    }>,
+  ): Promise<ProgramFull>
+  deleteProgram(id: string): Promise<void>
+
+  // Program activation operations
+  getActiveProgram(userId: string): Promise<ProgramActivation | null>
+  setActiveProgram(
+    userId: string,
+    programId: string,
+    startDate?: string,
+  ): Promise<ProgramActivation>
+  clearActiveProgram(userId: string): Promise<void>
 }

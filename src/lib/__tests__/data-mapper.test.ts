@@ -21,6 +21,16 @@ import {
   fromActivityGroup,
   toActivity,
   fromActivity,
+  toProgram,
+  fromProgram,
+  toBlock,
+  fromBlock,
+  toBlockWeek,
+  fromBlockWeek,
+  toScheduledSession,
+  fromScheduledSession,
+  toProgramActivation,
+  fromProgramActivation,
 } from '../data-mapper'
 import type {
   ExerciseRow,
@@ -33,6 +43,11 @@ import type {
   SessionTemplateRow,
   ActivityGroupRow,
   ActivityRow,
+  ProgramRow,
+  BlockRow,
+  BlockWeekRow,
+  ScheduledSessionRow,
+  ProgramActivationRow,
 } from '../database.types'
 
 // ===========================================================================
@@ -1733,5 +1748,296 @@ describe('toActivity / fromActivity', () => {
     expect(roundTripped.ordinal).toBe(domain.ordinal)
     expect(roundTripped.setScheme).toEqual(domain.setScheme)
     expect(roundTripped.notes).toBe(domain.notes)
+  })
+})
+
+// ===========================================================================
+// Program domain mapper fixtures and tests
+// ===========================================================================
+
+const userId = 'user-001'
+
+// ---------------------------------------------------------------------------
+// Program fixtures
+// ---------------------------------------------------------------------------
+
+const programRow: ProgramRow = {
+  id: 'prog-op3w-001',
+  user_id: userId,
+  name: 'TB Operator 3-Week',
+  description: 'Tactical Barbell Operator template',
+  source: 'TEMPLATE',
+  duration_weeks: 3,
+  is_public: false,
+  created_by: userId,
+  created_at: now,
+  updated_at: now,
+}
+
+const blockRow: BlockRow = {
+  id: 'blk-acc-001',
+  program_id: 'prog-op3w-001',
+  name: 'Accumulation',
+  ordinal: 1,
+  duration_weeks: 4,
+  block_type: 'ACCUMULATION',
+  created_at: now,
+  updated_at: now,
+}
+
+const blockWeekRow: BlockWeekRow = {
+  id: 'bw-w1-001',
+  block_id: 'blk-acc-001',
+  week_number: 1,
+  created_at: now,
+  updated_at: now,
+}
+
+const scheduledSessionRow: ScheduledSessionRow = {
+  id: 'ss-mon-001',
+  block_week_id: 'bw-w1-001',
+  day_of_week: 1,
+  day_label: 'Monday Upper',
+  session_type: 'STRENGTH',
+  session_template_id: 'st-upper-001',
+  notes: 'Heavy day',
+  created_at: now,
+  updated_at: now,
+}
+
+const programActivationRow: ProgramActivationRow = {
+  id: 'pa-001',
+  user_id: userId,
+  program_id: 'prog-op3w-001',
+  current_block_ordinal: 1,
+  current_week_number: 2,
+  start_date: '2025-06-15',
+  created_at: now,
+  updated_at: now,
+}
+
+// ---------------------------------------------------------------------------
+// toProgram / fromProgram
+// ---------------------------------------------------------------------------
+
+describe('toProgram / fromProgram', () => {
+  it('maps a fully populated program row to domain type', () => {
+    const result = toProgram(programRow)
+    expect(result.id).toBe('prog-op3w-001')
+    expect(result.userId).toBe(userId)
+    expect(result.name).toBe('TB Operator 3-Week')
+    expect(result.description).toBe('Tactical Barbell Operator template')
+    expect(result.source).toBe('TEMPLATE')
+    expect(result.durationWeeks).toBe(3)
+    expect(result.isPublic).toBe(false)
+    expect(result.createdBy).toBe(userId)
+    expect(result.createdAt).toBe(now)
+    expect(result.updatedAt).toBe(now)
+  })
+
+  it('maps nullable description to undefined', () => {
+    const row = { ...programRow, description: null }
+    const result = toProgram(row)
+    expect(result.description).toBeUndefined()
+  })
+
+  it('maps nullable duration_weeks to undefined', () => {
+    const row = { ...programRow, duration_weeks: null }
+    const result = toProgram(row)
+    expect(result.durationWeeks).toBeUndefined()
+  })
+
+  it('maps nullable created_by to user_id fallback', () => {
+    const row = { ...programRow, created_by: null }
+    const result = toProgram(row)
+    expect(result.createdBy).toBe(userId)
+  })
+
+  it('throws Error on invalid source enum', () => {
+    const bad = { ...programRow, source: 'PIRATED' }
+    expect(() => toProgram(bad)).toThrow(Error)
+    try {
+      toProgram(bad)
+    } catch (err) {
+      expect((err as Error).message).toContain('Failed to map program')
+    }
+  })
+
+  it('fromProgram maps all fields to snake_case', () => {
+    const domain = toProgram(programRow)
+    const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+    const row = fromProgram(body)
+    expect(row.user_id).toBe(userId)
+    expect(row.name).toBe('TB Operator 3-Week')
+    expect(row.description).toBe('Tactical Barbell Operator template')
+    expect(row.source).toBe('TEMPLATE')
+    expect(row.duration_weeks).toBe(3)
+    expect(row.is_public).toBe(false)
+    expect(row.created_by).toBe(userId)
+  })
+
+  it('fromProgram maps optional fields to null', () => {
+    const row = fromProgram({
+      userId,
+      name: 'Minimal',
+      source: 'CUSTOM',
+      isPublic: false,
+      createdBy: userId,
+    })
+    expect(row.description).toBeNull()
+    expect(row.duration_weeks).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toBlock / fromBlock
+// ---------------------------------------------------------------------------
+
+describe('toBlock / fromBlock', () => {
+  it('maps a fully populated block row to domain type', () => {
+    const result = toBlock(blockRow)
+    expect(result.id).toBe('blk-acc-001')
+    expect(result.programId).toBe('prog-op3w-001')
+    expect(result.name).toBe('Accumulation')
+    expect(result.ordinal).toBe(1)
+    expect(result.durationWeeks).toBe(4)
+    expect(result.blockType).toBe('ACCUMULATION')
+  })
+
+  it('throws Error on invalid block_type enum', () => {
+    const bad = { ...blockRow, block_type: 'PEAKING' }
+    expect(() => toBlock(bad)).toThrow(Error)
+    try {
+      toBlock(bad)
+    } catch (err) {
+      expect((err as Error).message).toContain('Failed to map block')
+    }
+  })
+
+  it('fromBlock maps correctly with explicit programId argument', () => {
+    const domain = toBlock(blockRow)
+    const { id: _, ...body } = domain
+    const row = fromBlock(body, 'prog-override')
+    expect(row.program_id).toBe('prog-override')
+    expect(row.name).toBe('Accumulation')
+    expect(row.ordinal).toBe(1)
+    expect(row.duration_weeks).toBe(4)
+    expect(row.block_type).toBe('ACCUMULATION')
+  })
+
+  it('fromBlock maps correctly using row programId if no arg provided', () => {
+    const domain = toBlock(blockRow)
+    const { id: _, ...body } = domain
+    const row = fromBlock(body)
+    expect(row.program_id).toBe('prog-op3w-001')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toBlockWeek / fromBlockWeek
+// ---------------------------------------------------------------------------
+
+describe('toBlockWeek / fromBlockWeek', () => {
+  it('maps a fully populated block week row to domain type', () => {
+    const result = toBlockWeek(blockWeekRow)
+    expect(result.id).toBe('bw-w1-001')
+    expect(result.blockId).toBe('blk-acc-001')
+    expect(result.weekNumber).toBe(1)
+  })
+
+  it('fromBlockWeek maps correctly', () => {
+    const domain = toBlockWeek(blockWeekRow)
+    const { id: _, ...body } = domain
+    const row = fromBlockWeek(body)
+    expect(row.block_id).toBe('blk-acc-001')
+    expect(row.week_number).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toScheduledSession / fromScheduledSession
+// ---------------------------------------------------------------------------
+
+describe('toScheduledSession / fromScheduledSession', () => {
+  it('maps a fully populated scheduled session row to domain type', () => {
+    const result = toScheduledSession(scheduledSessionRow)
+    expect(result.id).toBe('ss-mon-001')
+    expect(result.blockWeekId).toBe('bw-w1-001')
+    expect(result.dayOfWeek).toBe(1)
+    expect(result.dayLabel).toBe('Monday Upper')
+    expect(result.sessionType).toBe('STRENGTH')
+    expect(result.sessionTemplateId).toBe('st-upper-001')
+    expect(result.notes).toBe('Heavy day')
+  })
+
+  it('maps nullable day_of_week to undefined', () => {
+    const row = { ...scheduledSessionRow, day_of_week: null }
+    const result = toScheduledSession(row)
+    expect(result.dayOfWeek).toBeUndefined()
+  })
+
+  it('maps nullable notes to undefined', () => {
+    const row = { ...scheduledSessionRow, notes: null }
+    const result = toScheduledSession(row)
+    expect(result.notes).toBeUndefined()
+  })
+
+  it('throws Error on invalid session_type enum', () => {
+    const bad = { ...scheduledSessionRow, session_type: 'YOGA' }
+    expect(() => toScheduledSession(bad)).toThrow(Error)
+    try {
+      toScheduledSession(bad)
+    } catch (err) {
+      expect((err as Error).message).toContain('Failed to map scheduled session')
+    }
+  })
+
+  it('fromScheduledSession maps correctly with optional fields to null', () => {
+    const domain = toScheduledSession({ ...scheduledSessionRow, day_of_week: null, notes: null })
+    const { id: _, ...body } = domain
+    const row = fromScheduledSession(body)
+    expect(row.block_week_id).toBe('bw-w1-001')
+    expect(row.day_of_week).toBeNull()
+    expect(row.day_label).toBe('Monday Upper')
+    expect(row.session_type).toBe('STRENGTH')
+    expect(row.session_template_id).toBe('st-upper-001')
+    expect(row.notes).toBeNull()
+  })
+
+  it('fromScheduledSession maps populated optional fields correctly', () => {
+    const domain = toScheduledSession(scheduledSessionRow)
+    const { id: _, ...body } = domain
+    const row = fromScheduledSession(body)
+    expect(row.day_of_week).toBe(1)
+    expect(row.notes).toBe('Heavy day')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toProgramActivation / fromProgramActivation
+// ---------------------------------------------------------------------------
+
+describe('toProgramActivation / fromProgramActivation', () => {
+  it('maps a fully populated program activation row to domain type', () => {
+    const result = toProgramActivation(programActivationRow)
+    expect(result.id).toBe('pa-001')
+    expect(result.userId).toBe(userId)
+    expect(result.programId).toBe('prog-op3w-001')
+    expect(result.currentBlockOrdinal).toBe(1)
+    expect(result.currentWeekNumber).toBe(2)
+    expect(result.startDate).toBe('2025-06-15')
+    expect(result.createdAt).toBe(now)
+    expect(result.updatedAt).toBe(now)
+  })
+
+  it('fromProgramActivation maps all fields to snake_case', () => {
+    const domain = toProgramActivation(programActivationRow)
+    const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+    const row = fromProgramActivation(body)
+    expect(row.user_id).toBe(userId)
+    expect(row.program_id).toBe('prog-op3w-001')
+    expect(row.current_block_ordinal).toBe(1)
+    expect(row.current_week_number).toBe(2)
+    expect(row.start_date).toBe('2025-06-15')
   })
 })

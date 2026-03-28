@@ -61,6 +61,15 @@ pub fn run() {
       commands::session_templates::create_session_template_full,
       commands::session_templates::update_session_template_full,
       commands::session_templates::delete_session_template,
+      // Programs
+      commands::programs::get_programs,
+      commands::programs::get_program_full,
+      commands::programs::create_program_full,
+      commands::programs::update_program_full,
+      commands::programs::delete_program,
+      commands::programs::get_active_program,
+      commands::programs::set_active_program,
+      commands::programs::clear_active_program,
       // User profile
       commands::user_profile::get_user_profile,
       commands::user_profile::update_user_profile,

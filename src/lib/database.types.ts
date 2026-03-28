@@ -134,3 +134,58 @@ export interface ActivityRow {
   created_at: string
   updated_at: string
 }
+
+export interface ProgramRow {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  source: string
+  duration_weeks: number | null
+  is_public: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BlockRow {
+  id: string
+  program_id: string
+  name: string
+  ordinal: number
+  duration_weeks: number
+  block_type: string
+  created_at: string
+  updated_at: string
+}
+
+export interface BlockWeekRow {
+  id: string
+  block_id: string
+  week_number: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ScheduledSessionRow {
+  id: string
+  block_week_id: string
+  day_of_week: number | null
+  day_label: string
+  session_type: string
+  session_template_id: string
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProgramActivationRow {
+  id: string
+  user_id: string
+  program_id: string
+  current_block_ordinal: number
+  current_week_number: number
+  start_date: string
+  created_at: string
+  updated_at: string
+}
