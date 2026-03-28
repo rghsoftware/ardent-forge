@@ -15,7 +15,11 @@ pub enum ErrorKind {
     Conflict,
     Validation,
     Database,
+    #[allow(dead_code)]
     Internal,
+    Sync,
+    #[allow(dead_code)]
+    Network,
 }
 
 impl std::fmt::Display for AppError {
@@ -44,6 +48,23 @@ impl AppError {
     pub fn conflict(message: &str) -> Self {
         Self {
             kind: ErrorKind::Conflict,
+            message: message.to_string(),
+            field: None,
+        }
+    }
+
+    pub fn sync(message: &str) -> Self {
+        Self {
+            kind: ErrorKind::Sync,
+            message: message.to_string(),
+            field: None,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn network(message: &str) -> Self {
+        Self {
+            kind: ErrorKind::Network,
             message: message.to_string(),
             field: None,
         }

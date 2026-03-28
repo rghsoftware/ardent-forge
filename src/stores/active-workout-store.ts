@@ -1,4 +1,7 @@
 import { create } from 'zustand'
+import { isTauri } from '@tauri-apps/api/core'
+import { invoke } from '@tauri-apps/api/core'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type {
   WorkoutLog,
   LoggedActivityGroup,
@@ -63,6 +66,17 @@ interface ActiveWorkoutState {
 
 let _elapsedInterval: ReturnType<typeof setInterval> | null = null
 let _restInterval: ReturnType<typeof setInterval> | null = null
+
+// Tauri event unlisten handles for the Rust rest timer path
+let _unlistenTick: UnlistenFn | null = null
+let _unlistenExpired: UnlistenFn | null = null
+
+function _cleanupTauriRestListeners(): void {
+  _unlistenTick?.()
+  _unlistenTick = null
+  _unlistenExpired?.()
+  _unlistenExpired = null
+}
 
 // ---------------------------------------------------------------------------
 // Actions
@@ -179,6 +193,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         clearInterval(_restInterval)
         _restInterval = null
       }
+      _cleanupTauriRestListeners()
       set({ ...initialState })
     },
 
@@ -191,6 +206,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         clearInterval(_restInterval)
         _restInterval = null
       }
+      _cleanupTauriRestListeners()
       set({ ...initialState })
     },
 
@@ -278,27 +294,62 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     // ------------------------------------------------------------------
 
     startRestTimer(seconds: number) {
-      // Clear any existing rest interval
+      // Clear any existing rest interval / Tauri listeners
       if (_restInterval) clearInterval(_restInterval)
-
-      _restInterval = setInterval(() => {
-        get().tickRest()
-      }, 1000)
+      _cleanupTauriRestListeners()
 
       set({
         restTimer: { remaining: seconds, total: seconds },
       })
+
+      if (isTauri()) {
+        // Rust-backed timer: invoke command and subscribe to events
+        invoke('start_rest_timer', { seconds }).catch(console.error)
+
+        listen<{ remaining: number }>('timer_tick', (event) => {
+          set({
+            restTimer: {
+              remaining: event.payload.remaining,
+              total: get().restTimer?.total ?? seconds,
+            },
+          })
+        }).then((fn) => {
+          _unlistenTick = fn
+        })
+
+        listen<void>('timer_expired', () => {
+          _cleanupTauriRestListeners()
+          set({ restTimer: null })
+        }).then((fn) => {
+          _unlistenExpired = fn
+        })
+      } else {
+        // Browser path: JS setInterval
+        _restInterval = setInterval(() => {
+          get().tickRest()
+        }, 1000)
+      }
     },
 
     skipRest() {
-      if (_restInterval) {
-        clearInterval(_restInterval)
-        _restInterval = null
+      if (isTauri()) {
+        invoke('skip_rest_timer').catch(console.error)
+        _cleanupTauriRestListeners()
+      } else {
+        if (_restInterval) {
+          clearInterval(_restInterval)
+          _restInterval = null
+        }
       }
       set({ restTimer: null })
     },
 
     adjustRest(delta: number) {
+      if (isTauri()) {
+        invoke('adjust_rest_timer', { delta }).catch(console.error)
+      }
+      // Update local state immediately for both paths (Rust events will
+      // reconcile via timer_tick, but instant UI feedback is important)
       set((state) => {
         if (!state.restTimer) return {}
         return {
@@ -353,6 +404,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         clearInterval(_restInterval)
         _restInterval = null
       }
+      _cleanupTauriRestListeners()
     },
   }),
 )
