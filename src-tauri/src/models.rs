@@ -154,3 +154,64 @@ pub struct WorkoutWithSets {
     pub log: WorkoutLogRow,
     pub sets: Vec<LoggedSetRow>,
 }
+
+// ============================================================
+// Session template row structs -- mirror SQLite tables 1:1
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct SessionTemplateRow {
+    pub id: String,
+    pub user_id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub category: String,
+    pub rest_between_groups: Option<String>,  // JSON Duration
+    pub time_cap: Option<String>,             // JSON Duration
+    pub scoring: String,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct ActivityGroupRow {
+    pub id: String,
+    pub session_template_id: String,
+    pub group_type: String,
+    pub ordinal: i32,
+    pub rounds: Option<i32>,
+    pub rest_between_rounds: Option<String>,
+    pub rest_between_activities: Option<String>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct ActivityRow {
+    pub id: String,
+    pub activity_group_id: String,
+    pub exercise_id: String,
+    pub ordinal: i32,
+    pub set_scheme: String,  // JSON SetScheme
+    pub notes: Option<String>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub updated_at: Option<i64>,
+}
+
+// ============================================================
+// Session template composite structs
+// ============================================================
+
+/// Full nested session template for detail/editor view.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SessionTemplateFull {
+    pub template: SessionTemplateRow,
+    pub groups: Vec<ActivityGroupRow>,
+    pub activities: Vec<ActivityRow>,
+}

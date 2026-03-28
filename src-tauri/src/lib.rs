@@ -54,6 +54,13 @@ pub fn run() {
       commands::workout_logs::get_recently_used_exercise_ids,
       commands::workout_logs::get_exercise_workout_history,
       commands::workout_logs::create_workout_log_full,
+      // Session templates
+      commands::session_templates::get_session_templates,
+      commands::session_templates::get_session_template,
+      commands::session_templates::get_session_template_full,
+      commands::session_templates::create_session_template_full,
+      commands::session_templates::update_session_template_full,
+      commands::session_templates::delete_session_template,
       // User profile
       commands::user_profile::get_user_profile,
       commands::user_profile::update_user_profile,

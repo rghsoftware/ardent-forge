@@ -17,6 +17,9 @@ pub const SYNCABLE_TABLES: &[&str] = &[
     "logged_sets",
     "user_profiles",
     "one_rep_max_history",
+    "session_templates",
+    "activity_groups",
+    "activities",
 ];
 
 #[derive(Debug, Clone, serde::Serialize)]

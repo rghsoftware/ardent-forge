@@ -98,3 +98,39 @@ export interface OneRepMaxHistoryRow {
   recorded_at: string
   created_at: string
 }
+
+export interface SessionTemplateRow {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  category: string
+  rest_between_groups: string | null
+  time_cap: string | null
+  scoring: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ActivityGroupRow {
+  id: string
+  session_template_id: string
+  group_type: string
+  ordinal: number
+  rounds: number | null
+  rest_between_rounds: string | null
+  rest_between_activities: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ActivityRow {
+  id: string
+  activity_group_id: string
+  exercise_id: string
+  ordinal: number
+  set_scheme: string
+  notes: string | null
+  created_at: string
+  updated_at: string
+}

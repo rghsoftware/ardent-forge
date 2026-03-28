@@ -42,7 +42,7 @@ export const loadSpecSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('rpe'),
-    target: z.number().min(1).max(10),
+    target: z.number().min(1).max(10).multipleOf(0.5),
   }),
   z.object({
     type: z.literal('percentMaxReps'),
@@ -263,7 +263,9 @@ const setSchemeVariants: Record<SetSchemeTypeName, z.ZodTypeAny> = {
  * Use this instead of setSchemeSchema.safeParse() when you need
  * actionable error messages for end users.
  */
-export function parseSetScheme(data: unknown) {
+export function parseSetScheme(
+  data: unknown,
+): { success: false; error: string } | { success: true; data: SetScheme } {
   const typeResult = z.object({ type: z.string() }).safeParse(data)
   if (!typeResult.success) {
     return { success: false as const, error: 'Missing or invalid "type" field' }
@@ -275,7 +277,11 @@ export function parseSetScheme(data: unknown) {
       error: `Unknown SetScheme type: "${typeResult.data.type}". Valid types: ${setSchemeTypeNames.join(', ')}`,
     }
   }
-  return variant.safeParse(data)
+  const result = variant.safeParse(data)
+  if (!result.success) {
+    return { success: false as const, error: result.error.issues.map((i) => i.message).join('; ') }
+  }
+  return { success: true as const, data: result.data as SetScheme }
 }
 
 /** Convenience type for the return value of `parseSetScheme`. */

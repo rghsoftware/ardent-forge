@@ -47,8 +47,11 @@ export type SessionType = z.infer<typeof sessionTypeSchema>
 // ---------------------------------------------------------------------------
 
 export const sessionTemplateSchema = syncableEntitySchema.extend({
+  userId: entityId,
   name: z.string().min(1),
+  description: z.string().optional(),
   category: sessionTypeSchema,
+  restBetweenGroups: durationSchema.optional(),
   timeCap: durationSchema.optional(),
   scoring: scoringTypeSchema,
 })
@@ -61,6 +64,7 @@ export type SessionTemplate = z.infer<typeof sessionTemplateSchema>
 
 export const activitySchema = z.object({
   id: entityId,
+  activityGroupId: entityId,
   exerciseId: entityId,
   setScheme: setSchemeSchema,
   ordinal: z.number().int().positive(), // P-5

@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import type {
   DataAdapter,
   ExerciseFilters,
+  SessionTemplateFull,
   WorkoutLogSummary,
   WorkoutWithSets,
 } from './data-adapter'
@@ -13,6 +14,9 @@ import type {
   LoggedSet,
   UserProfile,
   OneRepMaxHistory,
+  SessionTemplate,
+  ActivityGroup,
+  Activity,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -22,6 +26,9 @@ import type {
   LoggedSetRow,
   UserProfileRow,
   OneRepMaxHistoryRow,
+  SessionTemplateRow,
+  ActivityGroupRow,
+  ActivityRow,
 } from './database.types'
 import {
   toExercise,
@@ -38,6 +45,12 @@ import {
   fromUserProfile,
   toOneRepMaxHistory,
   fromOneRepMaxHistory,
+  toSessionTemplate,
+  fromSessionTemplate,
+  toActivityGroupFlat,
+  fromActivityGroup,
+  toActivity,
+  fromActivity,
 } from './data-mapper'
 
 // ---------------------------------------------------------------------------
@@ -160,6 +173,48 @@ interface TauriWorkoutLogFull {
 interface TauriWorkoutWithSets {
   log: TauriWorkoutLogResponse
   sets: TauriLoggedSetResponse[]
+}
+
+interface TauriSessionTemplateResponse {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  category: string
+  rest_between_groups: string | null
+  time_cap: string | null
+  scoring: string
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TauriActivityGroupResponse {
+  id: string
+  session_template_id: string
+  group_type: string
+  ordinal: number
+  rounds: number | null
+  rest_between_rounds: string | null
+  rest_between_activities: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TauriActivityResponse {
+  id: string
+  activity_group_id: string
+  exercise_id: string
+  ordinal: number
+  set_scheme: string
+  notes: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TauriSessionTemplateFull {
+  template: TauriSessionTemplateResponse
+  groups: TauriActivityGroupResponse[]
+  activities: TauriActivityResponse[]
 }
 
 // ---------------------------------------------------------------------------
@@ -367,6 +422,54 @@ function toOneRepMaxHistoryRow(r: TauriOneRepMaxHistoryResponse): OneRepMaxHisto
     estimated: intToBool(r.estimated),
     recorded_at: r.recorded_at,
     created_at: r.created_at ?? new Date().toISOString(),
+  }
+}
+
+function toSessionTemplateRowFromTauri(r: TauriSessionTemplateResponse): SessionTemplateRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on session template row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on session template row', r)
+  return {
+    id: r.id,
+    user_id: r.user_id,
+    name: r.name,
+    description: r.description,
+    category: r.category,
+    rest_between_groups: r.rest_between_groups,
+    time_cap: r.time_cap,
+    scoring: r.scoring,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+function toActivityGroupRowFromTauri(r: TauriActivityGroupResponse): ActivityGroupRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on activity group row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on activity group row', r)
+  return {
+    id: r.id,
+    session_template_id: r.session_template_id,
+    group_type: r.group_type,
+    ordinal: r.ordinal,
+    rounds: r.rounds,
+    rest_between_rounds: r.rest_between_rounds,
+    rest_between_activities: r.rest_between_activities,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+function toActivityRowFromTauri(r: TauriActivityResponse): ActivityRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on activity row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on activity row', r)
+  return {
+    id: r.id,
+    activity_group_id: r.activity_group_id,
+    exercise_id: r.exercise_id,
+    ordinal: r.ordinal,
+    set_scheme: r.set_scheme,
+    notes: r.notes,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
   }
 }
 
@@ -804,5 +907,146 @@ export class TauriAdapter implements DataAdapter {
       activities: result.activities.map((a) => toLoggedActivity(toLoggedActivityRow(a))),
       sets: result.sets.map((s) => toLoggedSet(toLoggedSetRow(s))),
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Session template operations
+  // ---------------------------------------------------------------------------
+
+  async getSessionTemplates(userId: string): Promise<SessionTemplate[]> {
+    const rows = await invokeCommand<TauriSessionTemplateResponse[]>('get_session_templates', {
+      user_id: userId,
+    })
+    return rows.map((r) => toSessionTemplate(toSessionTemplateRowFromTauri(r)))
+  }
+
+  async getSessionTemplate(id: string): Promise<SessionTemplate | null> {
+    const row = await invokeCommand<TauriSessionTemplateResponse | null>('get_session_template', {
+      id,
+    })
+    return row ? toSessionTemplate(toSessionTemplateRowFromTauri(row)) : null
+  }
+
+  async getSessionTemplateFull(id: string): Promise<SessionTemplateFull | null> {
+    const full = await invokeCommand<TauriSessionTemplateFull | null>('get_session_template_full', {
+      id,
+    })
+    if (!full) return null
+
+    return {
+      template: toSessionTemplate(toSessionTemplateRowFromTauri(full.template)),
+      groups: full.groups.map((g) => toActivityGroupFlat(toActivityGroupRowFromTauri(g))),
+      activities: full.activities.map((a) => toActivity(toActivityRowFromTauri(a))),
+    }
+  }
+
+  async createSessionTemplateFull(
+    template: Omit<SessionTemplate, 'id' | 'createdAt' | 'updatedAt'>,
+    groups: Array<{
+      group: Omit<ActivityGroup, 'id' | 'activities'>
+      activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
+    }>,
+  ): Promise<SessionTemplateFull> {
+    const partial = fromSessionTemplate(template)
+    const input = {
+      user_id: partial.user_id ?? null,
+      name: partial.name!,
+      description: partial.description ?? null,
+      category: partial.category!,
+      rest_between_groups: partial.rest_between_groups ?? null,
+      time_cap: partial.time_cap ?? null,
+      scoring: partial.scoring ?? null,
+    }
+
+    const groupsInput = groups.map((g) => {
+      const gPartial = fromActivityGroup(g.group)
+      return {
+        group: {
+          group_type: gPartial.group_type!,
+          ordinal: gPartial.ordinal!,
+          rounds: gPartial.rounds ?? null,
+          rest_between_rounds: gPartial.rest_between_rounds ?? null,
+          rest_between_activities: gPartial.rest_between_activities ?? null,
+        },
+        activities: g.activities.map((a) => {
+          const aPartial = fromActivity(a)
+          return {
+            exercise_id: aPartial.exercise_id!,
+            ordinal: aPartial.ordinal!,
+            set_scheme: aPartial.set_scheme!,
+            notes: aPartial.notes ?? null,
+          }
+        }),
+      }
+    })
+
+    const result = await invokeCommand<TauriSessionTemplateFull>('create_session_template_full', {
+      template: input,
+      groups: groupsInput,
+    })
+
+    return {
+      template: toSessionTemplate(toSessionTemplateRowFromTauri(result.template)),
+      groups: result.groups.map((g) => toActivityGroupFlat(toActivityGroupRowFromTauri(g))),
+      activities: result.activities.map((a) => toActivity(toActivityRowFromTauri(a))),
+    }
+  }
+
+  async updateSessionTemplateFull(
+    template: SessionTemplate,
+    groups: Array<{
+      group: Omit<ActivityGroup, 'activities'>
+      activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
+    }>,
+  ): Promise<SessionTemplateFull> {
+    const partial = fromSessionTemplate(template)
+    const input = {
+      id: template.id,
+      user_id: partial.user_id ?? null,
+      name: partial.name!,
+      description: partial.description ?? null,
+      category: partial.category!,
+      rest_between_groups: partial.rest_between_groups ?? null,
+      time_cap: partial.time_cap ?? null,
+      scoring: partial.scoring ?? null,
+    }
+
+    const groupsInput = groups.map((g) => {
+      const gPartial = fromActivityGroup(g.group)
+      return {
+        group: {
+          id: g.group.id || null,
+          group_type: gPartial.group_type!,
+          ordinal: gPartial.ordinal!,
+          rounds: gPartial.rounds ?? null,
+          rest_between_rounds: gPartial.rest_between_rounds ?? null,
+          rest_between_activities: gPartial.rest_between_activities ?? null,
+        },
+        activities: g.activities.map((a) => {
+          const aPartial = fromActivity(a)
+          return {
+            exercise_id: aPartial.exercise_id!,
+            ordinal: aPartial.ordinal!,
+            set_scheme: aPartial.set_scheme!,
+            notes: aPartial.notes ?? null,
+          }
+        }),
+      }
+    })
+
+    const result = await invokeCommand<TauriSessionTemplateFull>('update_session_template_full', {
+      template: input,
+      groups: groupsInput,
+    })
+
+    return {
+      template: toSessionTemplate(toSessionTemplateRowFromTauri(result.template)),
+      groups: result.groups.map((g) => toActivityGroupFlat(toActivityGroupRowFromTauri(g))),
+      activities: result.activities.map((a) => toActivity(toActivityRowFromTauri(a))),
+    }
+  }
+
+  async deleteSessionTemplate(id: string): Promise<void> {
+    await invokeCommand<void>('delete_session_template', { id })
   }
 }
