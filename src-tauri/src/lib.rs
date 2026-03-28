@@ -1,5 +1,6 @@
 mod commands;
 mod db;
+mod error;
 mod models;
 mod utils;
 
@@ -9,17 +10,20 @@ use tauri::Manager;
 pub fn run() {
   tauri::Builder::default()
     .setup(|app| {
-      if cfg!(debug_assertions) {
-        app.handle().plugin(
+      let log_level = if cfg!(debug_assertions) {
+          log::LevelFilter::Info
+      } else {
+          log::LevelFilter::Warn
+      };
+      app.handle().plugin(
           tauri_plugin_log::Builder::default()
-            .level(log::LevelFilter::Info)
-            .build(),
-        )?;
-      }
+              .level(log_level)
+              .build(),
+      )?;
 
       // Initialize the SQLite database and store the pool in managed state
-      let rt = tokio::runtime::Runtime::new().expect("failed to create tokio runtime");
-      let pool = rt.block_on(db::init_db(app)).expect("failed to initialize database");
+      let pool = tauri::async_runtime::block_on(db::init_db(app))
+          .unwrap_or_else(|e| panic!("Failed to initialize database: {e}"));
       app.manage(pool);
 
       Ok(())
@@ -43,6 +47,7 @@ pub fn run() {
       commands::workout_logs::update_logged_set,
       commands::workout_logs::get_recently_used_exercise_ids,
       commands::workout_logs::get_exercise_workout_history,
+      commands::workout_logs::create_workout_log_full,
       // User profile
       commands::user_profile::get_user_profile,
       commands::user_profile::update_user_profile,
@@ -50,5 +55,5 @@ pub fn run() {
       commands::user_profile::get_one_rep_max_history,
     ])
     .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .unwrap_or_else(|e| panic!("Tauri application error: {e}"));
 }

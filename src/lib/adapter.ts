@@ -20,6 +20,8 @@ let _adapter: DataAdapter | null = null
 export function getAdapter(userId?: string): DataAdapter {
   if (!_adapter) {
     if (isTauri()) {
+      // In offline-only mode, 'local-user' serves as the owner for all data.
+      // Call resetAdapter() after auth to switch to the real user ID.
       _adapter = new TauriAdapter(userId ?? 'local-user')
     } else {
       _adapter = new SupabaseAdapter(getSupabaseClient())

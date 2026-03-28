@@ -2,9 +2,8 @@ use sqlx::SqlitePool;
 use tauri::State;
 use uuid::Uuid;
 
-use crate::models::{
-    OneRepMaxHistoryResponse, OneRepMaxHistoryRow, UserProfileResponse, UserProfileRow,
-};
+use crate::error::AppError;
+use crate::models::{OneRepMaxHistoryRow, UserProfileRow};
 use crate::utils::now_unix;
 
 // ---------------------------------------------------------------------------
@@ -30,22 +29,23 @@ pub struct UpdateUserProfileInput {
 pub async fn get_user_profile(
     pool: State<'_, SqlitePool>,
     user_id: String,
-) -> Result<Option<UserProfileResponse>, String> {
+) -> Result<Option<UserProfileRow>, AppError> {
     let row = sqlx::query_as::<_, UserProfileRow>("SELECT * FROM user_profiles WHERE id = ?")
         .bind(&user_id)
         .fetch_optional(pool.inner())
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
-    Ok(row.map(UserProfileResponse::from))
+    Ok(row)
 }
 
 #[tauri::command]
 pub async fn update_user_profile(
     pool: State<'_, SqlitePool>,
     profile: UpdateUserProfileInput,
-) -> Result<UserProfileResponse, String> {
+) -> Result<UserProfileRow, AppError> {
     let now = now_unix();
+
+    let mut tx = pool.begin().await?;
 
     // UPSERT: insert if not exists, update if exists
     sqlx::query(
@@ -54,12 +54,12 @@ pub async fn update_user_profile(
           exercise_maxes, max_reps, created_at, updated_at) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT(id) DO UPDATE SET \
-         display_name = COALESCE(excluded.display_name, user_profiles.display_name), \
-         preferred_units = COALESCE(excluded.preferred_units, user_profiles.preferred_units), \
-         bodyweight = COALESCE(excluded.bodyweight, user_profiles.bodyweight), \
-         training_age = COALESCE(excluded.training_age, user_profiles.training_age), \
-         exercise_maxes = COALESCE(excluded.exercise_maxes, user_profiles.exercise_maxes), \
-         max_reps = COALESCE(excluded.max_reps, user_profiles.max_reps), \
+         display_name = excluded.display_name, \
+         preferred_units = excluded.preferred_units, \
+         bodyweight = excluded.bodyweight, \
+         training_age = excluded.training_age, \
+         exercise_maxes = excluded.exercise_maxes, \
+         max_reps = excluded.max_reps, \
          updated_at = excluded.updated_at",
     )
     .bind(&profile.id)
@@ -71,17 +71,17 @@ pub async fn update_user_profile(
     .bind(&profile.max_reps)
     .bind(now)
     .bind(now)
-    .execute(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .execute(&mut *tx)
+    .await?;
 
     let row = sqlx::query_as::<_, UserProfileRow>("SELECT * FROM user_profiles WHERE id = ?")
         .bind(&profile.id)
-        .fetch_one(pool.inner())
-        .await
-        .map_err(|e| e.to_string())?;
+        .fetch_one(&mut *tx)
+        .await?;
 
-    Ok(UserProfileResponse::from(row))
+    tx.commit().await?;
+
+    Ok(row)
 }
 
 #[tauri::command]
@@ -92,10 +92,12 @@ pub async fn save_one_rep_max(
     weight: String,
     estimated: Option<bool>,
     recorded_at: i64,
-) -> Result<OneRepMaxHistoryResponse, String> {
+) -> Result<OneRepMaxHistoryRow, AppError> {
     let id = Uuid::new_v4().to_string();
     let now = now_unix();
     let estimated_int = estimated.map(|b| if b { 1i32 } else { 0 });
+
+    let mut tx = pool.begin().await?;
 
     sqlx::query(
         "INSERT INTO one_rep_max_history \
@@ -109,19 +111,19 @@ pub async fn save_one_rep_max(
     .bind(estimated_int)
     .bind(recorded_at)
     .bind(now)
-    .execute(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .execute(&mut *tx)
+    .await?;
 
     let row = sqlx::query_as::<_, OneRepMaxHistoryRow>(
         "SELECT * FROM one_rep_max_history WHERE id = ?",
     )
     .bind(&id)
-    .fetch_one(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .fetch_one(&mut *tx)
+    .await?;
 
-    Ok(OneRepMaxHistoryResponse::from(row))
+    tx.commit().await?;
+
+    Ok(row)
 }
 
 #[tauri::command]
@@ -129,7 +131,7 @@ pub async fn get_one_rep_max_history(
     pool: State<'_, SqlitePool>,
     user_id: String,
     exercise_id: String,
-) -> Result<Vec<OneRepMaxHistoryResponse>, String> {
+) -> Result<Vec<OneRepMaxHistoryRow>, AppError> {
     let rows = sqlx::query_as::<_, OneRepMaxHistoryRow>(
         "SELECT * FROM one_rep_max_history \
          WHERE user_id = ? AND exercise_id = ? \
@@ -138,8 +140,7 @@ pub async fn get_one_rep_max_history(
     .bind(&user_id)
     .bind(&exercise_id)
     .fetch_all(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .await?;
 
-    Ok(rows.into_iter().map(OneRepMaxHistoryResponse::from).collect())
+    Ok(rows)
 }

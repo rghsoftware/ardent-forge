@@ -57,8 +57,8 @@ interface TauriExerciseResponse {
   supports_1rm: number | null
   equipment_required: string | null
   is_custom: number | null
-  created_at: string
-  updated_at: string
+  created_at: string | null
+  updated_at: string | null
 }
 
 interface TauriWorkoutLogResponse {
@@ -72,8 +72,8 @@ interface TauriWorkoutLogResponse {
   overall_notes: string | null
   perceived_difficulty: number | null
   bodyweight_at_session: string | null
-  created_at: string
-  updated_at: string
+  created_at: string | null
+  updated_at: string | null
 }
 
 interface TauriLoggedActivityGroupResponse {
@@ -84,8 +84,8 @@ interface TauriLoggedActivityGroupResponse {
   ordinal: number
   actual_rounds_completed: number | null
   completion_time: string | null
-  created_at: string
-  updated_at: string
+  created_at: string | null
+  updated_at: string | null
 }
 
 interface TauriLoggedActivityResponse {
@@ -95,8 +95,8 @@ interface TauriLoggedActivityResponse {
   exercise_id: string
   ordinal: number
   notes: string | null
-  created_at: string
-  updated_at: string
+  created_at: string | null
+  updated_at: string | null
 }
 
 interface TauriLoggedSetResponse {
@@ -117,8 +117,8 @@ interface TauriLoggedSetResponse {
   rpe: number | null
   completed: number | null
   notes: string | null
-  created_at: string
-  updated_at: string
+  created_at: string | null
+  updated_at: string | null
 }
 
 interface TauriUserProfileResponse {
@@ -129,8 +129,8 @@ interface TauriUserProfileResponse {
   training_age: string | null
   exercise_maxes: string | null
   max_reps: string | null
-  created_at: string
-  updated_at: string
+  created_at: string | null
+  updated_at: string | null
 }
 
 interface TauriOneRepMaxHistoryResponse {
@@ -140,7 +140,7 @@ interface TauriOneRepMaxHistoryResponse {
   weight: string
   estimated: number | null
   recorded_at: string
-  created_at: string
+  created_at: string | null
 }
 
 interface TauriWorkoutLogSummary {
@@ -163,6 +163,48 @@ interface TauriWorkoutWithSets {
 }
 
 // ---------------------------------------------------------------------------
+// Structured error types for Tauri AppError (mirrors Rust error.rs)
+// ---------------------------------------------------------------------------
+
+interface TauriAppError {
+  kind: 'NOT_FOUND' | 'CONFLICT' | 'VALIDATION' | 'DATABASE' | 'INTERNAL'
+  message: string
+  field?: string
+}
+
+function isTauriAppError(e: unknown): e is TauriAppError {
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'kind' in e &&
+    'message' in e &&
+    typeof (e as TauriAppError).kind === 'string'
+  )
+}
+
+export class AdapterError extends Error {
+  readonly kind: TauriAppError['kind']
+  readonly field?: string
+
+  constructor(source: TauriAppError) {
+    super(source.message)
+    this.name = 'AdapterError'
+    this.kind = source.kind
+    this.field = source.field
+  }
+}
+
+/** Invoke a Tauri command and translate AppError responses into AdapterError. */
+async function invokeCommand<T>(cmd: string, args: Record<string, unknown>): Promise<T> {
+  try {
+    return await invoke<T>(cmd, args)
+  } catch (e) {
+    if (isTauriAppError(e)) throw new AdapterError(e)
+    throw e
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Conversion helpers: Tauri Response -> TS Row types
 //
 // The existing mapper functions (toExercise, toWorkoutLog, etc.) expect the
@@ -172,52 +214,82 @@ interface TauriWorkoutWithSets {
 // These helpers bridge that gap.
 // ---------------------------------------------------------------------------
 
-function parseJsonOrNull(value: string | null): unknown {
+/** Convert an ISO 8601 date string to Unix seconds for Rust commands. */
+function isoToUnixSeconds(iso: string): number {
+  return Math.floor(new Date(iso).getTime() / 1000)
+}
+
+/** Parse a JSON string column, throwing with context on invalid JSON. */
+function parseJson(value: string | null, column: string): unknown {
   if (value == null) return null
   try {
     return JSON.parse(value)
-  } catch {
-    return value
+  } catch (e) {
+    throw new Error(
+      `Invalid JSON in column "${column}": ${e instanceof Error ? e.message : String(e)}. ` +
+        `Raw value (first 100 chars): "${value.slice(0, 100)}"`,
+    )
   }
 }
 
+/** Require a non-null string value, throwing with the field name on null. */
+function requireString(value: string | null | undefined, field: string): string {
+  if (value == null) {
+    throw new Error(`Required field "${field}" is null`)
+  }
+  return value
+}
+
+/**
+ * Convert a 0/1 integer (as returned by SQLite via Rust) to a boolean.
+ *
+ * The Rust side should always provide a value for `completed` and `estimated`
+ * fields -- these are declared non-nullable in database.types.ts. The fallback
+ * parameter is a safety net for fields where null genuinely means "unset"
+ * (e.g. is_bilateral, supports_1rm, is_custom).
+ */
 function intToBool(value: number | null | undefined, fallback = false): boolean {
   if (value == null) return fallback
   return value !== 0
 }
 
 function toExerciseRow(r: TauriExerciseResponse): ExerciseRow {
+  if (!r.movement_pattern) {
+    throw new Error(
+      `Exercise "${r.name}" (${r.id}) has no movement_pattern -- this field is required by the domain model`,
+    )
+  }
   return {
     id: r.id,
     name: r.name,
-    aliases: parseJsonOrNull(r.aliases),
+    aliases: parseJson(r.aliases, 'aliases'),
     category: r.category,
-    movement_pattern: r.movement_pattern ?? '',
-    muscle_groups: parseJsonOrNull(r.muscle_groups),
+    movement_pattern: r.movement_pattern,
+    muscle_groups: parseJson(r.muscle_groups, 'muscle_groups'),
     is_bilateral: intToBool(r.is_bilateral),
     supports_1rm: intToBool(r.supports_1rm),
-    equipment_required: parseJsonOrNull(r.equipment_required),
+    equipment_required: parseJson(r.equipment_required, 'equipment_required'),
     is_custom: intToBool(r.is_custom),
     user_id: null,
-    created_at: r.created_at,
-    updated_at: r.updated_at,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
   }
 }
 
 function toWorkoutLogRow(r: TauriWorkoutLogResponse): WorkoutLogRow {
   return {
     id: r.id,
-    user_id: r.user_id ?? '',
+    user_id: requireString(r.user_id, 'user_id'),
     title: r.title,
     started_at: r.started_at,
     completed_at: r.completed_at,
     session_template_id: r.session_template_id,
-    program_context: parseJsonOrNull(r.program_context),
+    program_context: parseJson(r.program_context, 'program_context'),
     perceived_difficulty: r.perceived_difficulty,
-    bodyweight_at_session: parseJsonOrNull(r.bodyweight_at_session),
+    bodyweight_at_session: parseJson(r.bodyweight_at_session, 'bodyweight_at_session'),
     overall_notes: r.overall_notes,
-    created_at: r.created_at,
-    updated_at: r.updated_at,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
   }
 }
 
@@ -225,13 +297,13 @@ function toLoggedActivityGroupRow(r: TauriLoggedActivityGroupResponse): LoggedAc
   return {
     id: r.id,
     workout_log_id: r.workout_log_id,
-    user_id: r.user_id ?? '',
+    user_id: requireString(r.user_id, 'user_id'),
     group_type: r.group_type,
     ordinal: r.ordinal,
     actual_rounds_completed: r.actual_rounds_completed,
-    completion_time: parseJsonOrNull(r.completion_time),
-    created_at: r.created_at,
-    updated_at: r.updated_at,
+    completion_time: parseJson(r.completion_time, 'completion_time'),
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
   }
 }
 
@@ -239,12 +311,12 @@ function toLoggedActivityRow(r: TauriLoggedActivityResponse): LoggedActivityRow 
   return {
     id: r.id,
     logged_group_id: r.logged_group_id,
-    user_id: r.user_id ?? '',
+    user_id: requireString(r.user_id, 'user_id'),
     exercise_id: r.exercise_id,
     ordinal: r.ordinal,
     notes: r.notes,
-    created_at: r.created_at,
-    updated_at: r.updated_at,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
   }
 }
 
@@ -252,23 +324,23 @@ function toLoggedSetRow(r: TauriLoggedSetResponse): LoggedSetRow {
   return {
     id: r.id,
     logged_activity_id: r.logged_activity_id,
-    user_id: r.user_id ?? '',
+    user_id: requireString(r.user_id, 'user_id'),
     set_number: r.set_number,
     set_type: r.set_type,
-    prescribed: parseJsonOrNull(r.prescribed),
+    prescribed: parseJson(r.prescribed, 'prescribed'),
     actual_reps: r.actual_reps,
-    actual_weight: parseJsonOrNull(r.actual_weight),
-    actual_duration: parseJsonOrNull(r.actual_duration),
-    actual_distance: parseJsonOrNull(r.actual_distance),
-    actual_pace: parseJsonOrNull(r.actual_pace),
+    actual_weight: parseJson(r.actual_weight, 'actual_weight'),
+    actual_duration: parseJson(r.actual_duration, 'actual_duration'),
+    actual_distance: parseJson(r.actual_distance, 'actual_distance'),
+    actual_pace: parseJson(r.actual_pace, 'actual_pace'),
     actual_heart_rate: r.actual_heart_rate,
-    ruck_load: parseJsonOrNull(r.ruck_load),
-    elevation_gain: parseJsonOrNull(r.elevation_gain),
+    ruck_load: parseJson(r.ruck_load, 'ruck_load'),
+    elevation_gain: parseJson(r.elevation_gain, 'elevation_gain'),
     rpe: r.rpe,
     completed: intToBool(r.completed),
     notes: r.notes,
-    created_at: r.created_at,
-    updated_at: r.updated_at,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
   }
 }
 
@@ -277,12 +349,12 @@ function toUserProfileRow(r: TauriUserProfileResponse): UserProfileRow {
     id: r.id,
     display_name: r.display_name,
     preferred_units: r.preferred_units ?? 'IMPERIAL',
-    bodyweight: parseJsonOrNull(r.bodyweight),
-    training_age: parseJsonOrNull(r.training_age),
-    exercise_maxes: parseJsonOrNull(r.exercise_maxes),
-    max_reps: parseJsonOrNull(r.max_reps),
-    created_at: r.created_at,
-    updated_at: r.updated_at,
+    bodyweight: parseJson(r.bodyweight, 'bodyweight'),
+    training_age: parseJson(r.training_age, 'training_age'),
+    exercise_maxes: parseJson(r.exercise_maxes, 'exercise_maxes'),
+    max_reps: parseJson(r.max_reps, 'max_reps'),
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
   }
 }
 
@@ -291,10 +363,10 @@ function toOneRepMaxHistoryRow(r: TauriOneRepMaxHistoryResponse): OneRepMaxHisto
     id: r.id,
     user_id: r.user_id,
     exercise_id: r.exercise_id,
-    weight: parseJsonOrNull(r.weight),
+    weight: parseJson(r.weight, 'weight'),
     estimated: intToBool(r.estimated),
     recorded_at: r.recorded_at,
-    created_at: r.created_at,
+    created_at: r.created_at ?? new Date().toISOString(),
   }
 }
 
@@ -303,7 +375,11 @@ function toOneRepMaxHistoryRow(r: TauriOneRepMaxHistoryResponse): OneRepMaxHisto
 // ---------------------------------------------------------------------------
 
 export class TauriAdapter implements DataAdapter {
-  constructor(_userId: string) {}
+  private readonly userId: string
+
+  constructor(userId: string) {
+    this.userId = userId
+  }
 
   // ---------------------------------------------------------------------------
   // Exercise operations
@@ -320,7 +396,7 @@ export class TauriAdapter implements DataAdapter {
         }
       : null
 
-    const rows = await invoke<TauriExerciseResponse[]>('get_exercises', {
+    const rows = await invokeCommand<TauriExerciseResponse[]>('get_exercises', {
       filters: rustFilters,
     })
 
@@ -336,7 +412,7 @@ export class TauriAdapter implements DataAdapter {
   }
 
   async getExercise(id: string): Promise<Exercise | null> {
-    const row = await invoke<TauriExerciseResponse | null>('get_exercise', { id })
+    const row = await invokeCommand<TauriExerciseResponse | null>('get_exercise', { id })
     return row ? toExercise(toExerciseRow(row)) : null
   }
 
@@ -356,7 +432,7 @@ export class TauriAdapter implements DataAdapter {
         partial.equipment_required != null ? JSON.stringify(partial.equipment_required) : null,
     }
 
-    const row = await invoke<TauriExerciseResponse>('create_exercise', { exercise: input })
+    const row = await invokeCommand<TauriExerciseResponse>('create_exercise', { exercise: input })
     return toExercise(toExerciseRow(row))
   }
 
@@ -365,7 +441,7 @@ export class TauriAdapter implements DataAdapter {
   // ---------------------------------------------------------------------------
 
   async getWorkoutLogs(userId: string, limit?: number): Promise<WorkoutLog[]> {
-    const rows = await invoke<TauriWorkoutLogResponse[]>('get_workout_logs', {
+    const rows = await invokeCommand<TauriWorkoutLogResponse[]>('get_workout_logs', {
       user_id: userId,
       limit: limit ?? null,
     })
@@ -376,7 +452,7 @@ export class TauriAdapter implements DataAdapter {
     userId: string,
     options?: { limit?: number; offset?: number },
   ): Promise<WorkoutLogSummary[]> {
-    const summaries = await invoke<TauriWorkoutLogSummary[]>('get_workout_logs_summary', {
+    const summaries = await invokeCommand<TauriWorkoutLogSummary[]>('get_workout_logs_summary', {
       user_id: userId,
       limit: options?.limit ?? null,
       offset: options?.offset ?? null,
@@ -391,7 +467,7 @@ export class TauriAdapter implements DataAdapter {
   }
 
   async getWorkoutLog(id: string): Promise<WorkoutLog | null> {
-    const row = await invoke<TauriWorkoutLogResponse | null>('get_workout_log', { id })
+    const row = await invokeCommand<TauriWorkoutLogResponse | null>('get_workout_log', { id })
     return row ? toWorkoutLog(toWorkoutLogRow(row)) : null
   }
 
@@ -401,7 +477,7 @@ export class TauriAdapter implements DataAdapter {
     activities: LoggedActivity[]
     sets: LoggedSet[]
   } | null> {
-    const full = await invoke<TauriWorkoutLogFull | null>('get_workout_log_full', { id })
+    const full = await invokeCommand<TauriWorkoutLogFull | null>('get_workout_log_full', { id })
     if (!full) return null
 
     return {
@@ -419,8 +495,8 @@ export class TauriAdapter implements DataAdapter {
     const input = {
       user_id: partial.user_id!,
       title: partial.title ?? null,
-      started_at: new Date(partial.started_at!).getTime(),
-      completed_at: partial.completed_at ? new Date(partial.completed_at).getTime() : null,
+      started_at: isoToUnixSeconds(partial.started_at!),
+      completed_at: partial.completed_at ? isoToUnixSeconds(partial.completed_at) : null,
       session_template_id: partial.session_template_id ?? null,
       program_context:
         partial.program_context != null ? JSON.stringify(partial.program_context) : null,
@@ -432,15 +508,15 @@ export class TauriAdapter implements DataAdapter {
           : null,
     }
 
-    const row = await invoke<TauriWorkoutLogResponse>('create_workout_log', { log: input })
+    const row = await invokeCommand<TauriWorkoutLogResponse>('create_workout_log', { log: input })
     return toWorkoutLog(toWorkoutLogRow(row))
   }
 
   async updateWorkoutLog(log: WorkoutLog): Promise<WorkoutLog> {
-    const row = await invoke<TauriWorkoutLogResponse>('update_workout_log', {
+    const row = await invokeCommand<TauriWorkoutLogResponse>('update_workout_log', {
       id: log.id,
       title: log.title ?? null,
-      completed_at: log.completedAt ? new Date(log.completedAt).getTime() : null,
+      completed_at: log.completedAt ? isoToUnixSeconds(log.completedAt) : null,
       overall_notes: log.overallNotes ?? null,
       perceived_difficulty: log.perceivedDifficulty ?? null,
     })
@@ -448,7 +524,7 @@ export class TauriAdapter implements DataAdapter {
   }
 
   async deleteWorkoutLog(id: string): Promise<void> {
-    await invoke('delete_workout_log', { id })
+    await invokeCommand<void>('delete_workout_log', { id })
   }
 
   // ---------------------------------------------------------------------------
@@ -469,7 +545,7 @@ export class TauriAdapter implements DataAdapter {
         partial.completion_time != null ? JSON.stringify(partial.completion_time) : null,
     }
 
-    const row = await invoke<TauriLoggedActivityGroupResponse>('create_logged_activity_group', {
+    const row = await invokeCommand<TauriLoggedActivityGroupResponse>('create_logged_activity_group', {
       group: input,
       user_id: userId,
     })
@@ -492,7 +568,7 @@ export class TauriAdapter implements DataAdapter {
       notes: partial.notes ?? null,
     }
 
-    const row = await invoke<TauriLoggedActivityResponse>('create_logged_activity', {
+    const row = await invokeCommand<TauriLoggedActivityResponse>('create_logged_activity', {
       activity: input,
       user_id: userId,
     })
@@ -526,7 +602,7 @@ export class TauriAdapter implements DataAdapter {
       notes: partial.notes ?? null,
     }
 
-    const row = await invoke<TauriLoggedSetResponse>('create_logged_set', {
+    const row = await invokeCommand<TauriLoggedSetResponse>('create_logged_set', {
       set: input,
       user_id: userId,
     })
@@ -557,7 +633,7 @@ export class TauriAdapter implements DataAdapter {
       notes: partial.notes ?? null,
     }
 
-    const row = await invoke<TauriLoggedSetResponse>('update_logged_set', {
+    const row = await invokeCommand<TauriLoggedSetResponse>('update_logged_set', {
       set: input,
       user_id: userId,
     })
@@ -569,7 +645,7 @@ export class TauriAdapter implements DataAdapter {
   // ---------------------------------------------------------------------------
 
   async getUserProfile(userId: string): Promise<UserProfile | null> {
-    const row = await invoke<TauriUserProfileResponse | null>('get_user_profile', {
+    const row = await invokeCommand<TauriUserProfileResponse | null>('get_user_profile', {
       user_id: userId,
     })
     return row ? toUserProfile(toUserProfileRow(row)) : null
@@ -588,7 +664,7 @@ export class TauriAdapter implements DataAdapter {
       max_reps: partial.max_reps != null ? JSON.stringify(partial.max_reps) : null,
     }
 
-    const row = await invoke<TauriUserProfileResponse>('update_user_profile', { profile: input })
+    const row = await invokeCommand<TauriUserProfileResponse>('update_user_profile', { profile: input })
     return toUserProfile(toUserProfileRow(row))
   }
 
@@ -596,12 +672,12 @@ export class TauriAdapter implements DataAdapter {
     entry: Omit<OneRepMaxHistory, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<OneRepMaxHistory> {
     const partial = fromOneRepMaxHistory(entry)
-    const row = await invoke<TauriOneRepMaxHistoryResponse>('save_one_rep_max', {
+    const row = await invokeCommand<TauriOneRepMaxHistoryResponse>('save_one_rep_max', {
       user_id: partial.user_id!,
       exercise_id: partial.exercise_id!,
       weight: JSON.stringify(partial.weight),
       estimated: partial.estimated ?? null,
-      recorded_at: new Date(partial.recorded_at!).getTime(),
+      recorded_at: isoToUnixSeconds(partial.recorded_at!),
     })
     return toOneRepMaxHistory(toOneRepMaxHistoryRow(row))
   }
@@ -611,7 +687,7 @@ export class TauriAdapter implements DataAdapter {
   // ---------------------------------------------------------------------------
 
   async getOneRepMaxHistory(userId: string, exerciseId: string): Promise<OneRepMaxHistory[]> {
-    const rows = await invoke<TauriOneRepMaxHistoryResponse[]>('get_one_rep_max_history', {
+    const rows = await invokeCommand<TauriOneRepMaxHistoryResponse[]>('get_one_rep_max_history', {
       user_id: userId,
       exercise_id: exerciseId,
     })
@@ -619,7 +695,7 @@ export class TauriAdapter implements DataAdapter {
   }
 
   async getRecentlyUsedExerciseIds(userId: string, limit = 10): Promise<string[]> {
-    return invoke<string[]>('get_recently_used_exercise_ids', {
+    return invokeCommand<string[]>('get_recently_used_exercise_ids', {
       user_id: userId,
       limit,
     })
@@ -630,7 +706,7 @@ export class TauriAdapter implements DataAdapter {
     exerciseId: string,
     limit = 10,
   ): Promise<WorkoutWithSets[]> {
-    const results = await invoke<TauriWorkoutWithSets[]>('get_exercise_workout_history', {
+    const results = await invokeCommand<TauriWorkoutWithSets[]>('get_exercise_workout_history', {
       user_id: userId,
       exercise_id: exerciseId,
       limit,
@@ -640,5 +716,92 @@ export class TauriAdapter implements DataAdapter {
       log: toWorkoutLog(toWorkoutLogRow(r.log)),
       sets: r.sets.map((s) => toLoggedSet(toLoggedSetRow(s))),
     }))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Transactional workout creation
+  // ---------------------------------------------------------------------------
+
+  async createWorkoutLogFull(
+    log: Omit<WorkoutLog, 'id' | 'createdAt' | 'updatedAt'>,
+    groups: Array<{
+      group: Omit<LoggedActivityGroup, 'id'>
+      activities: Array<{
+        activity: Omit<LoggedActivity, 'id'>
+        sets: Array<Omit<LoggedSet, 'id'>>
+      }>
+    }>,
+    userId: string,
+  ): Promise<{
+    log: WorkoutLog
+    groups: LoggedActivityGroup[]
+    activities: LoggedActivity[]
+    sets: LoggedSet[]
+  }> {
+    const input = {
+      log: {
+        user_id: userId,
+        title: log.title ?? null,
+        started_at: isoToUnixSeconds(log.startedAt),
+        completed_at: log.completedAt ? isoToUnixSeconds(log.completedAt) : null,
+        session_template_id: log.sessionTemplateId ?? null,
+        program_context: log.programContext ? JSON.stringify(log.programContext) : null,
+        overall_notes: log.overallNotes ?? null,
+        perceived_difficulty: log.perceivedDifficulty ?? null,
+        bodyweight_at_session: log.bodyweightAtSession
+          ? JSON.stringify(log.bodyweightAtSession)
+          : null,
+      },
+      groups: groups.map((g) => ({
+        group: {
+          workout_log_id: '', // will be set server-side
+          group_type: g.group.groupType,
+          ordinal: g.group.ordinal,
+          actual_rounds_completed: g.group.actualRoundsCompleted ?? null,
+          completion_time: g.group.completionTime
+            ? JSON.stringify(g.group.completionTime)
+            : null,
+        },
+        activities: g.activities.map((a) => ({
+          activity: {
+            logged_group_id: '', // will be set server-side
+            exercise_id: a.activity.exerciseId,
+            ordinal: a.activity.ordinal,
+            notes: a.activity.notes ?? null,
+          },
+          sets: a.sets.map((s) => ({
+            logged_activity_id: '', // will be set server-side
+            set_number: s.setNumber,
+            set_type: s.setType,
+            prescribed: s.prescribed ? JSON.stringify(s.prescribed) : null,
+            actual_reps: s.actualReps ?? null,
+            actual_weight: s.actualWeight ? JSON.stringify(s.actualWeight) : null,
+            actual_duration: s.actualDuration ? JSON.stringify(s.actualDuration) : null,
+            actual_distance: s.actualDistance ? JSON.stringify(s.actualDistance) : null,
+            actual_pace: s.actualPace ? JSON.stringify(s.actualPace) : null,
+            actual_heart_rate: s.actualHeartRate ?? null,
+            ruck_load: s.ruckLoad ? JSON.stringify(s.ruckLoad) : null,
+            elevation_gain: s.elevationGain ? JSON.stringify(s.elevationGain) : null,
+            rpe: s.rpe ?? null,
+            completed: s.completed ?? null,
+            notes: s.notes ?? null,
+          })),
+        })),
+      })),
+    }
+
+    const result = await invokeCommand<{
+      log: TauriWorkoutLogResponse
+      groups: TauriLoggedActivityGroupResponse[]
+      activities: TauriLoggedActivityResponse[]
+      sets: TauriLoggedSetResponse[]
+    }>('create_workout_log_full', { input, user_id: userId })
+
+    return {
+      log: toWorkoutLog(toWorkoutLogRow(result.log)),
+      groups: result.groups.map((g) => toLoggedActivityGroup(toLoggedActivityGroupRow(g))),
+      activities: result.activities.map((a) => toLoggedActivity(toLoggedActivityRow(a))),
+      sets: result.sets.map((s) => toLoggedSet(toLoggedSetRow(s))),
+    }
   }
 }

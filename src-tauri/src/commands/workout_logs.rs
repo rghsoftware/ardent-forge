@@ -4,9 +4,10 @@ use sqlx::SqlitePool;
 use tauri::State;
 use uuid::Uuid;
 
+use crate::error::AppError;
 use crate::models::{
-    LoggedActivityGroupResponse, LoggedActivityGroupRow, LoggedActivityResponse, LoggedActivityRow,
-    LoggedSetResponse, LoggedSetRow, WorkoutLogFull, WorkoutLogResponse, WorkoutLogRow,
+    LoggedActivityGroupRow, LoggedActivityRow,
+    LoggedSetRow, WorkoutLogFull, WorkoutLogRow,
     WorkoutLogSummary, WorkoutWithSets,
 };
 use crate::utils::now_unix;
@@ -84,6 +85,28 @@ pub struct UpdateLoggedSetInput {
     pub notes: Option<String>,
 }
 
+#[derive(serde::Deserialize)]
+pub struct CreateWorkoutLogFullInput {
+    pub log: CreateWorkoutLogInput,
+    pub groups: Vec<CreateLoggedActivityGroupFullInput>,
+}
+
+#[derive(serde::Deserialize)]
+pub struct CreateLoggedActivityGroupFullInput {
+    pub group: CreateLoggedActivityGroupInput,
+    pub activities: Vec<CreateLoggedActivityFullInput>,
+}
+
+#[derive(serde::Deserialize)]
+pub struct CreateLoggedActivityFullInput {
+    pub activity: CreateLoggedActivityInput,
+    pub sets: Vec<CreateLoggedSetInput>,
+}
+
+const VALID_SET_TYPES: &[&str] = &[
+    "WORKING", "WARMUP", "DROPSET", "BACKOFF", "FAILURE", "MAX",
+];
+
 // ---------------------------------------------------------------------------
 // Commands
 // ---------------------------------------------------------------------------
@@ -93,7 +116,7 @@ pub async fn get_workout_logs(
     pool: State<'_, SqlitePool>,
     user_id: String,
     limit: Option<i64>,
-) -> Result<Vec<WorkoutLogResponse>, String> {
+) -> Result<Vec<WorkoutLogRow>, AppError> {
     let lim = limit.unwrap_or(50);
     let rows = sqlx::query_as::<_, WorkoutLogRow>(
         "SELECT * FROM workout_logs WHERE user_id = ? ORDER BY started_at DESC LIMIT ?",
@@ -101,10 +124,9 @@ pub async fn get_workout_logs(
     .bind(&user_id)
     .bind(lim)
     .fetch_all(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .await?;
 
-    Ok(rows.into_iter().map(WorkoutLogResponse::from).collect())
+    Ok(rows)
 }
 
 #[tauri::command]
@@ -113,7 +135,7 @@ pub async fn get_workout_logs_summary(
     user_id: String,
     limit: Option<i64>,
     offset: Option<i64>,
-) -> Result<Vec<WorkoutLogSummary>, String> {
+) -> Result<Vec<WorkoutLogSummary>, AppError> {
     let lim = limit.unwrap_or(50);
     let off = offset.unwrap_or(0);
 
@@ -127,8 +149,7 @@ pub async fn get_workout_logs_summary(
     .bind(lim)
     .bind(off)
     .fetch_all(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .await?;
 
     if logs.is_empty() {
         return Ok(Vec::new());
@@ -140,7 +161,6 @@ pub async fn get_workout_logs_summary(
     let placeholders = log_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
 
     // Fetch aggregated data per workout: exercise names and set counts
-    // Using a multi-table join to get exercise names and completed set counts
     let agg_sql = format!(
         "SELECT \
             wl.id AS workout_log_id, \
@@ -167,7 +187,7 @@ pub async fn get_workout_logs_summary(
     for id in &log_ids {
         query = query.bind(id);
     }
-    let agg_rows = query.fetch_all(pool.inner()).await.map_err(|e| e.to_string())?;
+    let agg_rows = query.fetch_all(pool.inner()).await?;
 
     // Build a map: workout_log_id -> (exercise_names, set_count)
     let mut agg_map: HashMap<String, (Vec<String>, i64)> = HashMap::new();
@@ -185,7 +205,7 @@ pub async fn get_workout_logs_summary(
                 .unwrap_or_else(|| (Vec::new(), 0));
             let exercise_count = exercise_names.len() as i64;
             WorkoutLogSummary {
-                log: WorkoutLogResponse::from(log),
+                log,
                 exercise_names,
                 set_count,
                 exercise_count,
@@ -200,27 +220,25 @@ pub async fn get_workout_logs_summary(
 pub async fn get_workout_log(
     pool: State<'_, SqlitePool>,
     id: String,
-) -> Result<Option<WorkoutLogResponse>, String> {
+) -> Result<Option<WorkoutLogRow>, AppError> {
     let row = sqlx::query_as::<_, WorkoutLogRow>("SELECT * FROM workout_logs WHERE id = ?")
         .bind(&id)
         .fetch_optional(pool.inner())
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
-    Ok(row.map(WorkoutLogResponse::from))
+    Ok(row)
 }
 
 #[tauri::command]
 pub async fn get_workout_log_full(
     pool: State<'_, SqlitePool>,
     id: String,
-) -> Result<Option<WorkoutLogFull>, String> {
+) -> Result<Option<WorkoutLogFull>, AppError> {
     // Fetch the workout log
     let log_row = sqlx::query_as::<_, WorkoutLogRow>("SELECT * FROM workout_logs WHERE id = ?")
         .bind(&id)
         .fetch_optional(pool.inner())
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     let log_row = match log_row {
         Some(r) => r,
@@ -233,14 +251,13 @@ pub async fn get_workout_log_full(
     )
     .bind(&id)
     .fetch_all(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .await?;
 
     let group_ids: Vec<String> = group_rows.iter().map(|g| g.id.clone()).collect();
 
     if group_ids.is_empty() {
         return Ok(Some(WorkoutLogFull {
-            log: WorkoutLogResponse::from(log_row),
+            log: log_row,
             groups: Vec::new(),
             activities: Vec::new(),
             sets: Vec::new(),
@@ -256,14 +273,14 @@ pub async fn get_workout_log_full(
     for gid in &group_ids {
         act_query = act_query.bind(gid);
     }
-    let act_rows = act_query.fetch_all(pool.inner()).await.map_err(|e| e.to_string())?;
+    let act_rows = act_query.fetch_all(pool.inner()).await?;
 
     let activity_ids: Vec<String> = act_rows.iter().map(|a| a.id.clone()).collect();
 
     if activity_ids.is_empty() {
         return Ok(Some(WorkoutLogFull {
-            log: WorkoutLogResponse::from(log_row),
-            groups: group_rows.into_iter().map(LoggedActivityGroupResponse::from).collect(),
+            log: log_row,
+            groups: group_rows,
             activities: Vec::new(),
             sets: Vec::new(),
         }));
@@ -278,13 +295,13 @@ pub async fn get_workout_log_full(
     for aid in &activity_ids {
         set_query = set_query.bind(aid);
     }
-    let set_rows = set_query.fetch_all(pool.inner()).await.map_err(|e| e.to_string())?;
+    let set_rows = set_query.fetch_all(pool.inner()).await?;
 
     Ok(Some(WorkoutLogFull {
-        log: WorkoutLogResponse::from(log_row),
-        groups: group_rows.into_iter().map(LoggedActivityGroupResponse::from).collect(),
-        activities: act_rows.into_iter().map(LoggedActivityResponse::from).collect(),
-        sets: set_rows.into_iter().map(LoggedSetResponse::from).collect(),
+        log: log_row,
+        groups: group_rows,
+        activities: act_rows,
+        sets: set_rows,
     }))
 }
 
@@ -292,9 +309,21 @@ pub async fn get_workout_log_full(
 pub async fn create_workout_log(
     pool: State<'_, SqlitePool>,
     log: CreateWorkoutLogInput,
-) -> Result<WorkoutLogResponse, String> {
+) -> Result<WorkoutLogRow, AppError> {
+    // Validation
+    if log.started_at <= 0 {
+        return Err(AppError::validation("started_at", "started_at must be a positive Unix timestamp"));
+    }
+    if let Some(pd) = log.perceived_difficulty {
+        if !(1..=10).contains(&pd) {
+            return Err(AppError::validation("perceived_difficulty", "Must be 1-10"));
+        }
+    }
+
     let id = Uuid::new_v4().to_string();
     let now = now_unix();
+
+    let mut tx = pool.begin().await?;
 
     sqlx::query(
         "INSERT INTO workout_logs \
@@ -315,17 +344,17 @@ pub async fn create_workout_log(
     .bind(&log.bodyweight_at_session)
     .bind(now)
     .bind(now)
-    .execute(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .execute(&mut *tx)
+    .await?;
 
     let row = sqlx::query_as::<_, WorkoutLogRow>("SELECT * FROM workout_logs WHERE id = ?")
         .bind(&id)
-        .fetch_one(pool.inner())
-        .await
-        .map_err(|e| e.to_string())?;
+        .fetch_one(&mut *tx)
+        .await?;
 
-    Ok(WorkoutLogResponse::from(row))
+    tx.commit().await?;
+
+    Ok(row)
 }
 
 #[tauri::command]
@@ -336,15 +365,15 @@ pub async fn update_workout_log(
     completed_at: Option<i64>,
     overall_notes: Option<String>,
     perceived_difficulty: Option<i32>,
-) -> Result<WorkoutLogResponse, String> {
+) -> Result<WorkoutLogRow, AppError> {
     let now = now_unix();
 
-    sqlx::query(
+    let result = sqlx::query(
         "UPDATE workout_logs SET \
-         title = COALESCE(?, title), \
-         completed_at = COALESCE(?, completed_at), \
-         overall_notes = COALESCE(?, overall_notes), \
-         perceived_difficulty = COALESCE(?, perceived_difficulty), \
+         title = ?, \
+         completed_at = ?, \
+         overall_notes = ?, \
+         perceived_difficulty = ?, \
          updated_at = ? \
          WHERE id = ?",
     )
@@ -355,30 +384,33 @@ pub async fn update_workout_log(
     .bind(now)
     .bind(&id)
     .execute(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("WorkoutLog", &id));
+    }
 
     let row = sqlx::query_as::<_, WorkoutLogRow>("SELECT * FROM workout_logs WHERE id = ?")
         .bind(&id)
         .fetch_one(pool.inner())
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
-    Ok(WorkoutLogResponse::from(row))
+    Ok(row)
 }
 
 #[tauri::command]
 pub async fn delete_workout_log(
     pool: State<'_, SqlitePool>,
     id: String,
-) -> Result<(), String> {
-    // ON DELETE CASCADE handles child rows (groups -> activities -> sets)
-    sqlx::query("DELETE FROM workout_logs WHERE id = ?")
+) -> Result<(), AppError> {
+    let result = sqlx::query("DELETE FROM workout_logs WHERE id = ?")
         .bind(&id)
         .execute(pool.inner())
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("WorkoutLog", &id));
+    }
     Ok(())
 }
 
@@ -387,9 +419,11 @@ pub async fn create_logged_activity_group(
     pool: State<'_, SqlitePool>,
     group: CreateLoggedActivityGroupInput,
     user_id: String,
-) -> Result<LoggedActivityGroupResponse, String> {
+) -> Result<LoggedActivityGroupRow, AppError> {
     let id = Uuid::new_v4().to_string();
     let now = now_unix();
+
+    let mut tx = pool.begin().await?;
 
     sqlx::query(
         "INSERT INTO logged_activity_groups \
@@ -406,19 +440,19 @@ pub async fn create_logged_activity_group(
     .bind(&group.completion_time)
     .bind(now)
     .bind(now)
-    .execute(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .execute(&mut *tx)
+    .await?;
 
     let row = sqlx::query_as::<_, LoggedActivityGroupRow>(
         "SELECT * FROM logged_activity_groups WHERE id = ?",
     )
     .bind(&id)
-    .fetch_one(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .fetch_one(&mut *tx)
+    .await?;
 
-    Ok(LoggedActivityGroupResponse::from(row))
+    tx.commit().await?;
+
+    Ok(row)
 }
 
 #[tauri::command]
@@ -426,9 +460,11 @@ pub async fn create_logged_activity(
     pool: State<'_, SqlitePool>,
     activity: CreateLoggedActivityInput,
     user_id: String,
-) -> Result<LoggedActivityResponse, String> {
+) -> Result<LoggedActivityRow, AppError> {
     let id = Uuid::new_v4().to_string();
     let now = now_unix();
+
+    let mut tx = pool.begin().await?;
 
     sqlx::query(
         "INSERT INTO logged_activities \
@@ -443,18 +479,18 @@ pub async fn create_logged_activity(
     .bind(&activity.notes)
     .bind(now)
     .bind(now)
-    .execute(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .execute(&mut *tx)
+    .await?;
 
     let row =
         sqlx::query_as::<_, LoggedActivityRow>("SELECT * FROM logged_activities WHERE id = ?")
             .bind(&id)
-            .fetch_one(pool.inner())
-            .await
-            .map_err(|e| e.to_string())?;
+            .fetch_one(&mut *tx)
+            .await?;
 
-    Ok(LoggedActivityResponse::from(row))
+    tx.commit().await?;
+
+    Ok(row)
 }
 
 #[tauri::command]
@@ -462,10 +498,28 @@ pub async fn create_logged_set(
     pool: State<'_, SqlitePool>,
     set: CreateLoggedSetInput,
     user_id: String,
-) -> Result<LoggedSetResponse, String> {
+) -> Result<LoggedSetRow, AppError> {
+    // Validation
+    if set.set_number < 1 {
+        return Err(AppError::validation("set_number", "Must be >= 1"));
+    }
+    if let Some(rpe) = set.rpe {
+        if !(1..=10).contains(&rpe) {
+            return Err(AppError::validation("rpe", "Must be 1-10"));
+        }
+    }
+    if !VALID_SET_TYPES.contains(&set.set_type.as_str()) {
+        return Err(AppError::validation(
+            "set_type",
+            &format!("Invalid set_type: {}. Valid values: {:?}", set.set_type, VALID_SET_TYPES),
+        ));
+    }
+
     let id = Uuid::new_v4().to_string();
     let now = now_unix();
     let completed = set.completed.map(|b| if b { 1i32 } else { 0 });
+
+    let mut tx = pool.begin().await?;
 
     sqlx::query(
         "INSERT INTO logged_sets \
@@ -494,17 +548,17 @@ pub async fn create_logged_set(
     .bind(&set.notes)
     .bind(now)
     .bind(now)
-    .execute(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .execute(&mut *tx)
+    .await?;
 
     let row = sqlx::query_as::<_, LoggedSetRow>("SELECT * FROM logged_sets WHERE id = ?")
         .bind(&id)
-        .fetch_one(pool.inner())
-        .await
-        .map_err(|e| e.to_string())?;
+        .fetch_one(&mut *tx)
+        .await?;
 
-    Ok(LoggedSetResponse::from(row))
+    tx.commit().await?;
+
+    Ok(row)
 }
 
 #[tauri::command]
@@ -512,9 +566,11 @@ pub async fn update_logged_set(
     pool: State<'_, SqlitePool>,
     set: UpdateLoggedSetInput,
     user_id: String,
-) -> Result<LoggedSetResponse, String> {
+) -> Result<LoggedSetRow, AppError> {
     let now = now_unix();
     let completed = set.completed.map(|b| if b { 1i32 } else { 0 });
+
+    let mut tx = pool.begin().await?;
 
     sqlx::query(
         "UPDATE logged_sets SET \
@@ -542,17 +598,17 @@ pub async fn update_logged_set(
     .bind(&set.notes)
     .bind(now)
     .bind(&set.id)
-    .execute(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .execute(&mut *tx)
+    .await?;
 
     let row = sqlx::query_as::<_, LoggedSetRow>("SELECT * FROM logged_sets WHERE id = ?")
         .bind(&set.id)
-        .fetch_one(pool.inner())
-        .await
-        .map_err(|e| e.to_string())?;
+        .fetch_one(&mut *tx)
+        .await?;
 
-    Ok(LoggedSetResponse::from(row))
+    tx.commit().await?;
+
+    Ok(row)
 }
 
 #[tauri::command]
@@ -560,7 +616,7 @@ pub async fn get_recently_used_exercise_ids(
     pool: State<'_, SqlitePool>,
     user_id: String,
     limit: Option<i64>,
-) -> Result<Vec<String>, String> {
+) -> Result<Vec<String>, AppError> {
     let lim = limit.unwrap_or(10);
 
     #[derive(sqlx::FromRow)]
@@ -581,8 +637,7 @@ pub async fn get_recently_used_exercise_ids(
     .bind(&user_id)
     .bind(lim)
     .fetch_all(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .await?;
 
     Ok(rows.into_iter().map(|r| r.exercise_id).collect())
 }
@@ -593,67 +648,280 @@ pub async fn get_exercise_workout_history(
     user_id: String,
     exercise_id: String,
     limit: Option<i64>,
-) -> Result<Vec<WorkoutWithSets>, String> {
+) -> Result<Vec<WorkoutWithSets>, AppError> {
     let lim = limit.unwrap_or(10);
 
-    // Find workout log IDs that contain this exercise, ordered by most recent
+    // Step 1: Find workout log IDs (1 query)
     #[derive(sqlx::FromRow)]
     struct LogIdRow {
         workout_log_id: String,
     }
 
-    let log_id_rows = sqlx::query_as::<_, LogIdRow>(
+    let log_ids: Vec<String> = sqlx::query_as::<_, LogIdRow>(
         "SELECT DISTINCT lag.workout_log_id \
          FROM logged_activities la \
          JOIN logged_activity_groups lag ON lag.id = la.logged_group_id \
          JOIN workout_logs wl ON wl.id = lag.workout_log_id \
          WHERE la.exercise_id = ? AND wl.user_id = ? \
-         ORDER BY wl.started_at DESC \
-         LIMIT ?",
+         ORDER BY wl.started_at DESC LIMIT ?",
     )
     .bind(&exercise_id)
     .bind(&user_id)
     .bind(lim)
     .fetch_all(pool.inner())
-    .await
-    .map_err(|e| e.to_string())?;
+    .await?
+    .into_iter()
+    .map(|r| r.workout_log_id)
+    .collect();
 
-    if log_id_rows.is_empty() {
+    if log_ids.is_empty() {
         return Ok(Vec::new());
     }
 
-    let mut results = Vec::new();
+    // Step 2: Fetch all workout logs in one query
+    let placeholders = log_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let logs_sql = format!(
+        "SELECT * FROM workout_logs WHERE id IN ({placeholders}) ORDER BY started_at DESC"
+    );
+    let mut logs_query = sqlx::query_as::<_, WorkoutLogRow>(&logs_sql);
+    for id in &log_ids {
+        logs_query = logs_query.bind(id);
+    }
+    let logs = logs_query.fetch_all(pool.inner()).await?;
 
-    for log_id_row in &log_id_rows {
-        let wl_id = &log_id_row.workout_log_id;
+    // Step 3: Fetch all relevant sets in one query with workout_log_id tag
+    #[derive(sqlx::FromRow)]
+    struct FlatSetRow {
+        id: String,
+        logged_activity_id: String,
+        user_id: Option<String>,
+        set_number: i32,
+        set_type: String,
+        prescribed: Option<String>,
+        actual_reps: Option<i32>,
+        actual_weight: Option<String>,
+        actual_duration: Option<String>,
+        actual_distance: Option<String>,
+        actual_pace: Option<String>,
+        actual_heart_rate: Option<i32>,
+        ruck_load: Option<String>,
+        elevation_gain: Option<String>,
+        rpe: Option<i32>,
+        completed: Option<i32>,
+        notes: Option<String>,
+        created_at: Option<i64>,
+        updated_at: Option<i64>,
+        _wl_id: String,
+    }
 
-        // Fetch the workout log
-        let log_row =
-            sqlx::query_as::<_, WorkoutLogRow>("SELECT * FROM workout_logs WHERE id = ?")
-                .bind(wl_id)
-                .fetch_one(pool.inner())
-                .await
-                .map_err(|e| e.to_string())?;
+    let sets_sql = format!(
+        "SELECT ls.*, lag.workout_log_id AS _wl_id FROM logged_sets ls \
+         JOIN logged_activities la ON la.id = ls.logged_activity_id \
+         JOIN logged_activity_groups lag ON lag.id = la.logged_group_id \
+         WHERE lag.workout_log_id IN ({placeholders}) AND la.exercise_id = ? \
+         ORDER BY ls.set_number"
+    );
+    let mut sets_query = sqlx::query_as::<_, FlatSetRow>(&sets_sql);
+    for id in &log_ids {
+        sets_query = sets_query.bind(id);
+    }
+    sets_query = sets_query.bind(&exercise_id);
+    let flat_sets = sets_query.fetch_all(pool.inner()).await?;
 
-        // Fetch sets for this exercise within this workout
-        let set_rows = sqlx::query_as::<_, LoggedSetRow>(
-            "SELECT ls.* FROM logged_sets ls \
-             JOIN logged_activities la ON la.id = ls.logged_activity_id \
-             JOIN logged_activity_groups lag ON lag.id = la.logged_group_id \
-             WHERE lag.workout_log_id = ? AND la.exercise_id = ? \
-             ORDER BY ls.set_number",
-        )
-        .bind(wl_id)
-        .bind(&exercise_id)
-        .fetch_all(pool.inner())
-        .await
-        .map_err(|e| e.to_string())?;
-
-        results.push(WorkoutWithSets {
-            log: WorkoutLogResponse::from(log_row),
-            sets: set_rows.into_iter().map(LoggedSetResponse::from).collect(),
+    // Group sets by workout_log_id
+    let mut sets_map: HashMap<String, Vec<LoggedSetRow>> = HashMap::new();
+    for fs in flat_sets {
+        let wl_id = fs._wl_id.clone();
+        sets_map.entry(wl_id).or_default().push(LoggedSetRow {
+            id: fs.id,
+            logged_activity_id: fs.logged_activity_id,
+            user_id: fs.user_id,
+            set_number: fs.set_number,
+            set_type: fs.set_type,
+            prescribed: fs.prescribed,
+            actual_reps: fs.actual_reps,
+            actual_weight: fs.actual_weight,
+            actual_duration: fs.actual_duration,
+            actual_distance: fs.actual_distance,
+            actual_pace: fs.actual_pace,
+            actual_heart_rate: fs.actual_heart_rate,
+            ruck_load: fs.ruck_load,
+            elevation_gain: fs.elevation_gain,
+            rpe: fs.rpe,
+            completed: fs.completed,
+            notes: fs.notes,
+            created_at: fs.created_at,
+            updated_at: fs.updated_at,
         });
     }
 
+    let results = logs
+        .into_iter()
+        .map(|log| {
+            let sets = sets_map.remove(&log.id).unwrap_or_default();
+            WorkoutWithSets { log, sets }
+        })
+        .collect();
+
     Ok(results)
+}
+
+#[tauri::command]
+pub async fn create_workout_log_full(
+    pool: State<'_, SqlitePool>,
+    input: CreateWorkoutLogFullInput,
+    user_id: String,
+) -> Result<WorkoutLogFull, AppError> {
+    // Validation
+    if input.log.started_at <= 0 {
+        return Err(AppError::validation(
+            "started_at",
+            "started_at must be a positive Unix timestamp",
+        ));
+    }
+
+    let log_id = Uuid::new_v4().to_string();
+    let now = now_unix();
+    let mut tx = pool.begin().await?;
+
+    // Insert workout log
+    sqlx::query(
+        "INSERT INTO workout_logs \
+         (id, user_id, title, started_at, completed_at, session_template_id, \
+          program_context, overall_notes, perceived_difficulty, bodyweight_at_session, \
+          created_at, updated_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    )
+    .bind(&log_id)
+    .bind(&user_id)
+    .bind(&input.log.title)
+    .bind(input.log.started_at)
+    .bind(input.log.completed_at)
+    .bind(&input.log.session_template_id)
+    .bind(&input.log.program_context)
+    .bind(&input.log.overall_notes)
+    .bind(input.log.perceived_difficulty)
+    .bind(&input.log.bodyweight_at_session)
+    .bind(now)
+    .bind(now)
+    .execute(&mut *tx)
+    .await?;
+
+    let mut all_groups: Vec<LoggedActivityGroupRow> = Vec::new();
+    let mut all_activities: Vec<LoggedActivityRow> = Vec::new();
+    let mut all_sets: Vec<LoggedSetRow> = Vec::new();
+
+    for group_input in &input.groups {
+        let group_id = Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO logged_activity_groups \
+             (id, workout_log_id, user_id, group_type, ordinal, actual_rounds_completed, \
+              completion_time, created_at, updated_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&group_id)
+        .bind(&log_id)
+        .bind(&user_id)
+        .bind(&group_input.group.group_type)
+        .bind(group_input.group.ordinal)
+        .bind(group_input.group.actual_rounds_completed)
+        .bind(&group_input.group.completion_time)
+        .bind(now)
+        .bind(now)
+        .execute(&mut *tx)
+        .await?;
+
+        let group_row = sqlx::query_as::<_, LoggedActivityGroupRow>(
+            "SELECT * FROM logged_activity_groups WHERE id = ?",
+        )
+        .bind(&group_id)
+        .fetch_one(&mut *tx)
+        .await?;
+        all_groups.push(group_row);
+
+        for act_input in &group_input.activities {
+            let act_id = Uuid::new_v4().to_string();
+            sqlx::query(
+                "INSERT INTO logged_activities \
+                 (id, logged_group_id, user_id, exercise_id, ordinal, notes, created_at, updated_at) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            )
+            .bind(&act_id)
+            .bind(&group_id)
+            .bind(&user_id)
+            .bind(&act_input.activity.exercise_id)
+            .bind(act_input.activity.ordinal)
+            .bind(&act_input.activity.notes)
+            .bind(now)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+
+            let act_row = sqlx::query_as::<_, LoggedActivityRow>(
+                "SELECT * FROM logged_activities WHERE id = ?",
+            )
+            .bind(&act_id)
+            .fetch_one(&mut *tx)
+            .await?;
+            all_activities.push(act_row);
+
+            for set_input in &act_input.sets {
+                let set_id = Uuid::new_v4().to_string();
+                let completed = set_input.completed.map(|b| if b { 1i32 } else { 0 });
+                sqlx::query(
+                    "INSERT INTO logged_sets \
+                     (id, logged_activity_id, user_id, set_number, set_type, prescribed, \
+                      actual_reps, actual_weight, actual_duration, actual_distance, actual_pace, \
+                      actual_heart_rate, ruck_load, elevation_gain, rpe, completed, notes, \
+                      created_at, updated_at) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                )
+                .bind(&set_id)
+                .bind(&act_id)
+                .bind(&user_id)
+                .bind(set_input.set_number)
+                .bind(&set_input.set_type)
+                .bind(&set_input.prescribed)
+                .bind(set_input.actual_reps)
+                .bind(&set_input.actual_weight)
+                .bind(&set_input.actual_duration)
+                .bind(&set_input.actual_distance)
+                .bind(&set_input.actual_pace)
+                .bind(set_input.actual_heart_rate)
+                .bind(&set_input.ruck_load)
+                .bind(&set_input.elevation_gain)
+                .bind(set_input.rpe)
+                .bind(completed)
+                .bind(&set_input.notes)
+                .bind(now)
+                .bind(now)
+                .execute(&mut *tx)
+                .await?;
+
+                let set_row = sqlx::query_as::<_, LoggedSetRow>(
+                    "SELECT * FROM logged_sets WHERE id = ?",
+                )
+                .bind(&set_id)
+                .fetch_one(&mut *tx)
+                .await?;
+                all_sets.push(set_row);
+            }
+        }
+    }
+
+    let log_row = sqlx::query_as::<_, WorkoutLogRow>(
+        "SELECT * FROM workout_logs WHERE id = ?",
+    )
+    .bind(&log_id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(WorkoutLogFull {
+        log: log_row,
+        groups: all_groups,
+        activities: all_activities,
+        sets: all_sets,
+    })
 }
