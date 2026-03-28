@@ -21,16 +21,24 @@ export function SyncListener() {
     let unlistenData: (() => void) | undefined
 
     onSyncStateChanged((state) => {
-      setSyncState(mapRustStateToUi(state), state.message ?? null)
-    }).then((fn) => {
-      unlistenState = fn
+      setSyncState(mapRustStateToUi(state), state.type === 'Error' ? state.message : null)
     })
+      .then((fn) => {
+        unlistenState = fn
+      })
+      .catch((err) => {
+        console.error('[sync-listener] Failed to register state listener:', err)
+      })
 
     onDataChanged((data) => {
       queryClient.invalidateQueries({ queryKey: [data.table] })
-    }).then((fn) => {
-      unlistenData = fn
     })
+      .then((fn) => {
+        unlistenData = fn
+      })
+      .catch((err) => {
+        console.error('[sync-listener] Failed to register data listener:', err)
+      })
 
     return () => {
       unlistenState?.()

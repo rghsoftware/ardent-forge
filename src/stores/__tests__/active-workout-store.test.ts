@@ -367,7 +367,7 @@ describe('rest timer', () => {
 
     const { restTimer } = getState()
     expect(restTimer!.remaining).toBe(0)
-    expect(restTimer!.total).toBe(0)
+    expect(restTimer!.total).toBe(20)
   })
 })
 

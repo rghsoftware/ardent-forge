@@ -3,6 +3,7 @@ import type { AuthError, Session, User } from '@supabase/supabase-js'
 import { isTauri } from '@tauri-apps/api/core'
 import { getSupabaseClient } from './supabase'
 import { initSync, stopSync } from './sync-bridge'
+import { useSyncStore } from '@/stores/sync-store'
 
 interface AuthState {
   user: User | null
@@ -64,29 +65,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Start Tauri sync engine with the fresh auth tokens
         if (isTauri() && session) {
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? ''
-          const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
-          initSync(
-            session.access_token,
-            session.refresh_token ?? '',
-            supabaseUrl,
-            supabaseKey,
-          ).catch(console.error)
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+          const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+          if (!supabaseUrl || !supabaseKey) {
+            console.warn(
+              '[sync] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY, skipping sync init',
+            )
+          } else {
+            initSync(session.access_token, supabaseUrl, supabaseKey).catch((err) => {
+              console.error('[sync] Failed to initialize sync engine:', err)
+              useSyncStore.getState().setSyncState('error', 'Failed to start sync')
+            })
+          }
         }
       }
 
       if (event === 'SIGNED_OUT') {
         if (isTauri()) {
-          stopSync().catch(console.error)
+          stopSync().catch((err) => {
+            console.error('[sync] Failed to stop sync engine:', err)
+          })
         }
       }
 
       if (event === 'TOKEN_REFRESHED' && isTauri() && session) {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? ''
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
-        initSync(session.access_token, session.refresh_token ?? '', supabaseUrl, supabaseKey).catch(
-          console.error,
-        )
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+        if (!supabaseUrl || !supabaseKey) {
+          console.warn(
+            '[sync] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY, skipping sync init',
+          )
+        } else {
+          initSync(session.access_token, supabaseUrl, supabaseKey).catch((err) => {
+            console.error('[sync] Failed to initialize sync engine:', err)
+            useSyncStore.getState().setSyncState('error', 'Failed to start sync')
+          })
+        }
       }
     })
 

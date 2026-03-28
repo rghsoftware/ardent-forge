@@ -10,7 +10,9 @@ export function SyncIndicator() {
   if (syncState === 'offline') return null
 
   const handleErrorTap = () => {
-    forcePush().catch(console.error)
+    forcePush().catch((err) => {
+      console.error('[sync] Force push failed:', err)
+    })
   }
 
   return (

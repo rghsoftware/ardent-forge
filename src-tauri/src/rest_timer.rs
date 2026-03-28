@@ -27,10 +27,12 @@ impl RestTimerState {
     }
 
     pub async fn start(&self, seconds: u32, app: AppHandle) {
-        // Cancel existing timer
+        if seconds == 0 {
+            return;
+        }
+
         self.stop().await;
 
-        // Set state
         {
             let mut inner = self.inner.lock().await;
             inner.remaining = seconds;
@@ -58,7 +60,6 @@ impl RestTimerState {
                 let total = guard.total;
                 drop(guard);
 
-                // Emit tick event
                 let _ = app_clone.emit(
                     "timer_tick",
                     serde_json::json!({
@@ -68,8 +69,9 @@ impl RestTimerState {
                 );
 
                 if remaining == 0 {
-                    // Emit expired event
-                    let _ = app_clone.emit("timer_expired", serde_json::json!({}));
+                    if let Err(e) = app_clone.emit("timer_expired", serde_json::json!({})) {
+                        log::error!("[rest-timer] Failed to emit timer_expired: {e}");
+                    }
 
                     // Send notification
                     use tauri_plugin_notification::NotificationExt;
@@ -80,7 +82,6 @@ impl RestTimerState {
                         .body("Time to get back to work!")
                         .show();
 
-                    // Mark inactive
                     let mut guard = inner.lock().await;
                     guard.active = false;
                     break;
@@ -112,7 +113,6 @@ impl RestTimerState {
         } else {
             let abs_delta = (-delta) as u32;
             inner.remaining = inner.remaining.saturating_sub(abs_delta);
-            inner.total = inner.total.saturating_sub(abs_delta);
         }
     }
 }
@@ -120,5 +120,66 @@ impl RestTimerState {
 impl Default for RestTimerState {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_timer() -> RestTimerState {
+        RestTimerState::new()
+    }
+
+    #[tokio::test]
+    async fn adjust_positive_increments_both_remaining_and_total() {
+        let timer = make_timer();
+        {
+            let mut inner = timer.inner.lock().await;
+            inner.remaining = 60;
+            inner.total = 60;
+            inner.active = true;
+        }
+        timer.adjust(10).await;
+        let inner = timer.inner.lock().await;
+        assert_eq!(inner.remaining, 70);
+        assert_eq!(inner.total, 70);
+    }
+
+    #[tokio::test]
+    async fn adjust_negative_decrements_remaining_only() {
+        let timer = make_timer();
+        {
+            let mut inner = timer.inner.lock().await;
+            inner.remaining = 60;
+            inner.total = 60;
+            inner.active = true;
+        }
+        timer.adjust(-10).await;
+        let inner = timer.inner.lock().await;
+        assert_eq!(inner.remaining, 50);
+        assert_eq!(inner.total, 60);
+    }
+
+    #[tokio::test]
+    async fn adjust_large_negative_saturates_remaining_to_zero() {
+        let timer = make_timer();
+        {
+            let mut inner = timer.inner.lock().await;
+            inner.remaining = 30;
+            inner.total = 60;
+            inner.active = true;
+        }
+        timer.adjust(-100).await;
+        let inner = timer.inner.lock().await;
+        assert_eq!(inner.remaining, 0);
+        assert_eq!(inner.total, 60);
+    }
+
+    #[tokio::test]
+    async fn start_zero_duration_does_not_activate() {
+        let timer = make_timer();
+        let inner = timer.inner.lock().await;
+        assert!(!inner.active, "Timer should not be active on construction");
     }
 }

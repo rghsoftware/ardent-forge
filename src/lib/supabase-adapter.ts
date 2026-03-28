@@ -454,7 +454,7 @@ export class SupabaseAdapter implements DataAdapter {
     exerciseId: string,
     limit = 10,
   ): Promise<{ log: WorkoutLog; sets: LoggedSet[] }[]> {
-    // Find logged activities for this exercise, joined with their workout logs and sets
+    // Same two-hop join as getRecentlyUsedExerciseIds: activities -> groups -> logs
     const { data, error } = await this.client
       .from('logged_activities')
       .select(

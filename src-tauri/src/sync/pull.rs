@@ -49,8 +49,13 @@ pub async fn start_realtime_subscription(
     while let Some(msg) = ws_stream.next().await {
         match msg {
             Ok(Message::Text(text)) => {
-                if let Ok(payload) = serde_json::from_str::<Value>(&text) {
-                    handle_realtime_message(&pool, &payload, &app_handle).await;
+                match serde_json::from_str::<Value>(&text) {
+                    Ok(payload) => {
+                        handle_realtime_message(&pool, &payload, &app_handle).await;
+                    }
+                    Err(e) => {
+                        log::debug!("[pull] Failed to parse WebSocket JSON: {e}");
+                    }
                 }
             }
             Ok(Message::Ping(data)) => {
@@ -90,20 +95,31 @@ async fn handle_realtime_message(pool: &SqlitePool, payload: &Value, app_handle:
         return;
     }
 
+    if !crate::sync::SYNCABLE_TABLES.contains(&table) {
+        log::warn!("[pull] Ignoring message for non-allowlisted table: {table}");
+        return;
+    }
+
     match change_type {
         "INSERT" | "UPDATE" => {
             if let Some(record) = data.get("record") {
-                let _ = upsert_row(pool, table, record).await;
-
-                // Emit data changed event for React cache invalidation
                 let row_id = record.get("id").and_then(|id| id.as_str()).unwrap_or("");
-                let _ = app_handle.emit(
-                    "sync:data_changed",
-                    json!({
-                        "table": table,
-                        "id": row_id
-                    }),
-                );
+                match upsert_row(pool, table, record).await {
+                    Ok(()) => {
+                        if let Err(e) = app_handle.emit(
+                            "sync:data_changed",
+                            json!({
+                                "table": table,
+                                "id": row_id
+                            }),
+                        ) {
+                            log::error!("[pull] Failed to emit data_changed: {e}");
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("[pull] upsert_row failed for {table}/{row_id}: {e}");
+                    }
+                }
             }
         }
         "DELETE" => {
@@ -113,18 +129,28 @@ async fn handle_realtime_message(pool: &SqlitePool, payload: &Value, app_handle:
                     .and_then(|id| id.as_str())
                     .unwrap_or("");
                 if !row_id.is_empty() {
-                    let _ = delete_row(pool, table, row_id).await;
-                    let _ = app_handle.emit(
-                        "sync:data_changed",
-                        json!({
-                            "table": table,
-                            "id": row_id
-                        }),
-                    );
+                    match delete_row(pool, table, row_id).await {
+                        Ok(()) => {
+                            if let Err(e) = app_handle.emit(
+                                "sync:data_changed",
+                                json!({
+                                    "table": table,
+                                    "id": row_id
+                                }),
+                            ) {
+                                log::error!("[pull] Failed to emit data_changed: {e}");
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("[pull] delete_row failed for {table}/{row_id}: {e}");
+                        }
+                    }
                 }
             }
         }
-        _ => {}
+        other => {
+            log::debug!("[pull] Unrecognized change type: {other}");
+        }
     }
 }
 
@@ -156,10 +182,11 @@ async fn upsert_row(pool: &SqlitePool, table: &str, record: &Value) -> Result<()
         }
     }
 
-    // Apply remote record via JSON upsert
-    // This is a simplified approach; production would need per-table column mapping.
-    // For now the conflict resolution logic is wired up and the row is acknowledged.
-    let _ = pool;
+    // STUB: The actual SQLite upsert is not yet implemented.
+    // Conflict resolution above is wired and tested, but the winning remote
+    // record is not written to SQLite. Production implementation requires
+    // per-table column mapping to build a dynamic INSERT ... ON CONFLICT.
+    log::warn!("[pull] upsert_row: remote record for {table}/{row_id} acknowledged but NOT written (stub)");
     Ok(())
 }
 

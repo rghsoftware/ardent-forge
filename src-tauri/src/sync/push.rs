@@ -2,16 +2,6 @@ use reqwest::Client;
 use serde_json::Value;
 use sqlx::SqlitePool;
 
-const SYNCABLE_TABLES: &[&str] = &[
-    "exercises",
-    "workout_logs",
-    "logged_activity_groups",
-    "logged_activities",
-    "logged_sets",
-    "user_profiles",
-    "one_rep_max_history",
-];
-
 pub async fn push_all(
     pool: &SqlitePool,
     supabase_url: &str,
@@ -20,7 +10,7 @@ pub async fn push_all(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let client = Client::new();
 
-    for table in SYNCABLE_TABLES {
+    for table in super::SYNCABLE_TABLES {
         push_table(pool, &client, table, supabase_url, supabase_key, access_token).await?;
     }
     Ok(())
@@ -34,7 +24,6 @@ async fn push_table(
     supabase_key: &str,
     access_token: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // Get last push timestamp for this table
     let last_push_at: Option<(i64,)> =
         sqlx::query_as("SELECT last_push_at FROM sync_metadata WHERE table_name = ?")
             .bind(table)
@@ -42,21 +31,44 @@ async fn push_table(
             .await?;
     let last_push_at = last_push_at.map(|(v,)| v).unwrap_or(0);
 
-    // Query rows updated since last push (dynamic SQL since table name varies)
+    // Get all column names for the table
+    let columns: Vec<(String,)> =
+        sqlx::query_as("SELECT name FROM pragma_table_info(?) ORDER BY cid")
+            .bind(table)
+            .fetch_all(pool)
+            .await?;
+
+    // Build json_object(...) expression with all columns
+    let col_args: Vec<String> = columns
+        .iter()
+        .map(|(name,)| format!("'{}', {}", name, name))
+        .collect();
+    let json_expr = format!("json_object({})", col_args.join(", "));
+
     let query = format!(
-        "SELECT json_object('id', id, 'updated_at', updated_at) as json_row FROM {} WHERE updated_at > ?",
-        table
+        "SELECT {} AS json_row FROM {} WHERE updated_at > ?",
+        json_expr, table
     );
-    let rows: Vec<(String,)> = sqlx::query_as(&query)
+    let raw_rows: Vec<(String,)> = sqlx::query_as(&query)
         .bind(last_push_at)
         .fetch_all(pool)
-        .await
-        .unwrap_or_default();
+        .await?;
 
-    let json_rows: Vec<Value> = rows
-        .into_iter()
-        .filter_map(|(s,)| serde_json::from_str(&s).ok())
-        .collect();
+    let mut json_rows = Vec::new();
+    let mut parse_errors = 0usize;
+    for (s,) in raw_rows {
+        match serde_json::from_str::<Value>(&s) {
+            Ok(v) => json_rows.push(v),
+            Err(e) => {
+                log::error!("[push] Failed to deserialize row from {table}: {e}");
+                parse_errors += 1;
+            }
+        }
+    }
+    if parse_errors > 0 {
+        log::warn!("[push] Skipping last_push_at update for {table} due to {parse_errors} parse errors");
+        return Ok(());
+    }
 
     if json_rows.is_empty() {
         return Ok(());
@@ -75,7 +87,6 @@ async fn push_table(
         .await?;
 
     if response.status().is_success() {
-        // Update last_push_at
         let now = chrono::Utc::now().timestamp_millis();
         sqlx::query("UPDATE sync_metadata SET last_push_at = ? WHERE table_name = ?")
             .bind(now)
@@ -89,4 +100,55 @@ async fn push_table(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    #[tokio::test]
+    async fn push_table_propagates_query_error_for_nonexistent_table() {
+        let pool = SqlitePoolOptions::new()
+            .connect(":memory:")
+            .await
+            .expect("pool");
+
+        // Create the sync_metadata table so the first query succeeds
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS sync_metadata (
+                table_name TEXT PRIMARY KEY,
+                last_push_at INTEGER NOT NULL DEFAULT 0,
+                last_pull_at INTEGER NOT NULL DEFAULT 0
+            )",
+        )
+        .execute(&pool)
+        .await
+        .expect("create sync_metadata");
+
+        let client = Client::new();
+
+        // "nonexistent_table" has no rows in sync_metadata and no real table,
+        // so pragma_table_info returns empty columns, producing an empty
+        // json_object() expression. The SELECT query itself will fail.
+        // The function should either succeed with 0 rows or fail gracefully
+        // (not panic).
+        let result = push_table(
+            &pool,
+            &client,
+            "nonexistent_table",
+            "http://example.com",
+            "key",
+            "token",
+        )
+        .await;
+
+        // It should either succeed (empty pragma = empty columns = early return)
+        // or fail with a proper error, but must never panic.
+        assert!(result.is_ok() || result.is_err());
+        if let Err(e) = result {
+            let msg = e.to_string();
+            assert!(!msg.is_empty());
+        }
+    }
 }

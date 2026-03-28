@@ -4,10 +4,12 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 
 export type SyncStateType = 'offline' | 'syncing' | 'synced' | 'error'
 
-export interface SyncStateChanged {
-  type: 'Offline' | 'AuthRequired' | 'Pushing' | 'Pulling' | 'Idle' | 'Error'
-  message?: string
-}
+export type SyncStateChanged =
+  | { type: 'Offline' }
+  | { type: 'Pushing' }
+  | { type: 'Pulling' }
+  | { type: 'Idle' }
+  | { type: 'Error'; message: string }
 
 export interface DataChanged {
   table: string
@@ -24,20 +26,17 @@ export function mapRustStateToUi(rustState: SyncStateChanged): SyncStateType {
     case 'Error':
       return 'error'
     case 'Offline':
-    case 'AuthRequired':
-    default:
       return 'offline'
   }
 }
 
 export async function initSync(
   accessToken: string,
-  refreshToken: string,
   supabaseUrl: string,
   supabaseKey: string,
 ): Promise<void> {
   if (!isTauri()) return
-  await invoke('sync_set_auth', { accessToken, refreshToken, supabaseUrl, supabaseKey })
+  await invoke('sync_set_auth', { accessToken, supabaseUrl, supabaseKey })
 }
 
 export async function stopSync(): Promise<void> {

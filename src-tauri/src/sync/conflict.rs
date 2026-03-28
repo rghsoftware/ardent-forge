@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Winner {
     Local,
     Remote,
@@ -6,6 +6,10 @@ pub enum Winner {
 
 /// Last-write-wins conflict resolution based on updated_at timestamp.
 /// Returns Remote if remote is strictly newer, Local otherwise.
+///
+/// Both timestamps must use the same unit (seconds or milliseconds).
+/// The caller is responsible for ensuring consistency between
+/// the local SQLite value and the remote Supabase value.
 pub fn resolve_conflict(local_updated_at: i64, remote_updated_at: i64) -> Winner {
     if remote_updated_at > local_updated_at {
         Winner::Remote

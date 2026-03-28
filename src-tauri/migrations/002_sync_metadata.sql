@@ -29,5 +29,5 @@ CREATE TABLE IF NOT EXISTS sync_queue (
   attempts INTEGER NOT NULL DEFAULT 0
 );
 
--- FIFO processing index
+-- FIFO processing index (used by sync::queue::dequeue_batch)
 CREATE INDEX IF NOT EXISTS idx_sync_queue_created_at ON sync_queue (created_at ASC);

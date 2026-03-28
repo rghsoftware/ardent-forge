@@ -1,12 +1,11 @@
 import { create } from 'zustand'
-
-export type SyncStatus = 'offline' | 'syncing' | 'synced' | 'error'
+import type { SyncStateType } from '@/lib/sync-bridge'
 
 interface SyncStore {
-  syncState: SyncStatus
+  syncState: SyncStateType
   errorMessage: string | null
   lastSyncedAt: string | null
-  setSyncState: (state: SyncStatus, errorMessage?: string | null) => void
+  setSyncState: (state: SyncStateType, errorMessage?: string | null) => void
   setLastSyncedAt: (at: string) => void
 }
 
@@ -15,7 +14,10 @@ export const useSyncStore = create<SyncStore>((set) => ({
   errorMessage: null,
   lastSyncedAt: null,
   setSyncState: (syncState, errorMessage = null) => {
-    set({ syncState, errorMessage })
+    set({
+      syncState,
+      errorMessage: syncState === 'error' ? (errorMessage ?? 'Unknown sync error') : null,
+    })
     if (syncState === 'synced') {
       set({ lastSyncedAt: new Date().toISOString() })
     }

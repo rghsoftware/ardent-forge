@@ -67,7 +67,10 @@ interface ActiveWorkoutState {
 let _elapsedInterval: ReturnType<typeof setInterval> | null = null
 let _restInterval: ReturnType<typeof setInterval> | null = null
 
-// Tauri event unlisten handles for the Rust rest timer path
+// Tauri event unlisten handles for the Rust rest timer path.
+// In Tauri mode, the timer runs in Rust and ticks arrive via events;
+// in browser mode, _restInterval above drives a JS setInterval instead.
+// The two paths are mutually exclusive (see startRestTimer below).
 let _unlistenTick: UnlistenFn | null = null
 let _unlistenExpired: UnlistenFn | null = null
 
@@ -303,26 +306,37 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       })
 
       if (isTauri()) {
-        // Rust-backed timer: invoke command and subscribe to events
-        invoke('start_rest_timer', { seconds }).catch(console.error)
-
-        listen<{ remaining: number }>('timer_tick', (event) => {
-          set({
-            restTimer: {
-              remaining: event.payload.remaining,
-              total: get().restTimer?.total ?? seconds,
-            },
+        // Rust-backed timer: register listeners BEFORE invoking the command
+        // to avoid missing early tick/expired events.
+        Promise.all([
+          listen<{ remaining: number }>('timer_tick', (event) => {
+            set({
+              restTimer: {
+                remaining: event.payload.remaining,
+                total: get().restTimer?.total ?? seconds,
+              },
+            })
+          }).then((fn) => {
+            _unlistenTick = fn
+          }),
+          listen<void>('timer_expired', () => {
+            _cleanupTauriRestListeners()
+            set({ restTimer: null })
+          }).then((fn) => {
+            _unlistenExpired = fn
+          }),
+        ])
+          .then(() => {
+            invoke('start_rest_timer', { seconds }).catch((err) => {
+              console.error('[rest-timer] Failed to start Rust timer:', err)
+              set({ restTimer: null })
+              _cleanupTauriRestListeners()
+            })
           })
-        }).then((fn) => {
-          _unlistenTick = fn
-        })
-
-        listen<void>('timer_expired', () => {
-          _cleanupTauriRestListeners()
-          set({ restTimer: null })
-        }).then((fn) => {
-          _unlistenExpired = fn
-        })
+          .catch((err) => {
+            console.error('[rest-timer] Failed to register listeners:', err)
+            set({ restTimer: null })
+          })
       } else {
         // Browser path: JS setInterval
         _restInterval = setInterval(() => {
@@ -333,7 +347,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
 
     skipRest() {
       if (isTauri()) {
-        invoke('skip_rest_timer').catch(console.error)
+        invoke('skip_rest_timer').catch((err) => {
+          console.error('[rest-timer] Failed to skip:', err)
+        })
         _cleanupTauriRestListeners()
       } else {
         if (_restInterval) {
@@ -346,17 +362,23 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
 
     adjustRest(delta: number) {
       if (isTauri()) {
-        invoke('adjust_rest_timer', { delta }).catch(console.error)
+        invoke('adjust_rest_timer', { delta }).catch((err) => {
+          console.error('[rest-timer] Failed to adjust:', err)
+        })
       }
-      // Update local state immediately for both paths (Rust events will
-      // reconcile via timer_tick, but instant UI feedback is important)
+      // Update local state immediately for responsive UI in both paths.
+      // In Tauri mode, the next timer_tick event (~1s) will carry the
+      // Rust-adjusted values, which may briefly differ from this optimistic
+      // update before converging.
       set((state) => {
         if (!state.restTimer) return {}
+        const newRemaining = Math.max(0, state.restTimer.remaining + delta)
+        // For negative delta: only change remaining, not total (matches Rust behavior)
+        const newTotal = delta >= 0 ? state.restTimer.total + delta : state.restTimer.total
         return {
           restTimer: {
-            ...state.restTimer,
-            remaining: Math.max(0, state.restTimer.remaining + delta),
-            total: Math.max(0, state.restTimer.total + delta),
+            remaining: newRemaining,
+            total: newTotal,
           },
         }
       })

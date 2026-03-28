@@ -50,7 +50,6 @@ function AuthenticatedLayout() {
 
   return (
     <div className={`min-h-screen ${isWorkoutRoute ? '' : 'pb-16'}`}>
-      {/* Sync status indicator -- top-right, visible on all layouts */}
       <div className="fixed top-0 right-0 z-50">
         <SyncIndicator />
       </div>
