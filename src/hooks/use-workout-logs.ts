@@ -18,6 +18,14 @@ export function useWorkoutLog(id: string) {
   })
 }
 
+export function useWorkoutLogsSummary(userId: string, limit?: number) {
+  return useQuery({
+    queryKey: ['workoutLogsSummary', userId, limit],
+    queryFn: () => getAdapter().getWorkoutLogsSummary(userId, { limit }),
+    enabled: !!userId,
+  })
+}
+
 export function useWorkoutLogFull(id: string) {
   return useQuery({
     queryKey: ['workout-full', id],

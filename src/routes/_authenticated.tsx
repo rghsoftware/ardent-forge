@@ -26,6 +26,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'FORGE', icon: 'home' },
+  { to: '/history', label: 'TRACKER', icon: 'history' },
   { to: '/exercises', label: 'LIBRARY', icon: 'fitness_center' },
   { to: '/profile', label: 'PROFILE', icon: 'person' },
 ]

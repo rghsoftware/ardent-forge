@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { DataAdapter, ExerciseFilters } from './data-adapter'
+import type { DataAdapter, ExerciseFilters, WorkoutLogSummary } from './data-adapter'
 import type {
   Exercise,
   WorkoutLog,
@@ -147,6 +147,66 @@ export class SupabaseAdapter implements DataAdapter {
     const { data, error } = await query
     if (error) throw error
     return (data as WorkoutLogRow[]).map(toWorkoutLog)
+  }
+
+  async getWorkoutLogsSummary(
+    userId: string,
+    options?: { limit?: number; offset?: number },
+  ): Promise<WorkoutLogSummary[]> {
+    let query = this.client
+      .from('workout_logs')
+      .select(
+        '*, logged_activity_groups(logged_activities(exercises(name), logged_sets(id, completed)))',
+      )
+      .eq('user_id', userId)
+      .not('completed_at', 'is', null)
+      .order('started_at', { ascending: false })
+
+    if (options?.limit) {
+      query = query.limit(options.limit)
+    }
+    if (options?.offset) {
+      query = query.range(options.offset, options.offset + (options.limit ?? 50) - 1)
+    }
+
+    const { data, error } = await query
+    if (error) throw error
+
+    // Shape returned by the nested PostgREST select
+    type NestedRow = WorkoutLogRow & {
+      logged_activity_groups: Array<{
+        logged_activities: Array<{
+          exercises: { name: string } | null
+          logged_sets: Array<{ id: string; completed: boolean }>
+        }>
+      }>
+    }
+    const rows = data as unknown as NestedRow[]
+
+    return rows.map((row) => {
+      const exerciseNameSet = new Set<string>()
+      let setCount = 0
+
+      for (const group of row.logged_activity_groups) {
+        for (const activity of group.logged_activities) {
+          if (activity.exercises?.name) {
+            exerciseNameSet.add(activity.exercises.name)
+          }
+          for (const set of activity.logged_sets) {
+            if (set.completed) {
+              setCount++
+            }
+          }
+        }
+      }
+
+      return {
+        log: toWorkoutLog(row as unknown as WorkoutLogRow),
+        exerciseNames: Array.from(exerciseNameSet),
+        setCount,
+        exerciseCount: exerciseNameSet.size,
+      }
+    })
   }
 
   async getWorkoutLog(id: string): Promise<WorkoutLog | null> {
