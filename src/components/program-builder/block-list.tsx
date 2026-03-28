@@ -14,6 +14,7 @@ import { Icon } from '@/components/icon'
 import { BlockEditor } from './block-editor'
 import { addBlock, reorderBlocks } from './builder-state'
 import type { ProgramDraft } from './builder-state'
+import type { DayOfWeek } from './constants'
 
 // ---------------------------------------------------------------------------
 // Custom modifier: restrict drag to vertical axis
@@ -31,7 +32,7 @@ const restrictToVerticalAxis: Modifier = ({ transform }) => ({
 interface BlockListProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
-  onPickSession: (weekClientId: string, dayOfWeek: number) => void
+  onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek?: (sourceWeekClientId: string) => void
 }
 

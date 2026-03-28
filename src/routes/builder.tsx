@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/lib/auth'
 import { useProgramFull, useCreateProgram, useUpdateProgram } from '@/hooks/use-programs'
@@ -20,6 +20,7 @@ import {
   buildSavePayload,
 } from '@/components/program-builder/builder-state'
 import type { ProgramDraft, WeekDraft } from '@/components/program-builder/builder-state'
+import type { DayOfWeek } from '@/components/program-builder/constants'
 import type { SessionType } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
@@ -48,7 +49,7 @@ function BuilderPage() {
   // Session picker state
   const [pickerState, setPickerState] = useState<{
     weekClientId: string
-    dayOfWeek: number
+    dayOfWeek: DayOfWeek
   } | null>(null)
 
   // Copy week dialog state
@@ -69,9 +70,8 @@ function BuilderPage() {
   // Edit mode: fetch existing program
   const { data: programFull, isLoading: isLoadingProgram } = useProgramFull(programId)
 
-  // Hydrate draft when program data loads.
-  // Track the last-hydrated program ID as state to avoid calling setState in an effect.
-  // React allows conditional setState during render for "adjusting state based on props".
+  // Track last-hydrated ID to ensure we hydrate only once per program. Uses React's
+  // "adjusting state during render" pattern instead of useEffect to avoid an extra render cycle.
   const [hydratedProgramId, setHydratedProgramId] = useState<string | null>(null)
   if (programFull && hydratedProgramId !== programFull.program.id) {
     setHydratedProgramId(programFull.program.id)
@@ -96,23 +96,32 @@ function BuilderPage() {
     setError(null)
   }, [])
 
-  const handleDraftChange = useCallback((updates: Partial<ProgramDraft>) => {
-    setDraft((prev) => ({ ...prev, ...updates }))
-    setError(null)
-  }, [])
+  const handleDraftChange = useCallback(
+    (updates: Partial<Pick<ProgramDraft, 'name' | 'description' | 'source'>>) => {
+      setDraft((prev) => ({ ...prev, ...updates }))
+      setError(null)
+    },
+    [],
+  )
 
-  const handlePickSession = useCallback((weekClientId: string, dayOfWeek: number) => {
+  const handlePickSession = useCallback((weekClientId: string, dayOfWeek: DayOfWeek) => {
     setPickerState({ weekClientId, dayOfWeek })
   }, [])
 
+  const pickerStateRef = useRef(pickerState)
+  useEffect(() => {
+    pickerStateRef.current = pickerState
+  })
+
   const handleSessionSelected = useCallback(
     (templateId: string, templateName: string, sessionType: SessionType) => {
-      if (!pickerState) return
+      const state = pickerStateRef.current
+      if (!state) return
       setDraft((prev) =>
         assignSession(
           prev,
-          pickerState.weekClientId,
-          pickerState.dayOfWeek,
+          state.weekClientId,
+          state.dayOfWeek,
           templateId,
           templateName,
           sessionType,
@@ -120,7 +129,7 @@ function BuilderPage() {
       )
       setPickerState(null)
     },
-    [pickerState],
+    [],
   )
 
   const handleCopyWeek = useCallback(
@@ -318,7 +327,7 @@ function BuilderPage() {
       )}
 
       {/* Program preview overlay */}
-      {previewMode && <ProgramPreview draft={draft} onClose={() => setPreviewMode(false)} />}
+      <ProgramPreview draft={draft} open={previewMode} onClose={() => setPreviewMode(false)} />
     </div>
   )
 }

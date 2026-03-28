@@ -7,18 +7,8 @@ import { WeekGrid } from './week-grid'
 import { removeBlock, addWeekToBlock } from './builder-state'
 import type { BlockDraft, ProgramDraft } from './builder-state'
 import type { BlockType } from '@/domain/types'
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const BLOCK_TYPES: Array<{ value: BlockType; label: string }> = [
-  { value: 'ACCUMULATION', label: 'ACCUMULATION' },
-  { value: 'INTENSIFICATION', label: 'INTENSIFICATION' },
-  { value: 'REALIZATION', label: 'REALIZATION' },
-  { value: 'DELOAD', label: 'DELOAD' },
-  { value: 'TEST', label: 'TEST' },
-]
+import { BLOCK_TYPES } from './constants'
+import type { DayOfWeek } from './constants'
 
 // ---------------------------------------------------------------------------
 // BlockEditor
@@ -28,7 +18,7 @@ interface BlockEditorProps {
   block: BlockDraft
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
-  onPickSession: (weekClientId: string, dayOfWeek: number) => void
+  onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek?: (sourceWeekClientId: string) => void
 }
 
@@ -58,7 +48,6 @@ export function BlockEditor({
     opacity: isDragging ? 0.5 : 1,
   }
 
-  // Handlers
   const handleNameChange = useCallback(
     (newName: string) => {
       onUpdate({
@@ -111,12 +100,10 @@ export function BlockEditor({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} className="bg-surface-iron">
-      {/* Header */}
       <div
         className="flex min-h-12 cursor-pointer items-center gap-2 px-3 py-2"
         onClick={handleHeaderClick}
       >
-        {/* Drag handle */}
         <button
           ref={setActivatorNodeRef}
           {...listeners}
@@ -128,7 +115,6 @@ export function BlockEditor({
           <Icon name="drag_indicator" size={20} />
         </button>
 
-        {/* Block name (inline editable) */}
         {isEditingName ? (
           <input
             type="text"
@@ -155,17 +141,14 @@ export function BlockEditor({
           </button>
         )}
 
-        {/* Block type badge */}
         <span className="bg-surface-steel px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-bone-white">
           {block.blockType}
         </span>
 
-        {/* Duration label */}
         <span className="text-[10px] font-medium uppercase tracking-wider text-warm-ash/60">
-          {block.durationWeeks} {block.durationWeeks === 1 ? 'WEEK' : 'WEEKS'}
+          {block.weeks.length} {block.weeks.length === 1 ? 'WEEK' : 'WEEKS'}
         </span>
 
-        {/* Delete button */}
         <button
           type="button"
           onClick={(e) => {
@@ -178,7 +161,6 @@ export function BlockEditor({
           <Icon name="delete" size={18} />
         </button>
 
-        {/* Expand/collapse indicator */}
         <Icon
           name={expanded ? 'expand_less' : 'expand_more'}
           size={18}
@@ -189,7 +171,6 @@ export function BlockEditor({
       {/* Expanded content */}
       {expanded && (
         <div className="flex flex-col gap-4 px-3 pb-4">
-          {/* Block type selector */}
           <div className="flex flex-wrap gap-1">
             {BLOCK_TYPES.map((bt) => (
               <button
@@ -207,7 +188,6 @@ export function BlockEditor({
             ))}
           </div>
 
-          {/* Week grids */}
           {block.weeks.map((week, weekIndex) => (
             <WeekGrid
               key={week.clientId}
@@ -221,7 +201,6 @@ export function BlockEditor({
             />
           ))}
 
-          {/* Add week button */}
           <Button
             type="button"
             variant="secondary"

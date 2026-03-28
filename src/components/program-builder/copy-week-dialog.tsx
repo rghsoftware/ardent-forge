@@ -31,6 +31,11 @@ export function CopyWeekDialog({
   onCopy,
 }: CopyWeekDialogProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [prevSourceId, setPrevSourceId] = useState(sourceWeek.clientId)
+  if (prevSourceId !== sourceWeek.clientId) {
+    setPrevSourceId(sourceWeek.clientId)
+    setSelected(new Set())
+  }
 
   // Non-source weeks only
   const targetWeeks = allWeeks.filter((w) => w.clientId !== sourceWeek.clientId)
@@ -48,7 +53,7 @@ export function CopyWeekDialog({
   }, [])
 
   const handleSelectAllRemaining = useCallback(() => {
-    // Select all weeks after source week
+    // Select all weeks after the source week within this block
     const sourceIndex = allWeeks.findIndex((w) => w.clientId === sourceWeek.clientId)
     const remaining = allWeeks.slice(sourceIndex + 1).map((w) => w.clientId)
     setSelected(new Set(remaining))

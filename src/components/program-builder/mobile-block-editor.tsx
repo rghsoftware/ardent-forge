@@ -9,33 +9,10 @@ import {
   removeWeekFromBlock,
   removeSession,
 } from './builder-state'
-import type { ProgramDraft, BlockDraft } from './builder-state'
+import type { ProgramDraft, BlockDraft, SessionDraft } from './builder-state'
 import type { BlockType } from '@/domain/types'
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const BLOCK_TYPES: Array<{ value: BlockType; label: string }> = [
-  { value: 'ACCUMULATION', label: 'ACCUMULATION' },
-  { value: 'INTENSIFICATION', label: 'INTENSIFICATION' },
-  { value: 'REALIZATION', label: 'REALIZATION' },
-  { value: 'DELOAD', label: 'DELOAD' },
-  { value: 'TEST', label: 'TEST' },
-]
-
-const DAY_LABELS: Record<number, string> = {
-  0: 'Sun',
-  1: 'Mon',
-  2: 'Tue',
-  3: 'Wed',
-  4: 'Thu',
-  5: 'Fri',
-  6: 'Sat',
-}
-
-// Day order: Mon(1) through Sun(0)
-const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
+import { BLOCK_TYPES, DAY_ABBREVIATIONS, DAY_ORDER } from './constants'
+import type { DayOfWeek } from './constants'
 
 // ---------------------------------------------------------------------------
 // MobileBlockEditor
@@ -44,7 +21,7 @@ const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 interface MobileBlockEditorProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
-  onPickSession: (weekClientId: string, dayOfWeek: number) => void
+  onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek: (sourceWeekClientId: string) => void
 }
 
@@ -89,6 +66,15 @@ export function MobileBlockEditor({
 // MobileBlockCard -- expandable accordion card for each block
 // ---------------------------------------------------------------------------
 
+interface MobileBlockCardProps {
+  block: BlockDraft
+  blockIndex: number
+  draft: ProgramDraft
+  onUpdate: (draft: ProgramDraft) => void
+  onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onCopyWeek: (sourceWeekClientId: string) => void
+}
+
 function MobileBlockCard({
   block,
   blockIndex,
@@ -96,14 +82,7 @@ function MobileBlockCard({
   onUpdate,
   onPickSession,
   onCopyWeek,
-}: {
-  block: BlockDraft
-  blockIndex: number
-  draft: ProgramDraft
-  onUpdate: (draft: ProgramDraft) => void
-  onPickSession: (weekClientId: string, dayOfWeek: number) => void
-  onCopyWeek: (sourceWeekClientId: string) => void
-}) {
+}: MobileBlockCardProps) {
   const [expanded, setExpanded] = useState(blockIndex === 0)
   const [isEditingName, setIsEditingName] = useState(false)
 
@@ -152,9 +131,7 @@ function MobileBlockCard({
 
   return (
     <div className="bg-surface-iron">
-      {/* Card header */}
       <div className="flex min-h-12 items-center gap-2 px-3 py-2">
-        {/* Block name */}
         {isEditingName ? (
           <input
             type="text"
@@ -178,17 +155,14 @@ function MobileBlockCard({
           </button>
         )}
 
-        {/* Block type badge */}
         <span className="bg-surface-steel px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-bone-white">
           {block.blockType}
         </span>
 
-        {/* Duration label */}
         <span className="text-[10px] font-medium uppercase tracking-wider text-warm-ash/60">
-          {block.durationWeeks} {block.durationWeeks === 1 ? 'WK' : 'WKS'}
+          {block.weeks.length} {block.weeks.length === 1 ? 'WK' : 'WKS'}
         </span>
 
-        {/* Move up */}
         <button
           type="button"
           onClick={handleMoveUp}
@@ -199,7 +173,6 @@ function MobileBlockCard({
           <Icon name="arrow_upward" size={18} />
         </button>
 
-        {/* Move down */}
         <button
           type="button"
           onClick={handleMoveDown}
@@ -210,7 +183,6 @@ function MobileBlockCard({
           <Icon name="arrow_downward" size={18} />
         </button>
 
-        {/* Delete */}
         <button
           type="button"
           onClick={handleDelete}
@@ -220,7 +192,6 @@ function MobileBlockCard({
           <Icon name="delete" size={18} />
         </button>
 
-        {/* Expand/collapse */}
         <button
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
@@ -234,7 +205,6 @@ function MobileBlockCard({
       {/* Expanded content */}
       {expanded && (
         <div className="flex flex-col gap-4 px-3 pb-4">
-          {/* Block type selector */}
           <div className="flex flex-wrap gap-1">
             {BLOCK_TYPES.map((bt) => (
               <button
@@ -252,7 +222,6 @@ function MobileBlockCard({
             ))}
           </div>
 
-          {/* Weeks */}
           {block.weeks.map((week, weekIndex) => (
             <MobileWeekSection
               key={week.clientId}
@@ -267,7 +236,6 @@ function MobileBlockCard({
             />
           ))}
 
-          {/* Add week button */}
           <Button
             type="button"
             variant="secondary"
@@ -287,6 +255,17 @@ function MobileBlockCard({
 // MobileWeekSection -- vertical list of day slots for a week
 // ---------------------------------------------------------------------------
 
+interface MobileWeekSectionProps {
+  weekIndex: number
+  weekClientId: string
+  sessions: SessionDraft[]
+  draft: ProgramDraft
+  blockClientId: string
+  onUpdate: (draft: ProgramDraft) => void
+  onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onCopyWeek: (sourceWeekClientId: string) => void
+}
+
 function MobileWeekSection({
   weekIndex,
   weekClientId,
@@ -296,16 +275,7 @@ function MobileWeekSection({
   onUpdate,
   onPickSession,
   onCopyWeek,
-}: {
-  weekIndex: number
-  weekClientId: string
-  sessions: ProgramDraft['blocks'][0]['weeks'][0]['sessions']
-  draft: ProgramDraft
-  blockClientId: string
-  onUpdate: (draft: ProgramDraft) => void
-  onPickSession: (weekClientId: string, dayOfWeek: number) => void
-  onCopyWeek: (sourceWeekClientId: string) => void
-}) {
+}: MobileWeekSectionProps) {
   // Build session lookup by dayOfWeek
   const sessionsByDay = new Map(
     sessions.filter((s) => s.dayOfWeek !== null).map((s) => [s.dayOfWeek!, s]),
@@ -321,7 +291,6 @@ function MobileWeekSection({
 
   return (
     <div className="flex flex-col gap-1">
-      {/* Week header */}
       <div className="flex items-center gap-2">
         <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
           WEEK {weekIndex + 1}
@@ -344,7 +313,6 @@ function MobileWeekSection({
         </button>
       </div>
 
-      {/* Day rows -- vertical list */}
       <div className="flex flex-col gap-1">
         {DAY_ORDER.map((dayOfWeek) => {
           const session = sessionsByDay.get(dayOfWeek)
@@ -370,6 +338,15 @@ function MobileWeekSection({
 // MobileDayRow -- single day slot as a tappable row
 // ---------------------------------------------------------------------------
 
+interface MobileDayRowProps {
+  dayOfWeek: DayOfWeek
+  session: SessionDraft | undefined
+  weekClientId: string
+  draft: ProgramDraft
+  onUpdate: (draft: ProgramDraft) => void
+  onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+}
+
 function MobileDayRow({
   dayOfWeek,
   session,
@@ -377,14 +354,7 @@ function MobileDayRow({
   draft,
   onUpdate,
   onPickSession,
-}: {
-  dayOfWeek: number
-  session: ProgramDraft['blocks'][0]['weeks'][0]['sessions'][0] | undefined
-  weekClientId: string
-  draft: ProgramDraft
-  onUpdate: (draft: ProgramDraft) => void
-  onPickSession: (weekClientId: string, dayOfWeek: number) => void
-}) {
+}: MobileDayRowProps) {
   const handleTap = useCallback(() => {
     onPickSession(weekClientId, dayOfWeek)
   }, [weekClientId, dayOfWeek, onPickSession])
@@ -405,10 +375,10 @@ function MobileDayRow({
         type="button"
         onClick={handleTap}
         className="flex min-h-12 items-center gap-3 bg-surface-charcoal px-3 py-2 text-left transition-colors hover:bg-surface-steel"
-        aria-label={`Assign session to ${DAY_LABELS[dayOfWeek]}`}
+        aria-label={`Assign session to ${DAY_ABBREVIATIONS[dayOfWeek]}`}
       >
         <span className="w-8 text-[10px] font-medium uppercase tracking-wider text-warm-ash/60">
-          {DAY_LABELS[dayOfWeek]}
+          {DAY_ABBREVIATIONS[dayOfWeek]}
         </span>
         <span className="flex-1 text-xs text-warm-ash/40">TAP TO ASSIGN</span>
         <Icon name="add" size={16} className="text-warm-ash/30" />
@@ -421,10 +391,10 @@ function MobileDayRow({
       type="button"
       onClick={handleTap}
       className="flex min-h-12 items-center gap-3 bg-surface-charcoal px-3 py-2 text-left transition-colors hover:bg-surface-steel"
-      aria-label={`Session: ${session.templateName ?? 'Unnamed'} on ${DAY_LABELS[dayOfWeek]}`}
+      aria-label={`Session: ${session.templateName ?? 'Unnamed'} on ${DAY_ABBREVIATIONS[dayOfWeek]}`}
     >
       <span className="w-8 text-[10px] font-medium uppercase tracking-wider text-warm-ash/60">
-        {DAY_LABELS[dayOfWeek]}
+        {DAY_ABBREVIATIONS[dayOfWeek]}
       </span>
       <span className="min-w-0 flex-1 truncate text-xs text-bone-white">
         {session.templateName ?? 'Unnamed'}

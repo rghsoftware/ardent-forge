@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { Icon } from '@/components/icon'
 import { removeSession } from './builder-state'
 import type { SessionDraft, ProgramDraft } from './builder-state'
+import type { DayOfWeek } from './constants'
 
 // ---------------------------------------------------------------------------
 // SessionSlot
@@ -9,11 +10,11 @@ import type { SessionDraft, ProgramDraft } from './builder-state'
 
 interface SessionSlotProps {
   session: SessionDraft | undefined
-  dayOfWeek: number
+  dayOfWeek: DayOfWeek
   weekClientId: string
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
-  onPickSession: (weekClientId: string, dayOfWeek: number) => void
+  onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
 }
 
 export function SessionSlot({
@@ -39,7 +40,6 @@ export function SessionSlot({
   }, [weekClientId, dayOfWeek, onPickSession])
 
   if (!session) {
-    // Empty state
     return (
       <button
         type="button"
@@ -52,7 +52,6 @@ export function SessionSlot({
     )
   }
 
-  // Filled state
   return (
     <div
       className="relative flex min-h-[80px] cursor-pointer flex-col justify-center bg-surface-charcoal p-2 transition-colors hover:bg-surface-iron"
@@ -64,7 +63,6 @@ export function SessionSlot({
       }}
       aria-label={`Session: ${session.templateName ?? 'Unnamed'}`}
     >
-      {/* Remove button */}
       <button
         type="button"
         onClick={handleRemove}
@@ -74,12 +72,10 @@ export function SessionSlot({
         <Icon name="close" size={14} />
       </button>
 
-      {/* Template name */}
       <span className="line-clamp-2 pr-4 font-body text-xs text-bone-white">
         {session.templateName ?? 'Unnamed'}
       </span>
 
-      {/* Session type badge */}
       <span className="mt-1 inline-block self-start bg-surface-steel px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-warm-ash">
         {session.sessionType}
       </span>

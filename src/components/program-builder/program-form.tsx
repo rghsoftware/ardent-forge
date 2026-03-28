@@ -21,13 +21,12 @@ const PROGRAM_SOURCES: Array<{ value: ProgramSource; label: string }> = [
 
 interface ProgramFormProps {
   draft: ProgramDraft
-  onChange: (updates: Partial<ProgramDraft>) => void
+  onChange: (updates: Partial<Pick<ProgramDraft, 'name' | 'description' | 'source'>>) => void
 }
 
 export function ProgramForm({ draft, onChange }: ProgramFormProps) {
   return (
     <div className="flex flex-col gap-6">
-      {/* Program name */}
       <div>
         <span className="mb-1 block text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
           PROGRAM NAME
@@ -42,7 +41,6 @@ export function ProgramForm({ draft, onChange }: ProgramFormProps) {
         />
       </div>
 
-      {/* Description */}
       <div>
         <span className="mb-1 block text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
           DESCRIPTION (OPTIONAL)
@@ -57,7 +55,6 @@ export function ProgramForm({ draft, onChange }: ProgramFormProps) {
         />
       </div>
 
-      {/* Source selector */}
       <div>
         <span className="mb-2 block text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
           SOURCE

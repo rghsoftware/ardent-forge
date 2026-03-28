@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Icon } from '@/components/icon'
+import { SOURCE_LABELS } from '@/components/program-builder/constants'
 import { SessionTemplateCard } from '@/components/session-builder/session-template-card'
 import {
   SessionTemplateForm,
@@ -234,16 +235,6 @@ function LibraryPage() {
 // ---------------------------------------------------------------------------
 // Program list panel
 // ---------------------------------------------------------------------------
-
-const SOURCE_LABELS: Record<string, string> = {
-  CUSTOM: 'CUSTOM',
-  IMPORTED: 'IMPORTED',
-  SHARED: 'SHARED',
-  MARKETPLACE: 'MARKETPLACE',
-  AI_GENERATED: 'AI',
-  COACH_ASSIGNED: 'COACH',
-  TEMPLATE: 'TEMPLATE',
-}
 
 function ProgramList({ userId }: { userId: string | undefined }) {
   const navigate = useNavigate()

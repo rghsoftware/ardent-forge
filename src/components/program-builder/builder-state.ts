@@ -8,6 +8,8 @@ import type {
   ScheduledSession,
 } from '@/domain/types'
 import type { ProgramFull } from '@/lib/data-adapter'
+import { DAY_LABELS } from './constants'
+import type { DayOfWeek } from './constants'
 
 // ---------------------------------------------------------------------------
 // Draft types -- local builder state with client-side UUIDs
@@ -15,7 +17,7 @@ import type { ProgramFull } from '@/lib/data-adapter'
 
 export type SessionDraft = {
   clientId: string
-  dayOfWeek: number | null // 0-6 (Sun-Sat), null if unscheduled
+  dayOfWeek: DayOfWeek | null // 0-6 where 0=Sunday through 6=Saturday (JS convention); UI renders Mon-Sun order. null if unscheduled
   dayLabel: string
   sessionType: SessionType
   sessionTemplateId: string
@@ -32,7 +34,6 @@ export type BlockDraft = {
   clientId: string
   name: string
   ordinal: number
-  durationWeeks: number
   blockType: BlockType
   weeks: WeekDraft[]
 }
@@ -42,21 +43,9 @@ export type ProgramDraft = {
   name: string
   description: string
   source: ProgramSource
+  createdAt?: string // preserved from DB in edit mode
+  updatedAt?: string // preserved from DB in edit mode
   blocks: BlockDraft[]
-}
-
-// ---------------------------------------------------------------------------
-// Day-of-week labels
-// ---------------------------------------------------------------------------
-
-const DAY_LABELS: Record<number, string> = {
-  0: 'Sunday',
-  1: 'Monday',
-  2: 'Tuesday',
-  3: 'Wednesday',
-  4: 'Thursday',
-  5: 'Friday',
-  6: 'Saturday',
 }
 
 // ---------------------------------------------------------------------------
@@ -73,7 +62,6 @@ export function createEmptyDraft(): ProgramDraft {
         clientId: crypto.randomUUID(),
         name: 'Block 1',
         ordinal: 1,
-        durationWeeks: 1,
         blockType: 'ACCUMULATION',
         weeks: [
           {
@@ -97,7 +85,6 @@ export function addBlock(draft: ProgramDraft, blockType: BlockType): ProgramDraf
     clientId: crypto.randomUUID(),
     name: `Block ${ordinal}`,
     ordinal,
-    durationWeeks: 1,
     blockType,
     weeks: [
       {
@@ -143,7 +130,7 @@ export function addWeekToBlock(draft: ProgramDraft, blockClientId: string): Prog
         sessions: [],
       }
       const weeks = [...block.weeks, newWeek]
-      return { ...block, weeks, durationWeeks: weeks.length }
+      return { ...block, weeks }
     }),
   }
 }
@@ -162,7 +149,7 @@ export function removeWeekFromBlock(
       const weeks = block.weeks
         .filter((w) => w.clientId !== weekClientId)
         .map((w, i) => ({ ...w, weekNumber: i + 1 }))
-      return { ...block, weeks, durationWeeks: weeks.length }
+      return { ...block, weeks }
     }),
   }
 }
@@ -174,7 +161,7 @@ export function removeWeekFromBlock(
 export function assignSession(
   draft: ProgramDraft,
   weekClientId: string,
-  dayOfWeek: number,
+  dayOfWeek: DayOfWeek,
   templateId: string,
   templateName: string,
   sessionType: SessionType,
@@ -238,6 +225,7 @@ export function copyWeek(
     }
   }
 
+  // No-op: copying an empty week has no effect
   if (sourceSessions.length === 0) return draft
 
   const targetSet = new Set(targetWeekClientIds)
@@ -270,11 +258,23 @@ export function validateDraft(draft: ProgramDraft): string[] {
     errors.push('Program name is required')
   }
 
+  if (draft.name.trim().length > 200) {
+    errors.push('Program name must be 200 characters or less')
+  }
+
   if (draft.blocks.length === 0) {
     errors.push('At least one block is required')
   }
 
   for (const block of draft.blocks) {
+    if (block.name.trim().length === 0) {
+      errors.push('Block name is required')
+    }
+
+    if (block.name.trim().length > 200) {
+      errors.push('Block name must be 200 characters or less')
+    }
+
     if (block.weeks.length === 0) {
       errors.push(`Block "${block.name}" must have at least one week`)
     }
@@ -296,6 +296,69 @@ export function validateDraft(draft: ProgramDraft): string[] {
 // Build save payload
 // ---------------------------------------------------------------------------
 
+type SessionPayload = Omit<ScheduledSession, 'id' | 'blockWeekId'>
+
+type CreateBlockPayload = {
+  block: Omit<Block, 'id' | 'programId'>
+  weeks: Array<{
+    week: Omit<BlockWeek, 'id' | 'blockId'>
+    sessions: SessionPayload[]
+  }>
+}
+
+type UpdateBlockPayload = {
+  block: Omit<Block, 'programId'>
+  weeks: Array<{
+    week: Omit<BlockWeek, 'blockId'>
+    sessions: SessionPayload[]
+  }>
+}
+
+function buildSessionsPayload(sessions: SessionDraft[]): SessionPayload[] {
+  return sessions.map((session) => ({
+    dayOfWeek: session.dayOfWeek ?? undefined,
+    dayLabel: session.dayLabel,
+    sessionType: session.sessionType,
+    sessionTemplateId: session.sessionTemplateId,
+  }))
+}
+
+function buildCreateBlocksPayload(blocks: BlockDraft[]): CreateBlockPayload[] {
+  return blocks.map((block) => ({
+    block: {
+      name: block.name,
+      ordinal: block.ordinal,
+      durationWeeks: block.weeks.length,
+      blockType: block.blockType,
+    },
+    weeks: block.weeks.map((week) => ({
+      week: {
+        weekNumber: week.weekNumber,
+      },
+      sessions: buildSessionsPayload(week.sessions),
+    })),
+  }))
+}
+
+function buildUpdateBlocksPayload(blocks: BlockDraft[]): UpdateBlockPayload[] {
+  return blocks.map((block) => ({
+    block: {
+      id: block.clientId,
+      name: block.name,
+      ordinal: block.ordinal,
+      durationWeeks: block.weeks.length,
+      blockType: block.blockType,
+    },
+    weeks: block.weeks.map((week) => ({
+      week: {
+        id: week.clientId,
+        weekNumber: week.weekNumber,
+      },
+      sessions: buildSessionsPayload(week.sessions),
+    })),
+  }))
+}
+
 export function buildSavePayload(
   draft: ProgramDraft,
   userId: string,
@@ -303,49 +366,16 @@ export function buildSavePayload(
   | {
       mode: 'create'
       program: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>
-      blocks: Array<{
-        block: Omit<Block, 'id' | 'programId'>
-        weeks: Array<{
-          week: Omit<BlockWeek, 'id' | 'blockId'>
-          sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
-        }>
-      }>
+      blocks: CreateBlockPayload[]
     }
   | {
       mode: 'update'
       program: Program
-      blocks: Array<{
-        block: Omit<Block, 'programId'>
-        weeks: Array<{
-          week: Omit<BlockWeek, 'blockId'>
-          sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
-        }>
-      }>
+      blocks: UpdateBlockPayload[]
     } {
-  const blocksPayload = draft.blocks.map((block) => ({
-    block: {
-      ...(draft.id ? { id: block.clientId } : {}),
-      name: block.name,
-      ordinal: block.ordinal,
-      durationWeeks: block.durationWeeks,
-      blockType: block.blockType,
-    },
-    weeks: block.weeks.map((week) => ({
-      week: {
-        ...(draft.id ? { id: week.clientId } : {}),
-        weekNumber: week.weekNumber,
-      },
-      sessions: week.sessions.map((session) => ({
-        dayOfWeek: session.dayOfWeek ?? undefined,
-        dayLabel: session.dayLabel,
-        sessionType: session.sessionType,
-        sessionTemplateId: session.sessionTemplateId,
-      })),
-    })),
-  }))
+  const totalDurationWeeks = draft.blocks.reduce((sum, b) => sum + b.weeks.length, 0)
 
   if (draft.id) {
-    // Update mode: program has full entity shape
     const now = new Date().toISOString()
     return {
       mode: 'update' as const,
@@ -355,23 +385,16 @@ export function buildSavePayload(
         name: draft.name.trim(),
         description: draft.description.trim() || undefined,
         source: draft.source,
-        durationWeeks: draft.blocks.reduce((sum, b) => sum + b.durationWeeks, 0),
+        durationWeeks: totalDurationWeeks,
         isPublic: false,
         createdBy: userId,
-        createdAt: now,
+        createdAt: draft.createdAt ?? now,
         updatedAt: now,
       },
-      blocks: blocksPayload as Array<{
-        block: Omit<Block, 'programId'>
-        weeks: Array<{
-          week: Omit<BlockWeek, 'blockId'>
-          sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
-        }>
-      }>,
+      blocks: buildUpdateBlocksPayload(draft.blocks),
     }
   }
 
-  // Create mode
   return {
     mode: 'create' as const,
     program: {
@@ -379,22 +402,18 @@ export function buildSavePayload(
       name: draft.name.trim(),
       description: draft.description.trim() || undefined,
       source: draft.source,
-      durationWeeks: draft.blocks.reduce((sum, b) => sum + b.durationWeeks, 0),
+      durationWeeks: totalDurationWeeks,
       isPublic: false,
       createdBy: userId,
     },
-    blocks: blocksPayload as Array<{
-      block: Omit<Block, 'id' | 'programId'>
-      weeks: Array<{
-        week: Omit<BlockWeek, 'id' | 'blockId'>
-        sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
-      }>
-    }>,
+    blocks: buildCreateBlocksPayload(draft.blocks),
   }
 }
 
 // ---------------------------------------------------------------------------
 // Hydrate draft from ProgramFull (edit mode)
+// Preserves original DB IDs as clientIds so buildSavePayload sends correct
+// IDs in update mode rather than fabricating new ones.
 // ---------------------------------------------------------------------------
 
 export function hydrateDraft(programFull: ProgramFull): ProgramDraft {
@@ -424,8 +443,8 @@ export function hydrateDraft(programFull: ProgramFull): ProgramDraft {
         .map((week) => {
           const sessions = (sessionsByWeek.get(week.id) ?? []).map(
             (session): SessionDraft => ({
-              clientId: crypto.randomUUID(),
-              dayOfWeek: session.dayOfWeek ?? null,
+              clientId: session.id,
+              dayOfWeek: (session.dayOfWeek as DayOfWeek) ?? null,
               dayLabel: session.dayLabel,
               sessionType: session.sessionType,
               sessionTemplateId: session.sessionTemplateId,
@@ -433,17 +452,16 @@ export function hydrateDraft(programFull: ProgramFull): ProgramDraft {
           )
 
           return {
-            clientId: crypto.randomUUID(),
+            clientId: week.id,
             weekNumber: week.weekNumber,
             sessions,
           } satisfies WeekDraft
         })
 
       return {
-        clientId: crypto.randomUUID(),
+        clientId: block.id,
         name: block.name,
         ordinal: block.ordinal,
-        durationWeeks: block.durationWeeks,
         blockType: block.blockType,
         weeks,
       } satisfies BlockDraft
@@ -454,6 +472,8 @@ export function hydrateDraft(programFull: ProgramFull): ProgramDraft {
     name: program.name,
     description: program.description ?? '',
     source: program.source,
+    createdAt: program.createdAt,
+    updatedAt: program.updatedAt,
     blocks: blockDrafts,
   }
 }

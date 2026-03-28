@@ -47,7 +47,7 @@ export function SessionPickerSheet({
   const [filter, setFilter] = useState<SessionType | 'ALL'>('ALL')
   const [showCreate, setShowCreate] = useState(false)
 
-  // Debounced search -- simple approach using the raw value (300ms is handled via useMemo filtering)
+  // Filter templates by type and search query
   const filtered = useMemo(() => {
     let result = templates
 
@@ -115,7 +115,6 @@ export function SessionPickerSheet({
           </div>
         ) : (
           <>
-            {/* Search */}
             <div className="px-4 pt-3">
               <input
                 type="text"
@@ -127,7 +126,6 @@ export function SessionPickerSheet({
               />
             </div>
 
-            {/* Filter badges */}
             <div className="flex flex-wrap gap-1 px-4 pt-3">
               {SESSION_FILTERS.map((f) => (
                 <button
@@ -145,7 +143,6 @@ export function SessionPickerSheet({
               ))}
             </div>
 
-            {/* Template list */}
             <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4">
               {isLoading ? (
                 <div className="flex flex-col gap-2">

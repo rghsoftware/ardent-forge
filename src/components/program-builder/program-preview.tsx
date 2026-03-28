@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { useAuth } from '@/lib/auth'
@@ -9,30 +10,7 @@ import { getAdapter } from '@/lib/adapter'
 import type { ProgramDraft } from './builder-state'
 import type { SessionTemplateFull } from '@/lib/data-adapter'
 import type { SetScheme } from '@/domain/types'
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const DAY_COLUMNS = [
-  { dayOfWeek: 1, label: 'M' },
-  { dayOfWeek: 2, label: 'T' },
-  { dayOfWeek: 3, label: 'W' },
-  { dayOfWeek: 4, label: 'T' },
-  { dayOfWeek: 5, label: 'F' },
-  { dayOfWeek: 6, label: 'S' },
-  { dayOfWeek: 0, label: 'S' },
-]
-
-const SOURCE_LABELS: Record<string, string> = {
-  CUSTOM: 'CUSTOM',
-  IMPORTED: 'IMPORTED',
-  SHARED: 'SHARED',
-  MARKETPLACE: 'MARKETPLACE',
-  AI_GENERATED: 'AI',
-  COACH_ASSIGNED: 'COACH',
-  TEMPLATE: 'TEMPLATE',
-}
+import { DAY_COLUMNS, SOURCE_LABELS } from './constants'
 
 // ---------------------------------------------------------------------------
 // Set scheme summary helpers
@@ -197,10 +175,11 @@ function useSessionTemplatesFull(draft: ProgramDraft) {
 
 interface ProgramPreviewProps {
   draft: ProgramDraft
+  open: boolean
   onClose: () => void
 }
 
-export function ProgramPreview({ draft, onClose }: ProgramPreviewProps) {
+export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
   const { user } = useAuth()
   const userId = user?.id ?? ''
   const { data: profile } = useUserProfile(userId)
@@ -215,175 +194,174 @@ export function ProgramPreview({ draft, onClose }: ProgramPreviewProps) {
   const exerciseMaxes = profile?.exerciseMaxes ?? {}
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-surface-anvil">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-6 pb-4">
-        <div className="flex-1">
-          <h1 className="font-display text-2xl font-medium uppercase tracking-wider text-bone-white">
-            {draft.name || 'UNTITLED PROGRAM'}
-          </h1>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="bg-surface-steel px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-bone-white">
-              {SOURCE_LABELS[draft.source] ?? draft.source}
-            </span>
-          </div>
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onClose}
-          className="min-h-10 text-xs uppercase tracking-wider text-warm-ash hover:text-bone-white"
-        >
-          CLOSE PREVIEW
-          <Icon name="close" size={16} />
-        </Button>
-      </div>
-
-      {/* Description */}
-      {draft.description && (
-        <div className="px-4 pb-4">
-          <p className="text-sm text-warm-ash">{draft.description}</p>
-        </div>
-      )}
-
-      {/* Blocks */}
-      <div className="flex flex-col gap-6 px-4 pb-8">
-        {draft.blocks.map((block) => (
-          <div key={block.clientId} className="bg-surface-iron">
-            {/* Block header */}
-            <div className="flex items-center gap-3 px-3 py-3">
-              <span className="font-display text-sm font-medium uppercase tracking-wider text-bone-white">
-                {block.name || 'UNTITLED BLOCK'}
-              </span>
-              <span className="bg-surface-steel px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-bone-white">
-                {block.blockType}
-              </span>
-              <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
-                {block.durationWeeks} {block.durationWeeks === 1 ? 'WEEK' : 'WEEKS'}
-              </span>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        className="max-w-none h-screen w-screen p-0 border-0 rounded-none bg-surface-anvil"
+        showCloseButton={false}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        <div className="h-full overflow-y-auto">
+          <div className="flex items-center justify-between px-4 pt-6 pb-4">
+            <div className="flex-1">
+              <h1 className="font-display text-2xl font-medium uppercase tracking-wider text-bone-white">
+                {draft.name || 'UNTITLED PROGRAM'}
+              </h1>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="bg-surface-steel px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-bone-white">
+                  {SOURCE_LABELS[draft.source] ?? draft.source}
+                </span>
+              </div>
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onClose}
+              className="min-h-10 text-xs uppercase tracking-wider text-warm-ash hover:text-bone-white"
+            >
+              CLOSE PREVIEW
+              <Icon name="close" size={16} />
+            </Button>
+          </div>
 
-            {/* Weeks */}
-            <div className="flex flex-col gap-4 px-3 pb-4">
-              {block.weeks.map((week, weekIdx) => {
-                const sessionsByDay = new Map(
-                  week.sessions.filter((s) => s.dayOfWeek !== null).map((s) => [s.dayOfWeek!, s]),
-                )
+          {draft.description && (
+            <div className="px-4 pb-4">
+              <p className="text-sm text-warm-ash">{draft.description}</p>
+            </div>
+          )}
 
-                return (
-                  <div key={week.clientId} className="flex flex-col gap-2">
-                    {/* Week header */}
-                    <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
-                      WEEK {weekIdx + 1}
-                    </span>
+          <div className="flex flex-col gap-6 px-4 pb-8">
+            {draft.blocks.map((block) => (
+              <div key={block.clientId} className="bg-surface-iron">
+                <div className="flex items-center gap-3 px-3 py-3">
+                  <span className="font-display text-sm font-medium uppercase tracking-wider text-bone-white">
+                    {block.name || 'UNTITLED BLOCK'}
+                  </span>
+                  <span className="bg-surface-steel px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-bone-white">
+                    {block.blockType}
+                  </span>
+                  <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                    {block.weeks.length} {block.weeks.length === 1 ? 'WEEK' : 'WEEKS'}
+                  </span>
+                </div>
 
-                    {/* 7-column day grid */}
-                    <div className="grid grid-cols-7 gap-1">
-                      {/* Day headers */}
-                      {DAY_COLUMNS.map((col) => (
-                        <div
-                          key={`hdr-${col.dayOfWeek}`}
-                          className="text-center text-[10px] font-medium uppercase tracking-widest text-warm-ash/60"
-                        >
-                          {col.label}
-                        </div>
-                      ))}
+                <div className="flex flex-col gap-4 px-3 pb-4">
+                  {block.weeks.map((week, weekIdx) => {
+                    const sessionsByDay = new Map(
+                      week.sessions
+                        .filter((s) => s.dayOfWeek !== null)
+                        .map((s) => [s.dayOfWeek!, s]),
+                    )
 
-                      {/* Day cells */}
-                      {DAY_COLUMNS.map((col) => {
-                        const session = sessionsByDay.get(col.dayOfWeek)
+                    return (
+                      <div key={week.clientId} className="flex flex-col gap-2">
+                        <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                          WEEK {weekIdx + 1}
+                        </span>
 
-                        if (!session) {
-                          return (
+                        {/* 7-column day grid */}
+                        <div className="grid grid-cols-7 gap-1">
+                          {DAY_COLUMNS.map((col) => (
                             <div
-                              key={`cell-${col.dayOfWeek}`}
-                              className="min-h-[60px] bg-surface-charcoal"
-                            />
-                          )
-                        }
-
-                        return (
-                          <div
-                            key={`cell-${col.dayOfWeek}`}
-                            className="flex min-h-[60px] flex-col bg-surface-charcoal p-1"
-                          >
-                            <span className="line-clamp-2 text-[9px] font-medium text-bone-white">
-                              {session.templateName ?? 'UNNAMED'}
-                            </span>
-                            <span className="mt-0.5 inline-block self-start bg-surface-steel px-1 py-0.5 text-[8px] font-medium uppercase tracking-wider text-warm-ash">
-                              {session.sessionType}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-
-                    {/* Session detail tables */}
-                    {week.sessions
-                      .filter((s) => s.dayOfWeek !== null)
-                      .map((session) => {
-                        const templateFull = sessionTemplates.get(session.sessionTemplateId)
-                        if (!templateFull) return null
-
-                        const groupedActivities = buildGroupedActivities(templateFull)
-                        if (groupedActivities.length === 0) return null
-
-                        return (
-                          <div key={session.clientId} className="flex flex-col gap-0">
-                            {/* Session name header */}
-                            <div className="bg-surface-steel px-2 py-1.5">
-                              <span className="text-[10px] font-medium uppercase tracking-wider text-bone-white">
-                                {session.templateName ?? 'UNNAMED'}
-                              </span>
+                              key={`hdr-${col.dayOfWeek}`}
+                              className="text-center text-[10px] font-medium uppercase tracking-widest text-warm-ash/60"
+                            >
+                              {col.label}
                             </div>
+                          ))}
 
-                            {/* Table header */}
-                            <div className="grid grid-cols-[1fr_auto_auto] gap-2 bg-surface-gunmetal px-2 py-1">
-                              <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
-                                EXERCISE
-                              </span>
-                              <span className="text-right text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
-                                SETS x REPS
-                              </span>
-                              <span className="w-20 text-right text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
-                                LOAD
-                              </span>
-                            </div>
+                          {DAY_COLUMNS.map((col) => {
+                            const session = sessionsByDay.get(col.dayOfWeek)
 
-                            {/* Activity rows */}
-                            {groupedActivities.map((activity, actIdx) => (
+                            if (!session) {
+                              return (
+                                <div
+                                  key={`cell-${col.dayOfWeek}`}
+                                  className="min-h-[60px] bg-surface-charcoal"
+                                />
+                              )
+                            }
+
+                            return (
                               <div
-                                key={`${session.clientId}-${actIdx}`}
-                                className={`grid grid-cols-[1fr_auto_auto] gap-2 px-2 py-1.5 ${
-                                  actIdx % 2 === 0 ? 'bg-surface-steel' : 'bg-surface-charcoal'
-                                }`}
+                                key={`cell-${col.dayOfWeek}`}
+                                className="flex min-h-[60px] flex-col bg-surface-charcoal p-1"
                               >
-                                <span className="text-xs text-bone-white">
-                                  {exerciseMap.get(activity.exerciseId) ?? 'Unknown Exercise'}
+                                <span className="line-clamp-2 text-[9px] font-medium text-bone-white">
+                                  {session.templateName ?? 'UNNAMED'}
                                 </span>
-                                <span className="text-right font-display text-xs text-bone-white">
-                                  {formatSetsReps(activity.setScheme)}
-                                </span>
-                                <span className="w-20 text-right font-display text-xs text-bone-white">
-                                  {formatLoad(
-                                    activity.setScheme,
-                                    exerciseMaxes,
-                                    activity.exerciseId,
-                                  )}
+                                <span className="mt-0.5 inline-block self-start bg-surface-steel px-1 py-0.5 text-[8px] font-medium uppercase tracking-wider text-warm-ash">
+                                  {session.sessionType}
                                 </span>
                               </div>
-                            ))}
-                          </div>
-                        )
-                      })}
-                  </div>
-                )
-              })}
-            </div>
+                            )
+                          })}
+                        </div>
+
+                        {/* Session detail tables */}
+                        {week.sessions
+                          .filter((s) => s.dayOfWeek !== null)
+                          .map((session) => {
+                            const templateFull = sessionTemplates.get(session.sessionTemplateId)
+                            if (!templateFull) return null
+
+                            const groupedActivities = buildGroupedActivities(templateFull)
+                            if (groupedActivities.length === 0) return null
+
+                            return (
+                              <div key={session.clientId} className="flex flex-col gap-0">
+                                <div className="bg-surface-steel px-2 py-1.5">
+                                  <span className="text-[10px] font-medium uppercase tracking-wider text-bone-white">
+                                    {session.templateName ?? 'UNNAMED'}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-[1fr_auto_auto] gap-2 bg-surface-gunmetal px-2 py-1">
+                                  <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                                    EXERCISE
+                                  </span>
+                                  <span className="text-right text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                                    SETS x REPS
+                                  </span>
+                                  <span className="w-20 text-right text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                                    LOAD
+                                  </span>
+                                </div>
+
+                                {groupedActivities.map((activity, actIdx) => (
+                                  <div
+                                    key={`${session.clientId}-${actIdx}`}
+                                    className={`grid grid-cols-[1fr_auto_auto] gap-2 px-2 py-1.5 ${
+                                      actIdx % 2 === 0 ? 'bg-surface-steel' : 'bg-surface-charcoal'
+                                    }`}
+                                  >
+                                    <span className="text-xs text-bone-white">
+                                      {exerciseMap.get(activity.exerciseId) ?? 'Unknown Exercise'}
+                                    </span>
+                                    <span className="text-right font-display text-xs text-bone-white">
+                                      {formatSetsReps(activity.setScheme)}
+                                    </span>
+                                    <span className="w-20 text-right font-display text-xs text-bone-white">
+                                      {formatLoad(
+                                        activity.setScheme,
+                                        exerciseMaxes,
+                                        activity.exerciseId,
+                                      )}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )
+                          })}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
