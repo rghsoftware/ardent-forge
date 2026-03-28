@@ -93,7 +93,7 @@ COMMENT ON COLUMN activities.notes IS 'Optional coaching notes or cues for this 
 -- ---------------------------------------------------------------------------
 ALTER TABLE workout_logs
     ADD CONSTRAINT workout_logs_session_template_fk
-    FOREIGN KEY (session_template_id) REFERENCES session_templates(id);
+    FOREIGN KEY (session_template_id) REFERENCES session_templates(id) ON DELETE SET NULL;
 
 -- ---------------------------------------------------------------------------
 -- 5. Indices
@@ -202,7 +202,7 @@ CREATE POLICY "activities_delete"
 
 -- ---------------------------------------------------------------------------
 -- 7. Triggers: automatic updated_at
---    Reuses the update_updated_at_column() function from migration 0004.
+--    Reuses the update_updated_at_column() function from 20260326000004_add_triggers.sql.
 -- ---------------------------------------------------------------------------
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON session_templates
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

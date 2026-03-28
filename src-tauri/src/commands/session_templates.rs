@@ -1,3 +1,4 @@
+use serde_json;
 use sqlx::SqlitePool;
 use tauri::State;
 use uuid::Uuid;
@@ -15,13 +16,13 @@ use crate::utils::now_unix;
 #[derive(serde::Deserialize)]
 pub struct CreateSessionTemplateInput {
     pub id: Option<String>,
-    pub user_id: Option<String>,
+    pub user_id: String,
     pub name: String,
     pub description: Option<String>,
     pub category: String,
     pub rest_between_groups: Option<String>,
     pub time_cap: Option<String>,
-    pub scoring: Option<String>,
+    pub scoring: String,
 }
 
 #[derive(serde::Deserialize)]
@@ -53,6 +54,14 @@ pub struct CreateActivityInput {
 // Commands
 // ---------------------------------------------------------------------------
 
+/// Lists all session templates owned by the given user.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `user_id`: The owner's user ID to filter templates by.
+///
+/// # Returns
+/// A vector of `SessionTemplateRow` ordered by creation date descending.
 #[tauri::command]
 pub async fn get_session_templates(
     pool: State<'_, SqlitePool>,
@@ -68,6 +77,14 @@ pub async fn get_session_templates(
     Ok(rows)
 }
 
+/// Fetches a single session template by its ID.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `id`: The template's unique identifier.
+///
+/// # Returns
+/// `Some(SessionTemplateRow)` if found, or `None` if no template matches the ID.
 #[tauri::command]
 pub async fn get_session_template(
     pool: State<'_, SqlitePool>,
@@ -83,6 +100,15 @@ pub async fn get_session_template(
     Ok(row)
 }
 
+/// Fetches a session template with all its activity groups and activities.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `id`: The template's unique identifier.
+///
+/// # Returns
+/// `Some(SessionTemplateFull)` containing the template, its groups, and their
+/// activities, or `None` if no template matches the ID.
 #[tauri::command]
 pub async fn get_session_template_full(
     pool: State<'_, SqlitePool>,
@@ -137,12 +163,31 @@ pub async fn get_session_template_full(
     }))
 }
 
+/// Creates a new session template with all its activity groups and activities
+/// in a single transaction.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `template`: The session template header (name, category, scoring, etc.).
+/// - `groups`: A vector of activity groups, each containing its child activities
+///   with validated JSON `set_scheme` fields.
+///
+/// # Returns
+/// The fully created `SessionTemplateFull` with all generated IDs and timestamps.
 #[tauri::command]
 pub async fn create_session_template_full(
     pool: State<'_, SqlitePool>,
     template: CreateSessionTemplateInput,
     groups: Vec<CreateActivityGroupFullInput>,
 ) -> Result<SessionTemplateFull, AppError> {
+    // Validate set_scheme JSON for every activity before touching the database
+    for group_input in &groups {
+        for act_input in &group_input.activities {
+            serde_json::from_str::<serde_json::Value>(&act_input.set_scheme)
+                .map_err(|e| AppError::validation("set_scheme", &format!("Invalid JSON: {e}")))?;
+        }
+    }
+
     let template_id = template.id
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| Uuid::new_v4().to_string());
@@ -256,12 +301,33 @@ pub async fn create_session_template_full(
     })
 }
 
+/// Updates an existing session template by replacing all its activity groups
+/// and activities in a single transaction. Existing groups and activities are
+/// deleted (via ON DELETE CASCADE) and re-inserted from the provided input.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `template`: The updated template header; `id` is required.
+/// - `groups`: The full replacement set of activity groups and their activities
+///   with validated JSON `set_scheme` fields.
+///
+/// # Returns
+/// The fully updated `SessionTemplateFull`, or an error if the template ID is
+/// missing or the template does not exist.
 #[tauri::command]
 pub async fn update_session_template_full(
     pool: State<'_, SqlitePool>,
     template: CreateSessionTemplateInput,
     groups: Vec<CreateActivityGroupFullInput>,
 ) -> Result<SessionTemplateFull, AppError> {
+    // Validate set_scheme JSON for every activity before touching the database
+    for group_input in &groups {
+        for act_input in &group_input.activities {
+            serde_json::from_str::<serde_json::Value>(&act_input.set_scheme)
+                .map_err(|e| AppError::validation("set_scheme", &format!("Invalid JSON: {e}")))?;
+        }
+    }
+
     let template_id = template.id
         .filter(|s| !s.is_empty())
         .ok_or_else(|| AppError::validation("id", "Template id is required for update"))?;
@@ -385,6 +451,15 @@ pub async fn update_session_template_full(
     })
 }
 
+/// Deletes a session template and all its associated activity groups and
+/// activities (cascaded via foreign key constraints).
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `id`: The template's unique identifier.
+///
+/// # Returns
+/// `Ok(())` on success, or a not-found error if no template matches the ID.
 #[tauri::command]
 pub async fn delete_session_template(
     pool: State<'_, SqlitePool>,

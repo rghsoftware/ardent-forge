@@ -24,6 +24,7 @@ const baseSessionTemplate = {
 
 const baseActivity = {
   id: 'act-1',
+  activityGroupId: 'ag-1',
   exerciseId: 'ex-bench',
   setScheme: {
     type: 'fixedSets',
@@ -220,5 +221,31 @@ describe('ActivityGroup schema', () => {
   it('accepts optional restBetweenActivities', () => {
     const withRest = { ...baseActivityGroup, restBetweenActivities: { seconds: 60 } }
     expect(activityGroupSchema.safeParse(withRest).success).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// SessionTemplate schema -- additional validation tests
+// ---------------------------------------------------------------------------
+
+describe('SessionTemplate schema validation', () => {
+  it('rejects template without userId', () => {
+    const { userId: _, ...noUserId } = baseSessionTemplate
+    expect(sessionTemplateSchema.safeParse(noUserId).success).toBe(false)
+  })
+
+  it('accepts template with description', () => {
+    const withDesc = { ...baseSessionTemplate, description: 'Heavy pressing day' }
+    expect(sessionTemplateSchema.safeParse(withDesc).success).toBe(true)
+  })
+
+  it('accepts template with valid restBetweenGroups', () => {
+    const withRest = { ...baseSessionTemplate, restBetweenGroups: { seconds: 120 } }
+    expect(sessionTemplateSchema.safeParse(withRest).success).toBe(true)
+  })
+
+  it('rejects template with malformed restBetweenGroups', () => {
+    const bad = { ...baseSessionTemplate, restBetweenGroups: { seconds: 'bad' } }
+    expect(sessionTemplateSchema.safeParse(bad).success).toBe(false)
   })
 })

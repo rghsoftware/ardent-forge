@@ -21,6 +21,12 @@ export type WorkoutLogSummary = {
   exerciseCount: number
 }
 
+export type SessionTemplateFull = {
+  template: SessionTemplate
+  groups: Array<Omit<ActivityGroup, 'activities'>>
+  activities: Activity[]
+}
+
 export interface ExerciseFilters {
   category?: ExerciseCategory
   movementPattern?: MovementPattern
@@ -98,32 +104,20 @@ export interface DataAdapter {
   // Session template operations
   getSessionTemplates(userId: string): Promise<SessionTemplate[]>
   getSessionTemplate(id: string): Promise<SessionTemplate | null>
-  getSessionTemplateFull(id: string): Promise<{
-    template: SessionTemplate
-    groups: Array<Omit<ActivityGroup, 'activities'>>
-    activities: Activity[]
-  } | null>
+  getSessionTemplateFull(id: string): Promise<SessionTemplateFull | null>
   createSessionTemplateFull(
     template: Omit<SessionTemplate, 'id' | 'createdAt' | 'updatedAt'>,
     groups: Array<{
       group: Omit<ActivityGroup, 'id' | 'activities'>
-      activities: Array<Omit<Activity, 'id'>>
+      activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
     }>,
-  ): Promise<{
-    template: SessionTemplate
-    groups: Array<Omit<ActivityGroup, 'activities'>>
-    activities: Activity[]
-  }>
+  ): Promise<SessionTemplateFull>
   updateSessionTemplateFull(
     template: SessionTemplate,
     groups: Array<{
       group: Omit<ActivityGroup, 'activities'>
-      activities: Array<Omit<Activity, 'id'>>
+      activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
     }>,
-  ): Promise<{
-    template: SessionTemplate
-    groups: Array<Omit<ActivityGroup, 'activities'>>
-    activities: Activity[]
-  }>
+  ): Promise<SessionTemplateFull>
   deleteSessionTemplate(id: string): Promise<void>
 }

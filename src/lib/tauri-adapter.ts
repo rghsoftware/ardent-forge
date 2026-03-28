@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import type {
   DataAdapter,
   ExerciseFilters,
+  SessionTemplateFull,
   WorkoutLogSummary,
   WorkoutWithSets,
 } from './data-adapter'
@@ -176,13 +177,13 @@ interface TauriWorkoutWithSets {
 
 interface TauriSessionTemplateResponse {
   id: string
-  user_id: string | null
+  user_id: string
   name: string
   description: string | null
   category: string
   rest_between_groups: string | null
   time_cap: string | null
-  scoring: string | null
+  scoring: string
   created_at: string | null
   updated_at: string | null
 }
@@ -425,6 +426,8 @@ function toOneRepMaxHistoryRow(r: TauriOneRepMaxHistoryResponse): OneRepMaxHisto
 }
 
 function toSessionTemplateRowFromTauri(r: TauriSessionTemplateResponse): SessionTemplateRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on session template row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on session template row', r)
   return {
     id: r.id,
     user_id: r.user_id,
@@ -440,6 +443,8 @@ function toSessionTemplateRowFromTauri(r: TauriSessionTemplateResponse): Session
 }
 
 function toActivityGroupRowFromTauri(r: TauriActivityGroupResponse): ActivityGroupRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on activity group row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on activity group row', r)
   return {
     id: r.id,
     session_template_id: r.session_template_id,
@@ -454,6 +459,8 @@ function toActivityGroupRowFromTauri(r: TauriActivityGroupResponse): ActivityGro
 }
 
 function toActivityRowFromTauri(r: TauriActivityResponse): ActivityRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on activity row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on activity row', r)
   return {
     id: r.id,
     activity_group_id: r.activity_group_id,
@@ -920,11 +927,7 @@ export class TauriAdapter implements DataAdapter {
     return row ? toSessionTemplate(toSessionTemplateRowFromTauri(row)) : null
   }
 
-  async getSessionTemplateFull(id: string): Promise<{
-    template: SessionTemplate
-    groups: Array<Omit<ActivityGroup, 'activities'>>
-    activities: Activity[]
-  } | null> {
+  async getSessionTemplateFull(id: string): Promise<SessionTemplateFull | null> {
     const full = await invokeCommand<TauriSessionTemplateFull | null>('get_session_template_full', {
       id,
     })
@@ -941,13 +944,9 @@ export class TauriAdapter implements DataAdapter {
     template: Omit<SessionTemplate, 'id' | 'createdAt' | 'updatedAt'>,
     groups: Array<{
       group: Omit<ActivityGroup, 'id' | 'activities'>
-      activities: Array<Omit<Activity, 'id'>>
+      activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
     }>,
-  ): Promise<{
-    template: SessionTemplate
-    groups: Array<Omit<ActivityGroup, 'activities'>>
-    activities: Activity[]
-  }> {
+  ): Promise<SessionTemplateFull> {
     const partial = fromSessionTemplate(template)
     const input = {
       user_id: partial.user_id ?? null,
@@ -997,13 +996,9 @@ export class TauriAdapter implements DataAdapter {
     template: SessionTemplate,
     groups: Array<{
       group: Omit<ActivityGroup, 'activities'>
-      activities: Array<Omit<Activity, 'id'>>
+      activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
     }>,
-  ): Promise<{
-    template: SessionTemplate
-    groups: Array<Omit<ActivityGroup, 'activities'>>
-    activities: Activity[]
-  }> {
+  ): Promise<SessionTemplateFull> {
     const partial = fromSessionTemplate(template)
     const input = {
       id: template.id,

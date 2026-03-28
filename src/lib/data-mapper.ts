@@ -317,7 +317,7 @@ export function toSessionTemplate(row: SessionTemplateRow): SessionTemplate {
     id: row.id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    userId: row.user_id ?? '',
+    userId: row.user_id,
     name: row.name,
     description: row.description ?? undefined,
     category: sessionTypeSchema.parse(row.category),
@@ -326,7 +326,7 @@ export function toSessionTemplate(row: SessionTemplateRow): SessionTemplate {
         ? durationSchema.parse(JSON.parse(row.rest_between_groups))
         : undefined,
     timeCap: row.time_cap != null ? durationSchema.parse(JSON.parse(row.time_cap)) : undefined,
-    scoring: scoringTypeSchema.parse(row.scoring ?? 'NONE'),
+    scoring: scoringTypeSchema.parse(row.scoring),
   }
 }
 
@@ -334,7 +334,7 @@ export function fromSessionTemplate(
   template: Omit<SessionTemplate, 'id' | 'createdAt' | 'updatedAt'>,
 ): Partial<SessionTemplateRow> {
   return {
-    user_id: template.userId ?? null,
+    user_id: template.userId,
     name: template.name,
     description: template.description ?? null,
     category: template.category,
@@ -391,6 +391,7 @@ export function fromActivityGroup(
 export function toActivity(row: ActivityRow): Activity {
   return {
     id: row.id,
+    activityGroupId: row.activity_group_id,
     exerciseId: row.exercise_id,
     ordinal: row.ordinal,
     setScheme: setSchemeSchema.parse(JSON.parse(row.set_scheme)),
@@ -399,11 +400,12 @@ export function toActivity(row: ActivityRow): Activity {
 }
 
 export function fromActivity(
-  activity: Omit<Activity, 'id'>,
+  activity: Omit<Activity, 'id'> | Omit<Activity, 'id' | 'activityGroupId'>,
   groupId?: string,
 ): Partial<ActivityRow> {
   return {
-    activity_group_id: groupId,
+    activity_group_id:
+      groupId ?? ('activityGroupId' in activity ? activity.activityGroupId : undefined),
     exercise_id: activity.exerciseId,
     ordinal: activity.ordinal,
     set_scheme: JSON.stringify(activity.setScheme),

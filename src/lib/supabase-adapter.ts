@@ -1,5 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { DataAdapter, ExerciseFilters, WorkoutLogSummary } from './data-adapter'
+import type {
+  DataAdapter,
+  ExerciseFilters,
+  SessionTemplateFull,
+  WorkoutLogSummary,
+} from './data-adapter'
 import type {
   Exercise,
   WorkoutLog,
@@ -539,11 +544,7 @@ export class SupabaseAdapter implements DataAdapter {
     return data ? toSessionTemplate(data as SessionTemplateRow) : null
   }
 
-  async getSessionTemplateFull(id: string): Promise<{
-    template: SessionTemplate
-    groups: Array<Omit<ActivityGroup, 'activities'>>
-    activities: Activity[]
-  } | null> {
+  async getSessionTemplateFull(id: string): Promise<SessionTemplateFull | null> {
     const { data: templateData, error: templateError } = await this.client
       .from('session_templates')
       .select('*')
@@ -584,17 +585,14 @@ export class SupabaseAdapter implements DataAdapter {
     }
   }
 
+  // TODO: These writes are non-atomic. Migrate to a Supabase RPC stored procedure to ensure consistency. See PR #11.
   async createSessionTemplateFull(
     template: Omit<SessionTemplate, 'id' | 'createdAt' | 'updatedAt'>,
     groups: Array<{
       group: Omit<ActivityGroup, 'id' | 'activities'>
-      activities: Array<Omit<Activity, 'id'>>
+      activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
     }>,
-  ): Promise<{
-    template: SessionTemplate
-    groups: Array<Omit<ActivityGroup, 'activities'>>
-    activities: Activity[]
-  }> {
+  ): Promise<SessionTemplateFull> {
     const templateRow = fromSessionTemplate(template)
 
     const { data: tData, error: tError } = await this.client
@@ -636,17 +634,14 @@ export class SupabaseAdapter implements DataAdapter {
     return { template: createdTemplate, groups: allGroups, activities: allActivities }
   }
 
+  // TODO: These writes are non-atomic. Migrate to a Supabase RPC stored procedure to ensure consistency. See PR #11.
   async updateSessionTemplateFull(
     template: SessionTemplate,
     groups: Array<{
       group: Omit<ActivityGroup, 'activities'>
-      activities: Array<Omit<Activity, 'id'>>
+      activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
     }>,
-  ): Promise<{
-    template: SessionTemplate
-    groups: Array<Omit<ActivityGroup, 'activities'>>
-    activities: Activity[]
-  }> {
+  ): Promise<SessionTemplateFull> {
     const templateRow = fromSessionTemplate(template)
 
     const { data: tData, error: tError } = await this.client

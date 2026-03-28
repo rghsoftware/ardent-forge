@@ -162,13 +162,13 @@ pub struct WorkoutWithSets {
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
 pub struct SessionTemplateRow {
     pub id: String,
-    pub user_id: Option<String>,
+    pub user_id: String,
     pub name: String,
     pub description: Option<String>,
     pub category: String,
     pub rest_between_groups: Option<String>,  // JSON Duration
     pub time_cap: Option<String>,             // JSON Duration
-    pub scoring: Option<String>,
+    pub scoring: String,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]

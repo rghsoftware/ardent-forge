@@ -37,9 +37,12 @@ export function useCreateSessionTemplate() {
       template: Omit<SessionTemplate, 'id' | 'createdAt' | 'updatedAt'>
       groups: Array<{
         group: Omit<ActivityGroup, 'id' | 'activities'>
-        activities: Array<Omit<Activity, 'id'>>
+        activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
       }>
     }) => getAdapter().createSessionTemplateFull(template, groups),
+    onError: (err) => {
+      console.error('[session-templates] Failed to create template:', err)
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['session-templates'] })
     },
@@ -57,9 +60,12 @@ export function useUpdateSessionTemplate() {
       template: SessionTemplate
       groups: Array<{
         group: Omit<ActivityGroup, 'activities'>
-        activities: Array<Omit<Activity, 'id'>>
+        activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
       }>
     }) => getAdapter().updateSessionTemplateFull(template, groups),
+    onError: (err) => {
+      console.error('[session-templates] Failed to update template:', err)
+    },
     onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ['session-templates'] })
       queryClient.invalidateQueries({
@@ -74,6 +80,9 @@ export function useDeleteSessionTemplate() {
 
   return useMutation({
     mutationFn: (id: string) => getAdapter().deleteSessionTemplate(id),
+    onError: (err) => {
+      console.error('[session-templates] Failed to delete template:', err)
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['session-templates'] })
     },

@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS session_templates (
     category            TEXT NOT NULL,       -- enum: STRENGTH, CONDITIONING, SE, MIXED
     rest_between_groups TEXT,                -- JSON Duration
     time_cap            TEXT,                -- JSON Duration
-    scoring             TEXT NOT NULL DEFAULT 'NONE', -- enum: NONE, FOR_TIME, etc.
+    scoring             TEXT NOT NULL DEFAULT 'NONE', -- enum: NONE, FOR_TIME, TIME, FOR_REPS, ROUNDS_PLUS_REPS, FOR_DISTANCE, LOAD
     created_at          INTEGER,
     updated_at          INTEGER
 );
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS session_templates (
 CREATE TABLE IF NOT EXISTS activity_groups (
     id                      TEXT PRIMARY KEY,
     session_template_id     TEXT NOT NULL REFERENCES session_templates(id) ON DELETE CASCADE,
-    group_type              TEXT NOT NULL,   -- enum: STRAIGHT_SETS, SUPERSET, etc.
+    group_type              TEXT NOT NULL,   -- enum: STRAIGHT_SETS, SUPERSET, CIRCUIT, COMPLEX, EMOM, AMRAP, COUPLET
     ordinal                 INTEGER NOT NULL,
     rounds                  INTEGER,
     rest_between_rounds     TEXT,            -- JSON Duration

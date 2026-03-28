@@ -263,7 +263,9 @@ const setSchemeVariants: Record<SetSchemeTypeName, z.ZodTypeAny> = {
  * Use this instead of setSchemeSchema.safeParse() when you need
  * actionable error messages for end users.
  */
-export function parseSetScheme(data: unknown) {
+export function parseSetScheme(
+  data: unknown,
+): { success: false; error: string } | { success: true; data: SetScheme } {
   const typeResult = z.object({ type: z.string() }).safeParse(data)
   if (!typeResult.success) {
     return { success: false as const, error: 'Missing or invalid "type" field' }
@@ -279,7 +281,7 @@ export function parseSetScheme(data: unknown) {
   if (!result.success) {
     return { success: false as const, error: result.error.issues.map((i) => i.message).join('; ') }
   }
-  return result
+  return { success: true as const, data: result.data as SetScheme }
 }
 
 /** Convenience type for the return value of `parseSetScheme`. */

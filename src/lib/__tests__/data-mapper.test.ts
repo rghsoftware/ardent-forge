@@ -15,6 +15,12 @@ import {
   fromUserProfile,
   toOneRepMaxHistory,
   fromOneRepMaxHistory,
+  toSessionTemplate,
+  fromSessionTemplate,
+  toActivityGroupFlat,
+  fromActivityGroup,
+  toActivity,
+  fromActivity,
 } from '../data-mapper'
 import type {
   ExerciseRow,
@@ -24,6 +30,9 @@ import type {
   LoggedSetRow,
   UserProfileRow,
   OneRepMaxHistoryRow,
+  SessionTemplateRow,
+  ActivityGroupRow,
+  ActivityRow,
 } from '../database.types'
 
 // ===========================================================================
@@ -1435,5 +1444,294 @@ describe('Mapper function exports', () => {
 
   it('exports fromOneRepMaxHistory as a function', () => {
     expect(typeof fromOneRepMaxHistory).toBe('function')
+  })
+
+  it('exports toSessionTemplate as a function', () => {
+    expect(typeof toSessionTemplate).toBe('function')
+  })
+
+  it('exports fromSessionTemplate as a function', () => {
+    expect(typeof fromSessionTemplate).toBe('function')
+  })
+
+  it('exports toActivityGroupFlat as a function', () => {
+    expect(typeof toActivityGroupFlat).toBe('function')
+  })
+
+  it('exports fromActivityGroup as a function', () => {
+    expect(typeof fromActivityGroup).toBe('function')
+  })
+
+  it('exports toActivity as a function', () => {
+    expect(typeof toActivity).toBe('function')
+  })
+
+  it('exports fromActivity as a function', () => {
+    expect(typeof fromActivity).toBe('function')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// SessionTemplate fixtures
+// ---------------------------------------------------------------------------
+
+const sessionTemplateRowFull: SessionTemplateRow = {
+  id: 'st-001',
+  user_id: 'user-001',
+  name: 'Upper Body Strength',
+  description: 'Heavy pressing and pulling',
+  category: 'STRENGTH',
+  rest_between_groups: JSON.stringify({ seconds: 120 }),
+  time_cap: JSON.stringify({ seconds: 3600 }),
+  scoring: 'NONE',
+  created_at: now,
+  updated_at: now,
+}
+
+const sessionTemplateRowNulls: SessionTemplateRow = {
+  id: 'st-002',
+  user_id: 'user-001',
+  name: 'Quick WOD',
+  description: null,
+  category: 'CONDITIONING',
+  rest_between_groups: null,
+  time_cap: null,
+  scoring: 'FOR_TIME',
+  created_at: now,
+  updated_at: now,
+}
+
+// ---------------------------------------------------------------------------
+// ActivityGroup fixtures
+// ---------------------------------------------------------------------------
+
+const activityGroupRowFull: ActivityGroupRow = {
+  id: 'ag-001',
+  session_template_id: 'st-001',
+  group_type: 'STRAIGHT_SETS',
+  ordinal: 1,
+  rounds: 4,
+  rest_between_rounds: JSON.stringify({ seconds: 90 }),
+  rest_between_activities: JSON.stringify({ seconds: 60 }),
+  created_at: now,
+  updated_at: now,
+}
+
+const activityGroupRowNulls: ActivityGroupRow = {
+  id: 'ag-002',
+  session_template_id: 'st-001',
+  group_type: 'SUPERSET',
+  ordinal: 2,
+  rounds: null,
+  rest_between_rounds: null,
+  rest_between_activities: null,
+  created_at: now,
+  updated_at: now,
+}
+
+// ---------------------------------------------------------------------------
+// Activity fixtures
+// ---------------------------------------------------------------------------
+
+const fixedSetsScheme = {
+  type: 'fixedSets',
+  sets: 3,
+  reps: 5,
+  load: { type: 'absolute', weight: { value: 225, unit: 'lb' } },
+}
+
+const cardioIntervalScheme = {
+  type: 'cardioInterval',
+  workDuration: { seconds: 30 },
+  rest: { seconds: 60 },
+  rounds: 10,
+  modality: 'RUNNING',
+}
+
+const activityRowWithFixedSets: ActivityRow = {
+  id: 'act-001',
+  activity_group_id: 'ag-001',
+  exercise_id: 'ex-squat-001',
+  ordinal: 1,
+  set_scheme: JSON.stringify(fixedSetsScheme),
+  notes: 'Focus on depth',
+  created_at: now,
+  updated_at: now,
+}
+
+const activityRowWithCardioInterval: ActivityRow = {
+  id: 'act-002',
+  activity_group_id: 'ag-001',
+  exercise_id: 'ex-run-001',
+  ordinal: 2,
+  set_scheme: JSON.stringify(cardioIntervalScheme),
+  notes: null,
+  created_at: now,
+  updated_at: now,
+}
+
+// ---------------------------------------------------------------------------
+// toSessionTemplate / fromSessionTemplate
+// ---------------------------------------------------------------------------
+
+describe('toSessionTemplate / fromSessionTemplate', () => {
+  it('toSessionTemplate: maps fully populated row', () => {
+    const result = toSessionTemplate(sessionTemplateRowFull)
+    expect(result.id).toBe('st-001')
+    expect(result.userId).toBe('user-001')
+    expect(result.name).toBe('Upper Body Strength')
+    expect(result.description).toBe('Heavy pressing and pulling')
+    expect(result.category).toBe('STRENGTH')
+    expect(result.restBetweenGroups).toEqual({ seconds: 120 })
+    expect(result.timeCap).toEqual({ seconds: 3600 })
+    expect(result.scoring).toBe('NONE')
+    expect(result.createdAt).toBe(now)
+    expect(result.updatedAt).toBe(now)
+  })
+
+  it('toSessionTemplate: handles null optional fields', () => {
+    const result = toSessionTemplate(sessionTemplateRowNulls)
+    expect(result.description).toBeUndefined()
+    expect(result.restBetweenGroups).toBeUndefined()
+    expect(result.timeCap).toBeUndefined()
+  })
+
+  it('toSessionTemplate: throws on invalid category', () => {
+    const bad = { ...sessionTemplateRowFull, category: 'YOGA' }
+    expect(() => toSessionTemplate(bad)).toThrow(ZodError)
+  })
+
+  it('round-trip: fromSessionTemplate -> toSessionTemplate preserves data', () => {
+    const domain = toSessionTemplate(sessionTemplateRowFull)
+    const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+    const row = fromSessionTemplate(body)
+    // Reconstruct a full row for round-trip verification
+    const fullRow: SessionTemplateRow = {
+      id: 'st-roundtrip',
+      created_at: now,
+      updated_at: now,
+      ...row,
+    } as SessionTemplateRow
+    const roundTripped = toSessionTemplate(fullRow)
+    expect(roundTripped.userId).toBe(domain.userId)
+    expect(roundTripped.name).toBe(domain.name)
+    expect(roundTripped.description).toBe(domain.description)
+    expect(roundTripped.category).toBe(domain.category)
+    expect(roundTripped.restBetweenGroups).toEqual(domain.restBetweenGroups)
+    expect(roundTripped.timeCap).toEqual(domain.timeCap)
+    expect(roundTripped.scoring).toBe(domain.scoring)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toActivityGroupFlat / fromActivityGroup
+// ---------------------------------------------------------------------------
+
+describe('toActivityGroupFlat / fromActivityGroup', () => {
+  it('toActivityGroupFlat: maps fully populated row', () => {
+    const result = toActivityGroupFlat(activityGroupRowFull)
+    expect(result.id).toBe('ag-001')
+    expect(result.sessionTemplateId).toBe('st-001')
+    expect(result.groupType).toBe('STRAIGHT_SETS')
+    expect(result.ordinal).toBe(1)
+    expect(result.rounds).toBe(4)
+    expect(result.restBetweenRounds).toEqual({ seconds: 90 })
+    expect(result.restBetweenActivities).toEqual({ seconds: 60 })
+  })
+
+  it('toActivityGroupFlat: handles null optional fields (rounds, rest durations)', () => {
+    const result = toActivityGroupFlat(activityGroupRowNulls)
+    expect(result.rounds).toBeUndefined()
+    expect(result.restBetweenRounds).toBeUndefined()
+    expect(result.restBetweenActivities).toBeUndefined()
+  })
+
+  it('toActivityGroupFlat: throws on invalid group_type', () => {
+    const bad = { ...activityGroupRowFull, group_type: 'TRISET' }
+    expect(() => toActivityGroupFlat(bad)).toThrow(ZodError)
+  })
+
+  it('round-trip preserves data', () => {
+    const domain = toActivityGroupFlat(activityGroupRowFull)
+    const { id: _, ...body } = domain
+    const row = fromActivityGroup(body)
+    expect(row.session_template_id).toBe(activityGroupRowFull.session_template_id)
+    expect(row.group_type).toBe(activityGroupRowFull.group_type)
+    expect(row.ordinal).toBe(activityGroupRowFull.ordinal)
+    expect(row.rounds).toBe(activityGroupRowFull.rounds)
+    // rest durations are stored as JSON strings -- verify round-trip consistency
+    expect(row.rest_between_rounds).toBe(activityGroupRowFull.rest_between_rounds)
+    expect(row.rest_between_activities).toBe(activityGroupRowFull.rest_between_activities)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// toActivity / fromActivity
+// ---------------------------------------------------------------------------
+
+describe('toActivity / fromActivity', () => {
+  it('toActivity: maps fixedSets set_scheme', () => {
+    const result = toActivity(activityRowWithFixedSets)
+    expect(result.id).toBe('act-001')
+    expect(result.exerciseId).toBe('ex-squat-001')
+    expect(result.ordinal).toBe(1)
+    expect(result.setScheme.type).toBe('fixedSets')
+    if (result.setScheme.type === 'fixedSets') {
+      expect(result.setScheme.sets).toBe(3)
+      expect(result.setScheme.reps).toBe(5)
+    }
+    expect(result.notes).toBe('Focus on depth')
+  })
+
+  it('toActivity: maps cardioInterval set_scheme', () => {
+    const result = toActivity(activityRowWithCardioInterval)
+    expect(result.setScheme.type).toBe('cardioInterval')
+    if (result.setScheme.type === 'cardioInterval') {
+      expect(result.setScheme.workDuration).toEqual({ seconds: 30 })
+      expect(result.setScheme.rest).toEqual({ seconds: 60 })
+      expect(result.setScheme.rounds).toBe(10)
+      expect(result.setScheme.modality).toBe('RUNNING')
+    }
+  })
+
+  it('toActivity: preserves activityGroupId', () => {
+    const result = toActivity(activityRowWithFixedSets)
+    expect(result.activityGroupId).toBe('ag-001')
+  })
+
+  it('toActivity: throws on invalid set_scheme JSON', () => {
+    const bad = { ...activityRowWithFixedSets, set_scheme: '{"type":"unknownType"}' }
+    expect(() => toActivity(bad)).toThrow(ZodError)
+  })
+
+  it('toActivity: handles null notes', () => {
+    const result = toActivity(activityRowWithCardioInterval)
+    expect(result.notes).toBeUndefined()
+  })
+
+  it('fromActivity: includes activity_group_id in output', () => {
+    const domain = toActivity(activityRowWithFixedSets)
+    const { id: _, ...body } = domain
+    const row = fromActivity(body)
+    expect(row.activity_group_id).toBe('ag-001')
+  })
+
+  it('round-trip: activityGroupId preserved', () => {
+    const domain = toActivity(activityRowWithFixedSets)
+    const { id: _, ...body } = domain
+    const row = fromActivity(body)
+    // Reconstruct full row for round-trip
+    const fullRow: ActivityRow = {
+      id: 'act-roundtrip',
+      created_at: now,
+      updated_at: now,
+      ...row,
+    } as ActivityRow
+    const roundTripped = toActivity(fullRow)
+    expect(roundTripped.activityGroupId).toBe(domain.activityGroupId)
+    expect(roundTripped.exerciseId).toBe(domain.exerciseId)
+    expect(roundTripped.ordinal).toBe(domain.ordinal)
+    expect(roundTripped.setScheme).toEqual(domain.setScheme)
+    expect(roundTripped.notes).toBe(domain.notes)
   })
 })

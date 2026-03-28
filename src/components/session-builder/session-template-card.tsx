@@ -17,7 +17,7 @@ import type { SessionTemplate } from '@/domain/types'
 // ---------------------------------------------------------------------------
 
 interface SessionTemplateCardProps {
-  template: SessionTemplate & { groupCount: number; exerciseCount: number }
+  template: SessionTemplate
   onEdit: () => void
   onDelete: () => void
 }
@@ -55,11 +55,6 @@ export function SessionTemplateCard({ template, onEdit, onDelete }: SessionTempl
             <Badge className="text-[10px]">
               {CATEGORY_LABELS[template.category] ?? template.category}
             </Badge>
-            <span className="text-[10px] uppercase tracking-wider text-warm-ash/60">
-              {template.exerciseCount} exercise{template.exerciseCount !== 1 ? 's' : ''}
-              {' \u00B7 '}
-              {template.groupCount} group{template.groupCount !== 1 ? 's' : ''}
-            </span>
           </div>
         </div>
 

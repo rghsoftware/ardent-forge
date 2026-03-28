@@ -86,6 +86,7 @@ const LOAD_TYPES = [
   { value: 'absolute', label: 'WEIGHT' },
   { value: 'percentageOf1RM', label: '% 1RM' },
   { value: 'rpe', label: 'RPE' },
+  { value: 'percentMaxReps', label: '% MAX REPS' },
   { value: 'bodyweight', label: 'BW' },
   { value: 'bodyweightPlus', label: 'BW+' },
   { value: 'unspecified', label: 'NONE' },
@@ -514,7 +515,7 @@ function LoadSpecEditor({
       {value.type === 'rpe' && (
         <UnderlineNumberInput
           value={value.target}
-          onChange={(v) => onChange({ type: 'rpe', target: v })}
+          onChange={(v) => onChange({ type: 'rpe', target: Math.round(v * 2) / 2 })}
           label="RPE TARGET"
           min={1}
           max={10}

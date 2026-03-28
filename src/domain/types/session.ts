@@ -64,6 +64,7 @@ export type SessionTemplate = z.infer<typeof sessionTemplateSchema>
 
 export const activitySchema = z.object({
   id: entityId,
+  activityGroupId: entityId,
   exerciseId: entityId,
   setScheme: setSchemeSchema,
   ordinal: z.number().int().positive(), // P-5

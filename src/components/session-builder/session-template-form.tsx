@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ActivityGroupEditor, type ActivityGroupData } from './activity-group-editor'
+import { DurationInputCompact } from './duration-input-compact'
 import { defaultScheme } from './set-scheme-defaults'
 import { useExercises } from '@/hooks/use-exercises'
 import { useCreateSessionTemplate, useUpdateSessionTemplate } from '@/hooks/use-session-templates'
@@ -84,10 +85,9 @@ function buildGroupsFromData(groups: ActivityGroupData[]) {
 
 function hydrateGroups(initial: SessionTemplateFull): ActivityGroupData[] {
   return initial.groups.map((g) => {
-    // The flat activity list returned by the adapter is already associated
-    // with this group. Since the full structure does not include a groupId on
-    // each activity, we pass all activities through and rely on ordinal sort.
-    const groupActivities = [...initial.activities].sort((a, b) => a.ordinal - b.ordinal)
+    const groupActivities = initial.activities
+      .filter((a) => a.activityGroupId === g.id)
+      .sort((a, b) => a.ordinal - b.ordinal)
 
     return {
       groupType: g.groupType,
@@ -103,61 +103,6 @@ function hydrateGroups(initial: SessionTemplateFull): ActivityGroupData[] {
       })),
     }
   })
-}
-
-function DurationInputCompact({
-  value,
-  onChange,
-  label,
-}: {
-  value: Duration | undefined
-  onChange: (d: Duration | undefined) => void
-  label: string
-}) {
-  const totalSeconds = value?.seconds ?? 0
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-        {label}
-      </span>
-      <div className="flex items-center gap-2">
-        <input
-          type="number"
-          inputMode="numeric"
-          value={minutes || ''}
-          onChange={(e) => {
-            const m = parseInt(e.target.value) || 0
-            if (m === 0 && seconds === 0) onChange(undefined)
-            else onChange({ seconds: m * 60 + seconds })
-          }}
-          placeholder="0"
-          min={0}
-          className="min-h-12 w-16 border-0 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
-          aria-label={`${label} minutes`}
-        />
-        <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">MIN</span>
-        <input
-          type="number"
-          inputMode="numeric"
-          value={seconds || ''}
-          onChange={(e) => {
-            const s = parseInt(e.target.value) || 0
-            if (minutes === 0 && s === 0) onChange(undefined)
-            else onChange({ seconds: minutes * 60 + s })
-          }}
-          placeholder="0"
-          min={0}
-          max={59}
-          className="min-h-12 w-16 border-0 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
-          aria-label={`${label} seconds`}
-        />
-        <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">SEC</span>
-      </div>
-    </div>
-  )
 }
 
 // ---------------------------------------------------------------------------
@@ -283,8 +228,9 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
         onSave?.(result.template)
       }
     } catch (err) {
-      console.error('[session-template-form] Save failed:', err)
-      setErrors(['Failed to save template. Please try again.'])
+      const action = isEditing ? 'update' : 'create'
+      console.error(`[session-template-form] Failed to ${action} template "${name.trim()}":`, err)
+      setErrors([`Failed to ${action} session template. Please try again.`])
     }
   }, [
     validate,

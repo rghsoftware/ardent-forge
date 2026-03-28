@@ -30,7 +30,7 @@ function LibraryPage() {
   const { user } = useAuth()
   const userId = user?.id ?? ''
 
-  const { data: templates = [], isLoading } = useSessionTemplates(userId || undefined)
+  const { data: templates = [], isLoading, error } = useSessionTemplates(userId || undefined)
   const deleteMutation = useDeleteSessionTemplate()
 
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -46,8 +46,12 @@ function LibraryPage() {
     setSheetOpen(true)
   }
 
-  const handleDelete = (id: string) => {
-    deleteMutation.mutate(id)
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteMutation.mutateAsync(id)
+    } catch (err) {
+      console.error('[library] Failed to delete template:', err)
+    }
   }
 
   const handleSaved = () => {
@@ -59,13 +63,6 @@ function LibraryPage() {
     setSheetOpen(false)
     setEditingId(null)
   }
-
-  // Build enriched template list with group/exercise counts
-  const enrichedTemplates = templates.map((t) => ({
-    ...t,
-    groupCount: 0,
-    exerciseCount: 0,
-  }))
 
   return (
     <div className="min-h-screen bg-surface-anvil pb-20">
@@ -92,7 +89,17 @@ function LibraryPage() {
             <Skeleton className="h-16 w-full bg-surface-iron" />
             <Skeleton className="h-16 w-full bg-surface-iron" />
           </>
-        ) : enrichedTemplates.length === 0 ? (
+        ) : error ? (
+          <div className="flex flex-col items-center gap-3 py-16">
+            <Icon name="error" size={48} className="text-destructive/60" />
+            <p className="text-center text-xs uppercase tracking-wider text-destructive">
+              FAILED TO LOAD TEMPLATES
+            </p>
+            <p className="text-center text-xs text-warm-ash/40">
+              {error instanceof Error ? error.message : 'An unexpected error occurred.'}
+            </p>
+          </div>
+        ) : templates.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16">
             <Icon name="description" size={48} className="text-warm-ash/40" />
             <p className="text-center text-xs uppercase tracking-wider text-warm-ash/60">
@@ -103,7 +110,7 @@ function LibraryPage() {
             </p>
           </div>
         ) : (
-          enrichedTemplates.map((template) => (
+          templates.map((template) => (
             <SessionTemplateCard
               key={template.id}
               template={template}
@@ -160,7 +167,7 @@ function EditTemplateFormLoader({
   onSave: () => void
   onCancel: () => void
 }) {
-  const { data, isLoading } = useSessionTemplateFull(templateId)
+  const { data, isLoading, error } = useSessionTemplateFull(templateId)
 
   if (isLoading) {
     return (
@@ -168,6 +175,19 @@ function EditTemplateFormLoader({
         <Skeleton className="h-10 w-full bg-surface-iron" />
         <Skeleton className="h-8 w-48 bg-surface-iron" />
         <Skeleton className="h-32 w-full bg-surface-iron" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-2 p-4">
+        <p className="text-center text-xs uppercase tracking-wider text-destructive">
+          FAILED TO LOAD TEMPLATE
+        </p>
+        <p className="text-center text-xs text-warm-ash/40">
+          {error instanceof Error ? error.message : 'An unexpected error occurred.'}
+        </p>
       </div>
     )
   }
