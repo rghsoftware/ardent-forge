@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Icon } from '@/components/icon'
+import { SOURCE_LABELS } from '@/components/program-builder/constants'
 import { SessionTemplateCard } from '@/components/session-builder/session-template-card'
 import {
   SessionTemplateForm,
@@ -48,6 +49,7 @@ type LibraryTab = 'templates' | 'programs'
 function LibraryPage() {
   const { user } = useAuth()
   const userId = user?.id ?? ''
+  const navigate = useNavigate()
 
   const [activeTab, setActiveTab] = useState<LibraryTab>('templates')
 
@@ -101,6 +103,16 @@ function LibraryPage() {
           >
             <Icon name="add" size={16} />
             CREATE TEMPLATE
+          </Button>
+        )}
+        {activeTab === 'programs' && (
+          <Button
+            variant="default"
+            onClick={() => navigate({ to: '/builder', search: { programId: undefined } })}
+            className="min-h-12 bg-forge text-on-forge text-xs uppercase tracking-wider hover:brightness-110"
+          >
+            <Icon name="add" size={16} />
+            CREATE PROGRAM
           </Button>
         )}
       </div>
@@ -224,17 +236,8 @@ function LibraryPage() {
 // Program list panel
 // ---------------------------------------------------------------------------
 
-const SOURCE_LABELS: Record<string, string> = {
-  CUSTOM: 'CUSTOM',
-  IMPORTED: 'IMPORTED',
-  SHARED: 'SHARED',
-  MARKETPLACE: 'MARKETPLACE',
-  AI_GENERATED: 'AI',
-  COACH_ASSIGNED: 'COACH',
-  TEMPLATE: 'TEMPLATE',
-}
-
 function ProgramList({ userId }: { userId: string | undefined }) {
+  const navigate = useNavigate()
   const { data: programs = [], isLoading, error } = usePrograms(userId)
   const { data: activeProgram, error: activeProgramError } = useActiveProgram(userId)
   const setActiveMutation = useSetActiveProgram()
@@ -262,8 +265,8 @@ function ProgramList({ userId }: { userId: string | undefined }) {
     }
   }
 
-  const handleEdit = (_id: string) => {
-    // no-op: edit is not yet implemented; button is visually disabled
+  const handleEdit = (id: string) => {
+    navigate({ to: '/builder', search: { programId: id } })
   }
 
   const handleDelete = async (id: string) => {
@@ -405,9 +408,8 @@ function ProgramCard({
         <button
           type="button"
           onClick={onEdit}
-          className="flex flex-1 flex-col gap-1 text-left opacity-50 pointer-events-none"
+          className="flex flex-1 flex-col gap-1 text-left hover:opacity-80"
           aria-label={`Edit program ${program.name}`}
-          aria-disabled="true"
         >
           <span className="font-display text-sm font-medium text-bone-white">{program.name}</span>
           <div className="flex items-center gap-2">
