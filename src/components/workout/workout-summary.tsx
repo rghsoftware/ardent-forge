@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { formatDuration } from '@/lib/format-duration'
-import type { Weight, WorkoutLog } from '@/domain/types'
+import type { Weight, WorkoutLog, ProgramContext } from '@/domain/types'
 import type {
   LoggedActivityGroupWithActivities,
   LoggedActivityWithSets,
@@ -12,6 +12,10 @@ interface WorkoutSummaryProps {
   loggedGroups: LoggedActivityGroupWithActivities[]
   exerciseNames: Record<string, string>
   onDone: () => void
+  /** Program name to display in progress section (when programContext exists) */
+  programName?: string
+  /** Block name to display in progress section */
+  blockName?: string
 }
 
 interface ExerciseSummary {
@@ -27,7 +31,11 @@ export function WorkoutSummary({
   loggedGroups,
   exerciseNames,
   onDone,
+  programName,
+  blockName,
 }: WorkoutSummaryProps) {
+  const programContext: ProgramContext | undefined = workoutLog.programContext ?? undefined
+
   const stats = useMemo(() => {
     const allActivities: LoggedActivityWithSets[] = loggedGroups.flatMap((g) => g.activities)
     const allSets = allActivities.flatMap((a) => a.sets)
@@ -78,8 +86,35 @@ export function WorkoutSummary({
       }
     })
 
-    return { durationSeconds, exerciseCount, totalSets, totalVolume, exerciseSummaries }
-  }, [workoutLog, loggedGroups, exerciseNames])
+    // Prescription adherence (only for programmed workouts)
+    let prescribedSetCount = 0
+    let completedPrescribedCount = 0
+    if (programContext) {
+      for (const set of allSets) {
+        if (set.prescribed) {
+          prescribedSetCount++
+          if (set.completed) {
+            completedPrescribedCount++
+          }
+        }
+      }
+    }
+    const adherencePercent =
+      prescribedSetCount > 0
+        ? Math.round((completedPrescribedCount / prescribedSetCount) * 100)
+        : null
+
+    return {
+      durationSeconds,
+      exerciseCount,
+      totalSets,
+      totalVolume,
+      exerciseSummaries,
+      prescribedSetCount,
+      completedPrescribedCount,
+      adherencePercent,
+    }
+  }, [workoutLog, loggedGroups, exerciseNames, programContext])
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-anvil">
@@ -121,6 +156,58 @@ export function WorkoutSummary({
           <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">VOLUME</span>
         </div>
       </div>
+
+      {/* Program progress (programmed workouts only) */}
+      {programContext && (
+        <div className="px-4 pb-6">
+          <span className="mb-2 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+            PROGRAM PROGRESS
+          </span>
+          <div className="space-y-2 bg-surface-iron p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-warm-ash/80">Program</span>
+              <span className="text-sm font-medium text-bone-white">
+                {programName ?? 'Active Program'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-warm-ash/80">Block</span>
+              <span className="text-sm font-medium text-bone-white">{blockName ?? `Block`}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-warm-ash/80">Session</span>
+              <span className="text-sm font-medium text-bone-white">
+                Week {programContext.weekNumber} / {programContext.dayLabel}
+              </span>
+            </div>
+            {stats.adherencePercent != null && (
+              <>
+                <div className="my-1 border-t border-warm-ash/10" />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-warm-ash/80">Prescribed sets</span>
+                  <span className="text-sm tabular-nums text-bone-white">
+                    {stats.completedPrescribedCount} / {stats.prescribedSetCount}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-warm-ash/80">Adherence</span>
+                  <span
+                    className={`text-sm font-medium tabular-nums ${
+                      stats.adherencePercent >= 90
+                        ? 'text-green-400'
+                        : stats.adherencePercent >= 70
+                          ? 'text-yellow-400'
+                          : 'text-red-400'
+                    }`}
+                  >
+                    {stats.adherencePercent}%
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Per-exercise breakdown */}
       {stats.exerciseSummaries.length > 0 && (

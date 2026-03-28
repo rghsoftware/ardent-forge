@@ -2,8 +2,10 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useExercises } from '@/hooks/use-exercises'
+import { useProgramFull } from '@/hooks/use-programs'
 import { WorkoutHeader } from '@/components/workout/workout-header'
 import { ExerciseBlock, type SetRowData } from '@/components/workout/exercise-block'
+import { ProgramContextBanner } from '@/components/workout/program-context-banner'
 import { RestTimerOverlay } from '@/components/workout/rest-timer-overlay'
 import { UndoBanner } from '@/components/workout/undo-banner'
 import { AddExerciseSheet } from '@/components/workout/add-exercise-sheet'
@@ -39,6 +41,7 @@ function ActiveWorkoutPage() {
     workoutLog,
     loggedGroups,
     isActive,
+    isProgrammedWorkout,
     elapsedSeconds,
     restTimer,
     undoAction,
@@ -55,6 +58,23 @@ function ActiveWorkoutPage() {
   } = useActiveWorkout()
 
   const { data: allExercises = [] } = useExercises()
+
+  // Resolve program/block names for the banner when in programmed mode
+  const programId = workoutLog?.programContext?.programId
+  const { data: programFull } = useProgramFull(programId)
+
+  const programBannerProps = useMemo(() => {
+    if (!workoutLog?.programContext) return null
+    const ctx = workoutLog.programContext
+    const programName = programFull?.program.name
+    const block = programFull?.blocks.find((b) => b.id === ctx.blockId)
+    return {
+      programName,
+      blockName: block?.name,
+      weekNumber: ctx.weekNumber,
+      dayLabel: ctx.dayLabel,
+    }
+  }, [workoutLog?.programContext, programFull])
 
   // Exercise ID -> Exercise lookup
   const exerciseMap = useMemo(() => {
@@ -83,6 +103,8 @@ function ActiveWorkoutPage() {
   const [summaryData, setSummaryData] = useState<{
     workoutLog: typeof workoutLog
     loggedGroups: LoggedActivityGroupWithActivities[]
+    programName?: string
+    blockName?: string
   } | null>(null)
 
   // Redirect to home if no active workout and not showing summary
@@ -112,7 +134,12 @@ function ActiveWorkoutPage() {
   const handleFinish = useCallback(async () => {
     if (!workoutLog) return
     // Capture snapshot before store clears it (needed for summary even on success)
-    const snapshot = { workoutLog: { ...workoutLog }, loggedGroups: [...loggedGroups] }
+    const snapshot = {
+      workoutLog: { ...workoutLog },
+      loggedGroups: [...loggedGroups],
+      programName: programBannerProps?.programName,
+      blockName: programBannerProps?.blockName,
+    }
     try {
       await finishWorkout()
       setSummaryData(snapshot)
@@ -120,7 +147,7 @@ function ActiveWorkoutPage() {
     } catch {
       setPageError('Failed to save workout. Please try again.')
     }
-  }, [workoutLog, loggedGroups, finishWorkout])
+  }, [workoutLog, loggedGroups, finishWorkout, programBannerProps])
 
   const handleDiscard = useCallback(async () => {
     try {
@@ -193,6 +220,8 @@ function ActiveWorkoutPage() {
         loggedGroups={summaryData.loggedGroups}
         exerciseNames={exerciseNames}
         onDone={handleSummaryDone}
+        programName={summaryData.programName}
+        blockName={summaryData.blockName}
       />
     )
   }
@@ -225,6 +254,16 @@ function ActiveWorkoutPage() {
         isFinishing={isFinishing}
         canFinish={confirmedSetCount > 0}
       />
+
+      {/* Program context banner for programmed workouts */}
+      {programBannerProps && (
+        <ProgramContextBanner
+          programName={programBannerProps.programName}
+          blockName={programBannerProps.blockName}
+          weekNumber={programBannerProps.weekNumber}
+          dayLabel={programBannerProps.dayLabel}
+        />
+      )}
 
       {/* Exercise blocks */}
       <div className="flex flex-col gap-[1.75rem] px-0 pt-2">
@@ -325,27 +364,57 @@ function ActiveWorkoutPage() {
 
             // Standard strength exercise block
             const confirmedSets = activity.sets.filter((s) => s.completed)
-            const lastConfirmedSet = confirmedSets.length > 0 ? confirmedSets[confirmedSets.length - 1] : undefined
+            const lastConfirmedSet =
+              confirmedSets.length > 0 ? confirmedSets[confirmedSets.length - 1] : undefined
 
             // Build set row data: confirmed sets + one empty row for the next set
             const setRows: SetRowData[] = [
-              ...activity.sets.map((set, idx) => ({
-                id: set.id,
-                setNumber: idx + 1,
-                weight: set.actualWeight?.value?.toString(),
-                reps: set.actualReps?.toString(),
-                confirmed: set.completed,
-              })),
+              ...activity.sets.map((set, idx) => {
+                const prescribedWeight =
+                  set.prescribed?.weight?.value != null
+                    ? `${set.prescribed.weight.value} ${set.prescribed.weight.unit}`
+                    : undefined
+                const prescribedReps =
+                  set.prescribed?.reps != null ? `${set.prescribed.reps}` : undefined
+
+                return {
+                  id: set.id,
+                  setNumber: idx + 1,
+                  weight: set.actualWeight?.value?.toString(),
+                  reps: set.actualReps?.toString(),
+                  confirmed: set.completed,
+                  prescribedWeight,
+                  prescribedReps,
+                }
+              }),
             ]
 
-            // Add an empty row for the next set to log
+            // Add an empty row for the next set to log.
+            // If this is a programmed workout, inherit prescribed values from the
+            // last set so the user sees the same prescription on the input row.
+            const lastSetWithPrescription = [...activity.sets]
+              .reverse()
+              .find((s) => s.prescribed != null)
+            const nextPrescribedWeight =
+              lastSetWithPrescription?.prescribed?.weight?.value != null
+                ? `${lastSetWithPrescription.prescribed.weight.value} ${lastSetWithPrescription.prescribed.weight.unit}`
+                : undefined
+            const nextPrescribedReps =
+              lastSetWithPrescription?.prescribed?.reps != null
+                ? `${lastSetWithPrescription.prescribed.reps}`
+                : undefined
+
             const nextSetNumber = setRows.length + 1
             setRows.push({
               id: `pending-${activity.id}-${nextSetNumber}`,
               setNumber: nextSetNumber,
-              weight: lastConfirmedSet?.actualWeight?.value?.toString(),
-              reps: lastConfirmedSet?.actualReps?.toString(),
+              weight:
+                lastConfirmedSet?.actualWeight?.value?.toString() ?? nextPrescribedWeight?.replace(/\s.*/, ''),
+              reps:
+                lastConfirmedSet?.actualReps?.toString() ?? nextPrescribedReps,
               confirmed: false,
+              prescribedWeight: nextPrescribedWeight,
+              prescribedReps: nextPrescribedReps,
             })
 
             return (
@@ -362,17 +431,19 @@ function ActiveWorkoutPage() {
         )}
       </div>
 
-      {/* Add exercise button */}
-      <div className="px-4 pt-6 pb-4">
-        <Button
-          variant="secondary"
-          size="lg"
-          onClick={() => setShowAddExercise(true)}
-          className="min-h-12 w-full"
-        >
-          + ADD EXERCISE
-        </Button>
-      </div>
+      {/* Add exercise button (hidden for programmed workouts) */}
+      {!isProgrammedWorkout && (
+        <div className="px-4 pt-6 pb-4">
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => setShowAddExercise(true)}
+            className="min-h-12 w-full"
+          >
+            + ADD EXERCISE
+          </Button>
+        </div>
+      )}
 
       {/* Discard button */}
       <div className="px-4 pb-4">

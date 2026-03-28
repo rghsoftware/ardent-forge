@@ -164,5 +164,9 @@ export interface DataAdapter {
     programId: string,
     startDate?: string,
   ): Promise<ProgramActivation>
+  updateActiveProgram(
+    userId: string,
+    updates: { currentBlockOrdinal?: number; currentWeekNumber?: number },
+  ): Promise<ProgramActivation>
   clearActiveProgram(userId: string): Promise<void>
 }

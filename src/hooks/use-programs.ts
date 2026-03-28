@@ -126,6 +126,27 @@ export function useSetActiveProgram() {
   })
 }
 
+export function useUpdateActiveProgram() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      userId,
+      updates,
+    }: {
+      userId: string
+      updates: { currentBlockOrdinal?: number; currentWeekNumber?: number }
+    }) => getAdapter().updateActiveProgram(userId, updates),
+    onError: (err) => {
+      console.error('[programs] Failed to update active program:', err)
+    },
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['active-program', variables.userId] })
+      queryClient.invalidateQueries({ queryKey: ['programs', variables.userId] })
+    },
+  })
+}
+
 export function useClearActiveProgram() {
   const queryClient = useQueryClient()
 

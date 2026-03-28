@@ -7,6 +7,8 @@ interface SetRowData {
   weight?: string
   reps?: string
   confirmed: boolean
+  prescribedWeight?: string
+  prescribedReps?: string
 }
 
 interface ExerciseBlockProps {
@@ -30,6 +32,8 @@ export function ExerciseBlock({
   onConfirmSet,
   isConfirming = false,
 }: ExerciseBlockProps) {
+  const hasPrescribed = sets.some((s) => s.prescribedWeight != null || s.prescribedReps != null)
+
   return (
     <section className="bg-surface-iron" aria-label={`${exerciseName} exercise`}>
       {/* Exercise name header */}
@@ -40,20 +44,37 @@ export function ExerciseBlock({
       </div>
 
       {/* Column headers */}
-      <div className="flex items-center gap-2 px-4 py-1">
-        <span className="w-12 shrink-0 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
-          SET
-        </span>
-        <span className="flex-1 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
-          WEIGHT
-        </span>
-        <span className="flex-1 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
-          REPS
-        </span>
-        <span className="w-14 shrink-0 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
-          STATUS
-        </span>
-      </div>
+      {hasPrescribed ? (
+        <div className="flex items-center gap-2 px-4 py-1">
+          <span className="w-12 shrink-0 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+            SET
+          </span>
+          <span className="flex-1 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+            PRESCRIBED
+          </span>
+          <span className="flex-1 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+            ACTUAL
+          </span>
+          <span className="w-14 shrink-0 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+            STATUS
+          </span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 px-4 py-1">
+          <span className="w-12 shrink-0 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+            SET
+          </span>
+          <span className="flex-1 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+            WEIGHT
+          </span>
+          <span className="flex-1 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+            REPS
+          </span>
+          <span className="w-14 shrink-0 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+            STATUS
+          </span>
+        </div>
+      )}
 
       {/* Set rows */}
       <div className="flex flex-col gap-[0.4rem]">
@@ -65,6 +86,8 @@ export function ExerciseBlock({
             initialReps={set.reps}
             confirmed={set.confirmed}
             isConfirming={isConfirming}
+            prescribedWeight={set.prescribedWeight}
+            prescribedReps={set.prescribedReps}
             onConfirm={(weight, reps, setType) =>
               onConfirmSet(loggedActivityId, set.setNumber, weight, reps, setType)
             }

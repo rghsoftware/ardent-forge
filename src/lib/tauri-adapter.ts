@@ -1369,6 +1369,18 @@ export class TauriAdapter implements DataAdapter {
     return toProgramActivation(toProgramActivationRowFromTauri(row))
   }
 
+  async updateActiveProgram(
+    userId: string,
+    updates: { currentBlockOrdinal?: number; currentWeekNumber?: number },
+  ): Promise<ProgramActivation> {
+    const row = await invokeCommand<TauriProgramActivationResponse>('update_active_program', {
+      user_id: userId,
+      current_block_ordinal: updates.currentBlockOrdinal ?? null,
+      current_week_number: updates.currentWeekNumber ?? null,
+    })
+    return toProgramActivation(toProgramActivationRowFromTauri(row))
+  }
+
   async clearActiveProgram(userId: string): Promise<void> {
     await invokeCommand<void>('clear_active_program', { user_id: userId })
   }

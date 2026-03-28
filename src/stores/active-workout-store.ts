@@ -88,6 +88,7 @@ function _cleanupTauriRestListeners(): void {
 interface ActiveWorkoutActions {
   // Lifecycle
   startWorkout(userId: string, workoutLog: WorkoutLog): void
+  startProgrammedWorkout(workoutLog: WorkoutLog, groups: LoggedActivityGroupWithActivities[]): void
   resumeWorkout(
     workoutLog: WorkoutLog,
     groups: LoggedActivityGroupWithActivities[],
@@ -158,6 +159,28 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       set({
         workoutLog,
         loggedGroups: [],
+        elapsedSeconds: 0,
+        restTimer: null,
+        undoAction: null,
+      })
+    },
+
+    startProgrammedWorkout(workoutLog: WorkoutLog, groups: LoggedActivityGroupWithActivities[]) {
+      const state = get()
+      if (state.workoutLog !== null) {
+        // Invariant L-8: only one active workout at a time
+        throw new Error('Cannot start a new workout while one is already active')
+      }
+
+      // Start the elapsed timer
+      if (_elapsedInterval) clearInterval(_elapsedInterval)
+      _elapsedInterval = setInterval(() => {
+        get().tickElapsed()
+      }, 1000)
+
+      set({
+        workoutLog,
+        loggedGroups: groups,
         elapsedSeconds: 0,
         restTimer: null,
         undoAction: null,
