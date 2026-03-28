@@ -976,6 +976,30 @@ export class SupabaseAdapter implements DataAdapter {
     return toProgramActivation(data as ProgramActivationRow)
   }
 
+  async updateActiveProgram(
+    userId: string,
+    updates: { currentBlockOrdinal?: number; currentWeekNumber?: number },
+  ): Promise<ProgramActivation> {
+    const row: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    }
+    if (updates.currentBlockOrdinal !== undefined) {
+      row.current_block_ordinal = updates.currentBlockOrdinal
+    }
+    if (updates.currentWeekNumber !== undefined) {
+      row.current_week_number = updates.currentWeekNumber
+    }
+
+    const { data, error } = await this.client
+      .from('program_activations')
+      .update(row)
+      .eq('user_id', userId)
+      .select()
+      .single()
+    if (error) throw error
+    return toProgramActivation(data as ProgramActivationRow)
+  }
+
   async clearActiveProgram(userId: string): Promise<void> {
     const { error } = await this.client.from('program_activations').delete().eq('user_id', userId)
     if (error) throw error

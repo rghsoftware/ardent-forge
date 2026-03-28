@@ -88,6 +88,7 @@ function _cleanupTauriRestListeners(): void {
 interface ActiveWorkoutActions {
   // Lifecycle
   startWorkout(userId: string, workoutLog: WorkoutLog): void
+  startProgrammedWorkout(workoutLog: WorkoutLog, groups: LoggedActivityGroupWithActivities[]): void
   resumeWorkout(
     workoutLog: WorkoutLog,
     groups: LoggedActivityGroupWithActivities[],
@@ -106,6 +107,7 @@ interface ActiveWorkoutActions {
 
   // Set management
   confirmSet(loggedActivityId: string, newSet: LoggedSet): void
+  updateSetInPlace(loggedActivityId: string, updatedSet: LoggedSet): void
   undoLastSet(): void
   clearUndo(): void
 
@@ -158,6 +160,32 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       set({
         workoutLog,
         loggedGroups: [],
+        elapsedSeconds: 0,
+        restTimer: null,
+        undoAction: null,
+      })
+    },
+
+    startProgrammedWorkout(workoutLog: WorkoutLog, groups: LoggedActivityGroupWithActivities[]) {
+      if (!workoutLog.programContext) {
+        throw new Error('startProgrammedWorkout requires a WorkoutLog with programContext')
+      }
+
+      const state = get()
+      if (state.workoutLog !== null) {
+        // Invariant L-8: only one active workout at a time
+        throw new Error('Cannot start a new workout while one is already active')
+      }
+
+      // Start the elapsed timer
+      if (_elapsedInterval) clearInterval(_elapsedInterval)
+      _elapsedInterval = setInterval(() => {
+        get().tickElapsed()
+      }, 1000)
+
+      set({
+        workoutLog,
+        loggedGroups: groups,
         elapsedSeconds: 0,
         restTimer: null,
         undoAction: null,
@@ -260,6 +288,30 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
           loggedGroups: updatedGroups,
           undoAction: {
             setId: newSet.id,
+            loggedActivityId,
+            expiresAt: Date.now() + UNDO_WINDOW_MS,
+          },
+        }
+      })
+    },
+
+    updateSetInPlace(loggedActivityId: string, updatedSet: LoggedSet) {
+      set((state) => {
+        const updatedGroups = state.loggedGroups.map((group) => ({
+          ...group,
+          activities: group.activities.map((activity) => {
+            if (activity.id !== loggedActivityId) return activity
+            return {
+              ...activity,
+              sets: activity.sets.map((s) => (s.id === updatedSet.id ? updatedSet : s)),
+            }
+          }),
+        }))
+
+        return {
+          loggedGroups: updatedGroups,
+          undoAction: {
+            setId: updatedSet.id,
             loggedActivityId,
             expiresAt: Date.now() + UNDO_WINDOW_MS,
           },

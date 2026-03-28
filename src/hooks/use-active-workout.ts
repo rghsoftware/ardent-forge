@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   useActiveWorkoutStore,
   selectIsActive,
@@ -16,6 +17,8 @@ import {
 } from '@/hooks/use-workout-logs'
 import { getAdapter } from '@/lib/adapter'
 import { DEFAULT_REST_SECONDS } from '@/lib/workout-utils'
+import { computeNextProgramPosition } from '@/lib/program-advancement'
+import { resolveSessionTemplate } from '@/lib/prescription-resolver'
 import type {
   Exercise,
   GroupType,
@@ -23,6 +26,7 @@ import type {
   WorkoutLog,
   LoggedActivityGroup,
   LoggedActivity,
+  ProgramContext,
 } from '@/domain/types'
 
 /**
@@ -45,9 +49,11 @@ export function useActiveWorkout() {
 
   // Store actions (stable references from Zustand)
   const storeStartWorkout = useActiveWorkoutStore((s) => s.startWorkout)
+  const storeStartProgrammedWorkout = useActiveWorkoutStore((s) => s.startProgrammedWorkout)
   const storeResumeWorkout = useActiveWorkoutStore((s) => s.resumeWorkout)
   const storeAddExercise = useActiveWorkoutStore((s) => s.addExerciseToWorkout)
   const storeConfirmSet = useActiveWorkoutStore((s) => s.confirmSet)
+  const storeUpdateSetInPlace = useActiveWorkoutStore((s) => s.updateSetInPlace)
   const storeUndoLastSet = useActiveWorkoutStore((s) => s.undoLastSet)
   const storeClearUndo = useActiveWorkoutStore((s) => s.clearUndo)
   const storeFinishWorkout = useActiveWorkoutStore((s) => s.finishWorkout)
@@ -55,6 +61,11 @@ export function useActiveWorkout() {
   const storeStartRestTimer = useActiveWorkoutStore((s) => s.startRestTimer)
   const storeSkipRest = useActiveWorkoutStore((s) => s.skipRest)
   const storeAdjustRest = useActiveWorkoutStore((s) => s.adjustRest)
+
+  // ---------------------------------------------------------------------------
+  // TanStack Query client (for manual invalidation after program advancement)
+  // ---------------------------------------------------------------------------
+  const queryClient = useQueryClient()
 
   // ---------------------------------------------------------------------------
   // TanStack Query mutations
@@ -133,6 +144,125 @@ export function useActiveWorkout() {
   )
 
   /**
+   * Start a programmed workout from a session template. Resolves the template
+   * into pre-filled groups/activities/sets, persists everything to DB, and
+   * hydrates the Zustand store.
+   */
+  const startProgrammedWorkout = useCallback(
+    async (
+      userId: string,
+      sessionTemplateId: string,
+      programContext: ProgramContext,
+    ): Promise<WorkoutLog> => {
+      try {
+        const adapter = getAdapter()
+
+        // 1. Fetch the full session template and user profile in parallel
+        const [templateFull, userProfile] = await Promise.all([
+          adapter.getSessionTemplateFull(sessionTemplateId),
+          adapter.getUserProfile(userId),
+        ])
+
+        if (!templateFull) {
+          throw new Error(`Session template not found: ${sessionTemplateId}`)
+        }
+
+        // 2. Resolve the template into pre-filled groups/activities/sets
+        const exerciseMaxes = userProfile?.exerciseMaxes ?? {}
+        const maxReps = userProfile?.maxReps ?? {}
+        const preferredUnit: 'lb' | 'kg' = userProfile?.preferredUnits === 'METRIC' ? 'kg' : 'lb'
+
+        const prefilledGroups = resolveSessionTemplate(
+          templateFull,
+          exerciseMaxes,
+          maxReps,
+          preferredUnit,
+        )
+
+        // 3. Create WorkoutLog in DB with template and program context
+        const now = new Date().toISOString()
+        const log = await createWorkoutLogMutation.mutateAsync({
+          userId,
+          startedAt: now,
+          sessionTemplateId,
+          programContext,
+        })
+
+        // 4. Persist all groups, activities, and sets to DB and build
+        //    the nested structure for the store
+        const nestedGroups: LoggedActivityGroupWithActivities[] = []
+
+        for (const prefilled of prefilledGroups) {
+          // Create the group
+          const savedGroup = await createLoggedActivityGroupMutation.mutateAsync({
+            group: {
+              workoutLogId: log.id,
+              groupType: prefilled.group.groupType,
+              ordinal: prefilled.group.ordinal,
+            },
+            userId,
+          })
+
+          const activitiesWithSets: LoggedActivityWithSets[] = []
+
+          for (const prefilledActivity of prefilled.activities) {
+            // Create the activity
+            const savedActivity = await createLoggedActivityMutation.mutateAsync({
+              activity: {
+                loggedGroupId: savedGroup.id,
+                exerciseId: prefilledActivity.activity.exerciseId,
+                ordinal: prefilledActivity.activity.ordinal,
+                notes: prefilledActivity.activity.notes,
+              },
+              userId,
+            })
+
+            // Create all pre-filled sets for this activity
+            const savedSets: LoggedSet[] = []
+            for (const prefilledSet of prefilledActivity.sets) {
+              const savedSet = await createLoggedSetMutation.mutateAsync({
+                ...prefilledSet,
+                loggedActivityId: savedActivity.id,
+                workoutLogId: log.id,
+                userId,
+              })
+              savedSets.push(savedSet)
+            }
+
+            activitiesWithSets.push({
+              ...savedActivity,
+              sets: savedSets,
+            })
+          }
+
+          nestedGroups.push({
+            ...savedGroup,
+            activities: activitiesWithSets,
+          })
+        }
+
+        // 5. Hydrate the store with the created workout and pre-filled structure
+        storeStartProgrammedWorkout(log, nestedGroups)
+
+        return log
+      } catch (err) {
+        console.error('[workout] Failed to start programmed workout:', {
+          sessionTemplateId,
+          err,
+        })
+        throw err
+      }
+    },
+    [
+      createWorkoutLogMutation,
+      createLoggedActivityGroupMutation,
+      createLoggedActivityMutation,
+      createLoggedSetMutation,
+      storeStartProgrammedWorkout,
+    ],
+  )
+
+  /**
    * Add an exercise to the active workout. Creates LoggedActivityGroup and
    * LoggedActivity in DB, then updates store.
    */
@@ -158,28 +288,16 @@ export function useActiveWorkout() {
           userId,
         })
 
-        // Create the activity in DB (with compensating delete on failure)
-        let savedActivity: LoggedActivity
-        try {
-          const activityData: Omit<LoggedActivity, 'id'> = {
-            loggedGroupId: savedGroup.id,
-            exerciseId: exercise.id,
-            ordinal: 1,
-          }
-          savedActivity = await createLoggedActivityMutation.mutateAsync({
-            activity: activityData,
-            userId,
-          })
-        } catch (activityErr) {
-          // Compensating delete of orphaned group (best effort)
-          try {
-            const adapter = getAdapter()
-            await adapter.deleteWorkoutLog(savedGroup.id)
-          } catch {
-            // Best effort -- the group is orphaned but not critical
-          }
-          throw activityErr
+        // TODO: No deleteLoggedActivityGroup on adapter yet -- orphaned group will be cleaned up by next full workout delete
+        const activityData: Omit<LoggedActivity, 'id'> = {
+          loggedGroupId: savedGroup.id,
+          exerciseId: exercise.id,
+          ordinal: 1,
         }
+        const savedActivity = await createLoggedActivityMutation.mutateAsync({
+          activity: activityData,
+          userId,
+        })
 
         // Update store with DB-assigned IDs
         storeAddExercise(exercise, groupType, savedGroup, savedActivity)
@@ -198,7 +316,9 @@ export function useActiveWorkout() {
   )
 
   /**
-   * Confirm a set. Creates LoggedSet in DB, updates store, starts rest timer.
+   * Confirm a set. For programmed workouts, updates an existing pre-filled set
+   * in the DB; for ad-hoc workouts, creates a new set. Updates store and starts
+   * the rest timer in both cases.
    *
    * Rest timer defaults to DEFAULT_REST_SECONDS (see docs/01-prd-core.md).
    */
@@ -213,13 +333,31 @@ export function useActiveWorkout() {
           throw new Error('No active workout to confirm set in')
         }
 
-        const savedSet = await createLoggedSetMutation.mutateAsync({
-          ...setData,
-          workoutLogId: workoutLog.id,
-          userId: workoutLog.userId,
-        })
+        const currentGroups = useActiveWorkoutStore.getState().loggedGroups
+        const existingSet = findPrefilledSet(currentGroups, loggedActivityId, setData.setNumber)
 
-        storeConfirmSet(loggedActivityId, savedSet)
+        let savedSet: LoggedSet
+        if (existingSet) {
+          // Programmed path: update the existing pre-filled set
+          savedSet = await updateLoggedSetMutation.mutateAsync({
+            ...existingSet,
+            ...setData,
+            id: existingSet.id,
+            completed: true,
+            workoutLogId: workoutLog.id,
+            userId: workoutLog.userId,
+          })
+          storeUpdateSetInPlace(loggedActivityId, savedSet)
+        } else {
+          // Ad-hoc path: create a new set
+          savedSet = await createLoggedSetMutation.mutateAsync({
+            ...setData,
+            workoutLogId: workoutLog.id,
+            userId: workoutLog.userId,
+          })
+          storeConfirmSet(loggedActivityId, savedSet)
+        }
+
         storeStartRestTimer(restSeconds)
 
         return savedSet
@@ -232,7 +370,14 @@ export function useActiveWorkout() {
         throw err
       }
     },
-    [workoutLog, createLoggedSetMutation, storeConfirmSet, storeStartRestTimer],
+    [
+      workoutLog,
+      createLoggedSetMutation,
+      updateLoggedSetMutation,
+      storeConfirmSet,
+      storeUpdateSetInPlace,
+      storeStartRestTimer,
+    ],
   )
 
   /**
@@ -268,9 +413,13 @@ export function useActiveWorkout() {
   }, [workoutLog, undoAction, updateLoggedSetMutation, storeUndoLastSet])
 
   /**
-   * Finish the active workout. Updates WorkoutLog.completedAt in DB, clears store.
+   * Finish the active workout. Updates WorkoutLog.completedAt in DB,
+   * advances program position if this was a programmed workout, then clears store.
+   *
+   * Returns `{ advancementFailed: true }` if the workout was saved but program
+   * advancement could not be completed (non-fatal).
    */
-  const finishWorkout = useCallback(async () => {
+  const finishWorkout = useCallback(async (): Promise<{ advancementFailed?: boolean }> => {
     try {
       if (!workoutLog) {
         throw new Error('No active workout to finish')
@@ -282,7 +431,58 @@ export function useActiveWorkout() {
         completedAt: now,
       })
 
+      // Advance program position if this was a programmed workout
+      // TODO: Currently advances per-session. When multi-session-per-week tracking is implemented,
+      // this function will check if all sessions for the week are complete before advancing.
+      if (workoutLog.programContext) {
+        try {
+          const adapter = getAdapter()
+          const activation = await adapter.getActiveProgram(workoutLog.userId)
+          if (activation) {
+            const programFull = await adapter.getProgramFull(activation.programId)
+            if (programFull) {
+              const result = computeNextProgramPosition(
+                {
+                  currentBlockOrdinal: activation.currentBlockOrdinal,
+                  currentWeekNumber: activation.currentWeekNumber,
+                },
+                programFull.blocks,
+                programFull.blockWeeks,
+              )
+
+              if (result.action === 'program-complete') {
+                await adapter.clearActiveProgram(workoutLog.userId)
+                await queryClient.invalidateQueries({
+                  queryKey: ['active-program', workoutLog.userId],
+                })
+              } else if (result.action === 'advance-week') {
+                await adapter.updateActiveProgram(workoutLog.userId, {
+                  currentBlockOrdinal: activation.currentBlockOrdinal,
+                  currentWeekNumber: result.newWeekNumber,
+                })
+                await queryClient.invalidateQueries({
+                  queryKey: ['active-program', workoutLog.userId],
+                })
+              } else if (result.action === 'advance-block') {
+                await adapter.updateActiveProgram(workoutLog.userId, {
+                  currentBlockOrdinal: result.newBlockOrdinal,
+                  currentWeekNumber: result.newWeekNumber,
+                })
+                await queryClient.invalidateQueries({
+                  queryKey: ['active-program', workoutLog.userId],
+                })
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[finishWorkout] advancement failed:', err)
+          storeFinishWorkout()
+          return { advancementFailed: true }
+        }
+      }
+
       storeFinishWorkout()
+      return {}
     } catch (err) {
       console.error('[workout] Failed to finish workout:', {
         workoutId: workoutLog?.id,
@@ -290,7 +490,7 @@ export function useActiveWorkout() {
       })
       throw err
     }
-  }, [workoutLog, updateWorkoutLogMutation, storeFinishWorkout])
+  }, [workoutLog, updateWorkoutLogMutation, queryClient, storeFinishWorkout])
 
   /**
    * Resume a workout from DB. Loads full workout data and hydrates the store.
@@ -348,6 +548,9 @@ export function useActiveWorkout() {
   // Return value
   // ---------------------------------------------------------------------------
 
+  // Derived state: whether the active workout was started from a program template
+  const isProgrammedWorkout = workoutLog?.programContext != null
+
   return {
     // State
     workoutLog,
@@ -356,9 +559,11 @@ export function useActiveWorkout() {
     restTimer,
     undoAction,
     isActive,
+    isProgrammedWorkout,
 
     // Bridge actions (DB + store)
     startWorkout,
+    startProgrammedWorkout,
     addExercise,
     confirmSet,
     undoSet,
@@ -375,7 +580,7 @@ export function useActiveWorkout() {
     isStarting: createWorkoutLogMutation.isPending,
     isAddingExercise:
       createLoggedActivityGroupMutation.isPending || createLoggedActivityMutation.isPending,
-    isConfirmingSet: createLoggedSetMutation.isPending,
+    isConfirmingSet: createLoggedSetMutation.isPending || updateLoggedSetMutation.isPending,
     isFinishing: updateWorkoutLogMutation.isPending,
     isDiscarding: deleteWorkoutLogMutation.isPending,
   }
@@ -393,6 +598,25 @@ function findSetById(
     for (const activity of group.activities) {
       const found = activity.sets.find((s) => s.id === setId)
       if (found) return found
+    }
+  }
+  return undefined
+}
+
+/**
+ * Find a pre-filled (uncompleted) set for a given activity and set number.
+ * Used by confirmSet to decide whether to UPDATE an existing set (programmed
+ * workout) or CREATE a new one (ad-hoc workout).
+ */
+function findPrefilledSet(
+  loggedGroups: LoggedActivityGroupWithActivities[],
+  loggedActivityId: string,
+  setNumber: number,
+): LoggedSet | undefined {
+  for (const group of loggedGroups) {
+    const activity = group.activities.find((a) => a.id === loggedActivityId)
+    if (activity) {
+      return activity.sets.find((s) => s.setNumber === setNumber && !s.completed)
     }
   }
   return undefined

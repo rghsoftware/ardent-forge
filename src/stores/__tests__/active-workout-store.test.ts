@@ -436,6 +436,71 @@ describe('nested updates', () => {
 })
 
 // ===========================================================================
+// startProgrammedWorkout
+// ===========================================================================
+
+describe('startProgrammedWorkout', () => {
+  it('throws when a workout is already active (L-8 invariant)', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+
+    const programmedWl = makeWorkoutLog({
+      id: 'wl-programmed',
+      programContext: {
+        programId: 'prog-1',
+        blockId: 'block-1',
+        weekNumber: 1,
+        dayLabel: 'Day 1',
+      },
+    })
+    const groups: LoggedActivityGroupWithActivities[] = [makeGroupWithActivities()]
+
+    expect(() => {
+      getState().startProgrammedWorkout(programmedWl, groups)
+    }).toThrow('Cannot start')
+  })
+
+  it('throws when workoutLog has no programContext', () => {
+    const wlNoProgramContext = makeWorkoutLog({ id: 'wl-no-ctx' })
+
+    expect(() => {
+      getState().startProgrammedWorkout(wlNoProgramContext, [])
+    }).toThrow('programContext')
+  })
+
+  it('sets workoutLog and pre-filled groups when valid', () => {
+    vi.useFakeTimers()
+    try {
+      const programmedWl = makeWorkoutLog({
+        id: 'wl-prog',
+        programContext: {
+          programId: 'prog-1',
+          blockId: 'block-1',
+          weekNumber: 2,
+          dayLabel: 'Day A',
+        },
+      })
+      const groups: LoggedActivityGroupWithActivities[] = [makeGroupWithActivities()]
+
+      getState().startProgrammedWorkout(programmedWl, groups)
+
+      const state = getState()
+      expect(state.workoutLog).toEqual(programmedWl)
+      expect(state.loggedGroups).toEqual(groups)
+      expect(state.elapsedSeconds).toBe(0)
+      expect(state.restTimer).toBeNull()
+      expect(state.undoAction).toBeNull()
+
+      // Elapsed timer should tick
+      vi.advanceTimersByTime(2000)
+      expect(getState().elapsedSeconds).toBe(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+// ===========================================================================
 // Cleanup
 // ===========================================================================
 

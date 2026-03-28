@@ -2,8 +2,10 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useExercises } from '@/hooks/use-exercises'
+import { useProgramFull } from '@/hooks/use-programs'
 import { WorkoutHeader } from '@/components/workout/workout-header'
 import { ExerciseBlock, type SetRowData } from '@/components/workout/exercise-block'
+import { ProgramContextBanner } from '@/components/workout/program-context-banner'
 import { RestTimerOverlay } from '@/components/workout/rest-timer-overlay'
 import { UndoBanner } from '@/components/workout/undo-banner'
 import { AddExerciseSheet } from '@/components/workout/add-exercise-sheet'
@@ -39,6 +41,7 @@ function ActiveWorkoutPage() {
     workoutLog,
     loggedGroups,
     isActive,
+    isProgrammedWorkout,
     elapsedSeconds,
     restTimer,
     undoAction,
@@ -55,6 +58,23 @@ function ActiveWorkoutPage() {
   } = useActiveWorkout()
 
   const { data: allExercises = [] } = useExercises()
+
+  // Resolve program/block names for the banner when in programmed mode
+  const programId = workoutLog?.programContext?.programId
+  const { data: programFull } = useProgramFull(programId)
+
+  const programBannerProps = useMemo(() => {
+    if (!workoutLog?.programContext) return null
+    const ctx = workoutLog.programContext
+    const programName = programFull?.program.name
+    const block = programFull?.blocks.find((b) => b.id === ctx.blockId)
+    return {
+      programName,
+      blockName: block?.name,
+      weekNumber: ctx.weekNumber,
+      dayLabel: ctx.dayLabel,
+    }
+  }, [workoutLog?.programContext, programFull])
 
   // Exercise ID -> Exercise lookup
   const exerciseMap = useMemo(() => {
@@ -83,6 +103,8 @@ function ActiveWorkoutPage() {
   const [summaryData, setSummaryData] = useState<{
     workoutLog: typeof workoutLog
     loggedGroups: LoggedActivityGroupWithActivities[]
+    programName?: string
+    blockName?: string
   } | null>(null)
 
   // Redirect to home if no active workout and not showing summary
@@ -112,29 +134,46 @@ function ActiveWorkoutPage() {
   const handleFinish = useCallback(async () => {
     if (!workoutLog) return
     // Capture snapshot before store clears it (needed for summary even on success)
-    const snapshot = { workoutLog: { ...workoutLog }, loggedGroups: [...loggedGroups] }
+    const snapshot = {
+      workoutLog: { ...workoutLog },
+      loggedGroups: [...loggedGroups],
+      programName: programBannerProps?.programName,
+      blockName: programBannerProps?.blockName,
+    }
     try {
-      await finishWorkout()
+      const result = await finishWorkout()
       setSummaryData(snapshot)
       setShowSummary(true)
-    } catch {
+      if (result?.advancementFailed) {
+        setPageError(
+          'Workout saved, but program position could not update. Check your connection.',
+        )
+      }
+    } catch (err) {
+      console.error('[workout-page] handleFinish:', err)
       setPageError('Failed to save workout. Please try again.')
     }
-  }, [workoutLog, loggedGroups, finishWorkout])
+  }, [workoutLog, loggedGroups, finishWorkout, programBannerProps])
 
   const handleDiscard = useCallback(async () => {
     try {
       await discardWorkout()
       setShowDiscardDialog(false)
       navigate({ to: '/' })
-    } catch {
+    } catch (err) {
+      console.error('[workout-page] handleDiscard:', err)
       setPageError('Failed to discard workout.')
     }
   }, [discardWorkout, navigate])
 
   const handleAddExercise = useCallback(
     async (exercise: Exercise, groupType: GroupType) => {
-      await addExercise(exercise, groupType)
+      try {
+        await addExercise(exercise, groupType)
+      } catch (err) {
+        console.error('[workout-page] handleAddExercise:', err)
+        setPageError('Failed to add exercise. Please try again.')
+      }
     },
     [addExercise],
   )
@@ -152,26 +191,35 @@ function ActiveWorkoutPage() {
       const weightValue = parseNumericInput(weight)
       const repsValue = parseNumericInput(reps)
 
+      // Determine unit from prescription or default
+      const existingSet = loggedGroups
+        .flatMap((g) => g.activities)
+        .find((a) => a.id === loggedActivityId)
+        ?.sets.find((s) => s.setNumber === setNumber)
+      const unit = existingSet?.prescribed?.weight?.unit ?? 'lb'
+
       try {
         await confirmSet(loggedActivityId, {
           loggedActivityId,
           setNumber,
           setType,
           completed: true,
-          actualWeight: weightValue ? { value: weightValue, unit: 'lb' } : undefined,
+          actualWeight: weightValue ? { value: weightValue, unit } : undefined,
           actualReps: repsValue ? Math.round(repsValue) : undefined,
         })
-      } catch {
+      } catch (err) {
+        console.error('[workout-page] handleConfirmSet:', err)
         setPageError('Failed to save set.')
       }
     },
-    [workoutLog, confirmSet],
+    [workoutLog, loggedGroups, confirmSet],
   )
 
   const handleUndoSet = useCallback(async () => {
     try {
       await undoSet()
-    } catch {
+    } catch (err) {
+      console.error('[workout-page] handleUndoSet:', err)
       setPageError('Failed to undo. The set was already saved.')
     }
   }, [undoSet])
@@ -193,6 +241,8 @@ function ActiveWorkoutPage() {
         loggedGroups={summaryData.loggedGroups}
         exerciseNames={exerciseNames}
         onDone={handleSummaryDone}
+        programName={summaryData.programName}
+        blockName={summaryData.blockName}
       />
     )
   }
@@ -226,6 +276,16 @@ function ActiveWorkoutPage() {
         canFinish={confirmedSetCount > 0}
       />
 
+      {/* Program context banner for programmed workouts */}
+      {programBannerProps && (
+        <ProgramContextBanner
+          programName={programBannerProps.programName}
+          blockName={programBannerProps.blockName}
+          weekNumber={programBannerProps.weekNumber}
+          dayLabel={programBannerProps.dayLabel}
+        />
+      )}
+
       {/* Exercise blocks */}
       <div className="flex flex-col gap-[1.75rem] px-0 pt-2">
         {loggedGroups.map((group) =>
@@ -252,7 +312,8 @@ function ActiveWorkoutPage() {
                           : undefined,
                         actualHeartRate: data.heartRate ? parseInt(data.heartRate, 10) : undefined,
                       })
-                    } catch {
+                    } catch (err) {
+                      console.error('[workout-page] cardio confirmSet:', err)
                       setPageError('Failed to save cardio session.')
                     }
                   }}
@@ -283,7 +344,8 @@ function ActiveWorkoutPage() {
                           ? { value: parseFloat(data.elevation), unit: 'm' }
                           : undefined,
                       })
-                    } catch {
+                    } catch (err) {
+                      console.error('[workout-page] ruck confirmSet:', err)
                       setPageError('Failed to save ruck session.')
                     }
                   }}
@@ -325,7 +387,8 @@ function ActiveWorkoutPage() {
 
             // Standard strength exercise block
             const confirmedSets = activity.sets.filter((s) => s.completed)
-            const lastConfirmedSet = confirmedSets.length > 0 ? confirmedSets[confirmedSets.length - 1] : undefined
+            const lastConfirmedSet =
+              confirmedSets.length > 0 ? confirmedSets[confirmedSets.length - 1] : undefined
 
             // Build set row data: confirmed sets + one empty row for the next set
             const setRows: SetRowData[] = [
@@ -335,17 +398,35 @@ function ActiveWorkoutPage() {
                 weight: set.actualWeight?.value?.toString(),
                 reps: set.actualReps?.toString(),
                 confirmed: set.completed,
+                prescribedWeight: set.prescribed?.weight ?? undefined,
+                prescribedReps: set.prescribed?.reps ?? undefined,
               })),
             ]
 
-            // Add an empty row for the next set to log
+            // Add an empty row for the next set to log.
+            // If this is a programmed workout, inherit prescribed values from the
+            // last set so the user sees the same prescription on the input row.
+            const lastSetWithPrescription = [...activity.sets]
+              .reverse()
+              .find((s) => s.prescribed != null)
+            const nextPrescribedWeight =
+              lastSetWithPrescription?.prescribed?.weight ?? undefined
+            const nextPrescribedReps =
+              lastSetWithPrescription?.prescribed?.reps ?? undefined
+
             const nextSetNumber = setRows.length + 1
             setRows.push({
               id: `pending-${activity.id}-${nextSetNumber}`,
               setNumber: nextSetNumber,
-              weight: lastConfirmedSet?.actualWeight?.value?.toString(),
-              reps: lastConfirmedSet?.actualReps?.toString(),
+              weight:
+                lastConfirmedSet?.actualWeight?.value?.toString()
+                ?? nextPrescribedWeight?.value?.toString(),
+              reps:
+                lastConfirmedSet?.actualReps?.toString()
+                ?? (nextPrescribedReps != null ? String(nextPrescribedReps) : undefined),
               confirmed: false,
+              prescribedWeight: nextPrescribedWeight,
+              prescribedReps: nextPrescribedReps,
             })
 
             return (
@@ -362,17 +443,19 @@ function ActiveWorkoutPage() {
         )}
       </div>
 
-      {/* Add exercise button */}
-      <div className="px-4 pt-6 pb-4">
-        <Button
-          variant="secondary"
-          size="lg"
-          onClick={() => setShowAddExercise(true)}
-          className="min-h-12 w-full"
-        >
-          + ADD EXERCISE
-        </Button>
-      </div>
+      {/* Add exercise button (hidden for programmed workouts) */}
+      {!isProgrammedWorkout && (
+        <div className="px-4 pt-6 pb-4">
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={() => setShowAddExercise(true)}
+            className="min-h-12 w-full"
+          >
+            + ADD EXERCISE
+          </Button>
+        </div>
+      )}
 
       {/* Discard button */}
       <div className="px-4 pb-4">

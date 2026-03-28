@@ -1,24 +1,93 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuth } from '@/lib/auth'
 import { useWorkoutLogs } from '@/hooks/use-workout-logs'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
+import { useActiveProgram, useProgramFull } from '@/hooks/use-programs'
 import { CrashRecoveryDialog } from '@/components/workout/crash-recovery-dialog'
+import { ProgramSessionCard } from '@/components/today/program-session-card'
 import { Button } from '@/components/ui/button'
 import { formatDuration } from '@/lib/format-duration'
 import type { WorkoutLog } from '@/domain/types'
+import type { ProgramFull } from '@/lib/data-adapter'
 
 export const Route = createFileRoute('/_authenticated/')({
   component: TodayPage,
 })
 
+// ---------------------------------------------------------------------------
+// Helpers -- resolve today's session from the program structure
+// ---------------------------------------------------------------------------
+
+type TodaySessionResult = {
+  block: ProgramFull['blocks'][number] | null
+  week: ProgramFull['blockWeeks'][number] | null
+  session: ProgramFull['scheduledSessions'][number] | null
+  error?: 'block-not-found' | 'week-not-found'
+}
+
+function resolveTodaySession(
+  programFull: ProgramFull,
+  blockOrdinal: number,
+  weekNumber: number,
+): TodaySessionResult {
+  const todayDow = new Date().getDay() // 0=Sun .. 6=Sat
+
+  // Find the current block by ordinal
+  const currentBlock = programFull.blocks.find((b) => b.ordinal === blockOrdinal)
+  if (!currentBlock) {
+    return { block: null, week: null, session: null, error: 'block-not-found' }
+  }
+
+  // Find the current week within that block
+  const currentWeek = programFull.blockWeeks.find(
+    (bw) => bw.blockId === currentBlock.id && bw.weekNumber === weekNumber,
+  )
+  if (!currentWeek) {
+    return { block: currentBlock, week: null, session: null, error: 'week-not-found' }
+  }
+
+  // Find a scheduled session for today's day of week
+  const todaySession = programFull.scheduledSessions.find(
+    (ss) => ss.blockWeekId === currentWeek.id && ss.dayOfWeek === todayDow,
+  )
+
+  // No error -- if no session, it is a genuine rest day
+  return {
+    block: currentBlock,
+    week: currentWeek,
+    session: todaySession ?? null,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// TodayPage
+// ---------------------------------------------------------------------------
+
 function TodayPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { startWorkout, isStarting } = useActiveWorkout()
+  const { startWorkout, startProgrammedWorkout, isStarting } = useActiveWorkout()
   const userId = user?.id ?? ''
   const { data: recentWorkouts = [] } = useWorkoutLogs(userId, 5)
   const [startError, setStartError] = useState<string | null>(null)
+
+  // Active program context
+  const { data: activation, isLoading: isLoadingActivation } = useActiveProgram(userId || undefined)
+  const { data: programFull, isLoading: isLoadingProgram } = useProgramFull(activation?.programId)
+
+  const isProgramLoading = isLoadingActivation || (!!activation && isLoadingProgram)
+  const hasActiveProgram = !!activation && !!programFull
+
+  // Resolve today's session from the program structure
+  const todayContext = useMemo(() => {
+    if (!programFull || !activation) return null
+    return resolveTodaySession(
+      programFull,
+      activation.currentBlockOrdinal,
+      activation.currentWeekNumber,
+    )
+  }, [programFull, activation])
 
   // Filter to only completed workouts for the recent list
   const completedWorkouts = recentWorkouts.filter((w) => !!w.completedAt)
@@ -29,31 +98,105 @@ function TodayPage() {
     try {
       const workoutLog = await startWorkout(userId)
       navigate({ to: '/log/$workoutId', params: { workoutId: workoutLog.id } })
-    } catch {
+    } catch (err) {
+      console.error('[today-page] handleStartWorkout:', err)
       setStartError('Failed to start workout. Check your connection and try again.')
     }
   }
+
+  const handleStartProgrammedSession = async () => {
+    if (
+      !userId ||
+      !todayContext?.session?.sessionTemplateId ||
+      !activation ||
+      !todayContext.block
+    ) {
+      setStartError('Unable to start session. Program data may be incomplete.')
+      return
+    }
+    setStartError(null)
+    try {
+      const workoutLog = await startProgrammedWorkout(
+        userId,
+        todayContext.session.sessionTemplateId,
+        {
+          programId: activation.programId,
+          blockId: todayContext.block.id,
+          weekNumber: activation.currentWeekNumber,
+          dayLabel: todayContext.session.dayLabel,
+        },
+      )
+      navigate({ to: '/log/$workoutId', params: { workoutId: workoutLog.id } })
+    } catch (err) {
+      console.error('[today-page] handleStartProgrammedSession:', err)
+      setStartError('Failed to start session. Check your connection and try again.')
+    }
+  }
+
+  // Compute total weeks for current block
+  const totalWeeksInBlock = useMemo(() => {
+    if (!todayContext?.block?.id || !programFull) return 0
+    return programFull.blockWeeks.filter((bw) => bw.blockId === todayContext.block!.id).length
+  }, [todayContext, programFull])
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-anvil p-4 gap-6">
       {/* Crash recovery check */}
       <CrashRecoveryDialog userId={userId} />
 
-      {/* Hero CTA */}
-      <div className="mt-8 flex flex-col gap-2">
-        <Button
-          variant="molten"
-          className="w-full h-16 text-base uppercase tracking-widest font-medium"
-          onClick={handleStartWorkout}
-          disabled={isStarting || !userId}
+      {/* Data mismatch error banner */}
+      {todayContext?.error && (
+        <div
+          role="alert"
+          className="mt-8 bg-amber-900/30 border border-amber-600/40 px-4 py-3 text-xs text-amber-300 uppercase tracking-wider text-center"
         >
-          {isStarting ? 'STARTING...' : 'EXECUTE WORKOUT'}
-        </Button>
-        {startError && (
-          <p className="text-xs text-warning-flare text-center uppercase tracking-wider">
-            {startError}
-          </p>
-        )}
+          Your program data may be out of sync. Try reactivating your program.
+        </div>
+      )}
+
+      {/* Active program context card */}
+      {(isProgramLoading || hasActiveProgram) && !todayContext?.error && (
+        <div className="mt-8">
+          <ProgramSessionCard
+            programName={programFull?.program.name ?? ''}
+            blockName={todayContext?.block?.name ?? ''}
+            weekNumber={activation?.currentWeekNumber ?? 0}
+            totalWeeks={totalWeeksInBlock}
+            sessionName={todayContext?.session?.dayLabel}
+            sessionType={todayContext?.session?.sessionType}
+            onStartSession={handleStartProgrammedSession}
+            isLoading={isProgramLoading}
+            isRestDay={hasActiveProgram && !todayContext?.session && !todayContext?.error}
+          />
+        </div>
+      )}
+
+      {/* Ad-hoc workout CTA */}
+      <div className={hasActiveProgram ? '' : 'mt-8'}>
+        <div className="flex flex-col gap-2">
+          {hasActiveProgram && (
+            <span className="text-xs text-warm-ash/40 uppercase tracking-wider text-center">
+              OR
+            </span>
+          )}
+          <Button
+            variant={hasActiveProgram ? 'outline' : 'molten'}
+            className={
+              hasActiveProgram
+                ? 'w-full h-12 text-xs uppercase tracking-widest font-medium'
+                : 'w-full h-16 text-base uppercase tracking-widest font-medium'
+            }
+            onClick={handleStartWorkout}
+            disabled={isStarting || !userId}
+          >
+            {isStarting ? 'STARTING...' : hasActiveProgram ? 'AD-HOC WORKOUT' : 'EXECUTE WORKOUT'}
+          </Button>
+          {startError && (
+            <p className="text-xs text-warning-flare text-center uppercase tracking-wider">
+              {startError}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Recent workouts */}
@@ -70,8 +213,8 @@ function TodayPage() {
         </section>
       )}
 
-      {/* Empty state */}
-      {completedWorkouts.length === 0 && (
+      {/* Empty state -- only show when no program and no history */}
+      {completedWorkouts.length === 0 && !hasActiveProgram && !isProgramLoading && (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center text-warm-ash/40">
           <span
             className="material-symbols-outlined text-5xl"

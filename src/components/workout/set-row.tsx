@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Icon } from '@/components/icon'
+import { computeVariance } from '@/lib/set-variance'
 import type { SetType } from '@/domain/types'
 
 const SET_TYPES: SetType[] = ['WORKING', 'WARMUP', 'DROP', 'AMRAP', 'PEAK', 'BACKOFF']
@@ -12,6 +13,8 @@ interface SetRowProps {
   onConfirm: (weight: string, reps: string, setType: SetType) => void
   confirmed: boolean
   isConfirming?: boolean
+  prescribedWeight?: { value: number; unit: string }
+  prescribedReps?: number
 }
 
 export function SetRow({
@@ -21,7 +24,11 @@ export function SetRow({
   onConfirm,
   confirmed,
   isConfirming = false,
+  prescribedWeight,
+  prescribedReps,
 }: SetRowProps) {
+  const hasPrescription = prescribedWeight != null || prescribedReps != null
+
   const [weight, setWeight] = useState(initialWeight)
   const [reps, setReps] = useState(initialReps)
   const [setType, setSetType] = useState<SetType>('WORKING')
@@ -39,6 +46,25 @@ export function SetRow({
     if (confirmed || isConfirming) return
     onConfirm(weight, reps, setType)
   }, [confirmed, isConfirming, weight, reps, setType, onConfirm])
+
+  // Prescribed label text (e.g. "120 lb x 5")
+  const prescribedLabel = hasPrescription
+    ? [
+        prescribedWeight ? `${prescribedWeight.value} ${prescribedWeight.unit}` : null,
+        prescribedReps != null ? String(prescribedReps) : null,
+      ]
+        .filter(Boolean)
+        .join(' x ')
+    : null
+
+  // Variance calculation for confirmed sets
+  const prescribedWeightStr = prescribedWeight
+    ? `${prescribedWeight.value} ${prescribedWeight.unit}`
+    : undefined
+  const prescribedRepsStr = prescribedReps != null ? String(prescribedReps) : undefined
+  const variance = confirmed
+    ? computeVariance(prescribedWeightStr, prescribedRepsStr, weight, reps)
+    : null
 
   return (
     <div className="flex items-center gap-2 px-4 py-1">
@@ -83,38 +109,82 @@ export function SetRow({
         )}
       </div>
 
-      {/* Weight input */}
-      <div className="flex-1">
-        <input
-          type="text"
-          inputMode="decimal"
-          value={weight}
-          onChange={(e) => setWeight(e.target.value)}
-          disabled={confirmed}
-          placeholder="--"
-          className="w-full border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
-          aria-label={`Weight for set ${setNumber}`}
-        />
-      </div>
+      {hasPrescription ? (
+        <>
+          {/* Prescribed column */}
+          <div className="flex flex-1 flex-col items-center justify-center">
+            <span className="text-[10px] uppercase tracking-wider text-warm-ash/40">
+              {prescribedLabel}
+            </span>
+          </div>
 
-      {/* Reps input */}
-      <div className="flex-1">
-        <input
-          type="text"
-          inputMode="numeric"
-          value={reps}
-          onChange={(e) => setReps(e.target.value)}
-          disabled={confirmed}
-          placeholder="--"
-          className="w-full border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
-          aria-label={`Reps for set ${setNumber}`}
-        />
-      </div>
+          {/* Actual column -- weight x reps inline */}
+          <div className="flex flex-1 items-center gap-1">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              disabled={confirmed}
+              placeholder="--"
+              className="w-1/2 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
+              aria-label={`Actual weight for set ${setNumber}`}
+            />
+            <span className="text-[10px] text-warm-ash/40">x</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={reps}
+              onChange={(e) => setReps(e.target.value)}
+              disabled={confirmed}
+              placeholder="--"
+              className="w-1/2 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
+              aria-label={`Actual reps for set ${setNumber}`}
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Weight input -- ad-hoc path (unchanged) */}
+          <div className="flex-1">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              disabled={confirmed}
+              placeholder="--"
+              className="w-full border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
+              aria-label={`Weight for set ${setNumber}`}
+            />
+          </div>
+
+          {/* Reps input -- ad-hoc path (unchanged) */}
+          <div className="flex-1">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={reps}
+              onChange={(e) => setReps(e.target.value)}
+              disabled={confirmed}
+              placeholder="--"
+              className="w-full border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
+              aria-label={`Reps for set ${setNumber}`}
+            />
+          </div>
+        </>
+      )}
 
       {/* Confirm / Status */}
       <div className="flex w-14 shrink-0 items-center justify-center">
         {confirmed ? (
-          <Badge variant="complete">DONE</Badge>
+          variance === 'met' ? (
+            <Icon name="check_circle" size={22} className="text-green-500" />
+          ) : variance === 'under' ? (
+            <Icon name="arrow_downward" size={22} className="text-amber-500" />
+          ) : (
+            <Badge variant="complete">DONE</Badge>
+          )
         ) : (
           <button
             type="button"
