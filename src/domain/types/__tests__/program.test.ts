@@ -6,6 +6,7 @@ import {
   blockSchema,
   blockWeekSchema,
   scheduledSessionSchema,
+  programActivationSchema,
 } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
@@ -46,6 +47,17 @@ const baseScheduledSession = {
   dayLabel: 'Monday',
   sessionType: 'STRENGTH',
   sessionTemplateId: 'st-1',
+}
+
+const baseProgramActivation = {
+  id: 'pa-1',
+  createdAt: '2025-01-01T00:00:00Z',
+  updatedAt: '2025-01-01T00:00:00Z',
+  userId: 'user-1',
+  programId: 'prog-1',
+  currentBlockOrdinal: 1,
+  currentWeekNumber: 1,
+  startDate: '2025-01-06',
 }
 
 // ---------------------------------------------------------------------------
@@ -154,6 +166,11 @@ describe('Program schema', () => {
     const bad = { ...baseProgram, source: 'PIRATED' }
     expect(programSchema.safeParse(bad).success).toBe(false)
   })
+
+  it('rejects name longer than 200 characters', () => {
+    const bad = { ...baseProgram, name: 'A'.repeat(201) }
+    expect(programSchema.safeParse(bad).success).toBe(false)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -197,6 +214,11 @@ describe('Block schema (P-1)', () => {
 
   it('rejects non-integer durationWeeks', () => {
     const bad = { ...baseBlock, durationWeeks: 3.5 }
+    expect(blockSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects name longer than 200 characters', () => {
+    const bad = { ...baseBlock, name: 'B'.repeat(201) }
     expect(blockSchema.safeParse(bad).success).toBe(false)
   })
 })
@@ -268,5 +290,65 @@ describe('ScheduledSession schema', () => {
   it('accepts optional notes', () => {
     const withNotes = { ...baseScheduledSession, notes: 'Deload week' }
     expect(scheduledSessionSchema.safeParse(withNotes).success).toBe(true)
+  })
+
+  it('rejects empty dayLabel (z.string().min(1))', () => {
+    const bad = { ...baseScheduledSession, dayLabel: '' }
+    expect(scheduledSessionSchema.safeParse(bad).success).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// ProgramActivation schema
+// ---------------------------------------------------------------------------
+
+describe('ProgramActivation schema', () => {
+  it('accepts valid activation', () => {
+    expect(programActivationSchema.safeParse(baseProgramActivation).success).toBe(true)
+  })
+
+  it('rejects zero currentBlockOrdinal (must be positive)', () => {
+    const bad = { ...baseProgramActivation, currentBlockOrdinal: 0 }
+    expect(programActivationSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects negative currentBlockOrdinal', () => {
+    const bad = { ...baseProgramActivation, currentBlockOrdinal: -1 }
+    expect(programActivationSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects zero currentWeekNumber (must be positive)', () => {
+    const bad = { ...baseProgramActivation, currentWeekNumber: 0 }
+    expect(programActivationSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects negative currentWeekNumber', () => {
+    const bad = { ...baseProgramActivation, currentWeekNumber: -1 }
+    expect(programActivationSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects missing userId', () => {
+    const { userId: _, ...noUserId } = baseProgramActivation as Record<string, unknown>
+    expect(programActivationSchema.safeParse(noUserId).success).toBe(false)
+  })
+
+  it('rejects missing programId', () => {
+    const { programId: _, ...noProgramId } = baseProgramActivation as Record<string, unknown>
+    expect(programActivationSchema.safeParse(noProgramId).success).toBe(false)
+  })
+
+  it('rejects malformed startDate "not-a-date"', () => {
+    const bad = { ...baseProgramActivation, startDate: 'not-a-date' }
+    expect(programActivationSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects malformed startDate "01-01-2025" (wrong format)', () => {
+    const bad = { ...baseProgramActivation, startDate: '01-01-2025' }
+    expect(programActivationSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('accepts valid YYYY-MM-DD startDate "2025-06-15"', () => {
+    const valid = { ...baseProgramActivation, startDate: '2025-06-15' }
+    expect(programActivationSchema.safeParse(valid).success).toBe(true)
   })
 })

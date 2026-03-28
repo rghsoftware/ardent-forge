@@ -15,8 +15,8 @@ type ProgramSeed = {
  * Tactical Barbell Operator I/A -- 3-Week Cluster
  *
  * The Operator template is the core TB strength program.
- * Uses 3 strength sessions per week with a rotating 3-week progression.
- * Strength days: Monday (A), Wednesday (B), Friday (A) week 1, etc.
+ * Uses 3 sessions per week: 2 strength (Monday, Friday) and 1 conditioning (Wednesday),
+ * with a 3-week block progression.
  */
 export function createTBOperator3Week(
   userId: string,

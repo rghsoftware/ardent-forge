@@ -99,6 +99,7 @@ export function useDeleteProgram() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['programs'] })
+      queryClient.invalidateQueries({ queryKey: ['active-program'] })
     },
   })
 }

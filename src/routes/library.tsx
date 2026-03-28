@@ -110,7 +110,9 @@ function LibraryPage() {
         <button
           type="button"
           role="tab"
+          id="tab-templates"
           aria-selected={activeTab === 'templates'}
+          aria-controls="tabpanel-templates"
           onClick={() => setActiveTab('templates')}
           className={`min-h-12 px-4 pb-3 text-xs uppercase tracking-wider transition-colors ${
             activeTab === 'templates'
@@ -123,7 +125,9 @@ function LibraryPage() {
         <button
           type="button"
           role="tab"
+          id="tab-programs"
           aria-selected={activeTab === 'programs'}
+          aria-controls="tabpanel-programs"
           onClick={() => setActiveTab('programs')}
           className={`min-h-12 px-4 pb-3 text-xs uppercase tracking-wider transition-colors ${
             activeTab === 'programs'
@@ -137,46 +141,50 @@ function LibraryPage() {
 
       {/* Tab content */}
       {activeTab === 'templates' ? (
-        <div className="flex flex-col gap-2 px-4 pt-4">
-          {isLoading ? (
-            <>
-              <Skeleton className="h-16 w-full bg-surface-iron" />
-              <Skeleton className="h-16 w-full bg-surface-iron" />
-              <Skeleton className="h-16 w-full bg-surface-iron" />
-            </>
-          ) : error ? (
-            <div className="flex flex-col items-center gap-3 py-16">
-              <Icon name="error" size={48} className="text-destructive/60" />
-              <p className="text-center text-xs uppercase tracking-wider text-destructive">
-                FAILED TO LOAD TEMPLATES
-              </p>
-              <p className="text-center text-xs text-warm-ash/40">
-                {error instanceof Error ? error.message : 'An unexpected error occurred.'}
-              </p>
-            </div>
-          ) : templates.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-16">
-              <Icon name="description" size={48} className="text-warm-ash/40" />
-              <p className="text-center text-xs uppercase tracking-wider text-warm-ash/60">
-                NO TEMPLATES YET
-              </p>
-              <p className="text-center text-xs text-warm-ash/40">
-                Create your first session template.
-              </p>
-            </div>
-          ) : (
-            templates.map((template) => (
-              <SessionTemplateCard
-                key={template.id}
-                template={template}
-                onEdit={() => handleEdit(template.id)}
-                onDelete={() => handleDelete(template.id)}
-              />
-            ))
-          )}
+        <div role="tabpanel" id="tabpanel-templates" aria-labelledby="tab-templates">
+          <div className="flex flex-col gap-2 px-4 pt-4">
+            {isLoading ? (
+              <>
+                <Skeleton className="h-16 w-full bg-surface-iron" />
+                <Skeleton className="h-16 w-full bg-surface-iron" />
+                <Skeleton className="h-16 w-full bg-surface-iron" />
+              </>
+            ) : error ? (
+              <div className="flex flex-col items-center gap-3 py-16">
+                <Icon name="error" size={48} className="text-destructive/60" />
+                <p className="text-center text-xs uppercase tracking-wider text-destructive">
+                  FAILED TO LOAD TEMPLATES
+                </p>
+                <p className="text-center text-xs text-warm-ash/40">
+                  {error instanceof Error ? error.message : 'An unexpected error occurred.'}
+                </p>
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-16">
+                <Icon name="description" size={48} className="text-warm-ash/40" />
+                <p className="text-center text-xs uppercase tracking-wider text-warm-ash/60">
+                  NO TEMPLATES YET
+                </p>
+                <p className="text-center text-xs text-warm-ash/40">
+                  Create your first session template.
+                </p>
+              </div>
+            ) : (
+              templates.map((template) => (
+                <SessionTemplateCard
+                  key={template.id}
+                  template={template}
+                  onEdit={() => handleEdit(template.id)}
+                  onDelete={() => handleDelete(template.id)}
+                />
+              ))
+            )}
+          </div>
         </div>
       ) : (
-        <ProgramList userId={userId || undefined} />
+        <div role="tabpanel" id="tabpanel-programs" aria-labelledby="tab-programs">
+          <ProgramList userId={userId || undefined} />
+        </div>
       )}
 
       {/* Template form sheet */}
@@ -228,7 +236,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 function ProgramList({ userId }: { userId: string | undefined }) {
   const { data: programs = [], isLoading, error } = usePrograms(userId)
-  const { data: activeProgram } = useActiveProgram(userId)
+  const { data: activeProgram, error: activeProgramError } = useActiveProgram(userId)
   const setActiveMutation = useSetActiveProgram()
   const clearActiveMutation = useClearActiveProgram()
   const deleteProgramMutation = useDeleteProgram()
@@ -254,8 +262,8 @@ function ProgramList({ userId }: { userId: string | undefined }) {
     }
   }
 
-  const handleEdit = (id: string) => {
-    console.log('[library] Edit program:', id)
+  const handleEdit = (_id: string) => {
+    // no-op: edit is not yet implemented; button is visually disabled
   }
 
   const handleDelete = async (id: string) => {
@@ -306,6 +314,11 @@ function ProgramList({ userId }: { userId: string | undefined }) {
 
   return (
     <>
+      {activeProgramError && (
+        <div className="mx-4 mt-4 rounded bg-warning-flare/10 px-3 py-2 text-xs text-warning-flare">
+          Could not load active program status.
+        </div>
+      )}
       <div className="flex flex-col gap-2 px-4 pt-4">
         {programs.map((program) => {
           const isActive = activeProgram?.programId === program.id
@@ -346,15 +359,16 @@ function ProgramList({ userId }: { userId: string | undefined }) {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => {
+              disabled={deleteProgramMutation.isPending}
+              onClick={async () => {
                 if (confirmDeleteId) {
-                  handleDelete(confirmDeleteId)
+                  await handleDelete(confirmDeleteId)
+                  setConfirmDeleteId(null)
                 }
-                setConfirmDeleteId(null)
               }}
               className="min-h-12 text-xs uppercase tracking-wider"
             >
-              DELETE
+              {deleteProgramMutation.isPending ? 'DELETING...' : 'DELETE'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -391,8 +405,9 @@ function ProgramCard({
         <button
           type="button"
           onClick={onEdit}
-          className="flex flex-1 flex-col gap-1 text-left"
+          className="flex flex-1 flex-col gap-1 text-left opacity-50 pointer-events-none"
           aria-label={`Edit program ${program.name}`}
+          aria-disabled="true"
         >
           <span className="font-display text-sm font-medium text-bone-white">{program.name}</span>
           <div className="flex items-center gap-2">

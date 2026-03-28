@@ -871,9 +871,10 @@ export class SupabaseAdapter implements DataAdapter {
       }>
     }>,
   ): Promise<ProgramFull> {
+    const { user_id: _, ...updateFields } = fromProgram(program)
     const { error: pError } = await this.client
       .from('programs')
-      .update({ ...fromProgram(program) })
+      .update(updateFields)
       .eq('id', program.id)
     if (pError) throw pError
 
@@ -965,7 +966,6 @@ export class SupabaseAdapter implements DataAdapter {
           current_block_ordinal: 1,
           current_week_number: 1,
           start_date: startDate ?? new Date().toISOString().split('T')[0],
-          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'user_id' },

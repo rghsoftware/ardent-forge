@@ -430,17 +430,23 @@ export function fromActivity(
 // ---------------------------------------------------------------------------
 
 export function toProgram(row: ProgramRow): Program {
-  return {
-    id: row.id,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    userId: row.user_id,
-    name: row.name,
-    description: row.description ?? undefined,
-    source: programSourceSchema.parse(row.source),
-    durationWeeks: row.duration_weeks ?? undefined,
-    isPublic: row.is_public,
-    createdBy: row.created_by ?? row.user_id,
+  try {
+    return {
+      id: row.id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      userId: row.user_id,
+      name: row.name,
+      description: row.description ?? undefined,
+      source: programSourceSchema.parse(row.source),
+      durationWeeks: row.duration_weeks ?? undefined,
+      isPublic: row.is_public,
+      createdBy: row.created_by ?? row.user_id,
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map program "${row.name}" (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
   }
 }
 
@@ -463,13 +469,19 @@ export function fromProgram(
 // ---------------------------------------------------------------------------
 
 export function toBlock(row: BlockRow): Block {
-  return {
-    id: row.id,
-    programId: row.program_id,
-    name: row.name,
-    ordinal: row.ordinal,
-    durationWeeks: row.duration_weeks,
-    blockType: blockTypeSchema.parse(row.block_type),
+  try {
+    return {
+      id: row.id,
+      programId: row.program_id,
+      name: row.name,
+      ordinal: row.ordinal,
+      durationWeeks: row.duration_weeks,
+      blockType: blockTypeSchema.parse(row.block_type),
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map block "${row.name}" (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
   }
 }
 
@@ -513,14 +525,20 @@ export function fromBlockWeek(
 // ---------------------------------------------------------------------------
 
 export function toScheduledSession(row: ScheduledSessionRow): ScheduledSession {
-  return {
-    id: row.id,
-    blockWeekId: row.block_week_id,
-    dayOfWeek: row.day_of_week ?? undefined,
-    dayLabel: row.day_label,
-    sessionType: sessionTypeSchema.parse(row.session_type),
-    sessionTemplateId: row.session_template_id,
-    notes: row.notes ?? undefined,
+  try {
+    return {
+      id: row.id,
+      blockWeekId: row.block_week_id,
+      dayOfWeek: row.day_of_week ?? undefined,
+      dayLabel: row.day_label,
+      sessionType: sessionTypeSchema.parse(row.session_type),
+      sessionTemplateId: row.session_template_id,
+      notes: row.notes ?? undefined,
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map scheduled session (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
   }
 }
 

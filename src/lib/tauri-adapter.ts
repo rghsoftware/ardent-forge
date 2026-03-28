@@ -552,6 +552,8 @@ function toActivityRowFromTauri(r: TauriActivityResponse): ActivityRow {
 }
 
 function toProgramRowFromTauri(r: TauriProgramResponse): ProgramRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on program row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on program row', r)
   return {
     id: r.id,
     user_id: r.user_id,
@@ -567,6 +569,8 @@ function toProgramRowFromTauri(r: TauriProgramResponse): ProgramRow {
 }
 
 function toBlockRowFromTauri(r: TauriBlockResponse): BlockRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on block row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on block row', r)
   return {
     id: r.id,
     program_id: r.program_id,
@@ -580,6 +584,8 @@ function toBlockRowFromTauri(r: TauriBlockResponse): BlockRow {
 }
 
 function toBlockWeekRowFromTauri(r: TauriBlockWeekResponse): BlockWeekRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on block_week row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on block_week row', r)
   return {
     id: r.id,
     block_id: r.block_id,
@@ -590,6 +596,8 @@ function toBlockWeekRowFromTauri(r: TauriBlockWeekResponse): BlockWeekRow {
 }
 
 function toScheduledSessionRowFromTauri(r: TauriScheduledSessionResponse): ScheduledSessionRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on scheduled_session row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on scheduled_session row', r)
   return {
     id: r.id,
     block_week_id: r.block_week_id,
@@ -604,6 +612,8 @@ function toScheduledSessionRowFromTauri(r: TauriScheduledSessionResponse): Sched
 }
 
 function toProgramActivationRowFromTauri(r: TauriProgramActivationResponse): ProgramActivationRow {
+  if (!r.created_at) console.warn('tauri-adapter: null created_at on program_activation row', r)
+  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on program_activation row', r)
   return {
     id: r.id,
     user_id: r.user_id,

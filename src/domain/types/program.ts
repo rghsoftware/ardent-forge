@@ -43,7 +43,7 @@ export type BlockType = z.infer<typeof blockTypeSchema>
 export const programSchema = syncableEntitySchema.extend({
   // SH-1: userId is the owner; createdBy is the author (may differ for coach-created programs)
   userId: entityId,
-  name: z.string().min(1),
+  name: z.string().min(1).max(200),
   description: z.string().optional(),
   source: programSourceSchema,
   durationWeeks: z.number().int().positive().optional(),
@@ -62,7 +62,7 @@ export type Program = z.infer<typeof programSchema>
 export const blockSchema = z.object({
   id: entityId,
   programId: entityId,
-  name: z.string().min(1),
+  name: z.string().min(1).max(200),
   ordinal: z.number().int().positive(), // P-1
   durationWeeks: z.number().int().positive(),
   blockType: blockTypeSchema,
@@ -88,7 +88,7 @@ export const scheduledSessionSchema = z.object({
   id: entityId,
   blockWeekId: entityId,
   dayOfWeek: z.number().int().min(0).max(6).optional(),
-  dayLabel: z.string(),
+  dayLabel: z.string().min(1),
   sessionType: sessionTypeSchema,
   sessionTemplateId: entityId, // P-3: must reference a valid SessionTemplate
   notes: z.string().optional(),
@@ -104,6 +104,8 @@ export const programActivationSchema = syncableEntitySchema.extend({
   programId: entityId,
   currentBlockOrdinal: z.number().int().positive(),
   currentWeekNumber: z.number().int().positive(),
-  startDate: z.string(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format, expected YYYY-MM-DD'),
+  // Deferred: P-4 currentBlockOrdinal and currentWeekNumber are not validated
+  // against the actual program structure (collection-level concern, like P-2)
 })
 export type ProgramActivation = z.infer<typeof programActivationSchema>

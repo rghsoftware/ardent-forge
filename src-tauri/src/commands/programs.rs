@@ -564,9 +564,12 @@ pub async fn get_active_program(
     Ok(row)
 }
 
-/// Sets (or replaces) the active program for a user. Uses INSERT OR REPLACE
-/// to enforce the UNIQUE(user_id) constraint, ensuring only one active
-/// program per user.
+/// Sets (or replaces) the active program for a user. Uses INSERT ... ON
+/// CONFLICT to enforce the UNIQUE(user_id) constraint, ensuring only one
+/// active program per user.
+///
+/// Note: Uses INSERT ... ON CONFLICT to preserve the original created_at
+/// timestamp when replacing an existing activation.
 ///
 /// # Parameters
 /// - `pool`: SQLite connection pool (injected by Tauri state).
@@ -590,10 +593,16 @@ pub async fn set_active_program(
     });
 
     sqlx::query(
-        "INSERT OR REPLACE INTO program_activations \
+        "INSERT INTO program_activations \
          (id, user_id, program_id, current_block_ordinal, current_week_number, \
           start_date, created_at, updated_at) \
-         VALUES (?, ?, ?, 1, 1, ?, ?, ?)",
+         VALUES (?, ?, ?, 1, 1, ?, ?, ?) \
+         ON CONFLICT(user_id) DO UPDATE SET \
+           program_id = excluded.program_id, \
+           current_block_ordinal = excluded.current_block_ordinal, \
+           current_week_number = excluded.current_week_number, \
+           start_date = excluded.start_date, \
+           updated_at = excluded.updated_at",
     )
     .bind(&activation_id)
     .bind(&user_id)
@@ -605,9 +614,9 @@ pub async fn set_active_program(
     .await?;
 
     let row = sqlx::query_as::<_, ProgramActivationRow>(
-        "SELECT * FROM program_activations WHERE id = ?",
+        "SELECT * FROM program_activations WHERE user_id = ?",
     )
-    .bind(&activation_id)
+    .bind(&user_id)
     .fetch_one(pool.inner())
     .await?;
 

@@ -106,7 +106,7 @@ CREATE TABLE scheduled_sessions (
 
 COMMENT ON TABLE scheduled_sessions IS 'Sessions scheduled within a block week, each linked to a session template.';
 COMMENT ON COLUMN scheduled_sessions.block_week_id IS 'Parent block week. Cascade-deletes when the week is removed.';
-COMMENT ON COLUMN scheduled_sessions.day_of_week IS 'ISO day of week (0=Sunday through 6=Saturday). NULL if unassigned.';
+COMMENT ON COLUMN scheduled_sessions.day_of_week IS 'Day of week (0=Sunday through 6=Saturday, matching JavaScript Date.getDay()). NULL if unassigned.';
 COMMENT ON COLUMN scheduled_sessions.day_label IS 'Human-readable day label (e.g. "Day 1", "Monday Upper").';
 COMMENT ON COLUMN scheduled_sessions.session_type IS 'Session category: STRENGTH, CONDITIONING, SE (strength-endurance), or MIXED.';
 COMMENT ON COLUMN scheduled_sessions.session_template_id IS 'References session_templates. Defines the workout structure for this session.';
@@ -310,7 +310,7 @@ CREATE POLICY "program_activations_delete"
 
 -- ---------------------------------------------------------------------------
 -- 8. Triggers: automatic updated_at
---    Reuses the update_updated_at_column() function from 20260326000004_add_triggers.sql.
+--    Reuses the shared update_updated_at_column() trigger function.
 -- ---------------------------------------------------------------------------
 CREATE TRIGGER set_programs_updated_at BEFORE UPDATE ON programs
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
