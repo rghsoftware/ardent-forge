@@ -2,6 +2,8 @@ mod commands;
 mod db;
 mod error;
 mod models;
+pub mod rest_timer;
+pub mod sync;
 mod utils;
 
 use tauri::Manager;
@@ -20,11 +22,15 @@ pub fn run() {
               .level(log_level)
               .build(),
       )?;
+      app.handle().plugin(tauri_plugin_notification::init())?;
 
       // Initialize the SQLite database and store the pool in managed state
       let pool = tauri::async_runtime::block_on(db::init_db(app))
           .unwrap_or_else(|e| panic!("Failed to initialize database: {e}"));
+      let sync_engine = sync::SyncEngine::new(pool.clone(), app.handle().clone());
       app.manage(pool);
+      app.manage(rest_timer::RestTimerState::new());
+      app.manage(sync_engine);
 
       Ok(())
     })
@@ -53,6 +59,16 @@ pub fn run() {
       commands::user_profile::update_user_profile,
       commands::user_profile::save_one_rep_max,
       commands::user_profile::get_one_rep_max_history,
+      // Rest timer
+      commands::rest_timer::start_rest_timer,
+      commands::rest_timer::skip_rest_timer,
+      commands::rest_timer::adjust_rest_timer,
+      // Sync
+      commands::sync::sync_set_auth,
+      commands::sync::sync_clear_auth,
+      commands::sync::sync_force_push,
+      commands::sync::sync_force_pull,
+      commands::sync::sync_get_status,
     ])
     .run(tauri::generate_context!())
     .unwrap_or_else(|e| panic!("Tauri application error: {e}"));

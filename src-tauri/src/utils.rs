@@ -2,6 +2,7 @@ use chrono::{TimeZone, Utc};
 
 /// Convert a Unix epoch timestamp (seconds) to an ISO 8601 / RFC 3339 string.
 /// Logs a warning and returns epoch zero for out-of-range values.
+#[allow(dead_code)]
 pub fn unix_to_iso(ts: i64) -> String {
     Utc.timestamp_opt(ts, 0)
         .single()
@@ -13,6 +14,7 @@ pub fn unix_to_iso(ts: i64) -> String {
 }
 
 /// Convert an optional Unix epoch timestamp to an optional ISO 8601 string.
+#[allow(dead_code)]
 pub fn unix_to_iso_opt(ts: Option<i64>) -> Option<String> {
     ts.map(unix_to_iso)
 }

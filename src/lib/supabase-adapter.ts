@@ -422,11 +422,16 @@ export class SupabaseAdapter implements DataAdapter {
   }
 
   async getRecentlyUsedExerciseIds(userId: string, limit = 10): Promise<string[]> {
+    // Join path: logged_activities -> logged_activity_groups -> workout_logs
+    // (there is no direct FK from logged_activities to workout_logs)
     const { data, error } = await this.client
       .from('logged_activities')
-      .select('exercise_id, workout_logs!inner(user_id, started_at)')
-      .eq('workout_logs.user_id', userId)
-      .order('started_at', { ascending: false, referencedTable: 'workout_logs' })
+      .select('exercise_id, logged_activity_groups!inner(workout_logs!inner(user_id, started_at))')
+      .eq('logged_activity_groups.workout_logs.user_id', userId)
+      .order('started_at', {
+        ascending: false,
+        referencedTable: 'logged_activity_groups.workout_logs',
+      })
       .limit(limit * 5) // fetch more to account for deduplication
     if (error) throw error
 
@@ -449,13 +454,18 @@ export class SupabaseAdapter implements DataAdapter {
     exerciseId: string,
     limit = 10,
   ): Promise<{ log: WorkoutLog; sets: LoggedSet[] }[]> {
-    // Find logged activities for this exercise, joined with their workout logs and sets
+    // Same two-hop join as getRecentlyUsedExerciseIds: activities -> groups -> logs
     const { data, error } = await this.client
       .from('logged_activities')
-      .select('id, workout_log_id, exercise_id, workout_logs!inner(*), logged_sets(*)')
+      .select(
+        'id, exercise_id, logged_group_id, logged_activity_groups!inner(workout_log_id, workout_logs!inner(*)), logged_sets(*)',
+      )
       .eq('exercise_id', exerciseId)
-      .eq('workout_logs.user_id', userId)
-      .order('started_at', { ascending: false, referencedTable: 'workout_logs' })
+      .eq('logged_activity_groups.workout_logs.user_id', userId)
+      .order('started_at', {
+        ascending: false,
+        referencedTable: 'logged_activity_groups.workout_logs',
+      })
       .limit(limit)
     if (error) throw error
 
@@ -463,9 +473,12 @@ export class SupabaseAdapter implements DataAdapter {
     // types use an array.  Cast through unknown to the actual runtime shape.
     type ActivityWithJoins = {
       id: string
-      workout_log_id: string
       exercise_id: string
-      workout_logs: WorkoutLogRow
+      logged_group_id: string
+      logged_activity_groups: {
+        workout_log_id: string
+        workout_logs: WorkoutLogRow
+      }
       logged_sets: LoggedSetRow[]
     }
     const rows = data as unknown as ActivityWithJoins[]
@@ -474,10 +487,10 @@ export class SupabaseAdapter implements DataAdapter {
     const grouped = new Map<string, { log: WorkoutLog; sets: LoggedSet[] }>()
 
     for (const row of rows) {
-      const logId = row.workout_log_id
+      const logId = row.logged_activity_groups.workout_log_id
       if (!grouped.has(logId)) {
         grouped.set(logId, {
-          log: toWorkoutLog(row.workout_logs),
+          log: toWorkoutLog(row.logged_activity_groups.workout_logs),
           sets: [],
         })
       }

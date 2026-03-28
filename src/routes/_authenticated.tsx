@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuth } from '@/lib/auth'
+import { SyncIndicator } from '@/components/layout/sync-indicator'
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ context }) => {
@@ -49,6 +50,10 @@ function AuthenticatedLayout() {
 
   return (
     <div className={`min-h-screen ${isWorkoutRoute ? '' : 'pb-16'}`}>
+      <div className="fixed top-0 right-0 z-50">
+        <SyncIndicator />
+      </div>
+
       <Outlet />
 
       {/* Bottom navigation bar -- hidden during active workout */}

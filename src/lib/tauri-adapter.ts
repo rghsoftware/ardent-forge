@@ -375,10 +375,8 @@ function toOneRepMaxHistoryRow(r: TauriOneRepMaxHistoryResponse): OneRepMaxHisto
 // ---------------------------------------------------------------------------
 
 export class TauriAdapter implements DataAdapter {
-  private readonly userId: string
-
-  constructor(userId: string) {
-    this.userId = userId
+  constructor(_userId: string) {
+    // userId reserved for future offline-first ownership queries
   }
 
   // ---------------------------------------------------------------------------
@@ -545,10 +543,13 @@ export class TauriAdapter implements DataAdapter {
         partial.completion_time != null ? JSON.stringify(partial.completion_time) : null,
     }
 
-    const row = await invokeCommand<TauriLoggedActivityGroupResponse>('create_logged_activity_group', {
-      group: input,
-      user_id: userId,
-    })
+    const row = await invokeCommand<TauriLoggedActivityGroupResponse>(
+      'create_logged_activity_group',
+      {
+        group: input,
+        user_id: userId,
+      },
+    )
     return toLoggedActivityGroup(toLoggedActivityGroupRow(row))
   }
 
@@ -664,7 +665,9 @@ export class TauriAdapter implements DataAdapter {
       max_reps: partial.max_reps != null ? JSON.stringify(partial.max_reps) : null,
     }
 
-    const row = await invokeCommand<TauriUserProfileResponse>('update_user_profile', { profile: input })
+    const row = await invokeCommand<TauriUserProfileResponse>('update_user_profile', {
+      profile: input,
+    })
     return toUserProfile(toUserProfileRow(row))
   }
 
@@ -758,9 +761,7 @@ export class TauriAdapter implements DataAdapter {
           group_type: g.group.groupType,
           ordinal: g.group.ordinal,
           actual_rounds_completed: g.group.actualRoundsCompleted ?? null,
-          completion_time: g.group.completionTime
-            ? JSON.stringify(g.group.completionTime)
-            : null,
+          completion_time: g.group.completionTime ? JSON.stringify(g.group.completionTime) : null,
         },
         activities: g.activities.map((a) => ({
           activity: {
