@@ -57,6 +57,7 @@ export const muscleGroupSchema = z.enum([
   'FOREARMS',
   'TRAPS',
   'LATS',
+  'ERECTORS',
   'FULL_BODY',
 ])
 export type MuscleGroup = z.infer<typeof muscleGroupSchema>
