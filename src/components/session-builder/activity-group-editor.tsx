@@ -167,10 +167,10 @@ export function ActivityGroupEditor({
           variant="secondary"
           size="sm"
           onClick={handleAddActivity}
-          className="w-full text-xs uppercase tracking-wider"
+          className="w-full text-xs"
         >
           <Icon name="add" size={16} />
-          ADD EXERCISE
+          Add exercise
         </Button>
       </div>
     </section>

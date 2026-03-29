@@ -104,9 +104,9 @@ export function WorkoutDetailHeader({ log, allSets, onDelete }: WorkoutDetailHea
           variant="ghost"
           size="sm"
           onClick={onDelete}
-          className="w-full text-xs text-warning-flare uppercase tracking-widest"
+          className="w-full text-xs text-warning-flare"
         >
-          DELETE WORKOUT
+          Delete workout
         </Button>
       </div>
     </div>

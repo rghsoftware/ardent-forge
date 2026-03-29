@@ -86,9 +86,7 @@ export function ExerciseHistoryList({ history }: ExerciseHistoryListProps) {
   if (!history || history.length === 0) {
     return (
       <div className="flex items-center justify-center px-4 py-16">
-        <p className="font-display text-sm uppercase tracking-widest text-warm-ash">
-          NO WORKOUT HISTORY
-        </p>
+        <p className="font-display text-sm text-warm-ash">No workout history</p>
       </div>
     )
   }

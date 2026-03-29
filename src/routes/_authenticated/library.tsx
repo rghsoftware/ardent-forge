@@ -92,27 +92,21 @@ function LibraryPage() {
     <div className="min-h-screen bg-surface-anvil pb-20">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-6 pb-4">
-        <h1 className="font-display text-2xl font-medium uppercase tracking-wider text-bone-white">
-          LIBRARY
-        </h1>
+        <h1 className="font-display text-2xl font-medium text-bone-white">Library</h1>
         {activeTab === 'templates' && (
-          <Button
-            variant="default"
-            onClick={handleCreate}
-            className="min-h-12 text-xs uppercase tracking-wider"
-          >
+          <Button variant="default" onClick={handleCreate} className="min-h-12 text-xs">
             <Icon name="add" size={16} />
-            CREATE TEMPLATE
+            Create template
           </Button>
         )}
         {activeTab === 'programs' && (
           <Button
             variant="default"
             onClick={() => navigate({ to: '/builder', search: { programId: undefined } })}
-            className="min-h-12 bg-forge text-on-forge text-xs uppercase tracking-wider hover:brightness-110"
+            className="min-h-12 bg-forge text-on-forge text-xs hover:brightness-110"
           >
             <Icon name="add" size={16} />
-            CREATE PROGRAM
+            Create program
           </Button>
         )}
       </div>
@@ -164,9 +158,7 @@ function LibraryPage() {
             ) : error ? (
               <div className="flex flex-col items-center gap-3 py-16">
                 <Icon name="error" size={48} className="text-destructive/60" />
-                <p className="text-center text-xs uppercase tracking-wider text-destructive">
-                  FAILED TO LOAD TEMPLATES
-                </p>
+                <p className="text-center text-xs text-destructive">Failed to load templates</p>
                 <p className="text-center text-xs text-warm-ash/40">
                   {error instanceof Error ? error.message : 'An unexpected error occurred.'}
                 </p>
@@ -174,9 +166,7 @@ function LibraryPage() {
             ) : templates.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-16">
                 <Icon name="description" size={48} className="text-warm-ash/40" />
-                <p className="text-center text-xs uppercase tracking-wider text-warm-ash/60">
-                  NO TEMPLATES YET
-                </p>
+                <p className="text-center text-xs text-warm-ash/60">No templates yet</p>
                 <p className="text-center text-xs text-warm-ash/40">
                   Create your first session template.
                 </p>
@@ -207,8 +197,8 @@ function LibraryPage() {
           showCloseButton={false}
         >
           <SheetHeader className="px-4 pt-4 pb-0">
-            <SheetTitle className="text-xs uppercase tracking-widest text-ember">
-              {editingId ? 'EDIT TEMPLATE' : 'NEW TEMPLATE'}
+            <SheetTitle className="text-xs text-ember">
+              {editingId ? 'Edit template' : 'New template'}
             </SheetTitle>
             <SheetDescription className="sr-only">
               {editingId ? 'Edit an existing session template' : 'Create a new session template'}
@@ -291,9 +281,7 @@ function ProgramList({ userId }: { userId: string | undefined }) {
     return (
       <div className="flex flex-col items-center gap-3 px-4 py-16">
         <Icon name="error" size={48} className="text-destructive/60" />
-        <p className="text-center text-xs uppercase tracking-wider text-destructive">
-          FAILED TO LOAD PROGRAMS
-        </p>
+        <p className="text-center text-xs text-destructive">Failed to load programs</p>
         <p className="text-center text-xs text-warm-ash/40">
           {error instanceof Error ? error.message : 'An unexpected error occurred.'}
         </p>
@@ -305,9 +293,7 @@ function ProgramList({ userId }: { userId: string | undefined }) {
     return (
       <div className="flex flex-col items-center gap-3 px-4 py-16">
         <Icon name="fitness_center" size={48} className="text-warm-ash/40" />
-        <p className="text-center text-xs uppercase tracking-wider text-warm-ash/60">
-          NO PROGRAMS YET
-        </p>
+        <p className="text-center text-xs text-warm-ash/60">No programs yet</p>
         <p className="text-center text-xs text-warm-ash/40">
           Build a structured training program from the program builder.
         </p>
@@ -344,9 +330,7 @@ function ProgramList({ userId }: { userId: string | undefined }) {
       <Dialog open={!!confirmDeleteId} onOpenChange={() => setConfirmDeleteId(null)}>
         <DialogContent className="bg-surface-iron">
           <DialogHeader>
-            <DialogTitle className="text-xs uppercase tracking-widest text-ember">
-              DELETE PROGRAM
-            </DialogTitle>
+            <DialogTitle className="text-xs text-ember">Delete Program</DialogTitle>
             <DialogDescription className="text-sm text-warm-ash">
               Are you sure you want to delete &quot;{programToDelete?.name}&quot;? This cannot be
               undone.
@@ -356,9 +340,9 @@ function ProgramList({ userId }: { userId: string | undefined }) {
             <Button
               variant="ghost"
               onClick={() => setConfirmDeleteId(null)}
-              className="min-h-12 text-xs uppercase tracking-wider"
+              className="min-h-12 text-xs"
             >
-              CANCEL
+              Cancel
             </Button>
             <Button
               variant="destructive"
@@ -369,9 +353,9 @@ function ProgramList({ userId }: { userId: string | undefined }) {
                   setConfirmDeleteId(null)
                 }
               }}
-              className="min-h-12 text-xs uppercase tracking-wider"
+              className="min-h-12 text-xs"
             >
-              {deleteProgramMutation.isPending ? 'DELETING...' : 'DELETE'}
+              {deleteProgramMutation.isPending ? 'Deleting...' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -436,17 +420,13 @@ function ProgramCard({
           <Button
             variant="ghost"
             onClick={onDeactivate}
-            className="min-h-12 flex-1 text-xs uppercase tracking-wider text-warm-ash/60 hover:text-warning-flare"
+            className="min-h-12 flex-1 text-xs text-warm-ash/60 hover:text-warning-flare"
           >
-            DEACTIVATE
+            Deactivate
           </Button>
         ) : (
-          <Button
-            variant="default"
-            onClick={onActivate}
-            className="min-h-12 flex-1 text-xs uppercase tracking-wider"
-          >
-            ACTIVATE
+          <Button variant="default" onClick={onActivate} className="min-h-12 flex-1 text-xs">
+            Activate
           </Button>
         )}
 
@@ -497,9 +477,7 @@ function EditTemplateFormLoader({
   if (error) {
     return (
       <div className="flex flex-col items-center gap-2 p-4">
-        <p className="text-center text-xs uppercase tracking-wider text-destructive">
-          FAILED TO LOAD TEMPLATE
-        </p>
+        <p className="text-center text-xs text-destructive">Failed to load template</p>
         <p className="text-center text-xs text-warm-ash/40">
           {error instanceof Error ? error.message : 'An unexpected error occurred.'}
         </p>
@@ -508,11 +486,7 @@ function EditTemplateFormLoader({
   }
 
   if (!data) {
-    return (
-      <div className="p-4 text-center text-xs uppercase tracking-wider text-warm-ash/60">
-        TEMPLATE NOT FOUND
-      </div>
-    )
+    return <div className="p-4 text-center text-xs text-warm-ash/60">Template not found</div>
   }
 
   return (

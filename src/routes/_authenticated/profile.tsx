@@ -80,9 +80,7 @@ function ProfilePage() {
         <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
           cloud_off
         </span>
-        <p className="font-display text-sm uppercase tracking-widest text-warning-flare">
-          FAILED TO LOAD PROFILE
-        </p>
+        <p className="font-display text-sm text-warning-flare">Failed to load profile</p>
         <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
       </div>
     )
@@ -93,9 +91,7 @@ function ProfilePage() {
       <div className="mx-auto max-w-5xl px-4 lg:px-8">
         {/* Page header */}
         <div className="pt-8 pb-6 lg:pt-12">
-          <h1 className="font-display text-3xl font-bold uppercase tracking-wider text-bone-white">
-            PROFILE
-          </h1>
+          <h1 className="font-display text-3xl font-bold text-bone-white">Profile</h1>
         </div>
 
         {/* Two-column on desktop, single column on mobile */}
@@ -113,8 +109,8 @@ function ProfilePage() {
               <div className="mt-4 space-y-6">
                 {/* Display name */}
                 <div className="space-y-1">
-                  <label className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
-                    DISPLAY NAME
+                  <label className="font-sans text-xs font-medium text-warm-ash">
+                    Display name
                   </label>
                   <input
                     type="text"
@@ -127,9 +123,7 @@ function ProfilePage() {
 
                 {/* Bodyweight */}
                 <div className="space-y-1">
-                  <label className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
-                    BODYWEIGHT
-                  </label>
+                  <label className="font-sans text-xs font-medium text-warm-ash">Bodyweight</label>
                   <div className="flex items-end gap-3">
                     <input
                       type="number"
@@ -141,16 +135,14 @@ function ProfilePage() {
                       placeholder="0"
                       className="flex-1 border-b-2 border-surface-steel bg-transparent px-0 py-2 font-display text-2xl text-bone-white outline-none transition-colors placeholder:text-surface-steel focus:border-ember"
                     />
-                    <span className="pb-2 font-sans text-sm uppercase text-warm-ash">
-                      {bodyweightUnit}
-                    </span>
+                    <span className="pb-2 font-sans text-sm text-warm-ash">{bodyweightUnit}</span>
                   </div>
                 </div>
 
                 {/* Preferred units */}
                 <div className="space-y-2">
-                  <label className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
-                    PREFERRED UNITS
+                  <label className="font-sans text-xs font-medium text-warm-ash">
+                    Preferred units
                   </label>
                   <ToggleGroup
                     type="single"
@@ -164,15 +156,15 @@ function ProfilePage() {
                   >
                     <ToggleGroupItem
                       value="IMPERIAL"
-                      className="min-h-[48px] flex-1 font-sans text-xs font-medium uppercase tracking-widest data-[state=on]:bg-forge data-[state=on]:text-on-forge"
+                      className="min-h-[48px] flex-1 font-sans text-xs font-medium data-[state=on]:bg-forge data-[state=on]:text-on-forge"
                     >
-                      IMPERIAL
+                      Imperial
                     </ToggleGroupItem>
                     <ToggleGroupItem
                       value="METRIC"
-                      className="min-h-[48px] flex-1 font-sans text-xs font-medium uppercase tracking-widest data-[state=on]:bg-forge data-[state=on]:text-on-forge"
+                      className="min-h-[48px] flex-1 font-sans text-xs font-medium data-[state=on]:bg-forge data-[state=on]:text-on-forge"
                     >
-                      METRIC
+                      Metric
                     </ToggleGroupItem>
                   </ToggleGroup>
                 </div>
@@ -183,7 +175,7 @@ function ProfilePage() {
                   onClick={handleSaveSettings}
                   disabled={updateProfile.isPending}
                 >
-                  {updateProfile.isPending ? 'SAVING...' : 'SAVE SETTINGS'}
+                  {updateProfile.isPending ? 'Saving...' : 'Save settings'}
                 </Button>
                 {updateProfile.isError && (
                   <p className="mt-2 text-xs text-warning-flare">
@@ -206,7 +198,7 @@ function ProfilePage() {
                   <div className="space-y-3">
                     <Link to="/sign-up">
                       <Button className="min-h-[48px] w-full bg-forge text-on-forge hover:bg-forge/80">
-                        CREATE ACCOUNT
+                        Create account
                       </Button>
                     </Link>
                     <p className="text-center text-xs text-warm-ash">
@@ -219,7 +211,7 @@ function ProfilePage() {
                     className="min-h-[48px] w-full border-surface-steel text-warning-flare hover:bg-surface-gunmetal"
                     onClick={handleSignOut}
                   >
-                    SIGN OUT
+                    Sign out
                   </Button>
                 )}
               </div>

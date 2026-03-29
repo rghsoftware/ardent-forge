@@ -64,9 +64,7 @@ function RestDayContent() {
         <span className="font-heading text-sm text-bone-white uppercase tracking-widest">
           REST DAY
         </span>
-        <span className="text-xs text-warm-ash/50 uppercase tracking-wider">
-          RECOVERY IS PART OF THE PROCESS
-        </span>
+        <span className="text-xs text-warm-ash/50">Recovery is part of the process</span>
       </div>
     </div>
   )
@@ -98,11 +96,9 @@ export function ProgramSessionCard({
     <div className="flex flex-col gap-4 bg-surface-iron p-5 milled-edge">
       {/* Program header -- program name + block/week context */}
       <div className="flex flex-col gap-0.5">
-        <span className="font-heading text-xs text-ember uppercase tracking-widest">
-          {programName}
-        </span>
-        <span className="text-xs text-warm-ash/50 uppercase tracking-wider">
-          {blockName} &middot; WEEK {weekNumber} OF {totalWeeks}
+        <span className="font-heading text-xs text-ember">{programName}</span>
+        <span className="text-xs text-warm-ash/50">
+          {blockName} &middot; Week {weekNumber} of {totalWeeks}
         </span>
       </div>
 
@@ -113,9 +109,7 @@ export function ProgramSessionCard({
           {/* Session info -- name, type badge, exercise count */}
           <div className="flex flex-col gap-2">
             {sessionName && (
-              <span className="font-heading text-base text-bone-white uppercase tracking-wider">
-                {sessionName}
-              </span>
+              <span className="font-heading text-base text-bone-white">{sessionName}</span>
             )}
             <div className="flex items-center gap-2">
               {badgeColor && (
@@ -131,10 +125,10 @@ export function ProgramSessionCard({
           {/* CTA -- full-width start button */}
           <Button
             variant="molten"
-            className="w-full min-h-12 text-xs uppercase tracking-widest font-medium"
+            className="w-full min-h-12 text-xs font-medium"
             onClick={onStartSession}
           >
-            START TODAY&apos;S SESSION
+            Start today&apos;s session
           </Button>
         </>
       )}

@@ -38,9 +38,7 @@ export function ExerciseBlock({
     <section className="bg-surface-iron" aria-label={`${exerciseName} exercise`}>
       {/* Exercise name header */}
       <div className="px-4 pt-4 pb-2">
-        <h3 className="font-display text-xs font-medium uppercase tracking-widest text-ember">
-          {exerciseName}
-        </h3>
+        <h3 className="font-display text-xs font-medium text-ember">{exerciseName}</h3>
       </div>
 
       {/* Column headers */}

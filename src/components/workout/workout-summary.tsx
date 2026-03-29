@@ -251,7 +251,7 @@ export function WorkoutSummary({
       {/* Done button */}
       <div className="mt-auto px-4 pb-8">
         <Button variant="default" size="lg" onClick={onDone} className="min-h-12 w-full">
-          DONE
+          Done
         </Button>
       </div>
     </div>

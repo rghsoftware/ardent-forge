@@ -88,8 +88,8 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
         showCloseButton={false}
       >
         <DialogHeader>
-          <DialogTitle className="font-heading text-lg uppercase tracking-widest text-bone-white">
-            RESUME SESSION?
+          <DialogTitle className="font-heading text-lg text-bone-white">
+            Resume Session?
           </DialogTitle>
           <DialogDescription className="text-warm-ash text-sm">
             {isLoadingFullWorkout
@@ -102,11 +102,11 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
           <div className="flex flex-1 flex-col gap-1">
             <Button
               variant="ghost"
-              className="w-full uppercase tracking-widest text-warm-ash hover:text-warning-flare"
+              className="w-full text-warm-ash hover:text-warning-flare"
               onClick={handleDiscard}
               disabled={isDiscarding || isResuming}
             >
-              {isDiscarding ? 'DISCARDING...' : 'DISCARD'}
+              {isDiscarding ? 'Discarding...' : 'Discard'}
             </Button>
             {discardError && (
               <span className="text-center text-xs text-warning-flare">{discardError}</span>
@@ -114,11 +114,11 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
           </div>
           <Button
             variant="molten"
-            className="flex-1 h-12 uppercase tracking-widest"
+            className="flex-1 h-12"
             onClick={handleResume}
             disabled={isResuming || isDiscarding || !fullWorkout}
           >
-            {isResuming ? 'RESUMING...' : 'RESUME'}
+            {isResuming ? 'Resuming...' : 'Resume'}
           </Button>
         </DialogFooter>
       </DialogContent>

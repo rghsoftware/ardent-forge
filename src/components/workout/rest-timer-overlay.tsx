@@ -26,13 +26,13 @@ export function RestTimerOverlay({ restTimer, onSkip, onAdjust }: RestTimerOverl
         {/* Controls */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => onAdjust(-30)} className="text-xs">
-            -30S
+            -30s
           </Button>
           <Button variant="ghost" size="sm" onClick={onSkip} className="text-xs text-ember">
-            SKIP
+            Skip
           </Button>
           <Button variant="ghost" size="sm" onClick={() => onAdjust(30)} className="text-xs">
-            +30S
+            +30s
           </Button>
         </div>
       </div>

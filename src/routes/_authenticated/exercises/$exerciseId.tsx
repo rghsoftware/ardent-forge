@@ -127,12 +127,12 @@ function ExerciseDetailPage() {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
         <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">cloud_off</span>
-        <p className="font-display text-sm uppercase tracking-widest text-warning-flare">
-          FAILED TO LOAD EXERCISE
+        <p className="font-display text-sm text-warning-flare">
+          Failed to load exercise
         </p>
         <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
-        <Link to="/exercises" className="mt-4 text-xs uppercase tracking-widest text-ember">
-          BACK TO LIBRARY
+        <Link to="/exercises" className="mt-4 text-xs text-ember">
+          Back to library
         </Link>
       </div>
     )
@@ -144,14 +144,14 @@ function ExerciseDetailPage() {
         <span className="material-symbols-outlined mb-3 text-4xl text-warm-ash/40">
           error_outline
         </span>
-        <p className="font-display text-sm uppercase tracking-widest text-warm-ash">
-          EXERCISE NOT FOUND
+        <p className="font-display text-sm text-warm-ash">
+          Exercise not found
         </p>
         <Link
           to="/exercises"
-          className="mt-4 text-xs uppercase tracking-widest text-ember"
+          className="mt-4 text-xs text-ember"
         >
-          BACK TO LIBRARY
+          Back to library
         </Link>
       </div>
     )
@@ -284,9 +284,9 @@ function ExerciseDetailPage() {
                 <Button
                   type="button"
                   onClick={() => setShowOneRmDialog(true)}
-                  className="min-h-10 bg-forge px-4 text-on-forge text-xs font-medium uppercase tracking-widest"
+                  className="min-h-10 bg-forge px-4 text-on-forge text-xs font-medium"
                 >
-                  UPDATE 1RM
+                  Update 1RM
                 </Button>
               </div>
 
@@ -311,8 +311,8 @@ function ExerciseDetailPage() {
       <Dialog open={showOneRmDialog} onOpenChange={setShowOneRmDialog}>
         <DialogContent className="bg-surface-iron">
           <DialogHeader>
-            <DialogTitle className="font-display text-sm uppercase tracking-widest text-bone-white">
-              UPDATE 1RM
+            <DialogTitle className="font-display text-sm text-bone-white">
+              Update 1RM
             </DialogTitle>
             <DialogDescription className="text-xs text-warm-ash">
               Record a new 1RM for {exercise.name}.
@@ -352,15 +352,15 @@ function ExerciseDetailPage() {
               >
                 <ToggleGroupItem
                   value="tested"
-                  className="min-h-10 flex-1 text-xs font-medium uppercase tracking-wider data-[state=on]:bg-forge data-[state=on]:text-on-forge"
+                  className="min-h-10 flex-1 text-xs font-medium data-[state=on]:bg-forge data-[state=on]:text-on-forge"
                 >
-                  TESTED
+                  Tested
                 </ToggleGroupItem>
                 <ToggleGroupItem
                   value="estimated"
-                  className="min-h-10 flex-1 text-xs font-medium uppercase tracking-wider data-[state=on]:bg-forge data-[state=on]:text-on-forge"
+                  className="min-h-10 flex-1 text-xs font-medium data-[state=on]:bg-forge data-[state=on]:text-on-forge"
                 >
-                  ESTIMATED
+                  Estimated
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
@@ -369,9 +369,9 @@ function ExerciseDetailPage() {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="min-h-12 w-full bg-forge text-on-forge text-xs font-medium uppercase tracking-widest"
+              className="min-h-12 w-full bg-forge text-on-forge text-xs font-medium"
             >
-              {isSubmitting ? 'SAVING...' : 'SAVE 1RM'}
+              {isSubmitting ? 'Saving...' : 'Save 1RM'}
             </Button>
             {(saveOneRepMax.isError || updateProfile.isError) && (
               <p className="text-xs text-warning-flare">Failed to save 1RM. Please try again.</p>

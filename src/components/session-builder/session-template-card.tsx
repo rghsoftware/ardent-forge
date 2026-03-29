@@ -83,9 +83,7 @@ export function SessionTemplateCard({ template, onEdit, onDelete }: SessionTempl
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="bg-surface-iron">
           <DialogHeader>
-            <DialogTitle className="text-xs uppercase tracking-widest text-ember">
-              DELETE TEMPLATE
-            </DialogTitle>
+            <DialogTitle className="text-xs text-ember">Delete Template</DialogTitle>
             <DialogDescription className="text-sm text-warm-ash">
               Are you sure you want to delete &quot;{template.name}&quot;? This cannot be undone.
             </DialogDescription>
@@ -94,9 +92,9 @@ export function SessionTemplateCard({ template, onEdit, onDelete }: SessionTempl
             <Button
               variant="ghost"
               onClick={() => setConfirmOpen(false)}
-              className="min-h-12 text-xs uppercase tracking-wider"
+              className="min-h-12 text-xs"
             >
-              CANCEL
+              Cancel
             </Button>
             <Button
               variant="destructive"
@@ -104,9 +102,9 @@ export function SessionTemplateCard({ template, onEdit, onDelete }: SessionTempl
                 setConfirmOpen(false)
                 onDelete()
               }}
-              className="min-h-12 text-xs uppercase tracking-wider"
+              className="min-h-12 text-xs"
             >
-              DELETE
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

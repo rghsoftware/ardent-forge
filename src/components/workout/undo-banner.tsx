@@ -32,7 +32,7 @@ export function UndoBanner({ undoAction, onUndo }: UndoBannerProps) {
     <div className="fixed inset-x-0 bottom-16 z-30 mx-4 mb-2 flex items-center justify-between bg-surface-iron px-4 py-3">
       <span className="text-xs uppercase tracking-wider text-warm-ash">SET CONFIRMED</span>
       <Button variant="ghost" size="sm" onClick={onUndo} className="text-xs text-ember">
-        UNDO ({secondsLeft}S)
+        Undo ({secondsLeft}s)
       </Button>
     </div>
   )

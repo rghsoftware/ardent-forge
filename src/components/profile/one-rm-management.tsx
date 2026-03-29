@@ -101,9 +101,7 @@ export function OneRmManagement({ userId, exerciseMaxes, preferredUnits }: OneRm
   if (maxEntries.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <p className="font-display text-lg font-bold uppercase tracking-wider text-bone-white">
-          NO MAXES RECORDED
-        </p>
+        <p className="font-display text-lg font-bold text-bone-white">No maxes recorded</p>
         <p className="mt-2 text-sm text-warm-ash">
           Add your first 1RM from an exercise detail page
         </p>
@@ -116,7 +114,7 @@ export function OneRmManagement({ userId, exerciseMaxes, preferredUnits }: OneRm
       {maxEntries.map(([exerciseId, max]) => (
         <div key={exerciseId} className="flex items-center justify-between bg-surface-iron p-4">
           <div className="flex flex-col gap-1">
-            <span className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
+            <span className="font-sans text-xs font-medium text-warm-ash">
               {exerciseLookup.get(exerciseId) ?? exerciseId}
             </span>
             <div className="flex items-baseline gap-3">
@@ -131,7 +129,7 @@ export function OneRmManagement({ userId, exerciseMaxes, preferredUnits }: OneRm
             className="min-h-[48px] min-w-[48px] bg-forge text-on-forge hover:bg-forge/80"
             onClick={() => openEditDialog(exerciseId, max)}
           >
-            UPDATE
+            Update
           </Button>
         </div>
       ))}
@@ -140,9 +138,9 @@ export function OneRmManagement({ userId, exerciseMaxes, preferredUnits }: OneRm
       <Dialog open={editingExerciseId !== null} onOpenChange={(open) => !open && closeEditDialog()}>
         <DialogContent className="bg-surface-iron">
           <DialogHeader>
-            <DialogTitle className="font-display uppercase tracking-wider">UPDATE 1RM</DialogTitle>
+            <DialogTitle className="font-display">Update 1RM</DialogTitle>
             {editingExerciseId && (
-              <p className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
+              <p className="font-sans text-xs font-medium text-warm-ash">
                 {exerciseLookup.get(editingExerciseId) ?? editingExerciseId}
               </p>
             )}
@@ -151,8 +149,8 @@ export function OneRmManagement({ userId, exerciseMaxes, preferredUnits }: OneRm
           <div className="space-y-6">
             {/* Weight input -- underline style */}
             <div className="space-y-2">
-              <label className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
-                WEIGHT (
+              <label className="font-sans text-xs font-medium text-warm-ash">
+                Weight (
                 {(
                   editingMax?.weight.unit ?? (preferredUnits === 'METRIC' ? 'kg' : 'lb')
                 ).toUpperCase()}
@@ -172,9 +170,7 @@ export function OneRmManagement({ userId, exerciseMaxes, preferredUnits }: OneRm
 
             {/* Tested vs Estimated toggle */}
             <div className="space-y-2">
-              <label className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
-                TYPE
-              </label>
+              <label className="font-sans text-xs font-medium text-warm-ash">Type</label>
               <ToggleGroup
                 type="single"
                 value={editEstimated}
@@ -187,15 +183,15 @@ export function OneRmManagement({ userId, exerciseMaxes, preferredUnits }: OneRm
               >
                 <ToggleGroupItem
                   value="TESTED"
-                  className="min-h-[48px] flex-1 font-sans text-xs font-medium uppercase tracking-widest data-[state=on]:bg-forge data-[state=on]:text-on-forge"
+                  className="min-h-[48px] flex-1 font-sans text-xs font-medium data-[state=on]:bg-forge data-[state=on]:text-on-forge"
                 >
-                  TESTED
+                  Tested
                 </ToggleGroupItem>
                 <ToggleGroupItem
                   value="ESTIMATED"
-                  className="min-h-[48px] flex-1 font-sans text-xs font-medium uppercase tracking-widest data-[state=on]:bg-forge data-[state=on]:text-on-forge"
+                  className="min-h-[48px] flex-1 font-sans text-xs font-medium data-[state=on]:bg-forge data-[state=on]:text-on-forge"
                 >
-                  ESTIMATED
+                  Estimated
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
@@ -208,7 +204,7 @@ export function OneRmManagement({ userId, exerciseMaxes, preferredUnits }: OneRm
                 onClick={handleSave}
                 disabled={saveOneRepMax.isPending || updateProfile.isPending}
               >
-                {saveOneRepMax.isPending || updateProfile.isPending ? 'SAVING...' : 'SAVE'}
+                {saveOneRepMax.isPending || updateProfile.isPending ? 'Saving...' : 'Save'}
               </Button>
               {(saveOneRepMax.isError || updateProfile.isError) && (
                 <p className="text-xs text-warning-flare">Failed to save 1RM. Please try again.</p>

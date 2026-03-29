@@ -76,9 +76,7 @@ export function CopyWeekDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-surface-iron">
         <DialogHeader>
-          <DialogTitle className="text-xs uppercase tracking-widest text-ember">
-            COPY WEEK
-          </DialogTitle>
+          <DialogTitle className="text-xs text-ember">Copy Week</DialogTitle>
           <DialogDescription className="text-sm text-warm-ash">
             Copy sessions from Week {sourceWeek.weekNumber} to other weeks.
           </DialogDescription>
@@ -105,9 +103,9 @@ export function CopyWeekDialog({
               type="button"
               variant="ghost"
               onClick={handleSelectAllRemaining}
-              className="min-h-10 text-xs uppercase tracking-wider text-ember"
+              className="min-h-10 text-xs text-ember"
             >
-              SELECT ALL REMAINING
+              Select all remaining
             </Button>
           )}
 
@@ -142,22 +140,17 @@ export function CopyWeekDialog({
         </div>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleCancel}
-            className="min-h-12 text-xs uppercase tracking-wider"
-          >
-            CANCEL
+          <Button type="button" variant="ghost" onClick={handleCancel} className="min-h-12 text-xs">
+            Cancel
           </Button>
           <Button
             type="button"
             variant="default"
             onClick={handleConfirm}
             disabled={selected.size === 0}
-            className="min-h-12 text-xs uppercase tracking-wider"
+            className="min-h-12 text-xs"
           >
-            CONFIRM COPY
+            Confirm copy
           </Button>
         </DialogFooter>
       </DialogContent>

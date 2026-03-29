@@ -58,9 +58,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
     <section className="bg-surface-iron" aria-label={`${exercise.name} cardio session`}>
       {/* Exercise name */}
       <div className="px-4 pt-4 pb-2">
-        <h3 className="font-display text-xs font-medium uppercase tracking-widest text-ember">
-          {exercise.name}
-        </h3>
+        <h3 className="font-display text-xs font-medium text-ember">{exercise.name}</h3>
       </div>
 
       {/* Modality selector chips */}
@@ -99,7 +97,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
             onClick={handleStartStop}
             className="min-h-12 min-w-32"
           >
-            {isRunning ? 'STOP' : 'START'}
+            {isRunning ? 'Stop' : 'Start'}
           </Button>
         </div>
       )}
@@ -167,7 +165,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
             disabled={elapsedSeconds === 0}
             className="mt-2 min-h-12"
           >
-            LOG CARDIO
+            Log cardio
           </Button>
         </div>
       )}

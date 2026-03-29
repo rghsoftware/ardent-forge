@@ -67,9 +67,7 @@ function ExercisesPage() {
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
       {/* Header */}
       <div className="px-4 pt-6 pb-4">
-        <h1 className="font-display text-xl font-medium uppercase tracking-widest text-bone-white">
-          EXERCISE LIBRARY
-        </h1>
+        <h1 className="font-display text-xl font-medium text-bone-white">Exercise Library</h1>
       </div>
 
       {/* Search */}
@@ -98,9 +96,7 @@ function ExercisesPage() {
             <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
               cloud_off
             </span>
-            <p className="font-display text-sm uppercase tracking-widest text-warning-flare">
-              FAILED TO LOAD EXERCISES
-            </p>
+            <p className="font-display text-sm text-warning-flare">Failed to load exercises</p>
             <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
           </div>
         ) : hasActiveFilters ? (
@@ -115,9 +111,7 @@ function ExercisesPage() {
                 <span className="material-symbols-outlined mb-3 text-4xl text-warm-ash/40">
                   search_off
                 </span>
-                <p className="font-display text-sm uppercase tracking-widest text-warm-ash">
-                  NO EXERCISES FOUND
-                </p>
+                <p className="font-display text-sm text-warm-ash">No exercises found</p>
               </div>
             )}
           </>
@@ -149,9 +143,7 @@ function ExercisesPage() {
               ))
             ) : (
               <div className="flex flex-col items-center justify-center px-4 py-16">
-                <p className="font-display text-sm uppercase tracking-widest text-warm-ash">
-                  NO EXERCISES FOUND
-                </p>
+                <p className="font-display text-sm text-warm-ash">No exercises found</p>
               </div>
             )}
           </>
@@ -163,9 +155,9 @@ function ExercisesPage() {
         <Button
           type="button"
           onClick={() => setShowCreateSheet(true)}
-          className="min-h-12 w-full bg-forge text-on-forge text-xs font-medium uppercase tracking-widest"
+          className="min-h-12 w-full bg-forge text-on-forge text-xs font-medium"
         >
-          CREATE CUSTOM EXERCISE
+          Create custom exercise
         </Button>
       </div>
 

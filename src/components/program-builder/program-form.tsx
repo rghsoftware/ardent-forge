@@ -35,8 +35,8 @@ export function ProgramForm({ draft, onChange }: ProgramFormProps) {
           type="text"
           value={draft.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="PROGRAM NAME"
-          className="w-full border-0 border-b border-warm-ash/30 bg-transparent py-3 font-display text-lg font-medium uppercase tracking-wider text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
+          placeholder="Program name"
+          className="w-full border-0 border-b border-warm-ash/30 bg-transparent py-3 font-display text-lg font-medium text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
           aria-label="Program name"
         />
       </div>

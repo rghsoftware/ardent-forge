@@ -105,8 +105,8 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
         showCloseButton={false}
       >
         <SheetHeader>
-          <SheetTitle className="font-display text-sm uppercase tracking-widest text-bone-white">
-            CREATE CUSTOM EXERCISE
+          <SheetTitle className="font-display text-sm text-bone-white">
+            Create Custom Exercise
           </SheetTitle>
           <SheetDescription className="text-xs text-warm-ash">
             Define a new exercise for your library.
@@ -116,11 +116,8 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 px-4 pb-4">
           {/* Name */}
           <div className="space-y-1">
-            <Label
-              htmlFor="exercise-name"
-              className="text-xs font-medium uppercase tracking-widest text-warm-ash"
-            >
-              NAME
+            <Label htmlFor="exercise-name" className="text-xs font-medium text-warm-ash">
+              Name
             </Label>
             <input
               id="exercise-name"
@@ -134,9 +131,7 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
 
           {/* Category */}
           <div className="space-y-1">
-            <Label className="text-xs font-medium uppercase tracking-widest text-warm-ash">
-              CATEGORY
-            </Label>
+            <Label className="text-xs font-medium text-warm-ash">Category</Label>
             <Controller
               name="category"
               control={control}
@@ -159,9 +154,7 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
 
           {/* Movement Pattern */}
           <div className="space-y-1">
-            <Label className="text-xs font-medium uppercase tracking-widest text-warm-ash">
-              MOVEMENT PATTERN
-            </Label>
+            <Label className="text-xs font-medium text-warm-ash">Movement pattern</Label>
             <Controller
               name="movementPattern"
               control={control}
@@ -184,9 +177,7 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
 
           {/* Primary Muscle Groups */}
           <div className="space-y-2">
-            <Label className="text-xs font-medium uppercase tracking-widest text-warm-ash">
-              PRIMARY MUSCLES
-            </Label>
+            <Label className="text-xs font-medium text-warm-ash">Primary muscles</Label>
             {errors.primaryMuscles && (
               <p className="text-xs text-warning-flare">{errors.primaryMuscles.message}</p>
             )}
@@ -224,9 +215,7 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
 
           {/* Equipment */}
           <div className="space-y-2">
-            <Label className="text-xs font-medium uppercase tracking-widest text-warm-ash">
-              EQUIPMENT
-            </Label>
+            <Label className="text-xs font-medium text-warm-ash">Equipment</Label>
             <Controller
               name="equipment"
               control={control}
@@ -273,7 +262,7 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
                   />
                 )}
               />
-              <span className="text-xs uppercase tracking-wider text-bone-white">SUPPORTS 1RM</span>
+              <span className="text-xs text-bone-white">Supports 1RM</span>
             </label>
             <label className="flex min-h-12 cursor-pointer items-center gap-2">
               <Controller
@@ -287,7 +276,7 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
                   />
                 )}
               />
-              <span className="text-xs uppercase tracking-wider text-bone-white">BILATERAL</span>
+              <span className="text-xs text-bone-white">Bilateral</span>
             </label>
           </div>
 
@@ -295,9 +284,9 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="min-h-12 w-full bg-forge text-on-forge text-xs font-medium uppercase tracking-widest"
+            className="min-h-12 w-full bg-forge text-on-forge text-xs font-medium"
           >
-            {isSubmitting ? 'CREATING...' : 'CREATE EXERCISE'}
+            {isSubmitting ? 'Creating...' : 'Create exercise'}
           </Button>
           {createExercise.isError && (
             <p className="text-xs text-warning-flare">

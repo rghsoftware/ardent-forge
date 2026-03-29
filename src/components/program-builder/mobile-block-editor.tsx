@@ -53,10 +53,10 @@ export function MobileBlockEditor({
         type="button"
         variant="secondary"
         onClick={handleAddBlock}
-        className="min-h-12 w-full text-xs uppercase tracking-wider"
+        className="min-h-12 w-full text-xs"
       >
         <Icon name="add" size={16} />
-        ADD BLOCK
+        Add block
       </Button>
     </div>
   )
@@ -142,16 +142,16 @@ function MobileBlockCard({
               if (e.key === 'Enter') setIsEditingName(false)
             }}
             autoFocus
-            className="min-w-0 flex-1 border-0 border-b border-warm-ash/30 bg-transparent py-1 font-display text-sm font-medium uppercase tracking-wider text-bone-white focus:border-ember focus:outline-none"
+            className="min-w-0 flex-1 border-0 border-b border-warm-ash/30 bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:border-ember focus:outline-none"
             aria-label="Block name"
           />
         ) : (
           <button
             type="button"
             onClick={() => setIsEditingName(true)}
-            className="min-w-0 flex-1 text-left font-display text-sm font-medium uppercase tracking-wider text-bone-white hover:text-ember"
+            className="min-w-0 flex-1 text-left font-display text-sm font-medium text-bone-white hover:text-ember"
           >
-            {block.name || 'UNTITLED BLOCK'}
+            {block.name || 'Untitled block'}
           </button>
         )}
 
@@ -240,10 +240,10 @@ function MobileBlockCard({
             type="button"
             variant="secondary"
             onClick={handleAddWeek}
-            className="min-h-10 text-xs uppercase tracking-wider"
+            className="min-h-10 text-xs"
           >
             <Icon name="add" size={16} />
-            ADD WEEK
+            Add week
           </Button>
         </div>
       )}

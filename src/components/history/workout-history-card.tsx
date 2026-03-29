@@ -33,9 +33,7 @@ export function WorkoutHistoryCard({ summary, index, onClick }: WorkoutHistoryCa
     >
       {/* Left side: date + exercise names */}
       <div className="flex flex-col gap-0.5 min-w-0 flex-1 mr-3">
-        <span className="font-heading text-sm text-bone-white uppercase tracking-wider">
-          {log.title ?? dateLabel}
-        </span>
+        <span className="font-heading text-sm text-bone-white">{log.title ?? dateLabel}</span>
         <span className="text-xs text-warm-ash/60 truncate">{exerciseList || 'No exercises'}</span>
       </div>
 

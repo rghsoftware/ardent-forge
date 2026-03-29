@@ -211,10 +211,10 @@ function BuilderPage() {
           type="button"
           variant="ghost"
           onClick={() => navigate({ to: '/library' })}
-          className="min-h-10 text-xs uppercase tracking-wider text-warm-ash hover:text-bone-white"
+          className="min-h-10 text-xs text-warm-ash hover:text-bone-white"
         >
           <Icon name="arrow_back" size={16} />
-          BACK TO LIBRARY
+          Back to library
         </Button>
 
         <div className="flex-1" />
@@ -223,21 +223,17 @@ function BuilderPage() {
           type="button"
           variant="ghost"
           onClick={() => setPreviewMode(true)}
-          className="min-h-10 text-xs uppercase tracking-wider text-warm-ash hover:text-bone-white"
+          className="min-h-10 text-xs text-warm-ash hover:text-bone-white"
         >
           <Icon name="visibility" size={16} />
-          PREVIEW
+          Preview
         </Button>
       </div>
 
       <div className="flex-shrink-0 px-4 pb-6">
-        <h1 className="font-display text-2xl font-medium uppercase tracking-wider text-bone-white">
-          PROGRAM BUILDER
-        </h1>
+        <h1 className="font-display text-2xl font-medium text-bone-white">Program Builder</h1>
         {programId && draft.name && (
-          <p className="mt-1 text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
-            EDITING: {draft.name}
-          </p>
+          <p className="mt-1 text-[10px] font-medium text-warm-ash/60">Editing: {draft.name}</p>
         )}
       </div>
 
@@ -278,9 +274,9 @@ function BuilderPage() {
           variant="default"
           onClick={handleSave}
           disabled={isSaving}
-          className="min-h-12 w-full bg-forge text-on-forge text-xs uppercase tracking-wider hover:brightness-110"
+          className="min-h-12 w-full bg-forge text-on-forge text-xs hover:brightness-110"
         >
-          {isSaving ? 'SAVING...' : 'SAVE PROGRAM'}
+          {isSaving ? 'Saving...' : 'Save program'}
         </Button>
 
         {error && <p className="mt-2 text-xs text-warning-flare">{error}</p>}

@@ -148,7 +148,7 @@ function TodayPage() {
       {todayContext?.error && (
         <div
           role="alert"
-          className="mt-8 bg-amber-900/30 border border-amber-600/40 px-4 py-3 text-xs text-amber-300 uppercase tracking-wider text-center"
+          className="mt-8 bg-amber-900/30 border border-amber-600/40 px-4 py-3 text-xs text-amber-300 text-center"
         >
           Your program data may be out of sync. Try reactivating your program.
         </div>
@@ -180,8 +180,8 @@ function TodayPage() {
           >
             fitness_center
           </span>
-          <p className="text-sm uppercase tracking-widest font-heading">NO SESSIONS YET</p>
-          <p className="text-xs uppercase tracking-wider">TAP EXECUTE WORKOUT TO BEGIN</p>
+          <p className="text-sm font-heading">No sessions yet</p>
+          <p className="text-xs">Tap Execute Workout to begin</p>
         </div>
       )}
 
@@ -211,19 +211,15 @@ function TodayPage() {
             variant={hasActiveProgram ? 'outline' : 'molten'}
             className={
               hasActiveProgram
-                ? 'w-full h-12 text-xs uppercase tracking-widest font-medium'
-                : 'w-full h-16 text-base uppercase tracking-widest font-medium'
+                ? 'w-full h-12 text-xs font-medium'
+                : 'w-full h-16 text-base font-medium'
             }
             onClick={handleStartWorkout}
             disabled={isStarting || !userId}
           >
-            {isStarting ? 'STARTING...' : hasActiveProgram ? 'AD-HOC WORKOUT' : 'EXECUTE WORKOUT'}
+            {isStarting ? 'Starting...' : hasActiveProgram ? 'Ad-hoc Workout' : 'Execute Workout'}
           </Button>
-          {startError && (
-            <p className="text-xs text-warning-flare text-center uppercase tracking-wider">
-              {startError}
-            </p>
-          )}
+          {startError && <p className="text-xs text-warning-flare text-center">{startError}</p>}
         </div>
       </div>
     </div>
@@ -253,9 +249,7 @@ function RecentWorkoutCard({ workout }: { workout: WorkoutLog }) {
   return (
     <div className="flex items-center justify-between bg-surface-iron px-4 py-3 milled-edge">
       <div className="flex flex-col gap-0.5">
-        <span className="font-heading text-sm text-bone-white uppercase tracking-wider">
-          {workout.title ?? dateLabel}
-        </span>
+        <span className="font-heading text-sm text-bone-white">{workout.title ?? dateLabel}</span>
         <span className="text-xs text-warm-ash/60 uppercase tracking-wider">{dateLabel}</span>
       </div>
 

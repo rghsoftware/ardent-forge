@@ -102,7 +102,7 @@ export function RuckPanel({ onComplete }: RuckPanelProps) {
             disabled={!isRunning && !load}
             className="min-h-12 min-w-32"
           >
-            {isRunning ? 'STOP' : 'START'}
+            {isRunning ? 'Stop' : 'Start'}
           </Button>
         </div>
       )}
@@ -170,7 +170,7 @@ export function RuckPanel({ onComplete }: RuckPanelProps) {
             disabled={elapsedSeconds === 0}
             className="mt-2 min-h-12"
           >
-            LOG RUCK
+            Log ruck
           </Button>
         </div>
       )}

@@ -90,10 +90,10 @@ export function BlockList({ draft, onUpdate, onPickSession, onCopyWeek }: BlockL
         type="button"
         variant="secondary"
         onClick={handleAddBlock}
-        className="min-h-12 w-full text-xs uppercase tracking-wider"
+        className="min-h-12 w-full text-xs"
       >
         <Icon name="add" size={16} />
-        ADD BLOCK
+        Add block
       </Button>
     </div>
   )

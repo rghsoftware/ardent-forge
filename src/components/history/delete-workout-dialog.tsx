@@ -37,23 +37,21 @@ export function DeleteWorkoutDialog({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle className="text-xs uppercase tracking-widest text-warning-flare">
-            DELETE WORKOUT
-          </DialogTitle>
+          <DialogTitle className="text-xs text-warning-flare">Delete Workout</DialogTitle>
           <DialogDescription>
             This workout and all its logged sets will be permanently deleted. This cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose} disabled={deleteWorkoutLog.isPending}>
-            CANCEL
+            Cancel
           </Button>
           <Button
             variant="destructive"
             onClick={handleDelete}
             disabled={deleteWorkoutLog.isPending}
           >
-            {deleteWorkoutLog.isPending ? 'DELETING...' : 'DELETE'}
+            {deleteWorkoutLog.isPending ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogFooter>
         {deleteWorkoutLog.isError && (

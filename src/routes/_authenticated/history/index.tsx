@@ -60,9 +60,7 @@ function HistoryPage() {
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
       {/* Header */}
       <div className="px-4 pt-6 pb-4">
-        <h1 className="font-display text-xl font-medium uppercase tracking-widest text-bone-white">
-          TRACKER
-        </h1>
+        <h1 className="font-display text-xl font-medium text-bone-white">Tracker</h1>
       </div>
 
       {/* Content */}
@@ -73,9 +71,7 @@ function HistoryPage() {
           <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
             cloud_off
           </span>
-          <p className="font-display text-sm uppercase tracking-widest text-warning-flare">
-            FAILED TO LOAD HISTORY
-          </p>
+          <p className="font-display text-sm text-warning-flare">Failed to load history</p>
           <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
         </div>
       ) : completedSummaries.length === 0 ? (
@@ -86,10 +82,8 @@ function HistoryPage() {
           >
             history
           </span>
-          <p className="font-display text-sm uppercase tracking-widest text-warm-ash">
-            NO SESSIONS LOGGED
-          </p>
-          <p className="text-xs uppercase tracking-wider">COMPLETE A WORKOUT TO SEE IT HERE</p>
+          <p className="font-display text-sm text-warm-ash">No sessions logged</p>
+          <p className="text-xs">Complete a workout to see it here</p>
         </div>
       ) : (
         <div ref={parentRef} className="flex-1 overflow-auto">

@@ -154,7 +154,7 @@ export function CircuitPanel({
 
           {/* Start button */}
           <Button variant="default" size="lg" onClick={handleStart} className="mt-2 min-h-12">
-            START CIRCUIT
+            Start circuit
           </Button>
         </div>
       )}
@@ -168,9 +168,7 @@ export function CircuitPanel({
           </span>
 
           {/* Exercise name */}
-          <span className="font-display text-2xl uppercase tracking-wider text-bone-white">
-            {currentExercise.name}
-          </span>
+          <span className="font-display text-2xl text-bone-white">{currentExercise.name}</span>
 
           {/* Target reps */}
           <span className="font-display text-5xl tabular-nums text-ember">
@@ -185,7 +183,7 @@ export function CircuitPanel({
             onClick={handleExerciseDone}
             className="mt-4 min-h-12 min-w-32"
           >
-            DONE
+            Done
           </Button>
 
           {/* Progress */}
@@ -214,7 +212,7 @@ export function CircuitPanel({
           )}
 
           <Button variant="ghost" size="sm" onClick={handleSkipRest} className="mt-2 text-xs">
-            SKIP REST
+            Skip rest
           </Button>
         </div>
       )}
@@ -231,7 +229,7 @@ export function CircuitPanel({
           </span>
 
           <Button variant="ghost" size="sm" onClick={handleSkipRest} className="mt-2 text-xs">
-            SKIP REST
+            Skip rest
           </Button>
         </div>
       )}
@@ -254,7 +252,7 @@ export function CircuitPanel({
             onClick={() => onComplete(completedRounds)}
             className="mt-2 min-h-12"
           >
-            DONE
+            Done
           </Button>
         </div>
       )}

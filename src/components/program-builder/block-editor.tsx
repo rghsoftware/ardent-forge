@@ -125,7 +125,7 @@ export function BlockEditor({
               if (e.key === 'Enter') setIsEditingName(false)
             }}
             autoFocus
-            className="flex-1 border-0 border-b border-warm-ash/30 bg-transparent py-1 font-display text-sm font-medium uppercase tracking-wider text-bone-white focus:border-ember focus:outline-none"
+            className="flex-1 border-0 border-b border-warm-ash/30 bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:border-ember focus:outline-none"
             aria-label="Block name"
           />
         ) : (
@@ -135,9 +135,9 @@ export function BlockEditor({
               e.stopPropagation()
               setIsEditingName(true)
             }}
-            className="flex-1 text-left font-display text-sm font-medium uppercase tracking-wider text-bone-white hover:text-ember"
+            className="flex-1 text-left font-display text-sm font-medium text-bone-white hover:text-ember"
           >
-            {block.name || 'UNTITLED BLOCK'}
+            {block.name || 'Untitled block'}
           </button>
         )}
 
@@ -205,10 +205,10 @@ export function BlockEditor({
             type="button"
             variant="secondary"
             onClick={handleAddWeek}
-            className="min-h-10 text-xs uppercase tracking-wider"
+            className="min-h-10 text-xs"
           >
             <Icon name="add" size={16} />
-            ADD WEEK
+            Add week
           </Button>
         </div>
       )}

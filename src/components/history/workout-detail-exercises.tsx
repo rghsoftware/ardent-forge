@@ -70,9 +70,7 @@ export function WorkoutDetailExercises({
   if (sortedGroups.length === 0) {
     return (
       <div className="flex items-center justify-center px-4 py-16">
-        <p className="font-display text-sm uppercase tracking-widest text-warm-ash">
-          NO EXERCISES LOGGED
-        </p>
+        <p className="font-display text-sm text-warm-ash">No exercises logged</p>
       </div>
     )
   }
@@ -93,7 +91,7 @@ export function WorkoutDetailExercises({
           return (
             <div key={activity.id}>
               {/* Exercise name header */}
-              <h3 className="text-xs font-medium uppercase tracking-widest text-warm-ash mb-2">
+              <h3 className="text-xs font-medium text-warm-ash mb-2">
                 {exercise?.name ?? 'Unknown Exercise'}
               </h3>
 
