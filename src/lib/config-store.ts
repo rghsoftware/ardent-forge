@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { isTauri, invoke } from '@tauri-apps/api/core'
 import { validateConnection } from './connection-validator'
 
@@ -5,10 +6,12 @@ import { validateConnection } from './connection-validator'
 // Types
 // ---------------------------------------------------------------------------
 
-export type BackendConfig = {
-  supabaseUrl: string
-  supabaseKey: string
-}
+export const backendConfigSchema = z.object({
+  supabaseUrl: z.string().url(),
+  supabaseKey: z.string().min(1),
+})
+
+export type BackendConfig = z.infer<typeof backendConfigSchema>
 
 export interface ConfigStore {
   getConfig(): Promise<BackendConfig | null>
@@ -28,14 +31,27 @@ class BrowserConfigStore implements ConfigStore {
     const raw = localStorage.getItem(BROWSER_STORAGE_KEY)
     if (!raw) return null
     try {
-      return JSON.parse(raw) as BackendConfig
+      const parsed = backendConfigSchema.safeParse(JSON.parse(raw))
+      if (!parsed.success) {
+        console.warn('[config-store] Corrupt config found, clearing:', raw?.slice(0, 50))
+        this.clearConfig()
+        return null
+      }
+      return parsed.data
     } catch {
       return null
     }
   }
 
   async setConfig(config: BackendConfig): Promise<void> {
-    localStorage.setItem(BROWSER_STORAGE_KEY, JSON.stringify(config))
+    try {
+      localStorage.setItem(BROWSER_STORAGE_KEY, JSON.stringify(config))
+    } catch (err) {
+      throw new Error(
+        'Failed to save config to localStorage: ' +
+          (err instanceof Error ? err.message : 'Unknown error'),
+      )
+    }
   }
 
   async clearConfig(): Promise<void> {
@@ -43,7 +59,13 @@ class BrowserConfigStore implements ConfigStore {
   }
 
   async hasConfig(): Promise<boolean> {
-    return localStorage.getItem(BROWSER_STORAGE_KEY) !== null
+    const raw = localStorage.getItem(BROWSER_STORAGE_KEY)
+    if (!raw) return false
+    try {
+      return backendConfigSchema.safeParse(JSON.parse(raw)).success
+    } catch {
+      return false
+    }
   }
 }
 
@@ -58,7 +80,13 @@ class TauriConfigStore implements ConfigStore {
     const raw = await invoke<string | null>('get_app_config', { key: TAURI_CONFIG_KEY })
     if (!raw) return null
     try {
-      return JSON.parse(raw) as BackendConfig
+      const parsed = backendConfigSchema.safeParse(JSON.parse(raw))
+      if (!parsed.success) {
+        console.warn('[config-store] Corrupt config found, clearing:', raw?.slice(0, 50))
+        this.clearConfig()
+        return null
+      }
+      return parsed.data
     } catch {
       return null
     }
@@ -115,12 +143,24 @@ export async function resolveConfig(): Promise<BackendConfig | null> {
 
   if (!envUrl || !envKey) return null
 
-  // 3. Validate env var defaults before persisting (CF-5)
+  // 3. Validate env var defaults before persisting (CF-5: validate before persist)
   const result = await validateConnection(envUrl, envKey)
-  if (result.status !== 'ok') return null
+  if (result.status !== 'ok') {
+    console.warn(
+      '[config] Env vars found but validation failed:',
+      result.status,
+      (result as { message?: string }).message,
+    )
+    return null
+  }
 
   // 4. Persist validated defaults so they are used on subsequent launches
   const config: BackendConfig = { supabaseUrl: envUrl, supabaseKey: envKey }
-  await store.setConfig(config)
+  try {
+    await store.setConfig(config)
+  } catch (err) {
+    console.warn('[config] Failed to persist validated env-var config:', err)
+    // still return the config -- it's valid, just not persisted
+  }
   return config
 }

@@ -1,9 +1,12 @@
+//! Key-value config store backed by the `app_config` SQLite table. Not synced to Supabase.
+
 use sqlx::SqlitePool;
 use tauri::State;
 
 use crate::error::AppError;
 use crate::sync::SYNCABLE_TABLES;
 
+/// Retrieves the value for `key` from the `app_config` table. Returns `None` if the key does not exist.
 #[tauri::command]
 pub async fn get_app_config(
     pool: State<'_, SqlitePool>,
@@ -18,6 +21,7 @@ pub async fn get_app_config(
     Ok(row.map(|(v,)| v))
 }
 
+/// Inserts or updates the value for `key` in the `app_config` table (upsert).
 #[tauri::command]
 pub async fn set_app_config(
     pool: State<'_, SqlitePool>,
@@ -33,6 +37,7 @@ pub async fn set_app_config(
     Ok(())
 }
 
+/// Deletes the entry for `key` from the `app_config` table. No-op if the key does not exist.
 #[tauri::command]
 pub async fn clear_app_config(
     pool: State<'_, SqlitePool>,
@@ -46,8 +51,19 @@ pub async fn clear_app_config(
     Ok(())
 }
 
+/// Deletes all rows from all sync-tracked tables. Requires `confirmation == "WIPE_CONFIRMED"` to prevent accidental data loss.
 #[tauri::command]
-pub async fn wipe_synced_data(pool: State<'_, SqlitePool>) -> Result<(), AppError> {
+pub async fn wipe_synced_data(
+    pool: State<'_, SqlitePool>,
+    confirmation: String,
+) -> Result<(), AppError> {
+    if confirmation != "WIPE_CONFIRMED" {
+        return Err(AppError::validation(
+            "confirmation",
+            "Invalid confirmation string. Pass 'WIPE_CONFIRMED' to proceed.",
+        ));
+    }
+
     let mut tx = pool.begin().await?;
 
     for table in SYNCABLE_TABLES {

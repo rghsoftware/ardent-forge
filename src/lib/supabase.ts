@@ -3,8 +3,7 @@ import type { BackendConfig } from './config-store'
 
 let _client: SupabaseClient | null = null
 
-// TODO: Add `createClient<Database>` type parameter once `supabase gen types typescript`
-// has been run against a live Supabase instance.
+// TODO: Add `createClient<Database>` type parameter once the canonical schema types are generated.
 
 /**
  * Returns the cached Supabase client, or null if not yet initialized.
@@ -19,13 +18,20 @@ export function getSupabaseClient(): SupabaseClient | null {
  * Returns the newly created client.
  */
 export function initSupabaseFromConfig(config: BackendConfig): SupabaseClient {
+  try {
+    new URL(config.supabaseUrl)
+  } catch {
+    throw new Error(
+      `[supabase] Invalid Supabase URL: "${config.supabaseUrl}". Provide a valid HTTPS URL.`,
+    )
+  }
   _client = createClient(config.supabaseUrl, config.supabaseKey)
   return _client
 }
 
 /**
- * Discards the cached client. Call this when the backend configuration
- * changes so the next `initSupabaseFromConfig()` creates a fresh client.
+ * Discards the cached client. Must be paired with a subsequent `initSupabaseFromConfig()` call,
+ * since `getSupabaseClient()` will return `null` until a new client is constructed.
  */
 export function resetSupabaseClient(): void {
   _client = null

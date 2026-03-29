@@ -3,6 +3,7 @@ import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { getConfigStore } from '@/lib/config-store'
 import type { BackendConfig } from '@/lib/config-store'
 import { validateConnection } from '@/lib/connection-validator'
+import type { ConnectionUiStatus } from '@/lib/connection-validator'
 import { initSupabaseFromConfig } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { AuthPageShell } from '@/components/auth/auth-page-shell'
@@ -18,14 +19,12 @@ export const Route = createFileRoute('/setup')({
   component: SetupPage,
 })
 
-type Status = 'idle' | 'validating' | 'ok' | 'no-schema' | 'unreachable'
-
 function SetupPage() {
   const router = useRouter()
 
   const [url, setUrl] = useState(import.meta.env.VITE_SUPABASE_URL?.trim() ?? '')
   const [key, setKey] = useState(import.meta.env.VITE_SUPABASE_PUB_KEY?.trim() ?? '')
-  const [status, setStatus] = useState<Status>('idle')
+  const [status, setStatus] = useState<ConnectionUiStatus>('idle')
   const [message, setMessage] = useState('')
 
   const handleConnect = async () => {
@@ -41,15 +40,22 @@ function SetupPage() {
     const result = await validateConnection(url, key)
 
     if (result.status === 'ok') {
-      setStatus('ok')
-      setMessage('Connected successfully.')
+      try {
+        setStatus('ok')
+        setMessage('Connected successfully.')
 
-      const config: BackendConfig = { supabaseUrl: url, supabaseKey: key }
-      await getConfigStore().setConfig(config)
-      initSupabaseFromConfig(config)
+        const config: BackendConfig = { supabaseUrl: url, supabaseKey: key }
+        await getConfigStore().setConfig(config)
+        initSupabaseFromConfig(config)
 
-      router.navigate({ to: '/sign-in', search: { reason: undefined } })
-      return
+        router.navigate({ to: '/sign-in', search: { reason: undefined } })
+        return
+      } catch (err) {
+        console.error('[setup] Failed to save configuration after validation:', err)
+        setStatus('unreachable')
+        setMessage('Connected but failed to save configuration. Please try again.')
+        return
+      }
     }
 
     setStatus(result.status)

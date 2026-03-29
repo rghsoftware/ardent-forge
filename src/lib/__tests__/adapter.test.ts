@@ -11,8 +11,10 @@ vi.mock('@tauri-apps/api/core', () => ({
   isTauri: vi.fn(() => false),
 }))
 
+const mockGetSupabaseClient = vi.fn<() => unknown>(() => mockSupabaseClient)
+
 vi.mock('@/lib/supabase', () => ({
-  getSupabaseClient: vi.fn(() => mockSupabaseClient),
+  getSupabaseClient: () => mockGetSupabaseClient(),
 }))
 
 // Minimal stub adapters -- only need to satisfy the DataAdapter interface type.
@@ -48,6 +50,8 @@ describe('getAdapter', () => {
   beforeEach(() => {
     resetAdapter()
     vi.clearAllMocks()
+    // Restore default after clearAllMocks wipes the implementation
+    mockGetSupabaseClient.mockReturnValue(mockSupabaseClient)
   })
 
   afterEach(() => {
@@ -70,7 +74,7 @@ describe('getAdapter', () => {
     vi.mocked(isTauri).mockReturnValue(true)
     const adapter = getAdapter()
     expect(adapter).toBe(fakeTauriAdapter)
-    expect(TauriAdapter).toHaveBeenCalledWith('local-user')
+    expect(TauriAdapter).toHaveBeenCalledWith('guest-local')
   })
 
   it('passes custom userId to TauriAdapter', () => {
@@ -95,12 +99,19 @@ describe('getAdapter', () => {
     expect(TauriAdapter).toHaveBeenCalledTimes(1)
     expect(TauriAdapter).toHaveBeenCalledWith('user-A')
   })
+
+  it('throws when not in Tauri and getSupabaseClient returns null', () => {
+    vi.mocked(isTauri).mockReturnValue(false)
+    mockGetSupabaseClient.mockReturnValue(null)
+    expect(() => getAdapter()).toThrow(/setup/i)
+  })
 })
 
 describe('resetAdapter', () => {
   beforeEach(() => {
     resetAdapter()
     vi.clearAllMocks()
+    mockGetSupabaseClient.mockReturnValue(mockSupabaseClient)
   })
 
   it('clears the cache so a new adapter is created on next call', () => {

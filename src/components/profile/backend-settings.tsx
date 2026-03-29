@@ -4,6 +4,7 @@ import { isTauri, invoke } from '@tauri-apps/api/core'
 import { getConfigStore } from '@/lib/config-store'
 import type { BackendConfig } from '@/lib/config-store'
 import { validateConnection } from '@/lib/connection-validator'
+import type { ConnectionUiStatus } from '@/lib/connection-validator'
 import { resetSupabaseClient, initSupabaseFromConfig } from '@/lib/supabase'
 import { resetAdapter } from '@/lib/adapter'
 import { useAuth } from '@/lib/auth'
@@ -18,8 +19,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-type ChangeStatus = 'idle' | 'validating' | 'ok' | 'no-schema' | 'unreachable'
-
 export function BackendSettings() {
   const router = useRouter()
   const { signOut } = useAuth()
@@ -28,7 +27,7 @@ export function BackendSettings() {
   const [editing, setEditing] = useState(false)
   const [url, setUrl] = useState('')
   const [key, setKey] = useState('')
-  const [status, setStatus] = useState<ChangeStatus>('idle')
+  const [status, setStatus] = useState<ConnectionUiStatus>('idle')
   const [message, setMessage] = useState('')
   const [copied, setCopied] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -39,6 +38,9 @@ export function BackendSettings() {
       .then((config) => {
         if (config) setCurrentUrl(config.supabaseUrl)
       })
+      .catch((err) => {
+        console.error('[backend-settings] Failed to load config:', err)
+      })
   }, [])
 
   const truncatedUrl =
@@ -46,45 +48,60 @@ export function BackendSettings() {
 
   const handleCopy = async () => {
     if (!currentUrl) return
-    await navigator.clipboard.writeText(currentUrl)
+    try {
+      await navigator.clipboard.writeText(currentUrl)
+    } catch {
+      // Copy is non-critical, swallow silently
+    }
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const applyBackendChange = async () => {
+  const applyBackendChange = async (skipValidation = false) => {
     setStatus('validating')
     setMessage('')
 
-    const result = await validateConnection(url, key)
+    if (!skipValidation) {
+      const result = await validateConnection(url, key)
 
-    if (result.status !== 'ok') {
-      setStatus(result.status)
-      setMessage(
-        result.status === 'no-schema'
-          ? 'Connected, but database schema not found. See the setup guide.'
-          : 'Cannot reach server. Check URL and key.',
-      )
-      return
-    }
-
-    // Tauri mode: wipe synced data first
-    if (isTauri()) {
-      try {
-        await invoke('wipe_synced_data')
-      } catch (err) {
-        console.error('[backend-settings] Failed to wipe synced data:', err)
+      if (result.status !== 'ok') {
+        setStatus(result.status)
+        setMessage(
+          result.status === 'no-schema'
+            ? 'Connected, but database schema not found. See the setup guide.'
+            : 'Cannot reach server. Check URL and key.',
+        )
+        return
       }
     }
 
-    // Clear auth, persist new config, reset client + adapter
-    await signOut()
-    const config: BackendConfig = { supabaseUrl: url, supabaseKey: key }
-    await getConfigStore().setConfig(config)
-    resetSupabaseClient()
-    initSupabaseFromConfig(config)
-    resetAdapter()
+    try {
+      // Tauri mode: wipe synced data first
+      if (isTauri()) {
+        try {
+          await invoke('wipe_synced_data', { confirmation: 'WIPE_CONFIRMED' })
+        } catch (err) {
+          console.error('[backend-settings] Failed to wipe synced data:', err)
+          setStatus('unreachable')
+          setMessage('Could not clear local data. Please try again or restart the app.')
+          return
+        }
+      }
 
-    router.navigate({ to: '/sign-in', search: { reason: undefined } })
+      // Clear auth, persist new config, reset client + adapter
+      await signOut()
+      const config: BackendConfig = { supabaseUrl: url, supabaseKey: key }
+      await getConfigStore().setConfig(config)
+      resetSupabaseClient()
+      initSupabaseFromConfig(config)
+      resetAdapter()
+
+      router.navigate({ to: '/sign-in', search: { reason: undefined } })
+    } catch (err) {
+      console.error('[backend-settings] Unexpected error during backend change:', err)
+      setStatus('unreachable')
+      setMessage('An unexpected error occurred. Please try again.')
+    }
   }
 
   const handleSubmit = async () => {
@@ -119,7 +136,7 @@ export function BackendSettings() {
 
   const handleConfirm = async () => {
     setConfirmOpen(false)
-    await applyBackendChange()
+    await applyBackendChange(true)
   }
 
   return (

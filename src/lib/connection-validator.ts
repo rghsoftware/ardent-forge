@@ -1,7 +1,9 @@
-export type ValidationResult = {
-  status: 'ok' | 'no-schema' | 'unreachable'
-  message?: string
-}
+export type ValidationResult =
+  | { status: 'ok' }
+  | { status: 'no-schema'; message: string }
+  | { status: 'unreachable'; message: string }
+
+export type ConnectionUiStatus = ValidationResult['status'] | 'idle' | 'validating'
 
 /**
  * Validates a Supabase connection by testing reachability and schema presence.
@@ -17,6 +19,7 @@ export async function validateConnection(url: string, key: string): Promise<Vali
   try {
     const reachRes = await fetch(`${normalizedUrl}/rest/v1/`, {
       headers: { apikey: key },
+      signal: AbortSignal.timeout(8000),
     })
 
     if (!reachRes.ok) {
@@ -26,9 +29,17 @@ export async function validateConnection(url: string, key: string): Promise<Vali
       }
     }
   } catch (err) {
+    const isTimeout =
+      err instanceof DOMException && (err.name === 'TimeoutError' || err.name === 'AbortError')
+    if (isTimeout) {
+      return {
+        status: 'unreachable',
+        message: 'Connection timed out. Check the URL and try again.',
+      }
+    }
     return {
       status: 'unreachable',
-      message: err instanceof Error ? err.message : 'Network error',
+      message: 'Could not reach the Supabase instance. Check the URL and your network.',
     }
   }
 
@@ -39,18 +50,35 @@ export async function validateConnection(url: string, key: string): Promise<Vali
         apikey: key,
         Authorization: `Bearer ${key}`,
       },
+      signal: AbortSignal.timeout(8000),
     })
 
     if (!schemaRes.ok) {
+      if (schemaRes.status === 401 || schemaRes.status === 403) {
+        return {
+          status: 'unreachable',
+          message:
+            'API key does not have access to this project. Check that the key matches the URL.',
+        }
+      }
       return {
         status: 'no-schema',
-        message: 'Connected, but database schema not found. See the setup guide.',
+        message:
+          'Could not verify the database schema. Ensure the database migrations have been run.',
       }
     }
-  } catch {
+  } catch (err) {
+    const isNetworkError = err instanceof TypeError || err instanceof DOMException
+    if (isNetworkError) {
+      return {
+        status: 'unreachable',
+        message:
+          'Reachability check passed but schema verification failed due to a network error. Try again.',
+      }
+    }
     return {
-      status: 'no-schema',
-      message: 'Connected, but could not verify schema.',
+      status: 'unreachable',
+      message: 'Schema verification failed unexpectedly. Try again.',
     }
   }
 

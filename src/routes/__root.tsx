@@ -4,10 +4,15 @@ import { getConfigStore } from '@/lib/config-store'
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ location }) => {
-    // Allow the /setup route itself to load without config
+    // Allow /setup to load without a backend configuration (it's where the user provides one)
     if (location.pathname === '/setup') return
 
-    const hasConfig = await getConfigStore().hasConfig()
+    let hasConfig = false
+    try {
+      hasConfig = await getConfigStore().hasConfig()
+    } catch (err) {
+      console.error('[root] Failed to check config, redirecting to setup:', err)
+    }
     if (!hasConfig) {
       throw redirect({ to: '/setup' })
     }
