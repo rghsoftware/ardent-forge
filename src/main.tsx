@@ -6,6 +6,8 @@ import { routeTree } from './routeTree.gen'
 import { AuthProvider, useAuth, type RouterContext } from '@/lib/auth'
 import { queryClient } from '@/lib/query-client'
 import { SyncListener } from '@/components/sync-listener'
+import { resolveConfig } from '@/lib/config-store'
+import { initSupabaseFromConfig } from '@/lib/supabase'
 import './index.css'
 
 const router = createRouter({
@@ -27,13 +29,20 @@ function InnerApp() {
   return <RouterProvider router={router} context={{ auth }} />
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <SyncListener />
-      <AuthProvider>
-        <InnerApp />
-      </AuthProvider>
-    </QueryClientProvider>
-  </React.StrictMode>,
-)
+;(async () => {
+  const config = await resolveConfig()
+  if (config) {
+    initSupabaseFromConfig(config)
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <SyncListener />
+        <AuthProvider>
+          <InnerApp />
+        </AuthProvider>
+      </QueryClientProvider>
+    </React.StrictMode>,
+  )
+})()

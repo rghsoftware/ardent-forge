@@ -14,7 +14,7 @@ function AuthCallbackPage() {
     const params = new URLSearchParams(window.location.search)
     const code = params.get('code')
 
-    if (!code) {
+    if (!supabase || !code) {
       navigate({ to: '/sign-in', search: { reason: 'oauth_error' } })
       return
     }

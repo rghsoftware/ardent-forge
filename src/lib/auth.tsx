@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { AuthError, Session, User } from '@supabase/supabase-js'
 import { isTauri } from '@tauri-apps/api/core'
 import { getSupabaseClient } from './supabase'
+import { getConfigStore } from './config-store'
 import { resetAdapter } from './adapter'
 import { initSync, stopSync } from './sync-bridge'
 import { useSyncStore } from '@/stores/sync-store'
@@ -43,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(
     isRestoredGuest
       ? { user: SYNTHETIC_GUEST_USER, session: null, loading: false, isGuest: true }
-      : { user: null, session: null, loading: true, isGuest: false },
+      : { user: null, session: null, loading: !supabase ? false : true, isGuest: false },
   )
   const [deepLinkFailed, setDeepLinkFailed] = useState(false)
 
@@ -53,6 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    // No supabase client means no config yet -- route guard will redirect to /setup
+    if (!supabase) return
+
     // Guest session was restored eagerly via useState -- skip Supabase hydration
     if (isRestoredGuest) return
 
@@ -96,18 +100,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Start Tauri sync engine with the fresh auth tokens
         if (isTauri() && session) {
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-          const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-          if (!supabaseUrl || !supabaseKey) {
-            console.warn(
-              '[sync] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY, skipping sync init',
-            )
-          } else {
-            initSync(session.access_token, supabaseUrl, supabaseKey).catch((err) => {
+          getConfigStore()
+            .getConfig()
+            .then((config) => {
+              if (!config) {
+                console.warn('[sync] No backend config found, skipping sync init')
+                return
+              }
+              return initSync(session.access_token, config.supabaseUrl, config.supabaseKey)
+            })
+            .catch((err) => {
               console.error('[sync] Failed to initialize sync engine:', err)
               useSyncStore.getState().setSyncState('error', 'Failed to start sync')
             })
-          }
         }
       }
 
@@ -123,18 +128,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (event === 'TOKEN_REFRESHED' && isTauri() && session) {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-        if (!supabaseUrl || !supabaseKey) {
-          console.warn(
-            '[sync] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY, skipping sync init',
-          )
-        } else {
-          initSync(session.access_token, supabaseUrl, supabaseKey).catch((err) => {
+        getConfigStore()
+          .getConfig()
+          .then((config) => {
+            if (!config) {
+              console.warn('[sync] No backend config found, skipping sync init')
+              return
+            }
+            return initSync(session.access_token, config.supabaseUrl, config.supabaseKey)
+          })
+          .catch((err) => {
             console.error('[sync] Failed to initialize sync engine:', err)
             useSyncStore.getState().setSyncState('error', 'Failed to start sync')
           })
-        }
       }
     })
 
@@ -143,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Deep-link listener for Tauri OAuth callback (mobile + desktop)
   useEffect(() => {
-    if (!isTauri()) return
+    if (!isTauri() || !supabase) return
 
     let cleanup: (() => void) | undefined
     let cancelled = false
@@ -195,6 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [supabase])
 
   const signIn = async (email: string, password: string) => {
+    if (!supabase) return { error: { message: 'No backend configured' } as AuthError }
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (!error) {
       localStorage.removeItem(GUEST_STORAGE_KEY)
@@ -203,6 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signUp = async (email: string, password: string) => {
+    if (!supabase) return { error: { message: 'No backend configured' } as AuthError }
     const { error } = await supabase.auth.signUp({ email, password })
     if (!error) {
       localStorage.removeItem(GUEST_STORAGE_KEY)
@@ -213,11 +221,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     localStorage.removeItem(GUEST_STORAGE_KEY)
     setState({ user: null, session: null, loading: false, isGuest: false })
+    if (!supabase) return { error: undefined }
     const { error } = await supabase.auth.signOut()
     return { error: error ?? undefined }
   }
 
   const signInWithGoogle = async (): Promise<{ error?: AuthError }> => {
+    if (!supabase) return { error: { message: 'No backend configured' } as AuthError }
+
     if (isTauri()) {
       if (deepLinkFailed) {
         return {
@@ -265,6 +276,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const resetPassword = async (email: string) => {
+    if (!supabase) return { error: { message: 'No backend configured' } as AuthError }
     const { error } = await supabase.auth.resetPasswordForEmail(email)
     return { error: error ?? undefined }
   }

@@ -25,7 +25,14 @@ export function getAdapter(userId?: string): DataAdapter {
       // Call resetAdapter() after auth to switch to the real user ID.
       _adapter = new TauriAdapter(userId ?? GUEST_USER_ID)
     } else {
-      _adapter = new SupabaseAdapter(getSupabaseClient())
+      const client = getSupabaseClient()
+      if (!client) {
+        throw new Error(
+          'Cannot create SupabaseAdapter: no backend configured. ' +
+            'The route guard should have redirected to /setup.',
+        )
+      }
+      _adapter = new SupabaseAdapter(client)
     }
   }
   return _adapter
