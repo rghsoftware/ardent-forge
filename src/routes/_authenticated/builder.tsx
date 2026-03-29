@@ -27,7 +27,7 @@ import type { SessionType } from '@/domain/types'
 // Route definition
 // ---------------------------------------------------------------------------
 
-export const Route = createFileRoute('/builder')({
+export const Route = createFileRoute('/_authenticated/builder')({
   validateSearch: (search: Record<string, unknown>) => ({
     programId: search['programId'] as string | undefined,
   }),
@@ -40,7 +40,7 @@ export const Route = createFileRoute('/builder')({
 
 function BuilderPage() {
   const { programId } = Route.useSearch()
-  const { user, loading: authLoading } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   // Draft state
@@ -77,13 +77,6 @@ function BuilderPage() {
     setHydratedProgramId(programFull.program.id)
     setDraft(hydrateDraft(programFull))
   }
-
-  // Auth redirect
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate({ to: '/sign-in' })
-    }
-  }, [authLoading, user, navigate])
 
   const userId = user?.id ?? ''
 
@@ -193,16 +186,6 @@ function BuilderPage() {
   // ---------------------------------------------------------------------------
   // Loading state
   // ---------------------------------------------------------------------------
-
-  if (authLoading) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-8 w-48 bg-surface-iron" />
-        <Skeleton className="h-12 w-full bg-surface-iron" />
-        <Skeleton className="h-64 w-full bg-surface-iron" />
-      </div>
-    )
-  }
 
   if (programId && isLoadingProgram) {
     return (

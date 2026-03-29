@@ -1,6 +1,5 @@
 import {
   createFileRoute,
-  Link,
   Outlet,
   redirect,
   useNavigate,
@@ -8,7 +7,10 @@ import {
 } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuth } from '@/lib/auth'
+import { cn } from '@/lib/utils'
 import { SyncIndicator } from '@/components/layout/sync-indicator'
+import { SidebarNav } from '@/components/layout/sidebar-nav'
+import { MobileNav } from '@/components/layout/mobile-nav'
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ context }) => {
@@ -18,19 +20,6 @@ export const Route = createFileRoute('/_authenticated')({
   },
   component: AuthenticatedLayout,
 })
-
-interface NavItem {
-  to: string
-  label: string
-  icon: string
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'FORGE', icon: 'home' },
-  { to: '/history', label: 'TRACKER', icon: 'history' },
-  { to: '/exercises', label: 'LIBRARY', icon: 'fitness_center' },
-  { to: '/profile', label: 'PROFILE', icon: 'person' },
-]
 
 function AuthenticatedLayout() {
   const { user, loading, isGuest } = useAuth()
@@ -46,46 +35,32 @@ function AuthenticatedLayout() {
       navigate({ to: '/sign-in' })
     }
   }, [loading, user, isGuest, navigate])
+
   const isWorkoutRoute = pathname.startsWith('/log/')
 
   return (
-    <div className={`min-h-screen ${isWorkoutRoute ? '' : 'pb-16'}`}>
-      <div className="fixed top-0 right-0 z-50">
-        <SyncIndicator />
+    <div className="flex h-screen bg-background">
+      {/* Desktop sidebar */}
+      <div className="hidden lg:flex">
+        <SidebarNav />
       </div>
 
-      <Outlet />
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        <div className="absolute top-4 right-4 z-50">
+          <SyncIndicator />
+        </div>
+        <main className={cn('flex-1 overflow-y-auto', !isWorkoutRoute && 'lg:pb-0 pb-16')}>
+          <Outlet />
+        </main>
 
-      {/* Bottom navigation bar -- hidden during active workout */}
-      {!isWorkoutRoute && (
-        <nav className="fixed inset-x-0 bottom-0 z-50 flex h-16 items-stretch border-t border-surface-steel bg-surface-pit">
-          {NAV_ITEMS.map((item) => {
-            const isActive = item.to === '/' ? pathname === '/' : pathname.startsWith(item.to)
-
-            return (
-              <Link
-                key={item.to}
-                to={item.to as '/'}
-                className={`flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors ${
-                  isActive ? 'text-ember' : 'text-warm-ash'
-                }`}
-              >
-                <span
-                  className="material-symbols-outlined text-[24px]"
-                  style={{
-                    fontVariationSettings: isActive
-                      ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
-                      : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
-                  }}
-                >
-                  {item.icon}
-                </span>
-                <span className="font-sans text-xs font-medium">{item.label}</span>
-              </Link>
-            )
-          })}
-        </nav>
-      )}
+        {/* Mobile bottom nav */}
+        {!isWorkoutRoute && (
+          <div className="lg:hidden">
+            <MobileNav />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

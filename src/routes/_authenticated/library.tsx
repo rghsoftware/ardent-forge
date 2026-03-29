@@ -40,7 +40,7 @@ import {
 import { useAuth } from '@/lib/auth'
 import type { Program } from '@/domain/types'
 
-export const Route = createFileRoute('/library')({
+export const Route = createFileRoute('/_authenticated/library')({
   component: LibraryPage,
 })
 

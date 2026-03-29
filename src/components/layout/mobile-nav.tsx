@@ -3,7 +3,7 @@ import { Icon } from '@/components/icon'
 
 const navItems = [
   { label: 'FORGE', icon: 'construction', to: '/' },
-  { label: 'TRACKER', icon: 'timer', to: '/tracker' },
+  { label: 'TRACKER', icon: 'timer', to: '/history' },
   { label: 'LIBRARY', icon: 'library_books', to: '/library' },
   { label: 'VAULT', icon: 'monitoring', to: '/vault' },
 ] as const
