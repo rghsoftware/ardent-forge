@@ -49,7 +49,7 @@ export function WorkoutDetailHeader({ log, allSets, onDelete }: WorkoutDetailHea
       {durationSeconds != null && (
         <div className="flex flex-col items-center py-4">
           <span className="text-readout text-bone-white">{formatDuration(durationSeconds)}</span>
-          <span className="mt-1 text-[10px] uppercase tracking-widest text-warm-ash/60">
+          <span className="mt-1 text-[11px] uppercase tracking-widest text-warm-ash/60">
             DURATION
           </span>
         </div>
@@ -61,20 +61,20 @@ export function WorkoutDetailHeader({ log, allSets, onDelete }: WorkoutDetailHea
           <span className="font-display text-2xl tabular-nums text-bone-white">
             {allSets.filter((s) => s.completed).length}
           </span>
-          <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">SETS</span>
+          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">SETS</span>
         </div>
         <div className="flex flex-1 flex-col items-center bg-surface-iron py-3">
           <span className="font-display text-2xl tabular-nums text-bone-white">
             {totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : '--'}
           </span>
-          <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">VOLUME</span>
+          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">VOLUME</span>
         </div>
         {log.perceivedDifficulty != null && (
           <div className="flex flex-1 flex-col items-center bg-surface-iron py-3">
             <span className="font-display text-2xl tabular-nums text-bone-white">
               {log.perceivedDifficulty}
             </span>
-            <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">RPE</span>
+            <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">RPE</span>
           </div>
         )}
       </div>
@@ -82,7 +82,7 @@ export function WorkoutDetailHeader({ log, allSets, onDelete }: WorkoutDetailHea
       {/* Notes block */}
       {log.overallNotes && (
         <div className="px-4 pb-4">
-          <span className="block text-[10px] uppercase tracking-widest text-warm-ash/60 mb-1">
+          <span className="block text-[11px] uppercase tracking-widest text-warm-ash/60 mb-1">
             NOTES
           </span>
           <p className="text-sm text-bone-white bg-surface-iron px-3 py-2">{log.overallNotes}</p>

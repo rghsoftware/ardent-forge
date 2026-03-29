@@ -220,7 +220,7 @@ function ExerciseDetailPage() {
               <div className="mt-1 flex flex-wrap gap-1">
                 {exercise.equipmentRequired.length > 0 ? (
                   exercise.equipmentRequired.map((eq) => (
-                    <Badge key={eq} className="text-[10px]">
+                    <Badge key={eq} className="text-[11px]">
                       {formatLabel(eq)}
                     </Badge>
                   ))
@@ -238,7 +238,7 @@ function ExerciseDetailPage() {
             </span>
             <div className="mt-1 flex flex-wrap gap-1">
               {exercise.muscleGroups.primary.map((mg) => (
-                <Badge key={mg} variant="complete" className="text-[10px]">
+                <Badge key={mg} variant="complete" className="text-[11px]">
                   {formatLabel(mg)}
                 </Badge>
               ))}
@@ -253,7 +253,7 @@ function ExerciseDetailPage() {
               </span>
               <div className="mt-1 flex flex-wrap gap-1">
                 {exercise.muscleGroups.secondary.map((mg) => (
-                  <Badge key={mg} className="text-[10px]">
+                  <Badge key={mg} className="text-[11px]">
                     {formatLabel(mg)}
                   </Badge>
                 ))}

@@ -71,7 +71,7 @@ export function AddExerciseSheet({
           {/* Recently used */}
           {showRecent && (
             <div className="mb-4">
-              <span className="mb-2 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+              <span className="mb-2 block text-[11px] uppercase tracking-widest text-warm-ash/60">
                 RECENTLY USED
               </span>
               <div className="flex flex-col">
@@ -127,7 +127,7 @@ function ExerciseRow({
       <span className="material-symbols-outlined text-warm-ash/60 text-xl">fitness_center</span>
       <div className="flex flex-col">
         <span className="text-sm text-bone-white">{exercise.name}</span>
-        <span className="text-[10px] uppercase tracking-wider text-warm-ash/60">
+        <span className="text-[11px] uppercase tracking-wider text-warm-ash/60">
           {exercise.category}
         </span>
       </div>

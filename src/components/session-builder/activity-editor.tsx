@@ -47,7 +47,7 @@ export function ActivityEditor({ activity, exercises, onChange, onDelete }: Acti
             <button
               type="button"
               onClick={() => setShowExerciseSheet(true)}
-              className="min-h-8 px-2 text-[10px] font-medium text-warm-ash/60 hover:text-bone-white"
+              className="min-h-8 px-2 text-[11px] font-medium text-warm-ash/60 hover:text-bone-white"
             >
               Change
             </button>
@@ -96,7 +96,7 @@ export function ActivityEditor({ activity, exercises, onChange, onDelete }: Acti
       {/* Notes (collapsible) */}
       {showNotes && (
         <div className="border-t border-warm-ash/10 px-4 py-3">
-          <span className="mb-1 block text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+          <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
             NOTES
           </span>
           <textarea

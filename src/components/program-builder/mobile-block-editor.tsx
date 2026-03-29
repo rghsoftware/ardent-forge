@@ -155,11 +155,11 @@ function MobileBlockCard({
           </button>
         )}
 
-        <span className="bg-surface-steel px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-bone-white">
+        <span className="bg-surface-steel px-2 py-1 text-[11px] font-medium uppercase tracking-wider text-bone-white">
           {block.blockType}
         </span>
 
-        <span className="text-[10px] font-medium uppercase tracking-wider text-warm-ash/60">
+        <span className="text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
           {block.weeks.length} {block.weeks.length === 1 ? 'WK' : 'WKS'}
         </span>
 
@@ -211,7 +211,7 @@ function MobileBlockCard({
                 key={bt.value}
                 type="button"
                 onClick={() => handleBlockTypeChange(bt.value)}
-                className={`min-h-10 px-3 py-1 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+                className={`min-h-10 px-3 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
                   block.blockType === bt.value
                     ? 'bg-forge text-on-forge'
                     : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
@@ -292,7 +292,7 @@ function MobileWeekSection({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+        <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
           WEEK {weekIndex + 1}
         </span>
         <button
@@ -377,7 +377,7 @@ function MobileDayRow({
         className="flex min-h-12 items-center gap-3 bg-surface-charcoal px-3 py-2 text-left transition-colors hover:bg-surface-steel"
         aria-label={`Assign session to ${DAY_ABBREVIATIONS[dayOfWeek]}`}
       >
-        <span className="w-8 text-[10px] font-medium uppercase tracking-wider text-warm-ash/60">
+        <span className="w-8 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
           {DAY_ABBREVIATIONS[dayOfWeek]}
         </span>
         <span className="flex-1 text-xs text-warm-ash/40">TAP TO ASSIGN</span>
@@ -393,7 +393,7 @@ function MobileDayRow({
       className="flex min-h-12 items-center gap-3 bg-surface-charcoal px-3 py-2 text-left transition-colors hover:bg-surface-steel"
       aria-label={`Session: ${session.templateName ?? 'Unnamed'} on ${DAY_ABBREVIATIONS[dayOfWeek]}`}
     >
-      <span className="w-8 text-[10px] font-medium uppercase tracking-wider text-warm-ash/60">
+      <span className="w-8 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
         {DAY_ABBREVIATIONS[dayOfWeek]}
       </span>
       <span className="min-w-0 flex-1 truncate text-xs text-bone-white">

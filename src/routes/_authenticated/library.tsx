@@ -164,12 +164,45 @@ function LibraryPage() {
                 </p>
               </div>
             ) : templates.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-16">
-                <Icon name="description" size={48} className="text-warm-ash/40" />
-                <p className="text-center text-xs text-warm-ash/60">No templates yet</p>
-                <p className="text-center text-xs text-warm-ash/40">
-                  Create your first session template.
-                </p>
+              <div className="flex flex-col gap-6 py-4">
+                {/* Ghost template cards */}
+                <div className="flex flex-col gap-px opacity-25 pointer-events-none select-none">
+                  {(['Upper Push A', 'Lower B — Squat Focus'] as const).map((name) => (
+                    <div
+                      key={name}
+                      className="flex w-full items-center gap-3 bg-surface-iron px-4 py-4"
+                    >
+                      <div className="flex flex-1 flex-col gap-1">
+                        <span className="font-display text-sm font-medium text-bone-white">
+                          {name}
+                        </span>
+                        <span className="inline-flex w-fit items-center bg-surface-gunmetal text-bone-white text-[11px] px-2 py-0.5 uppercase tracking-widest">
+                          Strength
+                        </span>
+                      </div>
+                      <div className="flex min-h-10 min-w-10 items-center justify-center text-warm-ash/60">
+                        <Icon name="delete" size={18} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Value description + CTA */}
+                <div className="flex flex-col items-center gap-4 px-2 text-center">
+                  <p className="text-sm font-heading text-warm-ash">Build your training blocks.</p>
+                  <p className="text-xs text-warm-ash/50 leading-relaxed">
+                    Session templates are reusable workout blueprints. Design a Push Day, a Tempo
+                    Run, or an EMOM -- then snap them into any program.
+                  </p>
+                  <Button
+                    variant="default"
+                    onClick={handleCreate}
+                    className="min-h-12 text-xs w-full"
+                  >
+                    <Icon name="add" size={16} />
+                    Create your first template
+                  </Button>
+                </div>
               </div>
             ) : (
               templates.map((template) => (
@@ -291,12 +324,48 @@ function ProgramList({ userId }: { userId: string | undefined }) {
 
   if (programs.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 px-4 py-16">
-        <Icon name="fitness_center" size={48} className="text-warm-ash/40" />
-        <p className="text-center text-xs text-warm-ash/60">No programs yet</p>
-        <p className="text-center text-xs text-warm-ash/40">
-          Build a structured training program from the program builder.
-        </p>
+      <div className="flex flex-col gap-6 px-4 py-4">
+        {/* Ghost program entries */}
+        <div className="flex flex-col gap-2 opacity-25 pointer-events-none select-none">
+          {(
+            [
+              { name: '12-Week Strength Base', meta: '3 blocks · 4 days/week', active: true },
+              { name: 'Marathon Base Build', meta: '4 blocks · 5 days/week', active: false },
+            ] as const
+          ).map((p) => (
+            <div
+              key={p.name}
+              className="flex items-center justify-between bg-surface-iron px-4 py-4"
+            >
+              <div className="flex flex-col gap-1">
+                <span className="font-display text-sm font-medium text-bone-white">{p.name}</span>
+                <span className="text-xs text-warm-ash/60">{p.meta}</span>
+              </div>
+              {p.active && (
+                <span className="inline-flex items-center bg-ember/20 text-ember text-[11px] px-2 py-0.5 uppercase tracking-widest">
+                  Active
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Value description + CTA */}
+        <div className="flex flex-col items-center gap-4 text-center">
+          <p className="text-sm font-heading text-warm-ash">Structure your training.</p>
+          <p className="text-xs text-warm-ash/50 leading-relaxed">
+            Programs organize workouts into blocks and weeks. Build a strength cycle, a marathon
+            prep, or a competition block -- then execute it session by session.
+          </p>
+          <Button
+            variant="default"
+            onClick={() => navigate({ to: '/builder', search: { programId: undefined } })}
+            className="min-h-12 bg-forge text-on-forge text-xs hover:brightness-110 w-full"
+          >
+            <Icon name="add" size={16} />
+            Open Program Builder
+          </Button>
+        </div>
       </div>
     )
   }
@@ -397,9 +466,9 @@ function ProgramCard({
         >
           <span className="font-display text-sm font-medium text-bone-white">{program.name}</span>
           <div className="flex items-center gap-2">
-            <Badge className="text-[10px]">{SOURCE_LABELS[program.source] ?? program.source}</Badge>
+            <Badge className="text-[11px]">{SOURCE_LABELS[program.source] ?? program.source}</Badge>
             {totalWeeks > 0 && (
-              <span className="text-[10px] uppercase tracking-wider text-warm-ash/60">
+              <span className="text-[11px] uppercase tracking-wider text-warm-ash/60">
                 {totalWeeks} {totalWeeks === 1 ? 'WEEK' : 'WEEKS'}
               </span>
             )}
@@ -407,7 +476,7 @@ function ProgramCard({
         </button>
 
         {isActive && (
-          <span className="mt-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-ember">
+          <span className="mt-1 flex items-center gap-1 text-[11px] uppercase tracking-wider text-ember">
             <Icon name="check_circle" size={14} fill className="text-ember" />
             ACTIVE
           </span>

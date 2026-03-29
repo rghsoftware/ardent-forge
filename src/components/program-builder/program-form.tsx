@@ -28,7 +28,7 @@ export function ProgramForm({ draft, onChange }: ProgramFormProps) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <span className="mb-1 block text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+        <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
           PROGRAM NAME
         </span>
         <input
@@ -42,7 +42,7 @@ export function ProgramForm({ draft, onChange }: ProgramFormProps) {
       </div>
 
       <div>
-        <span className="mb-1 block text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+        <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
           DESCRIPTION (OPTIONAL)
         </span>
         <textarea
@@ -56,7 +56,7 @@ export function ProgramForm({ draft, onChange }: ProgramFormProps) {
       </div>
 
       <div>
-        <span className="mb-2 block text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+        <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
           SOURCE
         </span>
         <div className="flex flex-wrap gap-1">
@@ -65,7 +65,7 @@ export function ProgramForm({ draft, onChange }: ProgramFormProps) {
               key={s.value}
               type="button"
               onClick={() => onChange({ source: s.value })}
-              className={`min-h-10 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+              className={`min-h-10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-colors ${
                 draft.source === s.value
                   ? 'bg-forge text-on-forge'
                   : 'bg-surface-steel text-bone-white hover:bg-surface-slag'

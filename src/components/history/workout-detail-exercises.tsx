@@ -99,13 +99,13 @@ export function WorkoutDetailExercises({
               <div className="w-full">
                 {/* Column headers */}
                 <div className="flex items-center py-1.5">
-                  <span className="w-12 text-center text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                  <span className="w-12 text-center text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
                     SET
                   </span>
-                  <span className="flex-1 text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                  <span className="flex-1 text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
                     ACTUAL
                   </span>
-                  <span className="w-24 text-center text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                  <span className="w-24 text-center text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
                     STATUS
                   </span>
                 </div>
@@ -131,12 +131,12 @@ export function WorkoutDetailExercises({
                     {/* Status badge */}
                     <div className="w-24 flex justify-center">
                       {set.completed ? (
-                        <span className="inline-flex items-center gap-1 bg-forge text-on-forge text-[10px] px-2 py-0.5 uppercase tracking-widest">
+                        <span className="inline-flex items-center gap-1 bg-forge text-on-forge text-[11px] px-2 py-0.5 uppercase tracking-widest">
                           <Icon name="check" size={12} />
                           DONE
                         </span>
                       ) : (
-                        <span className="inline-flex items-center bg-surface-gunmetal text-warm-ash text-[10px] px-2 py-0.5 uppercase tracking-widest">
+                        <span className="inline-flex items-center bg-surface-gunmetal text-warm-ash text-[11px] px-2 py-0.5 uppercase tracking-widest">
                           SKIP
                         </span>
                       )}

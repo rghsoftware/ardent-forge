@@ -90,7 +90,7 @@ export function ActivityGroupEditor({
               key={gt.value}
               type="button"
               onClick={() => onChange({ ...group, groupType: gt.value })}
-              className={`min-h-8 px-2 py-1 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+              className={`min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
                 group.groupType === gt.value
                   ? 'bg-forge text-on-forge'
                   : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
@@ -115,7 +115,7 @@ export function ActivityGroupEditor({
       <div className="flex flex-wrap gap-4 px-4 pb-3">
         {showRounds && (
           <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+            <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               ROUNDS
             </span>
             <input

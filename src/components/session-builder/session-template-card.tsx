@@ -52,7 +52,7 @@ export function SessionTemplateCard({ template, onEdit, onDelete }: SessionTempl
         <div className="flex flex-1 flex-col gap-1">
           <span className="font-display text-sm font-medium text-bone-white">{template.name}</span>
           <div className="flex items-center gap-2">
-            <Badge className="text-[10px]">
+            <Badge className="text-[11px]">
               {CATEGORY_LABELS[template.category] ?? template.category}
             </Badge>
           </div>

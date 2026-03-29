@@ -6,10 +6,6 @@ import { z } from 'zod'
 import { isTauri } from '@tauri-apps/api/core'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 
 export const Route = createFileRoute('/sign-in')({
   beforeLoad: ({ context }) => {
@@ -48,8 +44,9 @@ function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm space-y-6">
+    <div className="flex min-h-screen items-center justify-center bg-surface-pit px-4">
+      <div className="w-full max-w-sm space-y-8">
+        {/* Logo */}
         <div className="flex justify-center">
           <img
             src="/logos/fulllogo_transparent_nobuffer.png"
@@ -57,15 +54,18 @@ function SignInPage() {
             className="h-16 object-contain"
           />
         </div>
-        <Card>
-          <CardHeader className="text-center">
-            <CardDescription>Sign in to your account</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+
+        {/* Form panel */}
+        <div className="bg-surface-iron milled-edge overflow-hidden">
+          <div className="h-0.5 bg-forge" />
+          <div className="space-y-6 p-6">
+            <p className="text-sm text-warm-ash">Sign in to your account</p>
+
+            {/* Google sign-in */}
             <Button
               type="button"
-              variant="secondary"
-              className="min-h-12 w-full"
+              variant="outline"
+              className="min-h-12 w-full border-surface-steel text-bone-white hover:bg-surface-gunmetal"
               onClick={async () => {
                 setAuthError(null)
                 const { error } = await auth.signInWithGoogle()
@@ -74,50 +74,76 @@ function SignInPage() {
             >
               Continue with Google
             </Button>
-            <div className="relative">
-              <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                or
-              </span>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 border-t border-surface-steel" />
+              <span className="text-xs text-warm-ash/50">or</span>
+              <div className="flex-1 border-t border-surface-steel" />
             </div>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" {...register('email')} />
-                {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" {...register('password')} />
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password.message}</p>
+
+            {/* Email / password form */}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              <div className="space-y-1">
+                <label htmlFor="email" className="font-sans text-xs font-medium text-warm-ash">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  className="w-full border-b-2 border-surface-steel bg-transparent px-0 py-2 font-body text-base text-bone-white outline-none transition-colors placeholder:text-surface-steel focus:border-ember"
+                  {...register('email')}
+                />
+                {errors.email && (
+                  <p className="text-xs text-warning-flare">{errors.email.message}</p>
                 )}
               </div>
-              {authError && <p className="text-sm text-destructive">{authError}</p>}
+
+              <div className="space-y-1">
+                <label htmlFor="password" className="font-sans text-xs font-medium text-warm-ash">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  className="w-full border-b-2 border-surface-steel bg-transparent px-0 py-2 font-body text-base text-bone-white outline-none transition-colors placeholder:text-surface-steel focus:border-ember"
+                  {...register('password')}
+                />
+                {errors.password && (
+                  <p className="text-xs text-warning-flare">{errors.password.message}</p>
+                )}
+              </div>
+
+              {authError && <p className="text-xs text-warning-flare">{authError}</p>}
+
               <Button type="submit" className="min-h-12 w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Signing in...' : 'Sign In'}
+                {isSubmitting ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
+
+            {/* Navigation links */}
             <div className="space-y-2 text-center text-sm">
               <Link
                 to="/forgot-password"
-                className="block text-muted-foreground hover:text-foreground"
+                className="block text-warm-ash transition-colors hover:text-ember"
               >
                 Forgot password?
               </Link>
-              <p className="text-muted-foreground">
+              <p className="text-warm-ash">
                 Don&apos;t have an account?{' '}
-                <Link to="/sign-up" className="text-foreground hover:underline">
+                <Link to="/sign-up" className="text-ember hover:text-ember/80">
                   Sign up
                 </Link>
               </p>
             </div>
+
+            {/* Guest mode — Tauri only */}
             {isTauri() && (
               <>
-                <Separator />
+                <div className="border-t border-surface-steel" />
                 <Button
                   variant="ghost"
-                  className="min-h-12 w-full text-muted-foreground"
+                  className="min-h-12 w-full text-warm-ash/60 hover:text-warm-ash"
                   onClick={() => {
                     auth.continueAsGuest()
                     router.navigate({ to: '/' })
@@ -125,13 +151,13 @@ function SignInPage() {
                 >
                   Continue as Guest
                 </Button>
-                <p className="text-xs text-muted-foreground text-center">
+                <p className="text-center text-xs text-warm-ash/40">
                   Your data stays on this device only.
                 </p>
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   )

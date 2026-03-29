@@ -62,7 +62,7 @@ export function RuckPanel({ onComplete }: RuckPanelProps) {
       {/* Load weight input -- shown before start */}
       {!isRunning && !stopped && (
         <div className="px-4 pb-4">
-          <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+          <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
             RUCK LOAD (LB)
           </span>
           <input
@@ -80,7 +80,7 @@ export function RuckPanel({ onComplete }: RuckPanelProps) {
       {/* Load display when running/stopped */}
       {(isRunning || stopped) && (
         <div className="px-4 pb-2">
-          <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">LOAD</span>
+          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">LOAD</span>
           <span className="ml-2 font-display text-sm tabular-nums text-bone-white">{load} LB</span>
         </div>
       )}
@@ -112,7 +112,7 @@ export function RuckPanel({ onComplete }: RuckPanelProps) {
         <div className="flex flex-col gap-4 px-4 pb-4">
           {/* Duration (auto-filled) */}
           <div>
-            <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+            <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
               DURATION
             </span>
             <span className="font-display text-lg tabular-nums text-bone-white">
@@ -122,7 +122,7 @@ export function RuckPanel({ onComplete }: RuckPanelProps) {
 
           {/* Distance */}
           <div>
-            <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+            <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
               DISTANCE
             </span>
             <input
@@ -138,7 +138,7 @@ export function RuckPanel({ onComplete }: RuckPanelProps) {
           {/* Pace (calculated) */}
           {distance && (
             <div>
-              <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+              <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
                 PACE
               </span>
               <span className="font-display text-lg tabular-nums text-bone-white">
@@ -149,7 +149,7 @@ export function RuckPanel({ onComplete }: RuckPanelProps) {
 
           {/* Elevation (optional) */}
           <div>
-            <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+            <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
               ELEVATION GAIN (OPTIONAL)
             </span>
             <input

@@ -107,7 +107,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
         <div className="flex flex-col gap-4 px-4 pb-4">
           {/* Duration (auto-filled) */}
           <div>
-            <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+            <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
               DURATION
             </span>
             <span className="font-display text-lg tabular-nums text-bone-white">
@@ -117,7 +117,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
 
           {/* Distance */}
           <div>
-            <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+            <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
               DISTANCE
             </span>
             <input
@@ -133,7 +133,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
           {/* Pace (calculated) */}
           {distance && (
             <div>
-              <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+              <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
                 PACE
               </span>
               <span className="font-display text-lg tabular-nums text-bone-white">
@@ -144,7 +144,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
 
           {/* Heart rate (optional) */}
           <div>
-            <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+            <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
               AVG HEART RATE (OPTIONAL)
             </span>
             <input

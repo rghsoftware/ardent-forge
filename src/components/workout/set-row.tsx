@@ -74,14 +74,24 @@ export function SetRow({
           type="button"
           onClick={() => !confirmed && setShowTypeSelector(!showTypeSelector)}
           disabled={confirmed}
-          className="text-center font-display text-sm tabular-nums text-on-surface-variant"
+          className={`text-center font-display text-sm tabular-nums text-on-surface-variant border-b transition-colors ${
+            confirmed
+              ? 'border-transparent'
+              : showTypeSelector
+                ? 'border-ember'
+                : 'border-warm-ash/25'
+          }`}
           aria-label={`Set ${setNumber}, type ${setType}`}
         >
           {setNumber}
         </button>
         {!confirmed && (
-          <span className="text-center text-[10px] uppercase tracking-wider text-warm-ash/60">
-            {setType === 'WORKING' ? '' : setType}
+          <span
+            className={`text-center text-[11px] uppercase tracking-wider transition-colors ${
+              setType === 'WORKING' ? 'text-warm-ash/25' : 'text-warm-ash/60'
+            }`}
+          >
+            {setType === 'WORKING' ? 'W' : setType}
           </span>
         )}
 
@@ -113,7 +123,7 @@ export function SetRow({
         <>
           {/* Prescribed column */}
           <div className="flex flex-1 flex-col items-center justify-center">
-            <span className="text-[10px] uppercase tracking-wider text-warm-ash/40">
+            <span className="text-[11px] uppercase tracking-wider text-warm-ash/40">
               {prescribedLabel}
             </span>
           </div>
@@ -130,7 +140,7 @@ export function SetRow({
               className="w-1/2 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
               aria-label={`Actual weight for set ${setNumber}`}
             />
-            <span className="text-[10px] text-warm-ash/40">x</span>
+            <span className="text-[11px] text-warm-ash/40">x</span>
             <input
               type="text"
               inputMode="numeric"

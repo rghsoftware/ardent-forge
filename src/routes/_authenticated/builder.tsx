@@ -233,7 +233,7 @@ function BuilderPage() {
       <div className="flex-shrink-0 px-4 pb-6">
         <h1 className="font-display text-2xl font-medium text-bone-white">Program Builder</h1>
         {programId && draft.name && (
-          <p className="mt-1 text-[10px] font-medium text-warm-ash/60">Editing: {draft.name}</p>
+          <p className="mt-1 text-[11px] font-medium text-warm-ash/60">Editing: {draft.name}</p>
         )}
       </div>
 

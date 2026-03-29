@@ -114,7 +114,7 @@ export function ProgramSessionCard({
             <div className="flex items-center gap-2">
               {badgeColor && (
                 <span
-                  className={`inline-flex items-center px-2 py-0.5 text-[10px] font-heading uppercase tracking-widest ${badgeColor}`}
+                  className={`inline-flex items-center px-2 py-0.5 text-[11px] font-heading uppercase tracking-widest ${badgeColor}`}
                 >
                   {sessionType}
                 </span>

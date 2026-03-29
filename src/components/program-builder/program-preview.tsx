@@ -207,7 +207,7 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                 {draft.name || 'Untitled program'}
               </h1>
               <div className="mt-1 flex items-center gap-2">
-                <span className="bg-surface-steel px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-bone-white">
+                <span className="bg-surface-steel px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider text-bone-white">
                   {SOURCE_LABELS[draft.source] ?? draft.source}
                 </span>
               </div>
@@ -236,10 +236,10 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                   <span className="font-display text-sm font-medium text-bone-white">
                     {block.name || 'Untitled block'}
                   </span>
-                  <span className="bg-surface-steel px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-bone-white">
+                  <span className="bg-surface-steel px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider text-bone-white">
                     {block.blockType}
                   </span>
-                  <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                  <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
                     {block.weeks.length} {block.weeks.length === 1 ? 'WEEK' : 'WEEKS'}
                   </span>
                 </div>
@@ -254,7 +254,7 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
 
                     return (
                       <div key={week.clientId} className="flex flex-col gap-2">
-                        <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                        <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
                           WEEK {weekIdx + 1}
                         </span>
 
@@ -263,7 +263,7 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                           {DAY_COLUMNS.map((col) => (
                             <div
                               key={`hdr-${col.dayOfWeek}`}
-                              className="text-center text-[10px] font-medium uppercase tracking-widest text-warm-ash/60"
+                              className="text-center text-[11px] font-medium uppercase tracking-widest text-warm-ash/60"
                             >
                               {col.label}
                             </div>
@@ -310,19 +310,19 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                             return (
                               <div key={session.clientId} className="flex flex-col gap-0">
                                 <div className="bg-surface-steel px-2 py-1.5">
-                                  <span className="text-[10px] font-medium uppercase tracking-wider text-bone-white">
+                                  <span className="text-[11px] font-medium uppercase tracking-wider text-bone-white">
                                     {session.templateName ?? 'UNNAMED'}
                                   </span>
                                 </div>
 
                                 <div className="grid grid-cols-[1fr_auto_auto] gap-2 bg-surface-gunmetal px-2 py-1">
-                                  <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                                  <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
                                     EXERCISE
                                   </span>
-                                  <span className="text-right text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                                  <span className="text-right text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
                                     SETS x REPS
                                   </span>
-                                  <span className="w-20 text-right text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+                                  <span className="w-20 text-right text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
                                     LOAD
                                   </span>
                                 </div>

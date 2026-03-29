@@ -85,13 +85,13 @@ export function CopyWeekDialog({
         <div className="flex flex-col gap-3 py-2">
           {/* Source week label */}
           <div className="flex items-center gap-2 bg-surface-charcoal px-3 py-2">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+            <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
               SOURCE
             </span>
             <span className="text-xs font-medium uppercase tracking-wider text-bone-white">
               WEEK {sourceWeek.weekNumber}
             </span>
-            <span className="text-[10px] text-warm-ash/40">
+            <span className="text-[11px] text-warm-ash/40">
               ({sourceWeek.sessions.length}{' '}
               {sourceWeek.sessions.length === 1 ? 'session' : 'sessions'})
             </span>
@@ -124,7 +124,7 @@ export function CopyWeekDialog({
                   WEEK {week.weekNumber}
                 </span>
                 {week.sessions.length > 0 && (
-                  <span className="text-[10px] text-warm-ash/40">
+                  <span className="text-[11px] text-warm-ash/40">
                     ({week.sessions.length} existing)
                   </span>
                 )}

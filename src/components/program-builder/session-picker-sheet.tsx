@@ -130,7 +130,7 @@ export function SessionPickerSheet({
                   key={f.value}
                   type="button"
                   onClick={() => setFilter(f.value)}
-                  className={`min-h-8 px-2 py-1 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+                  className={`min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
                     filter === f.value
                       ? 'bg-forge text-on-forge'
                       : 'bg-surface-steel text-bone-white hover:bg-surface-slag'

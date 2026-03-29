@@ -127,17 +127,17 @@ export function CircuitPanel({
           {/* Round info */}
           <div className="flex items-baseline gap-2">
             <span className="font-display text-2xl tabular-nums text-bone-white">{rounds}</span>
-            <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">ROUNDS</span>
+            <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">ROUNDS</span>
           </div>
 
           {/* Exercise table */}
           <div className="flex flex-col gap-[0.4rem]">
             {/* Column headers */}
             <div className="flex items-center gap-2 py-1">
-              <span className="flex-1 text-[10px] uppercase tracking-widest text-warm-ash/60">
+              <span className="flex-1 text-[11px] uppercase tracking-widest text-warm-ash/60">
                 EXERCISE
               </span>
-              <span className="w-16 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+              <span className="w-16 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
                 REPS
               </span>
             </div>
@@ -163,7 +163,7 @@ export function CircuitPanel({
       {phase === 'exercise' && currentExercise && (
         <div className="flex flex-col items-center gap-4 px-4 py-8">
           {/* Round indicator */}
-          <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">
+          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">
             ROUND {currentRound} / {rounds}
           </span>
 
@@ -174,7 +174,7 @@ export function CircuitPanel({
           <span className="font-display text-5xl tabular-nums text-ember">
             {currentExercise.targetReps}
           </span>
-          <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">REPS</span>
+          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">REPS</span>
 
           {/* Done button */}
           <Button
@@ -196,7 +196,7 @@ export function CircuitPanel({
       {/* Inter-exercise rest */}
       {phase === 'interExerciseRest' && (
         <div className="flex flex-col items-center gap-3 px-4 py-8">
-          <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">REST</span>
+          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">REST</span>
           <span className="font-display text-5xl tabular-nums tracking-tight text-bone-white">
             {formatCountdown(restSeconds)}
           </span>
@@ -204,7 +204,7 @@ export function CircuitPanel({
           {/* Next exercise preview */}
           {exercises[currentExerciseIndex + 1] && (
             <div className="mt-2 flex flex-col items-center gap-1">
-              <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">NEXT</span>
+              <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">NEXT</span>
               <span className="text-sm text-bone-white">
                 {exercises[currentExerciseIndex + 1].name}
               </span>
@@ -223,7 +223,7 @@ export function CircuitPanel({
           <Badge variant="pending">
             ROUND {currentRound} / {rounds} COMPLETE
           </Badge>
-          <span className="mt-2 text-[10px] uppercase tracking-widest text-warm-ash/60">REST</span>
+          <span className="mt-2 text-[11px] uppercase tracking-widest text-warm-ash/60">REST</span>
           <span className="font-display text-5xl tabular-nums tracking-tight text-bone-white">
             {formatCountdown(restSeconds)}
           </span>
@@ -242,7 +242,7 @@ export function CircuitPanel({
             <span className="font-display text-4xl tabular-nums text-bone-white">
               {completedRounds}
             </span>
-            <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">
+            <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">
               ROUNDS COMPLETED
             </span>
           </div>

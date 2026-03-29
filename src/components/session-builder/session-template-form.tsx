@@ -265,7 +265,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
       {/* Category selector */}
       <div className="px-4">
-        <span className="mb-2 block text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           CATEGORY
         </span>
         <div className="flex flex-wrap gap-1">
@@ -274,7 +274,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
               key={c.value}
               type="button"
               onClick={() => setCategory(c.value)}
-              className={`min-h-10 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+              className={`min-h-10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-colors ${
                 category === c.value
                   ? 'bg-forge text-on-forge'
                   : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
@@ -288,7 +288,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
       {/* Description */}
       <div className="px-4">
-        <span className="mb-1 block text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           DESCRIPTION (OPTIONAL)
         </span>
         <textarea
@@ -303,7 +303,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
       {/* Scoring */}
       <div className="px-4">
-        <span className="mb-2 block text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           SCORING
         </span>
         <Select value={scoring} onValueChange={(v) => setScoring(v as ScoringType)}>
@@ -337,7 +337,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
       {/* Activity groups */}
       <div className="flex flex-col gap-3">
         <div className="px-4">
-          <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+          <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
             ACTIVITY GROUPS
           </span>
         </div>
