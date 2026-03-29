@@ -3,10 +3,14 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
+use crate::notification;
+
 pub struct RestTimerInner {
     pub remaining: u32,
     pub total: u32,
     pub active: bool,
+    pub exercise_name: Option<String>,
+    pub set_number: Option<u32>,
 }
 
 pub struct RestTimerState {
@@ -21,12 +25,20 @@ impl RestTimerState {
                 remaining: 0,
                 total: 0,
                 active: false,
+                exercise_name: None,
+                set_number: None,
             })),
             handle: Arc::new(Mutex::new(None)),
         }
     }
 
-    pub async fn start(&self, seconds: u32, app: AppHandle) {
+    pub async fn start(
+        &self,
+        seconds: u32,
+        app: AppHandle,
+        exercise_name: Option<String>,
+        set_number: Option<u32>,
+    ) {
         if seconds == 0 {
             return;
         }
@@ -38,6 +50,8 @@ impl RestTimerState {
             inner.remaining = seconds;
             inner.total = seconds;
             inner.active = true;
+            inner.exercise_name = exercise_name;
+            inner.set_number = set_number;
         }
 
         let inner = Arc::clone(&self.inner);
@@ -73,17 +87,23 @@ impl RestTimerState {
                         log::error!("[rest-timer] Failed to emit timer_expired: {e}");
                     }
 
-                    // Send notification
-                    use tauri_plugin_notification::NotificationExt;
-                    let _ = app_clone
-                        .notification()
-                        .builder()
-                        .title("Rest Complete")
-                        .body("Time to get back to work!")
-                        .show();
-
+                    // Build context-aware notification body
                     let mut guard = inner.lock().await;
+                    let body = match (&guard.exercise_name, guard.set_number) {
+                        (Some(name), Some(num)) => format!("{name} -- Set {num}"),
+                        _ => "Time for your next set".to_string(),
+                    };
                     guard.active = false;
+                    drop(guard);
+
+                    notification::send_notification(
+                        &app_clone,
+                        "rest_timer",
+                        "REST COMPLETE",
+                        &body,
+                        Some(1001),
+                    );
+
                     break;
                 }
             }

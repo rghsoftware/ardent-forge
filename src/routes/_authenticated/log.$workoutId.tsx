@@ -147,6 +147,7 @@ function ActiveWorkoutPage() {
     }
     try {
       const result = await finishWorkout()
+
       setSummaryData(snapshot)
       setShowSummary(true)
 

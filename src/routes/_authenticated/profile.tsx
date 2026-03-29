@@ -8,6 +8,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { OneRmManagement } from '@/components/profile/one-rm-management'
 import { BackendSettings } from '@/components/profile/backend-settings'
+import { NotificationSettings } from '@/components/profile/notification-settings'
 import type { PreferredUnits } from '@/domain/types'
 
 export const Route = createFileRoute('/_authenticated/profile')({
@@ -223,13 +224,23 @@ function ProfilePage() {
             </section>
 
             {/* BACKEND section */}
-            <section className="pb-12">
+            <section className="pb-8">
               <div className="border-t border-surface-steel pb-2 pt-4">
                 <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
                   BACKEND
                 </h2>
               </div>
               <BackendSettings />
+            </section>
+
+            {/* NOTIFICATIONS section */}
+            <section className="pb-12">
+              <div className="border-t border-surface-steel pb-2 pt-4">
+                <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
+                  NOTIFICATIONS
+                </h2>
+              </div>
+              <NotificationSettings />
             </section>
           </div>
 
