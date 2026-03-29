@@ -30,3 +30,10 @@ playwright-report/
 
 # Build artifacts / uploads
 public/*.zip
+
+# Environment secrets (never commit .env, only .env.example)
+.env
+.env.bak
+
+# Generated Kong config (produced by scripts/generate-keys.sh from kong.yml.template)
+docker/kong/kong.yml
