@@ -140,6 +140,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [supabase, isRestoredGuest])
 
+  // Deep-link listener for mobile OAuth callback
+  useEffect(() => {
+    if (!isTauri()) return
+
+    let cleanup: (() => void) | undefined
+
+    void (async () => {
+      try {
+        const { onOpenUrl } = await import('@tauri-apps/plugin-deep-link')
+        cleanup = await onOpenUrl(async (urls: string[]) => {
+          for (const urlStr of urls) {
+            try {
+              const url = new URL(urlStr)
+              const code = url.searchParams.get('code')
+              if (code) {
+                await supabase.auth.exchangeCodeForSession(code)
+                // onAuthStateChange fires SIGNED_IN and handles the rest
+              }
+            } catch (err) {
+              console.error('[auth] Deep-link processing error:', err)
+            }
+          }
+        })
+      } catch (err) {
+        console.error('[auth] Failed to set up deep-link listener:', err)
+      }
+    })()
+
+    return () => cleanup?.()
+  }, [supabase])
+
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (!error) {
@@ -163,8 +194,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ?? undefined }
   }
 
-  const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' })
+  const signInWithGoogle = async (): Promise<{ error?: AuthError }> => {
+    if (isTauri()) {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'ardentforge://auth/callback',
+          skipBrowserRedirect: true,
+        },
+      })
+      if (error) return { error }
+      if (data?.url) {
+        // Open the OAuth URL in an external browser
+        window.open(data.url, '_blank')
+      }
+      return { error: undefined }
+    }
+
+    // Web: standard PKCE redirect
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
     return { error: error ?? undefined }
   }
 
