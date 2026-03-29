@@ -20,6 +20,7 @@ import {
   buildExercise,
   buildWorkoutLog,
   buildLoggedSet,
+  buildCompletedLoggedSet,
   buildLoggedActivity,
   buildLoggedActivityGroup,
   buildSessionTemplate,
@@ -81,7 +82,9 @@ describe('Entity factory schema validation', () => {
   })
 
   it('buildActivityGroup passes activityGroupSchema.parse()', () => {
-    expect(() => activityGroupSchema.parse(buildActivityGroup())).not.toThrow()
+    expect(() =>
+      activityGroupSchema.parse(buildActivityGroup({ activities: [buildActivity()] })),
+    ).not.toThrow()
   })
 
   it('buildActivity passes activitySchema.parse()', () => {
@@ -232,6 +235,23 @@ describe('Factory overrides', () => {
       muscleGroups: { primary: ['SHOULDERS'], secondary: ['TRICEPS'] },
     })
     expect(() => exerciseSchema.parse(exercise)).not.toThrow()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Unique IDs
+// ---------------------------------------------------------------------------
+
+describe('buildCompletedLoggedSet', () => {
+  it('produces a valid completed LoggedSet', () => {
+    const set = buildCompletedLoggedSet()
+    expect(() => loggedSetSchema.parse(set)).not.toThrow()
+    expect(set.completed).toBe(true)
+  })
+
+  it('applies overrides', () => {
+    const set = buildCompletedLoggedSet({ actualReps: 10 })
+    expect(set.actualReps).toBe(10)
   })
 })
 

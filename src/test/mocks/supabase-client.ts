@@ -50,7 +50,13 @@ export function createMockSupabaseClient() {
 
   function getResponse(table: string, operation: string): SupabaseResponse {
     const key = makeKey(table, operation)
-    return responses.get(key) ?? { data: [], error: null }
+    const stored = responses.get(key)
+    if (!stored) {
+      throw new Error(
+        `No mock response configured for ${table}:${operation}. Call mockClient.mockResponse('${table}', '${operation}', ...) in your test setup.`,
+      )
+    }
+    return stored
   }
 
   function createQueryBuilder(table: string, operation: string): MockQueryBuilder {
@@ -58,7 +64,8 @@ export function createMockSupabaseClient() {
 
     const builder: MockQueryBuilder = {
       select: vi.fn((_columns?: string) => {
-        // If we're chaining select after insert/update/upsert, keep the original operation
+        // Supabase allows `.insert(data).select()` chaining to return the inserted row,
+        // so the insert operation must be preserved for the select/single chain to work correctly.
         if (operation !== 'select') return createQueryBuilder(table, operation)
         return builder
       }),
@@ -80,6 +87,9 @@ export function createMockSupabaseClient() {
         const resp = resolveResponse()
         if (Array.isArray(resp.data) && resp.data.length > 0) {
           return { data: resp.data[0], error: null }
+        }
+        if (Array.isArray(resp.data) && resp.data.length === 0) {
+          return { data: null, error: { message: 'Row not found', code: 'PGRST116' } }
         }
         return resp
       }),
@@ -103,6 +113,9 @@ export function createMockSupabaseClient() {
 
   const client = {
     from: vi.fn((table: string) => createQueryBuilder(table, 'select')),
+
+    /** RPC calls default to empty array -- override with mockResolvedValue in tests. */
+    rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
 
     /**
      * Configure the response for a specific table and operation.
@@ -134,7 +147,10 @@ export function createMockSupabaseClient() {
     /** Mock auth object for tests that need it. */
     auth: {
       getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
-      getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
+      getUser: vi.fn().mockResolvedValue({
+        data: { user: { id: 'mock-user-001', email: 'test@example.com' } },
+        error: null,
+      }),
       onAuthStateChange: vi.fn().mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } },
       }),

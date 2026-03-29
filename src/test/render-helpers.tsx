@@ -5,7 +5,7 @@ import type { ReactElement, ReactNode } from 'react'
 /**
  * Creates a QueryClient configured for tests:
  * - Retries disabled to surface errors immediately
- * - GC time set to 0 to prevent stale cache between tests
+ * - GC time set to 0 so inactive query data is collected immediately, preventing data from leaking between tests
  */
 export function createTestQueryClient(): QueryClient {
   return new QueryClient({

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { SupabaseAdapter } from '../supabase-adapter'
 import { createMockSupabaseClient, type MockSupabaseClient } from '@/test/mocks/supabase-client'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -255,12 +255,6 @@ beforeEach(() => {
     data: { user: { id: 'user-001' } },
     error: null,
   })
-  // Add missing methods the SupabaseAdapter uses beyond what the mock provides
-  // rpc: used by getExercises with search, getRecentlyUsedExerciseIds, getExerciseWorkoutHistory
-  ;(mockClient as Record<string, unknown>).rpc = vi.fn().mockResolvedValue({
-    data: [],
-    error: null,
-  })
   adapter = new SupabaseAdapter(mockClient as unknown as SupabaseClient)
 })
 
@@ -297,25 +291,23 @@ describe('Exercise operations', () => {
     })
 
     it('uses rpc search_exercises when searchQuery is provided', async () => {
-      const rpcMock = vi.fn().mockResolvedValue({
+      mockClient.rpc.mockResolvedValue({
         data: [exerciseRow],
         error: null,
       })
-      ;(mockClient as Record<string, unknown>).rpc = rpcMock
 
       const result = await adapter.getExercises({ searchQuery: 'squat' })
 
-      expect(rpcMock).toHaveBeenCalledWith('search_exercises', { query_text: 'squat' })
+      expect(mockClient.rpc).toHaveBeenCalledWith('search_exercises', { query_text: 'squat' })
       expect(result).toHaveLength(1)
       expect(result[0].name).toBe('Barbell Back Squat')
     })
 
     it('applies client-side filters when searchQuery with category', async () => {
-      const rpcMock = vi.fn().mockResolvedValue({
+      mockClient.rpc.mockResolvedValue({
         data: [exerciseRow, { ...exerciseRow2, category: 'DUMBBELL' }],
         error: null,
       })
-      ;(mockClient as Record<string, unknown>).rpc = rpcMock
 
       const result = await adapter.getExercises({
         searchQuery: 'bench',

@@ -1,5 +1,5 @@
 import { vi, beforeEach, afterEach } from 'vitest'
-import type { DataAdapter } from '@/lib/data-adapter'
+import { createMockAdapter } from '@/test/mocks/data-adapter'
 
 // ---------------------------------------------------------------------------
 // Module mocks -- must be declared before imports that pull in the real modules
@@ -17,8 +17,8 @@ vi.mock('@/lib/supabase', () => ({
 
 // Minimal stub adapters -- only need to satisfy the DataAdapter interface type.
 // vi.fn() mocks used with `new` must use class-style implementation.
-const fakeSupabaseAdapter = { _brand: 'supabase' } as unknown as DataAdapter
-const fakeTauriAdapter = { _brand: 'tauri' } as unknown as DataAdapter
+const fakeSupabaseAdapter = createMockAdapter()
+const fakeTauriAdapter = createMockAdapter()
 
 vi.mock('@/lib/supabase-adapter', () => {
   const MockSupabaseAdapter = vi.fn(function () {

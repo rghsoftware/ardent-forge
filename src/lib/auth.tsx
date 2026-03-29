@@ -50,17 +50,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // onAuthStateChange callbacks during initialization, and PostgREST
         // queries call getSession() which awaits initializePromise. Awaiting
         // the upsert would create a circular deadlock.
-        void supabase
-          .from('user_profiles')
-          .upsert(
-            { id: session.user.id, preferred_units: 'IMPERIAL' },
-            { onConflict: 'id', ignoreDuplicates: true },
-          )
-          .then(({ error: profileError }) => {
-            if (profileError) {
-              console.error('[auth] Failed to create user profile on sign-in:', profileError)
-            }
-          })
+        void (async () => {
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .upsert(
+              { id: session.user.id, preferred_units: 'IMPERIAL' },
+              { onConflict: 'id', ignoreDuplicates: true },
+            )
+          if (profileError) {
+            console.error('[auth] Failed to create user profile on sign-in:', profileError)
+          }
+        })().catch((err: unknown) => {
+          console.error('[auth] Unexpected error creating profile:', err)
+        })
 
         // Start Tauri sync engine with the fresh auth tokens
         if (isTauri() && session) {

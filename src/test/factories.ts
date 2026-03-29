@@ -37,7 +37,7 @@ let userProfileCounter = 0
 let oneRepMaxHistoryCounter = 0
 let programActivationCounter = 0
 
-/** Reset all counters (call in beforeEach if needed). */
+/** Reset all ID counters to 0. Call in beforeEach to ensure factory-generated IDs are deterministic and test-order-independent. */
 export function resetFactoryCounters(): void {
   exerciseCounter = 0
   workoutLogCounter = 0
@@ -289,6 +289,10 @@ export function buildActivity(overrides?: Partial<Activity>): Activity {
   }
 }
 
+/**
+ * Build a test ActivityGroup with sensible defaults.
+ * Default activities is empty to avoid hidden counter side effects. Pass activities explicitly via overrides.
+ */
 export function buildActivityGroup(overrides?: Partial<ActivityGroup>): ActivityGroup {
   activityGroupCounter++
   return {
@@ -296,7 +300,7 @@ export function buildActivityGroup(overrides?: Partial<ActivityGroup>): Activity
     sessionTemplateId: 'session-template-1',
     groupType: 'STRAIGHT_SETS',
     ordinal: 1,
-    activities: [buildActivity()],
+    activities: [],
     ...overrides,
   }
 }
@@ -376,6 +380,15 @@ export function buildOneRepMaxHistory(overrides?: Partial<OneRepMaxHistory>): On
     recordedAt: '2026-01-15T10:00:00.000Z',
     ...overrides,
   }
+}
+
+export function buildCompletedLoggedSet(overrides?: Partial<LoggedSet>): LoggedSet {
+  return buildLoggedSet({
+    completed: true,
+    actualWeight: { value: 135, unit: 'lb' },
+    actualReps: 5,
+    ...overrides,
+  })
 }
 
 export function buildProgramActivation(overrides?: Partial<ProgramActivation>): ProgramActivation {

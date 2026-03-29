@@ -97,9 +97,7 @@ describe('SetRow', () => {
 
   it('disables inputs when confirmed', () => {
     render(<SetRow {...defaultProps} confirmed={true} initialWeight="135" initialReps="5" />)
-    // In confirmed state, inputs are disabled (they still render but are disabled)
-    // The ad-hoc path inputs won't render when confirmed -- it shows the badge
-    // Just verify no confirm button exists
+    // In confirmed state the confirm button is removed and replaced with a status badge
     expect(screen.queryByLabelText('Confirm set 1')).not.toBeInTheDocument()
   })
 })

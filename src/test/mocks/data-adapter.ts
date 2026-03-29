@@ -5,6 +5,8 @@ import type { DataAdapter } from '@/lib/data-adapter'
  * Creates a fully mocked DataAdapter where every method is a vi.fn()
  * returning sensible defaults (empty arrays for lists, null for single lookups).
  *
+ * Mutation methods (create*, update*, save*) resolve to empty objects by default -- override these when your test depends on the returned entity shape.
+ *
  * Pass overrides to customize specific method implementations.
  */
 export function createMockAdapter(
