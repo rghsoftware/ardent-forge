@@ -12,7 +12,7 @@ import { SyncIndicator } from '@/components/layout/sync-indicator'
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ context }) => {
-    if (!context.auth.loading && !context.auth.user) {
+    if (!context.auth.loading && !context.auth.user && !context.auth.isGuest) {
       throw redirect({ to: '/sign-in' })
     }
   },
@@ -33,7 +33,7 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 function AuthenticatedLayout() {
-  const { user, loading } = useAuth()
+  const { user, loading, isGuest } = useAuth()
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
@@ -42,10 +42,10 @@ function AuthenticatedLayout() {
   // already on an authenticated route (e.g., session expiry, sign-out from
   // another tab).
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !isGuest) {
       navigate({ to: '/sign-in' })
     }
-  }, [loading, user, navigate])
+  }, [loading, user, isGuest, navigate])
   const isWorkoutRoute = pathname.startsWith('/log/')
 
   return (

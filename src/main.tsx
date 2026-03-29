@@ -11,7 +11,7 @@ import './index.css'
 const router = createRouter({
   routeTree,
   context: {
-    auth: { user: null, session: null, loading: true },
+    auth: { user: null, session: null, loading: true, isGuest: false },
   } satisfies RouterContext,
 })
 

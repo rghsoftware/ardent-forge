@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useAuth } from '@/lib/auth'
-import { getSupabaseClient } from '@/lib/supabase'
 import { useUserProfile, useUpdateUserProfile } from '@/hooks/use-user-profile'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -15,7 +14,6 @@ export const Route = createFileRoute('/_authenticated/profile')({
 
 function ProfilePage() {
   const auth = useAuth()
-  const router = useRouter()
   const userId = auth.user?.id ?? ''
   const { data: profile, isLoading, isError } = useUserProfile(userId)
   const updateProfile = useUpdateUserProfile()
@@ -57,23 +55,10 @@ function ProfilePage() {
   }
 
   const handleSignOut = async () => {
-    const supabase = getSupabaseClient()
-    const { error } = await supabase.auth.signOut()
+    const { error } = await auth.signOut()
     if (error) {
       console.error('[auth] Sign out failed:', error)
-      return
     }
-    router.navigate({ to: '/sign-in' })
-  }
-
-  if (!auth.user?.id) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-surface-pit px-4">
-        <p className="font-display text-sm uppercase tracking-widest text-warm-ash">
-          Please sign in to view your profile.
-        </p>
-      </div>
-    )
   }
 
   if (isLoading) {
@@ -220,7 +205,7 @@ function ProfilePage() {
         </div>
       </section>
 
-      {/* SIGN OUT section */}
+      {/* ACCOUNT section */}
       <section className="px-4 pb-12">
         <div className="border-t border-surface-steel pb-2 pt-4">
           <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
@@ -229,13 +214,26 @@ function ProfilePage() {
         </div>
 
         <div className="mt-4">
-          <Button
-            variant="outline"
-            className="min-h-[48px] w-full border-surface-steel text-warning-flare hover:bg-surface-gunmetal"
-            onClick={handleSignOut}
-          >
-            SIGN OUT
-          </Button>
+          {auth.isGuest ? (
+            <div className="space-y-3">
+              <Link to="/sign-up">
+                <Button className="min-h-[48px] w-full bg-forge text-on-forge hover:bg-forge/80">
+                  CREATE ACCOUNT
+                </Button>
+              </Link>
+              <p className="text-xs text-warm-ash text-center">
+                Sign up to sync your data across devices and back up your training history.
+              </p>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="min-h-[48px] w-full border-surface-steel text-warning-flare hover:bg-surface-gunmetal"
+              onClick={handleSignOut}
+            >
+              SIGN OUT
+            </Button>
+          )}
         </div>
       </section>
     </div>

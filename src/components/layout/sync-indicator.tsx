@@ -2,11 +2,14 @@ import { Icon } from '@/components/icon'
 import { useSyncStore } from '@/stores/sync-store'
 import { forcePush } from '@/lib/sync-bridge'
 import { isTauri } from '@tauri-apps/api/core'
+import { useAuth } from '@/lib/auth'
 
 export function SyncIndicator() {
   const { syncState, errorMessage } = useSyncStore()
+  const { isGuest } = useAuth()
 
   if (!isTauri()) return null
+  if (isGuest) return null
   if (syncState === 'offline') return null
 
   const handleErrorTap = () => {
