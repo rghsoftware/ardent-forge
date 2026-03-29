@@ -45,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ? { user: SYNTHETIC_GUEST_USER, session: null, loading: false, isGuest: true }
       : { user: null, session: null, loading: true, isGuest: false },
   )
+  const [deepLinkFailed, setDeepLinkFailed] = useState(false)
 
   const continueAsGuest = () => {
     setState({ user: SYNTHETIC_GUEST_USER, session: null, loading: false, isGuest: true })
@@ -140,35 +141,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [supabase, isRestoredGuest])
 
-  // Deep-link listener for mobile OAuth callback
+  // Deep-link listener for Tauri OAuth callback (mobile + desktop)
   useEffect(() => {
     if (!isTauri()) return
 
     let cleanup: (() => void) | undefined
+    let cancelled = false
 
     void (async () => {
       try {
         const { onOpenUrl } = await import('@tauri-apps/plugin-deep-link')
-        cleanup = await onOpenUrl(async (urls: string[]) => {
+        const unlisten = await onOpenUrl(async (urls: string[]) => {
           for (const urlStr of urls) {
             try {
               const url = new URL(urlStr)
               const code = url.searchParams.get('code')
+              const oauthError = url.searchParams.get('error')
+
+              if (oauthError) {
+                console.error('[auth] OAuth provider returned error:', oauthError)
+                window.location.href = '/sign-in?reason=oauth_error'
+                return
+              }
+
               if (code) {
                 await supabase.auth.exchangeCodeForSession(code)
-                // onAuthStateChange fires SIGNED_IN and handles the rest
+                // exchangeCodeForSession triggers onAuthStateChange(SIGNED_IN), which sets auth state, creates the user profile, and starts the sync engine
+              } else {
+                console.warn('[auth] Deep-link received without code or error:', urlStr)
+                window.location.href = '/sign-in?reason=oauth_error'
               }
             } catch (err) {
               console.error('[auth] Deep-link processing error:', err)
+              window.location.href = '/sign-in?reason=oauth_error'
             }
           }
         })
+        if (cancelled) {
+          unlisten()
+        } else {
+          cleanup = unlisten
+        }
       } catch (err) {
         console.error('[auth] Failed to set up deep-link listener:', err)
+        setDeepLinkFailed(true)
       }
     })()
 
-    return () => cleanup?.()
+    return () => {
+      cancelled = true
+      cleanup?.()
+    }
   }, [supabase])
 
   const signIn = async (email: string, password: string) => {
@@ -196,6 +219,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async (): Promise<{ error?: AuthError }> => {
     if (isTauri()) {
+      if (deepLinkFailed) {
+        return {
+          error: {
+            message: 'Google sign-in is unavailable. Please use email sign-in.',
+          } as AuthError,
+        }
+      }
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -204,14 +235,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       })
       if (error) return { error }
-      if (data?.url) {
-        // Open the OAuth URL in an external browser
-        window.open(data.url, '_blank')
+
+      if (!data?.url) {
+        return {
+          error: { message: 'Unable to start Google sign-in. Please try again.' } as AuthError,
+        }
       }
+
+      const popup = window.open(data.url, '_blank')
+      if (!popup) {
+        return {
+          error: {
+            message: 'Browser blocked the sign-in window. Please allow popups and try again.',
+          } as AuthError,
+        }
+      }
+
       return { error: undefined }
     }
 
-    // Web: standard PKCE redirect
+    // Web: redirect-based OAuth flow
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

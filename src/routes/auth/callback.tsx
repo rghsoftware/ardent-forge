@@ -36,8 +36,11 @@ function AuthCallbackPage() {
   }, [navigate])
 
   return (
-    <div className="flex h-screen items-center justify-center bg-background">
+    <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background">
       <p className="text-warm-ash animate-pulse">Signing in...</p>
+      <a href="/sign-in" className="text-xs text-warm-ash/50 hover:text-warm-ash">
+        Taking too long? Return to sign in
+      </a>
     </div>
   )
 }
