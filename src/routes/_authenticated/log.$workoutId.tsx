@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useExercises } from '@/hooks/use-exercises'
+import { useUserProfile } from '@/hooks/use-user-profile'
 import { useProgramFull } from '@/hooks/use-programs'
+import { detectPersonalRecords } from '@/lib/pr-detection'
 import { WorkoutHeader } from '@/components/workout/workout-header'
 import { ExerciseBlock, type SetRowData } from '@/components/workout/exercise-block'
 import { ProgramContextBanner } from '@/components/workout/program-context-banner'
@@ -23,7 +25,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { getExerciseModality, parseNumericInput, DEFAULT_CIRCUIT_REPS } from '@/lib/workout-utils'
-import type { Exercise, GroupType, SetType } from '@/domain/types'
+import type { Exercise, GroupType, PersonalRecord, SetType } from '@/domain/types'
 import type { LoggedActivityGroupWithActivities } from '@/stores/active-workout-store'
 
 export const Route = createFileRoute('/_authenticated/log/$workoutId')({
@@ -58,6 +60,7 @@ function ActiveWorkoutPage() {
   } = useActiveWorkout()
 
   const { data: allExercises = [] } = useExercises()
+  const { data: userProfile } = useUserProfile(workoutLog?.userId ?? '')
 
   // Resolve program/block names for the banner when in programmed mode
   const programId = workoutLog?.programContext?.programId
@@ -99,6 +102,8 @@ function ActiveWorkoutPage() {
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [showSummary, setShowSummary] = useState(false)
   const [pageError, setPageError] = useState<string | null>(null)
+  // Detected personal records (computed at workout finish time)
+  const [detectedPrs, setDetectedPrs] = useState<PersonalRecord[]>([])
   // Store snapshot for summary display (captured at finish time)
   const [summaryData, setSummaryData] = useState<{
     workoutLog: typeof workoutLog
@@ -144,6 +149,24 @@ function ActiveWorkoutPage() {
       const result = await finishWorkout()
       setSummaryData(snapshot)
       setShowSummary(true)
+
+      // Detect personal records from the captured snapshot
+      if (userProfile) {
+        const allActivities = snapshot.loggedGroups.flatMap((g) => g.activities)
+        const allSets = allActivities.flatMap((a) => a.sets)
+        const prs = detectPersonalRecords(
+          {
+            log: snapshot.workoutLog,
+            groups: snapshot.loggedGroups,
+            activities: allActivities,
+            sets: allSets,
+          },
+          userProfile,
+          exerciseNames,
+        )
+        setDetectedPrs(prs)
+      }
+
       if (result?.advancementFailed) {
         setPageError(
           'Workout saved, but program position could not update. Check your connection.',
@@ -153,7 +176,7 @@ function ActiveWorkoutPage() {
       console.error('[workout-page] handleFinish:', err)
       setPageError('Failed to save workout. Please try again.')
     }
-  }, [workoutLog, loggedGroups, finishWorkout, programBannerProps])
+  }, [workoutLog, loggedGroups, finishWorkout, programBannerProps, userProfile, exerciseNames])
 
   const handleDiscard = useCallback(async () => {
     try {
@@ -227,6 +250,7 @@ function ActiveWorkoutPage() {
   const handleSummaryDone = useCallback(() => {
     setShowSummary(false)
     setSummaryData(null)
+    setDetectedPrs([])
     navigate({ to: '/' })
   }, [navigate])
 
@@ -243,6 +267,7 @@ function ActiveWorkoutPage() {
         onDone={handleSummaryDone}
         programName={summaryData.programName}
         blockName={summaryData.blockName}
+        personalRecords={detectedPrs}
       />
     )
   }

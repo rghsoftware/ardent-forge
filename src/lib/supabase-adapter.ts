@@ -4,6 +4,7 @@ import type {
   ExerciseFilters,
   ProgramFull,
   SessionTemplateFull,
+  VaultSummary,
   WorkoutLogSummary,
 } from './data-adapter'
 import type {
@@ -22,6 +23,7 @@ import type {
   BlockWeek,
   ScheduledSession,
   ProgramActivation,
+  WeeklyVolumeEntry,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -1004,4 +1006,184 @@ export class SupabaseAdapter implements DataAdapter {
     const { error } = await this.client.from('program_activations').delete().eq('user_id', userId)
     if (error) throw error
   }
+
+  // ---------------------------------------------------------------------------
+  // Analytics operations
+  // ---------------------------------------------------------------------------
+
+  async getWeeklyVolume(
+    userId: string,
+    exerciseId: string,
+    weeks = 8,
+  ): Promise<WeeklyVolumeEntry[]> {
+    // Supabase JS client cannot express multi-table JOINs with aggregation via
+    // the query builder. Instead, fetch the nested data and aggregate in TS.
+    // This matches the offline-first data adapter pattern used elsewhere.
+    const { data, error } = await this.client
+      .from('logged_activities')
+      .select(
+        'id, exercise_id, logged_activity_groups!inner(workout_log_id, workout_logs!inner(started_at, completed_at, user_id)), logged_sets(actual_weight, actual_reps, completed)',
+      )
+      .eq('exercise_id', exerciseId)
+      .eq('logged_activity_groups.workout_logs.user_id', userId)
+      .not('logged_activity_groups.workout_logs.completed_at', 'is', null)
+
+    if (error) throw error
+
+    type VolumeRow = {
+      id: string
+      exercise_id: string
+      logged_activity_groups: {
+        workout_log_id: string
+        workout_logs: {
+          started_at: string
+          completed_at: string | null
+          user_id: string
+        }
+      }
+      logged_sets: Array<{
+        actual_weight: { value: number; unit: string } | null
+        actual_reps: number | null
+        completed: boolean
+      }>
+    }
+    const rows = data as unknown as VolumeRow[]
+
+    // Aggregate by ISO week
+    const weekMap = new Map<string, { label: string; tonnage: number; unit: 'lb' | 'kg' }>()
+
+    for (const row of rows) {
+      const startedAt = new Date(row.logged_activity_groups.workout_logs.started_at)
+      const weekStart = getMonday(startedAt)
+      const weekKey = weekStart.toISOString().slice(0, 10)
+
+      for (const set of row.logged_sets) {
+        if (!set.completed || set.actual_weight == null || set.actual_reps == null) continue
+
+        const tonnage = set.actual_weight.value * set.actual_reps
+        const existing = weekMap.get(weekKey)
+        if (existing) {
+          existing.tonnage += tonnage
+          // Use the unit from the first set seen in this week
+        } else {
+          const label = formatWeekLabel(weekStart)
+          weekMap.set(weekKey, {
+            label,
+            tonnage,
+            unit: set.actual_weight.unit as 'lb' | 'kg',
+          })
+        }
+      }
+    }
+
+    // Sort descending by week and limit
+    return Array.from(weekMap.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .slice(0, weeks)
+      .reverse()
+      .map(([weekStart, entry]) => ({
+        weekLabel: entry.label,
+        weekStart,
+        tonnage: Math.round(entry.tonnage),
+        unit: entry.unit,
+      }))
+  }
+
+  async getVaultSummary(userId: string): Promise<VaultSummary> {
+    // Fetch all completed workout logs with nested sets for volume calculation
+    const { data, error } = await this.client
+      .from('workout_logs')
+      .select(
+        'id, started_at, logged_activity_groups(logged_activities(logged_sets(actual_weight, actual_reps, completed)))',
+      )
+      .eq('user_id', userId)
+      .not('completed_at', 'is', null)
+
+    if (error) throw error
+
+    type SummaryRow = {
+      id: string
+      started_at: string
+      logged_activity_groups: Array<{
+        logged_activities: Array<{
+          logged_sets: Array<{
+            actual_weight: { value: number; unit: string } | null
+            actual_reps: number | null
+            completed: boolean
+          }>
+        }>
+      }>
+    }
+    const rows = data as unknown as SummaryRow[]
+
+    const monday = getMonday(new Date())
+
+    let totalWorkouts = 0
+    let totalVolumeLb = 0
+    let thisWeekWorkouts = 0
+    let thisWeekVolumeLb = 0
+
+    for (const row of rows) {
+      totalWorkouts++
+      const isThisWeek = new Date(row.started_at) >= monday
+      if (isThisWeek) thisWeekWorkouts++
+
+      for (const group of row.logged_activity_groups) {
+        for (const activity of group.logged_activities) {
+          for (const set of activity.logged_sets) {
+            if (!set.completed || set.actual_weight == null || set.actual_reps == null) continue
+
+            let weightLb = set.actual_weight.value
+            if (set.actual_weight.unit === 'kg') {
+              weightLb = set.actual_weight.value * 2.20462
+            }
+            const volume = weightLb * set.actual_reps
+            totalVolumeLb += volume
+            if (isThisWeek) thisWeekVolumeLb += volume
+          }
+        }
+      }
+    }
+
+    return {
+      totalWorkouts,
+      totalVolumeLb: Math.round(totalVolumeLb),
+      thisWeekWorkouts,
+      thisWeekVolumeLb: Math.round(thisWeekVolumeLb),
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Returns the Monday at 00:00 UTC of the week containing the given date. */
+function getMonday(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getUTCDay()
+  // Sunday = 0, Monday = 1, ..., Saturday = 6
+  const diff = day === 0 ? 6 : day - 1
+  d.setUTCDate(d.getUTCDate() - diff)
+  d.setUTCHours(0, 0, 0, 0)
+  return d
+}
+
+/** Formats a date as "Mon DD" (e.g. "Mar 24"). */
+function formatWeekLabel(date: Date): string {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ]
+  return `${months[date.getUTCMonth()]} ${String(date.getUTCDate()).padStart(2, '0')}`
 }

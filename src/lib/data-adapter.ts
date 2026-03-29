@@ -16,6 +16,7 @@ import type {
   ProgramActivation,
 } from '@/domain/types'
 import type { ExerciseCategory, MovementPattern, MuscleGroup } from '@/domain/types'
+import type { WeeklyVolumeEntry } from '@/domain/types'
 
 export type WorkoutWithSets = { log: WorkoutLog; sets: LoggedSet[] }
 
@@ -37,6 +38,13 @@ export type ProgramFull = {
   blocks: Block[]
   blockWeeks: BlockWeek[]
   scheduledSessions: ScheduledSession[]
+}
+
+export type VaultSummary = {
+  totalWorkouts: number
+  totalVolumeLb: number
+  thisWeekWorkouts: number
+  thisWeekVolumeLb: number
 }
 
 export interface ExerciseFilters {
@@ -169,4 +177,12 @@ export interface DataAdapter {
     updates: { currentBlockOrdinal?: number; currentWeekNumber?: number },
   ): Promise<ProgramActivation>
   clearActiveProgram(userId: string): Promise<void>
+
+  // Analytics operations
+
+  /** Returns weekly volume (tonnage) for an exercise over the last N weeks. */
+  getWeeklyVolume(userId: string, exerciseId: string, weeks?: number): Promise<WeeklyVolumeEntry[]>
+
+  /** Returns aggregate workout and volume stats for the vault summary card. */
+  getVaultSummary(userId: string): Promise<VaultSummary>
 }
