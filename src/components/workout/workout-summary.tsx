@@ -1,8 +1,10 @@
 import type React from 'react'
-import { useMemo, useEffect, useState } from 'react'
+import { useMemo, useEffect, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { PrBanner } from './pr-banner'
+import { PrCelebrationBanner } from '@/components/workout/pr-celebration-banner'
 import { formatDuration } from '@/lib/format-duration'
+import { sendPrNotification, getNotificationPreferences } from '@/lib/notification-service'
 import type { Weight, WorkoutLog, ProgramContext, PersonalRecord } from '@/domain/types'
 import type {
   LoggedActivityGroupWithActivities,
@@ -77,6 +79,33 @@ export function WorkoutSummary({
   personalRecords,
 }: WorkoutSummaryProps) {
   const programContext: ProgramContext | undefined = workoutLog.programContext ?? undefined
+
+  // ---------------------------------------------------------------------------
+  // PR celebration banner state
+  // Shows the first detected PR as a molten-gradient banner. Auto-dismisses
+  // after 5 seconds or on tap. Platform notification fires via useEffect below.
+  // ---------------------------------------------------------------------------
+
+  // First strength PR (1RM/3RM/5RM) for the celebration overlay banner
+  const firstStrengthPr =
+    personalRecords?.find((pr) => pr.type === '1RM' || pr.type === '3RM' || pr.type === '5RM') ??
+    null
+  const [prDismissed, setPrDismissed] = useState(false)
+  const handlePrDismiss = useCallback(() => setPrDismissed(true), [])
+
+  // Fire platform notification for PR celebration (system tray / lock screen)
+  useEffect(() => {
+    if (!firstStrengthPr) return
+    const reps = firstStrengthPr.type === '1RM' ? 1 : firstStrengthPr.type === '3RM' ? 3 : 5
+    const unit = firstStrengthPr.unit === 'kg' ? ('kg' as const) : ('lb' as const)
+    getNotificationPreferences()
+      .then((prefs) => {
+        sendPrNotification(firstStrengthPr.exerciseName, firstStrengthPr.value, reps, unit, prefs)
+      })
+      .catch((err) => {
+        console.warn('[workout-summary] Failed to send PR notification:', err)
+      })
+  }, [firstStrengthPr])
 
   const stats = useMemo(() => {
     const allActivities: LoggedActivityWithSets[] = loggedGroups.flatMap((g) => g.activities)
@@ -170,6 +199,17 @@ export function WorkoutSummary({
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-pit">
+      {/* PR celebration banner -- slides down from top, auto-dismisses after 5s */}
+      {firstStrengthPr && !prDismissed && (
+        <PrCelebrationBanner
+          exerciseName={firstStrengthPr.exerciseName}
+          weight={firstStrengthPr.value}
+          reps={firstStrengthPr.type === '1RM' ? 1 : firstStrengthPr.type === '3RM' ? 3 : 5}
+          unit={firstStrengthPr.unit === 'kg' ? 'kg' : 'lb'}
+          onDismiss={handlePrDismiss}
+        />
+      )}
+
       {/* Forge accent line — draws left to right on mount */}
       <div
         className="h-0.5 bg-forge"

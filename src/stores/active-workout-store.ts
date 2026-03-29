@@ -112,7 +112,7 @@ interface ActiveWorkoutActions {
   clearUndo(): void
 
   // Rest timer
-  startRestTimer(seconds: number): void
+  startRestTimer(seconds: number, exerciseName?: string, setNumber?: number): void
   skipRest(): void
   adjustRest(delta: number): void
 
@@ -348,7 +348,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     // Rest timer
     // ------------------------------------------------------------------
 
-    startRestTimer(seconds: number) {
+    startRestTimer(seconds: number, exerciseName?: string, setNumber?: number) {
       // Clear any existing rest interval / Tauri listeners
       if (_restInterval) clearInterval(_restInterval)
       _cleanupTauriRestListeners()
@@ -379,7 +379,11 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
           }),
         ])
           .then(() => {
-            invoke('start_rest_timer', { seconds }).catch((err) => {
+            invoke('start_rest_timer', {
+              seconds,
+              exerciseName: exerciseName ?? null,
+              setNumber: setNumber ?? null,
+            }).catch((err) => {
               console.error('[rest-timer] Failed to start Rust timer:', err)
               set({ restTimer: null })
               _cleanupTauriRestListeners()

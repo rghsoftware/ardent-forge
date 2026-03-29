@@ -2,7 +2,9 @@ mod commands;
 mod db;
 mod error;
 mod models;
+pub mod notification;
 pub mod rest_timer;
+pub mod session_reminder;
 pub mod sync;
 mod utils;
 
@@ -31,7 +33,10 @@ pub fn run() {
       let sync_engine = sync::SyncEngine::new(pool.clone(), app.handle().clone());
       app.manage(pool);
       app.manage(rest_timer::RestTimerState::new());
+      app.manage(session_reminder::SessionReminderState::new());
       app.manage(sync_engine);
+
+      notification::register_channels(&app.handle());
 
       Ok(())
     })
@@ -93,6 +98,9 @@ pub fn run() {
       commands::sync::sync_force_push,
       commands::sync::sync_force_pull,
       commands::sync::sync_get_status,
+      // Notifications
+      commands::notification::schedule_session_reminder,
+      commands::notification::cancel_session_reminder,
     ])
     .run(tauri::generate_context!())
     .unwrap_or_else(|e| panic!("Tauri application error: {e}"));

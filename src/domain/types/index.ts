@@ -33,6 +33,7 @@ export type {
 
 export * from './workout-log'
 export * from './user'
+export * from './notification'
 export * from './sharing'
 export * from './analytics'
 

@@ -1,6 +1,7 @@
 pub mod app_config;
 pub mod exercises;
 pub mod guest;
+pub mod notification;
 pub mod programs;
 pub mod rest_timer;
 pub mod session_templates;

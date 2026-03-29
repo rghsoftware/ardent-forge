@@ -254,6 +254,18 @@
     }
   }
 
+  /* PR celebration banner -- slides down from above viewport then auto-dismisses */
+  @keyframes pr-slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   /* Rest timer glow overlay -- duration controlled dynamically in rest-timer-overlay.tsx */
   @keyframes ember-pulse {
     0%,
