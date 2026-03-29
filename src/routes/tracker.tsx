@@ -1,6 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/tracker')({
+  beforeLoad: ({ context }) => {
+    if (!context.auth.loading && !context.auth.user) {
+      throw redirect({ to: '/sign-in' })
+    }
+  },
   component: TrackerPage,
 })
 

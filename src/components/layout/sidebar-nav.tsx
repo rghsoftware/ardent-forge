@@ -21,6 +21,28 @@ export function SidebarNav() {
         collapsed ? 'w-16' : 'w-60',
       )}
     >
+      {/* Logo */}
+      <div
+        className={cn(
+          'flex items-center px-3 pt-4 pb-2',
+          collapsed ? 'justify-center' : 'justify-start',
+        )}
+      >
+        {collapsed ? (
+          <img
+            src="/logos/icononly_transparent_nobuffer.png"
+            alt="Ardent Forge"
+            className="h-8 w-8 object-contain"
+          />
+        ) : (
+          <img
+            src="/logos/fulllogo_transparent_nobuffer.png"
+            alt="Ardent Forge"
+            className="h-10 object-contain"
+          />
+        )}
+      </div>
+
       {/* Toggle button */}
       <button
         onClick={() => setCollapsed(!collapsed)}
