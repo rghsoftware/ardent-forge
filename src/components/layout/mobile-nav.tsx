@@ -2,10 +2,10 @@ import { Link } from '@tanstack/react-router'
 import { Icon } from '@/components/icon'
 
 const navItems = [
-  { label: 'Today', icon: 'home', to: '/' },
-  { label: 'History', icon: 'history', to: '/history' },
+  { label: 'Forge', icon: 'hardware', to: '/' },
+  { label: 'Tracker', icon: 'history', to: '/history' },
   { label: 'Library', icon: 'library_books', to: '/library' },
-  { label: 'Analytics', icon: 'monitoring', to: '/vault' },
+  { label: 'Vault', icon: 'monitoring', to: '/vault' },
   { label: 'Profile', icon: 'person', to: '/profile' },
 ] as const
 

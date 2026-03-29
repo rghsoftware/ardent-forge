@@ -4,10 +4,10 @@ import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { label: 'Today', icon: 'home', to: '/' },
-  { label: 'History', icon: 'history', to: '/history' },
-  { label: 'Builder', icon: 'precision_manufacturing', to: '/builder' },
-  { label: 'Analytics', icon: 'monitoring', to: '/vault' },
+  { label: 'Forge', icon: 'hardware', to: '/' },
+  { label: 'Tracker', icon: 'history', to: '/history' },
+  { label: 'Builder', icon: 'construction', to: '/builder' },
+  { label: 'Vault', icon: 'monitoring', to: '/vault' },
   { label: 'Library', icon: 'library_books', to: '/library' },
   { label: 'Profile', icon: 'person', to: '/profile' },
 ] as const
