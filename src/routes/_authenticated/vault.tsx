@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/vault')({
+export const Route = createFileRoute('/_authenticated/vault')({
   component: VaultPage,
 })
 

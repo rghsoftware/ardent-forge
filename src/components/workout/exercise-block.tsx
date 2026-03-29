@@ -38,39 +38,37 @@ export function ExerciseBlock({
     <section className="bg-surface-iron" aria-label={`${exerciseName} exercise`}>
       {/* Exercise name header */}
       <div className="px-4 pt-4 pb-2">
-        <h3 className="font-display text-xs font-medium uppercase tracking-widest text-ember">
-          {exerciseName}
-        </h3>
+        <h3 className="font-display text-xs font-medium text-ember">{exerciseName}</h3>
       </div>
 
       {/* Column headers */}
       {hasPrescribed ? (
         <div className="flex items-center gap-2 px-4 py-1">
-          <span className="w-12 shrink-0 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+          <span className="w-12 shrink-0 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
             SET
           </span>
-          <span className="flex-1 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+          <span className="flex-1 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
             PRESCRIBED
           </span>
-          <span className="flex-1 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+          <span className="flex-1 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
             ACTUAL
           </span>
-          <span className="w-14 shrink-0 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+          <span className="w-14 shrink-0 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
             STATUS
           </span>
         </div>
       ) : (
         <div className="flex items-center gap-2 px-4 py-1">
-          <span className="w-12 shrink-0 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+          <span className="w-12 shrink-0 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
             SET
           </span>
-          <span className="flex-1 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+          <span className="flex-1 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
             WEIGHT
           </span>
-          <span className="flex-1 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+          <span className="flex-1 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
             REPS
           </span>
-          <span className="w-14 shrink-0 text-center text-[10px] uppercase tracking-widest text-warm-ash/60">
+          <span className="w-14 shrink-0 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
             STATUS
           </span>
         </div>

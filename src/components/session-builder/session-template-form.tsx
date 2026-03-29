@@ -257,15 +257,15 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="TEMPLATE NAME"
-          className="w-full border-0 border-b border-warm-ash/30 bg-transparent py-3 font-display text-lg font-medium uppercase tracking-wider text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
+          placeholder="Template name"
+          className="w-full border-0 border-b border-warm-ash/30 bg-transparent py-3 font-display text-lg font-medium text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
           aria-label="Template name"
         />
       </div>
 
       {/* Category selector */}
       <div className="px-4">
-        <span className="mb-2 block text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           CATEGORY
         </span>
         <div className="flex flex-wrap gap-1">
@@ -274,7 +274,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
               key={c.value}
               type="button"
               onClick={() => setCategory(c.value)}
-              className={`min-h-10 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+              className={`min-h-10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-colors ${
                 category === c.value
                   ? 'bg-forge text-on-forge'
                   : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
@@ -288,7 +288,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
       {/* Description */}
       <div className="px-4">
-        <span className="mb-1 block text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           DESCRIPTION (OPTIONAL)
         </span>
         <textarea
@@ -303,7 +303,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
       {/* Scoring */}
       <div className="px-4">
-        <span className="mb-2 block text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           SCORING
         </span>
         <Select value={scoring} onValueChange={(v) => setScoring(v as ScoringType)}>
@@ -337,7 +337,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
       {/* Activity groups */}
       <div className="flex flex-col gap-3">
         <div className="px-4">
-          <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+          <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
             ACTIVITY GROUPS
           </span>
         </div>
@@ -357,10 +357,10 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
             type="button"
             variant="secondary"
             onClick={handleAddGroup}
-            className="w-full min-h-12 text-xs uppercase tracking-wider"
+            className="w-full min-h-12 text-xs"
           >
             <Icon name="add" size={16} />
-            ADD GROUP
+            Add group
           </Button>
         </div>
       </div>
@@ -383,9 +383,9 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
             type="button"
             variant="ghost"
             onClick={onCancel}
-            className="min-h-12 flex-1 text-xs uppercase tracking-wider"
+            className="min-h-12 flex-1 text-xs"
           >
-            CANCEL
+            Cancel
           </Button>
         )}
         <Button
@@ -393,9 +393,9 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
           variant="default"
           onClick={handleSave}
           disabled={isSaving}
-          className="min-h-12 flex-1 text-xs uppercase tracking-wider"
+          className="min-h-12 flex-1 text-xs"
         >
-          {isSaving ? 'SAVING...' : 'SAVE TEMPLATE'}
+          {isSaving ? 'Saving...' : 'Save template'}
         </Button>
       </div>
     </div>

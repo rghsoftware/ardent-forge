@@ -124,7 +124,7 @@ function UnderlineNumberInput({
 }) {
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
-      <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+      <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
         {label}
       </span>
       <input
@@ -161,7 +161,7 @@ function DurationInput({
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+      <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
         {label}
       </span>
       <div className="flex items-center gap-2">
@@ -178,7 +178,7 @@ function DurationInput({
           className="min-h-12 w-16 border-0 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
           aria-label={`${label} minutes`}
         />
-        <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">MIN</span>
+        <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">MIN</span>
         <input
           type="number"
           inputMode="numeric"
@@ -193,7 +193,7 @@ function DurationInput({
           className="min-h-12 w-16 border-0 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
           aria-label={`${label} seconds`}
         />
-        <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">SEC</span>
+        <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">SEC</span>
       </div>
     </div>
   )
@@ -210,7 +210,7 @@ function WeightInput({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+      <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
         {label}
       </span>
       <div className="flex items-center gap-2">
@@ -259,7 +259,7 @@ function DistanceInput({
   const current = value ?? { value: 0, unit: 'mi' as const }
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+      <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
         {label}
       </span>
       <div className="flex items-center gap-2">
@@ -308,7 +308,7 @@ function PaceInput({
   const current = value ?? { minutesPerUnit: 0, unit: 'mi' as const }
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+      <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
         {label}
       </span>
       <div className="flex items-center gap-2">
@@ -326,7 +326,7 @@ function PaceInput({
           className="min-h-12 w-20 border-0 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
           aria-label={`${label} minutes per unit`}
         />
-        <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">MIN /</span>
+        <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">MIN /</span>
         <Select
           value={current.unit}
           onValueChange={(u) => onChange({ ...current, unit: u as 'mi' | 'km' })}
@@ -358,7 +358,7 @@ function NumberRangeInput({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+      <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
         {label}
       </span>
       <div className="flex items-center gap-2">
@@ -375,7 +375,7 @@ function NumberRangeInput({
           className="min-h-12 w-16 border-0 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
           aria-label={`${label} minimum`}
         />
-        <span className="text-[10px] uppercase tracking-widest text-warm-ash/60">TO</span>
+        <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">TO</span>
         <input
           type="number"
           inputMode="numeric"
@@ -403,7 +403,7 @@ function CardioModalitySelect({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+      <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
         MODALITY
       </span>
       <Select value={value} onValueChange={(v) => onChange(v as CardioModality)}>
@@ -472,7 +472,7 @@ function LoadSpecEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+      <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
         LOAD
       </span>
 
@@ -483,7 +483,7 @@ function LoadSpecEditor({
             key={t.value}
             type="button"
             onClick={() => handleTypeChange(t.value)}
-            className={`min-h-8 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+            className={`min-h-8 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
               value.type === t.value
                 ? 'bg-forge text-on-forge'
                 : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
@@ -685,7 +685,7 @@ function WorkToMaxFields({
       />
 
       <div className="flex flex-col gap-1">
-        <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           WARMUP SCHEME (OPTIONAL)
         </span>
         <input
@@ -785,7 +785,7 @@ function CardioSteadyStateFields({
         onChange={(m) => onChange({ ...value, modality: m })}
       />
       <div className="flex flex-col gap-1">
-        <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           INTENSITY NOTES
         </span>
         <input
@@ -841,7 +841,7 @@ function CardioIntervalFields({
         onChange={(m) => onChange({ ...value, modality: m })}
       />
       <div className="flex flex-col gap-1">
-        <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           INTENSITY NOTES
         </span>
         <input
@@ -965,7 +965,7 @@ function DescendingRepsFields({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           REP LADDER (DESCENDING)
         </span>
         <input
@@ -1051,7 +1051,7 @@ export function SetSchemeEditor({
       <div className="flex flex-col gap-2">
         {SCHEME_GROUPS.map((group) => (
           <div key={group.label} className="flex flex-col gap-1">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+            <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
               {group.label}
             </span>
             <div className="flex flex-wrap gap-1">
@@ -1060,7 +1060,7 @@ export function SetSchemeEditor({
                   key={t.value}
                   type="button"
                   onClick={() => handleTypeChange(t.value as SetSchemeType)}
-                  className={`min-h-8 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+                  className={`min-h-8 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
                     value.type === t.value
                       ? 'bg-forge text-on-forge'
                       : 'bg-surface-steel text-bone-white hover:bg-surface-slag'

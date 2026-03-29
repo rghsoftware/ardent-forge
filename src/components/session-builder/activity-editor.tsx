@@ -43,15 +43,13 @@ export function ActivityEditor({ activity, exercises, onChange, onDelete }: Acti
 
         {exercise ? (
           <div className="flex flex-1 items-center gap-2">
-            <span className="font-display text-xs font-medium uppercase tracking-widest text-ember">
-              {exercise.name}
-            </span>
+            <span className="font-display text-xs font-medium text-ember">{exercise.name}</span>
             <button
               type="button"
               onClick={() => setShowExerciseSheet(true)}
-              className="min-h-8 px-2 text-[10px] font-medium uppercase tracking-wider text-warm-ash/60 hover:text-bone-white"
+              className="min-h-8 px-2 text-[11px] font-medium text-warm-ash/60 hover:text-bone-white"
             >
-              CHANGE
+              Change
             </button>
           </div>
         ) : (
@@ -60,9 +58,9 @@ export function ActivityEditor({ activity, exercises, onChange, onDelete }: Acti
             variant="secondary"
             size="sm"
             onClick={() => setShowExerciseSheet(true)}
-            className="flex-1 text-xs uppercase tracking-wider"
+            className="flex-1 text-xs"
           >
-            SELECT EXERCISE
+            Select exercise
           </Button>
         )}
 
@@ -98,7 +96,7 @@ export function ActivityEditor({ activity, exercises, onChange, onDelete }: Acti
       {/* Notes (collapsible) */}
       {showNotes && (
         <div className="border-t border-warm-ash/10 px-4 py-3">
-          <span className="mb-1 block text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+          <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
             NOTES
           </span>
           <textarea

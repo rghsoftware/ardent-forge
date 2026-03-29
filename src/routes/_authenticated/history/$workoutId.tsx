@@ -84,12 +84,12 @@ function WorkoutDetailPage() {
         <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
           cloud_off
         </span>
-        <p className="font-display text-sm uppercase tracking-widest text-warning-flare">
-          FAILED TO LOAD WORKOUT
+        <p className="font-display text-sm text-warning-flare">
+          Failed to load workout
         </p>
         <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
-        <Link to="/history" className="mt-4 text-xs uppercase tracking-widest text-ember">
-          BACK TO HISTORY
+        <Link to="/history" className="mt-4 text-xs text-ember">
+          Back to history
         </Link>
       </div>
     )
@@ -99,11 +99,11 @@ function WorkoutDetailPage() {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
         <Icon name="error_outline" size={48} className="mb-3 text-warm-ash/40" />
-        <p className="font-display text-sm uppercase tracking-widest text-warm-ash">
-          WORKOUT NOT FOUND
+        <p className="font-display text-sm text-warm-ash">
+          Workout not found
         </p>
-        <Link to="/history" className="mt-4 text-xs uppercase tracking-widest text-ember">
-          BACK TO HISTORY
+        <Link to="/history" className="mt-4 text-xs text-ember">
+          Back to history
         </Link>
       </div>
     )

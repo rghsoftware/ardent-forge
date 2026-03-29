@@ -3,6 +3,7 @@ import type { DataAdapter } from './data-adapter'
 import { SupabaseAdapter } from './supabase-adapter'
 import { TauriAdapter } from './tauri-adapter'
 import { getSupabaseClient } from './supabase'
+import { GUEST_USER_ID } from './auth'
 
 let _adapter: DataAdapter | null = null
 
@@ -14,15 +15,15 @@ let _adapter: DataAdapter | null = null
  * - **Browser mode** (web-only): Returns a SupabaseAdapter that talks directly
  *   to the Supabase PostgreSQL backend.
  *
- * In Tauri mode before the user signs in via Supabase Auth, 'local-user' is
+ * In Tauri mode before the user signs in via Supabase Auth, GUEST_USER_ID is
  * used as a fallback userId so the app works completely offline.
  */
 export function getAdapter(userId?: string): DataAdapter {
   if (!_adapter) {
     if (isTauri()) {
-      // In offline-only mode, 'local-user' serves as the owner for all data.
+      // In offline/guest mode, GUEST_USER_ID serves as the owner for all data.
       // Call resetAdapter() after auth to switch to the real user ID.
-      _adapter = new TauriAdapter(userId ?? 'local-user')
+      _adapter = new TauriAdapter(userId ?? GUEST_USER_ID)
     } else {
       _adapter = new SupabaseAdapter(getSupabaseClient())
     }

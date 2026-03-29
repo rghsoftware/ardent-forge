@@ -76,9 +76,7 @@ export function CopyWeekDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-surface-iron">
         <DialogHeader>
-          <DialogTitle className="text-xs uppercase tracking-widest text-ember">
-            COPY WEEK
-          </DialogTitle>
+          <DialogTitle className="text-xs text-ember">Copy Week</DialogTitle>
           <DialogDescription className="text-sm text-warm-ash">
             Copy sessions from Week {sourceWeek.weekNumber} to other weeks.
           </DialogDescription>
@@ -87,13 +85,13 @@ export function CopyWeekDialog({
         <div className="flex flex-col gap-3 py-2">
           {/* Source week label */}
           <div className="flex items-center gap-2 bg-surface-charcoal px-3 py-2">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
+            <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
               SOURCE
             </span>
             <span className="text-xs font-medium uppercase tracking-wider text-bone-white">
               WEEK {sourceWeek.weekNumber}
             </span>
-            <span className="text-[10px] text-warm-ash/40">
+            <span className="text-[11px] text-warm-ash/40">
               ({sourceWeek.sessions.length}{' '}
               {sourceWeek.sessions.length === 1 ? 'session' : 'sessions'})
             </span>
@@ -105,9 +103,9 @@ export function CopyWeekDialog({
               type="button"
               variant="ghost"
               onClick={handleSelectAllRemaining}
-              className="min-h-10 text-xs uppercase tracking-wider text-ember"
+              className="min-h-10 text-xs text-ember"
             >
-              SELECT ALL REMAINING
+              Select all remaining
             </Button>
           )}
 
@@ -126,7 +124,7 @@ export function CopyWeekDialog({
                   WEEK {week.weekNumber}
                 </span>
                 {week.sessions.length > 0 && (
-                  <span className="text-[10px] text-warm-ash/40">
+                  <span className="text-[11px] text-warm-ash/40">
                     ({week.sessions.length} existing)
                   </span>
                 )}
@@ -142,22 +140,17 @@ export function CopyWeekDialog({
         </div>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleCancel}
-            className="min-h-12 text-xs uppercase tracking-wider"
-          >
-            CANCEL
+          <Button type="button" variant="ghost" onClick={handleCancel} className="min-h-12 text-xs">
+            Cancel
           </Button>
           <Button
             type="button"
             variant="default"
             onClick={handleConfirm}
             disabled={selected.size === 0}
-            className="min-h-12 text-xs uppercase tracking-wider"
+            className="min-h-12 text-xs"
           >
-            CONFIRM COPY
+            Confirm copy
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -58,9 +58,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
     <section className="bg-surface-iron" aria-label={`${exercise.name} cardio session`}>
       {/* Exercise name */}
       <div className="px-4 pt-4 pb-2">
-        <h3 className="font-display text-xs font-medium uppercase tracking-widest text-ember">
-          {exercise.name}
-        </h3>
+        <h3 className="font-display text-xs font-medium text-ember">{exercise.name}</h3>
       </div>
 
       {/* Modality selector chips */}
@@ -99,7 +97,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
             onClick={handleStartStop}
             className="min-h-12 min-w-32"
           >
-            {isRunning ? 'STOP' : 'START'}
+            {isRunning ? 'Stop' : 'Start'}
           </Button>
         </div>
       )}
@@ -109,7 +107,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
         <div className="flex flex-col gap-4 px-4 pb-4">
           {/* Duration (auto-filled) */}
           <div>
-            <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+            <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
               DURATION
             </span>
             <span className="font-display text-lg tabular-nums text-bone-white">
@@ -119,7 +117,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
 
           {/* Distance */}
           <div>
-            <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+            <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
               DISTANCE
             </span>
             <input
@@ -135,7 +133,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
           {/* Pace (calculated) */}
           {distance && (
             <div>
-              <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+              <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
                 PACE
               </span>
               <span className="font-display text-lg tabular-nums text-bone-white">
@@ -146,7 +144,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
 
           {/* Heart rate (optional) */}
           <div>
-            <span className="mb-1 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+            <span className="mb-1 block text-[11px] uppercase tracking-widest text-warm-ash/60">
               AVG HEART RATE (OPTIONAL)
             </span>
             <input
@@ -167,7 +165,7 @@ export function CardioPanel({ exercise, onComplete }: CardioPanelProps) {
             disabled={elapsedSeconds === 0}
             className="mt-2 min-h-12"
           >
-            LOG CARDIO
+            Log cardio
           </Button>
         </div>
       )}

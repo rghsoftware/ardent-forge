@@ -12,7 +12,7 @@ const buttonVariants = cva(
         default: 'bg-forge text-on-forge hover:bg-forge/90',
         molten: 'molten-gradient text-on-forge hover:opacity-90',
         secondary: 'bg-deep-slate text-on-deep-slate hover:bg-deep-slate/80',
-        ghost: 'bg-transparent text-ember uppercase tracking-wider hover:bg-surface-steel/10',
+        ghost: 'bg-transparent text-ember hover:bg-surface-steel/10',
         destructive: 'bg-alarm-red text-on-alarm hover:bg-alarm-red/90',
         outline:
           'border border-surface-steel bg-transparent text-on-surface hover:bg-surface-steel/10 rounded-none',

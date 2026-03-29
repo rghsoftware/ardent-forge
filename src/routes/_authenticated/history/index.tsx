@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { useAuth } from '@/lib/auth'
 import { useWorkoutLogsSummary } from '@/hooks/use-workout-logs'
 import { WorkoutHistoryCard } from '@/components/history/workout-history-card'
+import { GhostSessionPreview } from '@/components/shared/ghost-session-preview'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export const Route = createFileRoute('/_authenticated/history/')({
@@ -35,7 +36,7 @@ function HistoryListSkeleton() {
 }
 
 function HistoryPage() {
-  const { user } = useAuth()
+  const { user, isGuest } = useAuth()
   const navigate = useNavigate()
   const userId = user?.id ?? ''
 
@@ -52,6 +53,15 @@ function HistoryPage() {
     overscan: 5,
   })
 
+  // If no userId and not guest, show loading -- avoids silent empty-data state
+  if (!userId && !isGuest) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Skeleton className="h-8 w-48" />
+      </div>
+    )
+  }
+
   const handleCardClick = (workoutId: string) => {
     navigate({ to: '/history/$workoutId', params: { workoutId } })
   }
@@ -60,9 +70,7 @@ function HistoryPage() {
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
       {/* Header */}
       <div className="px-4 pt-6 pb-4">
-        <h1 className="font-display text-xl font-medium uppercase tracking-widest text-bone-white">
-          TRACKER
-        </h1>
+        <h1 className="font-display text-xl font-medium text-bone-white">Tracker</h1>
       </div>
 
       {/* Content */}
@@ -73,23 +81,28 @@ function HistoryPage() {
           <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
             cloud_off
           </span>
-          <p className="font-display text-sm uppercase tracking-widest text-warning-flare">
-            FAILED TO LOAD HISTORY
-          </p>
+          <p className="font-display text-sm text-warning-flare">Failed to load history</p>
           <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
         </div>
       ) : completedSummaries.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center text-warm-ash/40">
-          <span
-            className="material-symbols-outlined text-5xl"
-            style={{ fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 48" }}
-          >
-            history
-          </span>
-          <p className="font-display text-sm uppercase tracking-widest text-warm-ash">
-            NO SESSIONS LOGGED
-          </p>
-          <p className="text-xs uppercase tracking-wider">COMPLETE A WORKOUT TO SEE IT HERE</p>
+        <div className="flex flex-1 flex-col">
+          {/* Ghost preview: mirrors real history row layout */}
+          <GhostSessionPreview />
+
+          {/* Value description + CTA */}
+          <div className="flex flex-col items-center gap-4 px-8 py-10 text-center">
+            <p className="text-sm font-heading text-warm-ash">Your training history starts here.</p>
+            <p className="text-xs text-warm-ash/50 leading-relaxed">
+              Every completed workout appears here with exercise breakdowns, volume totals, and PR
+              indicators.
+            </p>
+            <button
+              onClick={() => navigate({ to: '/' })}
+              className="text-xs text-ember uppercase tracking-wider hover:underline"
+            >
+              Log your first workout →
+            </button>
+          </div>
         </div>
       ) : (
         <div ref={parentRef} className="flex-1 overflow-auto">

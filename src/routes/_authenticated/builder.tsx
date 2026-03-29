@@ -27,7 +27,7 @@ import type { SessionType } from '@/domain/types'
 // Route definition
 // ---------------------------------------------------------------------------
 
-export const Route = createFileRoute('/builder')({
+export const Route = createFileRoute('/_authenticated/builder')({
   validateSearch: (search: Record<string, unknown>) => ({
     programId: search['programId'] as string | undefined,
   }),
@@ -40,7 +40,7 @@ export const Route = createFileRoute('/builder')({
 
 function BuilderPage() {
   const { programId } = Route.useSearch()
-  const { user, loading: authLoading } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   // Draft state
@@ -77,13 +77,6 @@ function BuilderPage() {
     setHydratedProgramId(programFull.program.id)
     setDraft(hydrateDraft(programFull))
   }
-
-  // Auth redirect
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate({ to: '/sign-in' })
-    }
-  }, [authLoading, user, navigate])
 
   const userId = user?.id ?? ''
 
@@ -194,16 +187,6 @@ function BuilderPage() {
   // Loading state
   // ---------------------------------------------------------------------------
 
-  if (authLoading) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-8 w-48 bg-surface-iron" />
-        <Skeleton className="h-12 w-full bg-surface-iron" />
-        <Skeleton className="h-64 w-full bg-surface-iron" />
-      </div>
-    )
-  }
-
   if (programId && isLoadingProgram) {
     return (
       <div className="flex flex-col gap-4 p-4">
@@ -221,17 +204,17 @@ function BuilderPage() {
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-surface-anvil pb-8 font-body text-bone-white">
+    <div className="flex h-full flex-col bg-surface-anvil font-body text-bone-white">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-6 pb-2">
+      <div className="flex flex-shrink-0 items-center gap-3 px-4 pt-8 pb-4">
         <Button
           type="button"
           variant="ghost"
           onClick={() => navigate({ to: '/library' })}
-          className="min-h-10 text-xs uppercase tracking-wider text-warm-ash hover:text-bone-white"
+          className="min-h-10 text-xs text-warm-ash hover:text-bone-white"
         >
           <Icon name="arrow_back" size={16} />
-          BACK TO LIBRARY
+          Back to library
         </Button>
 
         <div className="flex-1" />
@@ -240,26 +223,22 @@ function BuilderPage() {
           type="button"
           variant="ghost"
           onClick={() => setPreviewMode(true)}
-          className="min-h-10 text-xs uppercase tracking-wider text-warm-ash hover:text-bone-white"
+          className="min-h-10 text-xs text-warm-ash hover:text-bone-white"
         >
           <Icon name="visibility" size={16} />
-          PREVIEW
+          Preview
         </Button>
       </div>
 
-      <div className="px-4 pb-4">
-        <h1 className="font-display text-2xl font-medium uppercase tracking-wider text-bone-white">
-          PROGRAM BUILDER
-        </h1>
+      <div className="flex-shrink-0 px-4 pb-6">
+        <h1 className="font-display text-2xl font-medium text-bone-white">Program Builder</h1>
         {programId && draft.name && (
-          <p className="mt-1 text-[10px] font-medium uppercase tracking-widest text-warm-ash/60">
-            EDITING: {draft.name}
-          </p>
+          <p className="mt-1 text-[11px] font-medium text-warm-ash/60">Editing: {draft.name}</p>
         )}
       </div>
 
       {/* Layout: sidebar + content on desktop, stacked on mobile */}
-      <div className="lg:grid lg:grid-cols-[320px_1fr] lg:gap-6 lg:px-4">
+      <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[320px_1fr] lg:gap-6 lg:px-4">
         {/* Sidebar: Program form */}
         <div className="px-4 pb-6 lg:px-0">
           <ProgramForm draft={draft} onChange={handleDraftChange} />
@@ -289,15 +268,15 @@ function BuilderPage() {
       </div>
 
       {/* Save button */}
-      <div className="px-4 pt-6">
+      <div className="flex-shrink-0 px-4 pt-6 pb-8">
         <Button
           type="button"
           variant="default"
           onClick={handleSave}
           disabled={isSaving}
-          className="min-h-12 w-full bg-forge text-on-forge text-xs uppercase tracking-wider hover:brightness-110"
+          className="min-h-12 w-full bg-forge text-on-forge text-xs hover:brightness-110"
         >
-          {isSaving ? 'SAVING...' : 'SAVE PROGRAM'}
+          {isSaving ? 'Saving...' : 'Save program'}
         </Button>
 
         {error && <p className="mt-2 text-xs text-warning-flare">{error}</p>}

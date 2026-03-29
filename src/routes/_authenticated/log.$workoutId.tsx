@@ -452,7 +452,7 @@ function ActiveWorkoutPage() {
             onClick={() => setShowAddExercise(true)}
             className="min-h-12 w-full"
           >
-            + ADD EXERCISE
+            + Add exercise
           </Button>
         </div>
       )}
@@ -465,7 +465,7 @@ function ActiveWorkoutPage() {
           onClick={() => setShowDiscardDialog(true)}
           className="w-full text-xs text-warning-flare"
         >
-          DISCARD WORKOUT
+          Discard workout
         </Button>
       </div>
 
@@ -487,8 +487,8 @@ function ActiveWorkoutPage() {
       <Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle className="text-xs uppercase tracking-widest text-warning-flare">
-              DISCARD WORKOUT
+            <DialogTitle className="text-xs text-warning-flare">
+              Discard Workout
             </DialogTitle>
             <DialogDescription>
               All logged sets will be permanently deleted. This cannot be undone.
@@ -496,10 +496,10 @@ function ActiveWorkoutPage() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowDiscardDialog(false)}>
-              CANCEL
+              Cancel
             </Button>
             <Button variant="destructive" onClick={handleDiscard} disabled={isDiscarding}>
-              {isDiscarding ? 'DISCARDING...' : 'DISCARD'}
+              {isDiscarding ? 'Discarding...' : 'Discard'}
             </Button>
           </DialogFooter>
         </DialogContent>

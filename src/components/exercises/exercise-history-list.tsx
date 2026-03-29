@@ -86,9 +86,7 @@ export function ExerciseHistoryList({ history }: ExerciseHistoryListProps) {
   if (!history || history.length === 0) {
     return (
       <div className="flex items-center justify-center px-4 py-16">
-        <p className="font-display text-sm uppercase tracking-widest text-warm-ash">
-          NO WORKOUT HISTORY
-        </p>
+        <p className="font-display text-sm text-warm-ash">No workout history</p>
       </div>
     )
   }
@@ -131,17 +129,17 @@ export function ExerciseHistoryList({ history }: ExerciseHistoryListProps) {
                 <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
                   {formatHistoryDate(log.startedAt)}
                 </span>
-                <span className="text-[10px] text-warm-ash/50">
+                <span className="text-[11px] text-warm-ash/50">
                   {log.title || 'Untitled session'}
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 {/* Summary badges */}
                 <div className="flex gap-2">
-                  <span className="font-body text-[10px] uppercase text-warm-ash/60">
+                  <span className="font-body text-[11px] uppercase text-warm-ash/60">
                     {sets.length}S
                   </span>
-                  <span className="font-body text-[10px] uppercase text-warm-ash/60">
+                  <span className="font-body text-[11px] uppercase text-warm-ash/60">
                     {getWeightRange(sets)}
                   </span>
                   {volume > 0 && (
@@ -178,7 +176,7 @@ export function ExerciseHistoryList({ history }: ExerciseHistoryListProps) {
                         className="flex min-h-8 items-center justify-between py-1 pl-4"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="font-body text-[10px] uppercase text-warm-ash/50">
+                          <span className="font-body text-[11px] uppercase text-warm-ash/50">
                             SET {set.setNumber}
                           </span>
                           {set.setType !== 'WORKING' && (
@@ -192,7 +190,7 @@ export function ExerciseHistoryList({ history }: ExerciseHistoryListProps) {
                             {formatSetDetail(set)}
                           </span>
                           {set.rpe != null && (
-                            <span className="font-body text-[10px] text-warm-ash/50">
+                            <span className="font-body text-[11px] text-warm-ash/50">
                               RPE {set.rpe}
                             </span>
                           )}

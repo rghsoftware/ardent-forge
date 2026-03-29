@@ -79,6 +79,8 @@ pub fn run() {
       commands::rest_timer::start_rest_timer,
       commands::rest_timer::skip_rest_timer,
       commands::rest_timer::adjust_rest_timer,
+      // Guest migration
+      commands::guest::migrate_guest_data,
       // Sync
       commands::sync::sync_set_auth,
       commands::sync::sync_clear_auth,

@@ -29,8 +29,8 @@ export function ExerciseSearchInput({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="SEARCH EXERCISES"
-        className="min-h-12 w-full bg-transparent px-3 py-3 font-body text-sm text-bone-white placeholder:text-warm-ash/60 placeholder:tracking-widest placeholder:uppercase focus:outline-none"
+        placeholder="Search exercises"
+        className="min-h-12 w-full bg-transparent px-3 py-3 font-body text-sm text-bone-white placeholder:text-warm-ash/60 focus:outline-none"
       />
       {value.length > 0 && (
         <button

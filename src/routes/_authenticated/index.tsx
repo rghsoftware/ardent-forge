@@ -6,7 +6,9 @@ import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useActiveProgram, useProgramFull } from '@/hooks/use-programs'
 import { CrashRecoveryDialog } from '@/components/workout/crash-recovery-dialog'
 import { ProgramSessionCard } from '@/components/today/program-session-card'
+import { GhostSessionPreview } from '@/components/shared/ghost-session-preview'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { formatDuration } from '@/lib/format-duration'
 import type { WorkoutLog } from '@/domain/types'
 import type { ProgramFull } from '@/lib/data-adapter'
@@ -31,7 +33,8 @@ function resolveTodaySession(
   blockOrdinal: number,
   weekNumber: number,
 ): TodaySessionResult {
-  const todayDow = new Date().getDay() // 0=Sun .. 6=Sat
+  // dayOfWeek uses JS Date.getDay() convention: 0=Sun..6=Sat (matches scheduledSessions schema)
+  const todayDow = new Date().getDay()
 
   // Find the current block by ordinal
   const currentBlock = programFull.blocks.find((b) => b.ordinal === blockOrdinal)
@@ -65,10 +68,11 @@ function resolveTodaySession(
 // ---------------------------------------------------------------------------
 
 function TodayPage() {
-  const { user } = useAuth()
+  const { user, isGuest } = useAuth()
   const navigate = useNavigate()
   const { startWorkout, startProgrammedWorkout, isStarting } = useActiveWorkout()
   const userId = user?.id ?? ''
+
   const { data: recentWorkouts = [] } = useWorkoutLogs(userId, 5)
   const [startError, setStartError] = useState<string | null>(null)
 
@@ -91,6 +95,21 @@ function TodayPage() {
 
   // Filter to only completed workouts for the recent list
   const completedWorkouts = recentWorkouts.filter((w) => !!w.completedAt)
+
+  // Compute total weeks for current block
+  const totalWeeksInBlock = useMemo(() => {
+    if (!todayContext?.block?.id || !programFull) return 0
+    return programFull.blockWeeks.filter((bw) => bw.blockId === todayContext.block!.id).length
+  }, [todayContext, programFull])
+
+  // If no userId and not guest, show loading -- avoids silent empty-data state
+  if (!userId && !isGuest) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Skeleton className="h-8 w-48" />
+      </div>
+    )
+  }
 
   const handleStartWorkout = async () => {
     if (!userId) return
@@ -133,14 +152,8 @@ function TodayPage() {
     }
   }
 
-  // Compute total weeks for current block
-  const totalWeeksInBlock = useMemo(() => {
-    if (!todayContext?.block?.id || !programFull) return 0
-    return programFull.blockWeeks.filter((bw) => bw.blockId === todayContext.block!.id).length
-  }, [todayContext, programFull])
-
   return (
-    <div className="flex min-h-screen flex-col bg-surface-anvil p-4 gap-6">
+    <div className="flex min-h-screen flex-col bg-surface-anvil px-4 pb-6">
       {/* Crash recovery check */}
       <CrashRecoveryDialog userId={userId} />
 
@@ -148,7 +161,7 @@ function TodayPage() {
       {todayContext?.error && (
         <div
           role="alert"
-          className="mt-8 bg-amber-900/30 border border-amber-600/40 px-4 py-3 text-xs text-amber-300 uppercase tracking-wider text-center"
+          className="mt-6 bg-amber-900/30 border border-amber-600/40 px-4 py-3 text-xs text-amber-300 text-center"
         >
           Your program data may be out of sync. Try reactivating your program.
         </div>
@@ -156,7 +169,7 @@ function TodayPage() {
 
       {/* Active program context card */}
       {(isProgramLoading || hasActiveProgram) && !todayContext?.error && (
-        <div className="mt-8">
+        <div className="pt-6">
           <ProgramSessionCard
             programName={programFull?.program.name ?? ''}
             blockName={todayContext?.block?.name ?? ''}
@@ -171,8 +184,41 @@ function TodayPage() {
         </div>
       )}
 
+      {/* Empty state -- only show when no program and no history */}
+      {completedWorkouts.length === 0 && !hasActiveProgram && !isProgramLoading && (
+        <div className="flex flex-1 flex-col gap-8 pt-6">
+          {/* Ghost preview: shows what recent sessions look like when filled */}
+          <GhostSessionPreview />
+
+          {/* Value description */}
+          <div className="flex flex-col gap-2 text-center px-6">
+            <p className="text-sm font-heading text-warm-ash">Your sessions will appear here.</p>
+            <p className="text-xs text-warm-ash/50 leading-relaxed">
+              Track every set, weight, and rep. Watch your progress across workouts -- or follow a
+              structured program session by session.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Recent workouts */}
+      {completedWorkouts.length > 0 && (
+        <section className="pt-6">
+          <div className="border-t border-surface-steel pt-4 pb-2">
+            <h2 className="text-xs font-heading uppercase tracking-widest text-warm-ash/60">
+              RECENT SESSIONS
+            </h2>
+          </div>
+          <div className="mt-3 flex flex-col gap-2">
+            {completedWorkouts.map((workout) => (
+              <RecentWorkoutCard key={workout.id} workout={workout} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Ad-hoc workout CTA */}
-      <div className={hasActiveProgram ? '' : 'mt-8'}>
+      <div className="pt-6">
         <div className="flex flex-col gap-2">
           {hasActiveProgram && (
             <span className="text-xs text-warm-ash/40 uppercase tracking-wider text-center">
@@ -183,49 +229,17 @@ function TodayPage() {
             variant={hasActiveProgram ? 'outline' : 'molten'}
             className={
               hasActiveProgram
-                ? 'w-full h-12 text-xs uppercase tracking-widest font-medium'
-                : 'w-full h-16 text-base uppercase tracking-widest font-medium'
+                ? 'w-full h-12 text-xs font-medium'
+                : 'w-full h-16 text-base font-medium'
             }
             onClick={handleStartWorkout}
             disabled={isStarting || !userId}
           >
-            {isStarting ? 'STARTING...' : hasActiveProgram ? 'AD-HOC WORKOUT' : 'EXECUTE WORKOUT'}
+            {isStarting ? 'Starting...' : hasActiveProgram ? 'Ad-hoc Workout' : 'Execute Workout'}
           </Button>
-          {startError && (
-            <p className="text-xs text-warning-flare text-center uppercase tracking-wider">
-              {startError}
-            </p>
-          )}
+          {startError && <p className="text-xs text-warning-flare text-center">{startError}</p>}
         </div>
       </div>
-
-      {/* Recent workouts */}
-      {completedWorkouts.length > 0 && (
-        <section>
-          <h2 className="text-xs uppercase tracking-widest text-warm-ash/60 mb-3 font-heading">
-            RECENT SESSIONS
-          </h2>
-          <div className="flex flex-col gap-2">
-            {completedWorkouts.map((workout) => (
-              <RecentWorkoutCard key={workout.id} workout={workout} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Empty state -- only show when no program and no history */}
-      {completedWorkouts.length === 0 && !hasActiveProgram && !isProgramLoading && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center text-warm-ash/40">
-          <span
-            className="material-symbols-outlined text-5xl"
-            style={{ fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 48" }}
-          >
-            fitness_center
-          </span>
-          <p className="text-sm uppercase tracking-widest font-heading">NO SESSIONS YET</p>
-          <p className="text-xs uppercase tracking-wider">TAP EXECUTE WORKOUT TO BEGIN</p>
-        </div>
-      )}
     </div>
   )
 }
@@ -253,9 +267,7 @@ function RecentWorkoutCard({ workout }: { workout: WorkoutLog }) {
   return (
     <div className="flex items-center justify-between bg-surface-iron px-4 py-3 milled-edge">
       <div className="flex flex-col gap-0.5">
-        <span className="font-heading text-sm text-bone-white uppercase tracking-wider">
-          {workout.title ?? dateLabel}
-        </span>
+        <span className="font-heading text-sm text-bone-white">{workout.title ?? dateLabel}</span>
         <span className="text-xs text-warm-ash/60 uppercase tracking-wider">{dateLabel}</span>
       </div>
 

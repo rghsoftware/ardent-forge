@@ -5,13 +5,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { AuthPageShell } from '@/components/auth/auth-page-shell'
+import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
 
 export const Route = createFileRoute('/forgot-password')({
   beforeLoad: ({ context }) => {
-    if (context.auth.user) throw redirect({ to: '/' })
+    if (context.auth.user && !context.auth.isGuest) throw redirect({ to: '/' })
   },
   component: ForgotPasswordPage,
 })
@@ -45,46 +44,52 @@ function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Reset Password</CardTitle>
-          <CardDescription>Enter your email to receive a reset link</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {success ? (
-            <div className="space-y-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                Check your email for a password reset link.
-              </p>
-              <Link to="/sign-in" className="inline-block text-sm text-foreground hover:underline">
-                Back to sign in
-              </Link>
+    <AuthPageShell>
+      <div className="space-y-0.5">
+        <h1 className="font-display text-xl font-bold text-bone-white">Reset password</h1>
+        <p className="text-sm text-warm-ash">Enter your email to receive a reset link</p>
+      </div>
+
+      {success ? (
+        <div className="space-y-4 text-center">
+          <p className="text-sm text-warm-ash">Check your email for a password reset link.</p>
+          <Link
+            to="/sign-in"
+            search={{ reason: undefined }}
+            className="text-sm text-ember hover:text-ember/80"
+          >
+            Back to sign in
+          </Link>
+        </div>
+      ) : (
+        <>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <div className="space-y-1">
+              <label htmlFor="email" className={FORGE_LABEL_CLASS}>
+                Email
+              </label>
+              <ForgeInput id="email" type="email" {...register('email')} />
+              {errors.email && <p className="text-xs text-warning-flare">{errors.email.message}</p>}
             </div>
-          ) : (
-            <>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" {...register('email')} />
-                  {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email.message}</p>
-                  )}
-                </div>
-                {authError && <p className="text-sm text-destructive">{authError}</p>}
-                <Button type="submit" className="min-h-12 w-full" disabled={isSubmitting}>
-                  {isSubmitting ? 'Sending...' : 'Send Reset Link'}
-                </Button>
-              </form>
-              <p className="text-center text-sm">
-                <Link to="/sign-in" className="text-muted-foreground hover:text-foreground">
-                  Back to sign in
-                </Link>
-              </p>
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+
+            {authError && <p className="text-xs text-warning-flare">{authError}</p>}
+
+            <Button type="submit" className="min-h-12 w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Sending...' : 'Send reset link'}
+            </Button>
+          </form>
+
+          <p className="text-center text-sm">
+            <Link
+              to="/sign-in"
+              search={{ reason: undefined }}
+              className="text-warm-ash transition-colors hover:text-ember"
+            >
+              Back to sign in
+            </Link>
+          </p>
+        </>
+      )}
+    </AuthPageShell>
   )
 }

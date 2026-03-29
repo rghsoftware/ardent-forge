@@ -22,9 +22,7 @@ export function OneRmChart({ data, unit = 'lb' }: OneRmChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center bg-surface-iron p-8">
-        <p className="font-display text-sm uppercase tracking-widest text-warm-ash">
-          NO 1RM HISTORY
-        </p>
+        <p className="font-display text-sm text-warm-ash">No 1RM history</p>
       </div>
     )
   }

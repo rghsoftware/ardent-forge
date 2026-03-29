@@ -19,7 +19,7 @@ export function ExerciseListItem({ exercise }: ExerciseListItemProps) {
           <span className="truncate font-display text-sm font-medium text-bone-white">
             {exercise.name}
           </span>
-          <Badge className="shrink-0 text-[10px]">{formatLabel(exercise.category)}</Badge>
+          <Badge className="shrink-0 text-[11px]">{formatLabel(exercise.category)}</Badge>
         </div>
         {exercise.muscleGroups.primary.length > 0 && (
           <p className="mt-0.5 truncate text-xs text-warm-ash">

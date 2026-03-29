@@ -55,9 +55,7 @@ export function AddExerciseSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="max-h-[80vh] bg-surface-anvil p-0">
         <SheetHeader className="px-4 pt-4 pb-0">
-          <SheetTitle className="text-xs uppercase tracking-widest text-ember">
-            ADD EXERCISE
-          </SheetTitle>
+          <SheetTitle className="text-xs text-ember">Add Exercise</SheetTitle>
           <SheetDescription className="sr-only">
             Search and select an exercise to add to your workout
           </SheetDescription>
@@ -73,7 +71,7 @@ export function AddExerciseSheet({
           {/* Recently used */}
           {showRecent && (
             <div className="mb-4">
-              <span className="mb-2 block text-[10px] uppercase tracking-widest text-warm-ash/60">
+              <span className="mb-2 block text-[11px] uppercase tracking-widest text-warm-ash/60">
                 RECENTLY USED
               </span>
               <div className="flex flex-col">
@@ -88,9 +86,7 @@ export function AddExerciseSheet({
           {debouncedQuery.length > 0 && (
             <div>
               {filteredExercises.length === 0 ? (
-                <p className="py-8 text-center text-xs uppercase tracking-wider text-warm-ash/60">
-                  NO MATCHES
-                </p>
+                <p className="py-8 text-center text-xs text-warm-ash/60">No matches</p>
               ) : (
                 <div className="flex flex-col">
                   {filteredExercises.map((ex) => (
@@ -103,9 +99,7 @@ export function AddExerciseSheet({
 
           {/* Empty state when no search and no recent */}
           {debouncedQuery.length === 0 && recentExercises.length === 0 && (
-            <p className="py-8 text-center text-xs uppercase tracking-wider text-warm-ash/60">
-              TYPE TO SEARCH EXERCISES
-            </p>
+            <p className="py-8 text-center text-xs text-warm-ash/60">Type to search exercises</p>
           )}
         </div>
       </SheetContent>
@@ -133,7 +127,7 @@ function ExerciseRow({
       <span className="material-symbols-outlined text-warm-ash/60 text-xl">fitness_center</span>
       <div className="flex flex-col">
         <span className="text-sm text-bone-white">{exercise.name}</span>
-        <span className="text-[10px] uppercase tracking-wider text-warm-ash/60">
+        <span className="text-[11px] uppercase tracking-wider text-warm-ash/60">
           {exercise.category}
         </span>
       </div>

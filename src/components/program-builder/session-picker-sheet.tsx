@@ -100,9 +100,7 @@ export function SessionPickerSheet({
         showCloseButton={false}
       >
         <SheetHeader className="px-4 pt-4 pb-0">
-          <SheetTitle className="text-xs uppercase tracking-widest text-ember">
-            SELECT SESSION TEMPLATE
-          </SheetTitle>
+          <SheetTitle className="text-xs text-ember">Select Session Template</SheetTitle>
           <SheetDescription className="sr-only">
             Choose a session template to assign to this day
           </SheetDescription>
@@ -132,7 +130,7 @@ export function SessionPickerSheet({
                   key={f.value}
                   type="button"
                   onClick={() => setFilter(f.value)}
-                  className={`min-h-8 px-2 py-1 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+                  className={`min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
                     filter === f.value
                       ? 'bg-forge text-on-forge'
                       : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
@@ -153,9 +151,7 @@ export function SessionPickerSheet({
               ) : filtered.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-12">
                   <Icon name="search_off" size={36} className="text-warm-ash/40" />
-                  <p className="text-center text-xs uppercase tracking-wider text-warm-ash/60">
-                    NO TEMPLATES FOUND
-                  </p>
+                  <p className="text-center text-xs text-warm-ash/60">No templates found</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-1">
@@ -187,10 +183,10 @@ export function SessionPickerSheet({
                 type="button"
                 variant="secondary"
                 onClick={() => setShowCreate(true)}
-                className="min-h-12 w-full text-xs uppercase tracking-wider"
+                className="min-h-12 w-full text-xs"
               >
                 <Icon name="add" size={16} />
-                CREATE NEW TEMPLATE
+                Create new template
               </Button>
             </div>
           </>
