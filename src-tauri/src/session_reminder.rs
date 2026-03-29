@@ -15,6 +15,8 @@ use tauri::AppHandle;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
+use chrono::Timelike;
+
 use crate::notification;
 
 // ---------------------------------------------------------------------------
@@ -98,6 +100,9 @@ async fn tick(
     app: &AppHandle,
     last_reminded: &Arc<Mutex<Option<NaiveDate>>>,
 ) -> Result<(), String> {
+    // NOTE: advanceMinutes from preferences is not yet consumed; the current
+    // implementation fires once per day within the 06:00-20:59 window.
+
     // 1. Read notification preferences
     let prefs_json = read_prefs(pool).await?;
 
@@ -151,9 +156,9 @@ async fn tick(
         None => return Ok(()),
     };
 
-    // 8. Determine today's day_of_week (chrono: Mon=0 .. Sun=6 but our schema
-    //    uses 0=Sun, 1=Mon .. 6=Sat convention matching JS Date.getDay())
-    let chrono_weekday = now.weekday(); // Mon=0..Sun=6 in chrono
+    // 8. Determine today's day_of_week (chrono::Weekday orders Mon..Sun;
+    //    our schema uses 0=Sun, 1=Mon..6=Sat matching JS Date.getDay())
+    let chrono_weekday = now.weekday();
     let js_day_of_week: i64 = match chrono_weekday {
         chrono::Weekday::Sun => 0,
         chrono::Weekday::Mon => 1,
@@ -308,16 +313,16 @@ async fn was_workout_logged_today(
         .and_hms_opt(0, 0, 0)
         .expect("valid time")
         .and_local_timezone(local_tz)
-        .single()
-        .map(|dt| dt.timestamp())
-        .unwrap_or(0);
+        .earliest()
+        .ok_or_else(|| "Failed to resolve timezone for start_of_day".to_string())?
+        .timestamp();
     let end_of_day = today
         .and_hms_opt(23, 59, 59)
         .expect("valid time")
         .and_local_timezone(local_tz)
-        .single()
-        .map(|dt| dt.timestamp())
-        .unwrap_or(0);
+        .earliest()
+        .ok_or_else(|| "Failed to resolve timezone for end_of_day".to_string())?
+        .timestamp();
 
     let row: Option<(i32,)> = sqlx::query_as(
         "SELECT 1 FROM workout_logs WHERE started_at >= ? AND started_at <= ? LIMIT 1",
@@ -330,12 +335,6 @@ async fn was_workout_logged_today(
 
     Ok(row.is_some())
 }
-
-// ---------------------------------------------------------------------------
-// Chrono hour helper
-// ---------------------------------------------------------------------------
-
-use chrono::Timelike;
 
 // ---------------------------------------------------------------------------
 // Tests

@@ -99,8 +99,6 @@ pub fn run() {
       commands::sync::sync_force_pull,
       commands::sync::sync_get_status,
       // Notifications
-      commands::notification::get_notification_preferences,
-      commands::notification::set_notification_preferences,
       commands::notification::schedule_session_reminder,
       commands::notification::cancel_session_reminder,
     ])

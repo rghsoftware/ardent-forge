@@ -22,8 +22,10 @@ function toTimeString(hour: number, minute: number): string {
 
 /** Parse HH:MM string into { hour, minute } */
 function parseTimeString(value: string): { hour: number; minute: number } {
-  const [h, m] = value.split(':').map(Number)
-  return { hour: h ?? 0, minute: m ?? 0 }
+  const parts = value.split(':').map(Number)
+  const hour = Number.isFinite(parts[0]) ? parts[0] : 0
+  const minute = Number.isFinite(parts[1]) ? parts[1] : 0
+  return { hour, minute }
 }
 
 const ADVANCE_MINUTE_OPTIONS = [
@@ -50,7 +52,7 @@ function SubsectionHeader({ children }: { children: React.ReactNode }) {
 // ---------------------------------------------------------------------------
 
 export function NotificationSettings() {
-  const { data: prefs, isLoading, updatePreferences } = useNotificationPreferences()
+  const { data: prefs, isLoading, error, updatePreferences } = useNotificationPreferences()
 
   const isBrowser = !isTauri()
 
@@ -64,9 +66,15 @@ export function NotificationSettings() {
   // Request browser notification permission when master toggle turns on
   const handleMasterToggle = (checked: boolean) => {
     if (checked && isBrowser && 'Notification' in window) {
-      Notification.requestPermission().catch(() => {
-        // Permission request is best-effort in browser mode
-      })
+      Notification.requestPermission()
+        .then((result) => {
+          if (result === 'denied') {
+            console.warn('[notifications] Browser notification permission denied by user')
+          }
+        })
+        .catch((err) => {
+          console.error('[notifications] Failed to request permission:', err)
+        })
     }
     update({ enabled: checked })
   }
@@ -75,12 +83,23 @@ export function NotificationSettings() {
   // Loading skeleton
   // ---------------------------------------------------------------------------
 
-  if (isLoading || !prefs) {
+  if (isLoading) {
     return (
       <div className="mt-4 space-y-4">
         <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
         <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
         <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+      </div>
+    )
+  }
+
+  if (error || !prefs) {
+    return (
+      <div className="mt-4 space-y-2">
+        <p className="font-sans text-sm text-warning-flare">
+          Failed to load notification settings.
+        </p>
+        <p className="font-sans text-xs text-warm-ash">Check your connection and try again.</p>
       </div>
     )
   }
@@ -97,6 +116,9 @@ export function NotificationSettings() {
         checked={prefs.enabled}
         onCheckedChange={handleMasterToggle}
       />
+      {updatePreferences.isError && (
+        <p className="text-xs text-warning-flare">Failed to save. Please try again.</p>
+      )}
 
       {/* Conditional subsections -- only shown when master toggle is on */}
       {prefs.enabled && (

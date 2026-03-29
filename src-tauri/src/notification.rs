@@ -1,6 +1,7 @@
 //! Notification infrastructure: channel registration, quiet-hours logic, and
 //! a convenience wrapper around `tauri-plugin-notification`.
 
+use chrono::Timelike;
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_notification::NotificationExt;
 
@@ -60,14 +61,14 @@ pub fn register_channels<R: Runtime>(app: &AppHandle<R>) {
                 .build(),
         ];
 
+        log::info!("[notification] Registering {} Android notification channels", channels.len());
+
         let notification = app.notification();
         for channel in channels {
             if let Err(e) = notification.create_channel(channel) {
                 log::error!("[notification] Failed to create channel: {e}");
             }
         }
-
-        log::info!("[notification] Registered {} Android notification channels", 4);
     }
 
     #[cfg(not(target_os = "android"))]
@@ -108,10 +109,22 @@ pub fn is_in_quiet_hours(prefs_json: &str) -> bool {
         return false;
     }
 
-    let start_hour = quiet.get("startHour").and_then(|v| v.as_u64()).unwrap_or(22) as u32;
-    let start_minute = quiet.get("startMinute").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-    let end_hour = quiet.get("endHour").and_then(|v| v.as_u64()).unwrap_or(6) as u32;
-    let end_minute = quiet.get("endMinute").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+    let start_hour = quiet.get("startHour").and_then(|v| v.as_u64()).unwrap_or_else(|| {
+        log::debug!("[notification] Missing or invalid startHour, defaulting to 22");
+        22
+    }) as u32;
+    let start_minute = quiet.get("startMinute").and_then(|v| v.as_u64()).unwrap_or_else(|| {
+        log::debug!("[notification] Missing or invalid startMinute, defaulting to 0");
+        0
+    }) as u32;
+    let end_hour = quiet.get("endHour").and_then(|v| v.as_u64()).unwrap_or_else(|| {
+        log::debug!("[notification] Missing or invalid endHour, defaulting to 6");
+        6
+    }) as u32;
+    let end_minute = quiet.get("endMinute").and_then(|v| v.as_u64()).unwrap_or_else(|| {
+        log::debug!("[notification] Missing or invalid endMinute, defaulting to 0");
+        0
+    }) as u32;
 
     let start_mins = start_hour * 60 + start_minute;
     let end_mins = end_hour * 60 + end_minute;
@@ -162,11 +175,6 @@ pub fn send_notification<R: Runtime>(
         );
     }
 }
-
-// ---------------------------------------------------------------------------
-// Allow chrono usage without fully qualifying
-// ---------------------------------------------------------------------------
-use chrono::Timelike;
 
 // ---------------------------------------------------------------------------
 // Tests

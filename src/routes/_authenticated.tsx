@@ -6,6 +6,7 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { useEffect } from 'react'
+import { isTauri, invoke } from '@tauri-apps/api/core'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 import { SyncIndicator } from '@/components/layout/sync-indicator'
@@ -35,6 +36,27 @@ function AuthenticatedLayout() {
       navigate({ to: '/sign-in', search: { reason: 'session-expired' } })
     }
   }, [loading, user, isGuest, navigate])
+
+  // Start the session reminder background scheduler in Tauri mode.
+  // The Rust scheduler polls every 60s and respects notification preferences.
+  useEffect(() => {
+    if (!isTauri()) return
+    if (loading) return
+
+    if (user || isGuest) {
+      invoke('schedule_session_reminder').catch((err: unknown) => {
+        console.warn('[session-reminder] Failed to start scheduler:', err)
+      })
+    }
+
+    return () => {
+      if (user || isGuest) {
+        invoke('cancel_session_reminder').catch((err: unknown) => {
+          console.warn('[session-reminder] Failed to stop scheduler:', err)
+        })
+      }
+    }
+  }, [user, isGuest, loading])
 
   const isWorkoutRoute = pathname.startsWith('/log/')
 

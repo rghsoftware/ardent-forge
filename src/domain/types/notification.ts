@@ -1,18 +1,6 @@
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
-// NotificationChannel -- Android notification channel IDs
-// ---------------------------------------------------------------------------
-
-export const notificationChannelSchema = z.enum([
-  'rest_timer',
-  'workout_reminders',
-  'personal_records',
-  'system',
-])
-export type NotificationChannel = z.infer<typeof notificationChannelSchema>
-
-// ---------------------------------------------------------------------------
 // NotificationPreferences -- user-configurable notification settings
 // ---------------------------------------------------------------------------
 
@@ -30,7 +18,7 @@ export const notificationPreferencesSchema = z.object({
   /** Session reminder settings (opt-in scheduled reminders) */
   sessionReminders: z.object({
     enabled: z.boolean(),
-    advanceMinutes: z.number().int().min(1),
+    advanceMinutes: z.number().int().min(1).max(120),
   }),
 
   /** PR celebration notification settings */
@@ -38,7 +26,7 @@ export const notificationPreferencesSchema = z.object({
     enabled: z.boolean(),
   }),
 
-  /** Quiet hours window -- non-rest-timer notifications are deferred */
+  /** Quiet hours window -- non-rest-timer notifications are suppressed */
   quietHours: z.object({
     enabled: z.boolean(),
     startHour: z.number().int().min(0).max(23),

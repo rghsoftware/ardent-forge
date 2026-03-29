@@ -12,8 +12,19 @@ export function useNotificationPreferences() {
 
   const mutation = useMutation({
     mutationFn: (prefs: NotificationPreferences) => setNotificationPreferences(prefs),
-    onError: (err) => {
+    onMutate: async (newPrefs) => {
+      await queryClient.cancelQueries({ queryKey: ['notification-preferences'] })
+      const previous = queryClient.getQueryData<NotificationPreferences>([
+        'notification-preferences',
+      ])
+      queryClient.setQueryData(['notification-preferences'], newPrefs)
+      return { previous }
+    },
+    onError: (err, _vars, context) => {
       console.error('[notification-preferences] Failed to update preferences:', err)
+      if (context?.previous) {
+        queryClient.setQueryData(['notification-preferences'], context.previous)
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-preferences'] })

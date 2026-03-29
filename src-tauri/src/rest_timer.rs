@@ -5,6 +5,10 @@ use tokio::task::JoinHandle;
 
 use crate::notification;
 
+/// Fixed notification ID for rest timer alerts. Replaces previous alerts
+/// when a new rest period starts. See docs/11-notification-design.md.
+const REST_TIMER_NOTIFICATION_ID: i32 = 1001;
+
 pub struct RestTimerInner {
     pub remaining: u32,
     pub total: u32,
@@ -74,13 +78,12 @@ impl RestTimerState {
                 let total = guard.total;
                 drop(guard);
 
-                let _ = app_clone.emit(
-                    "timer_tick",
-                    serde_json::json!({
-                        "remaining": remaining,
-                        "total": total
-                    }),
-                );
+                if let Err(e) = app_clone.emit("timer_tick", serde_json::json!({
+                    "remaining": remaining,
+                    "total": total
+                })) {
+                    log::debug!("[rest-timer] Failed to emit timer_tick: {e}");
+                }
 
                 if remaining == 0 {
                     if let Err(e) = app_clone.emit("timer_expired", serde_json::json!({})) {
@@ -101,7 +104,7 @@ impl RestTimerState {
                         "rest_timer",
                         "REST COMPLETE",
                         &body,
-                        Some(1001),
+                        Some(REST_TIMER_NOTIFICATION_ID),
                     );
 
                     break;
@@ -122,7 +125,9 @@ impl RestTimerState {
 
     pub async fn skip(&self, app: &AppHandle) {
         self.stop().await;
-        let _ = app.emit("timer_skipped", serde_json::json!({}));
+        if let Err(e) = app.emit("timer_skipped", serde_json::json!({})) {
+            log::debug!("[rest-timer] Failed to emit timer_skipped: {e}");
+        }
     }
 
     pub async fn adjust(&self, delta: i32) {

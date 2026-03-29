@@ -17,27 +17,30 @@ const TAURI_CONFIG_KEY = 'notification_preferences'
 // ---------------------------------------------------------------------------
 
 export async function getNotificationPreferences(): Promise<NotificationPreferences> {
+  let raw: string | null = null
+
+  if (isTauri()) {
+    raw = await invoke<string | null>('get_app_config', { key: TAURI_CONFIG_KEY })
+  } else {
+    raw = localStorage.getItem(BROWSER_STORAGE_KEY)
+  }
+
+  if (!raw) return { ...DEFAULT_NOTIFICATION_PREFERENCES }
+
+  let json: unknown
   try {
-    let raw: string | null = null
-
-    if (isTauri()) {
-      raw = await invoke<string | null>('get_app_config', { key: TAURI_CONFIG_KEY })
-    } else {
-      raw = localStorage.getItem(BROWSER_STORAGE_KEY)
-    }
-
-    if (!raw) return { ...DEFAULT_NOTIFICATION_PREFERENCES }
-
-    const parsed = notificationPreferencesSchema.safeParse(JSON.parse(raw))
-    if (!parsed.success) {
-      console.warn('[notification-service] Corrupt preferences found, using defaults')
-      return { ...DEFAULT_NOTIFICATION_PREFERENCES }
-    }
-    return parsed.data
+    json = JSON.parse(raw)
   } catch {
-    console.warn('[notification-service] Failed to read preferences, using defaults')
+    console.warn('[notification-service] Corrupt JSON in preferences, using defaults')
     return { ...DEFAULT_NOTIFICATION_PREFERENCES }
   }
+
+  const parsed = notificationPreferencesSchema.safeParse(json)
+  if (!parsed.success) {
+    console.warn('[notification-service] Schema validation failed, using defaults')
+    return { ...DEFAULT_NOTIFICATION_PREFERENCES }
+  }
+  return parsed.data
 }
 
 // ---------------------------------------------------------------------------
@@ -45,7 +48,8 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
 // ---------------------------------------------------------------------------
 
 export async function setNotificationPreferences(prefs: NotificationPreferences): Promise<void> {
-  const json = JSON.stringify(prefs)
+  const validated = notificationPreferencesSchema.parse(prefs)
+  const json = JSON.stringify(validated)
 
   if (isTauri()) {
     await invoke('set_app_config', { key: TAURI_CONFIG_KEY, value: json })
