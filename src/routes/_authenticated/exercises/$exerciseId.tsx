@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -55,6 +55,31 @@ function ExerciseDetailPage() {
 
   const currentOneRm = profile?.exerciseMaxes?.[exerciseId]
   const weightUnit = profile?.preferredUnits === 'METRIC' ? 'kg' : 'lb'
+
+  const { threeRepMax, fiveRepMax } = useMemo(() => {
+    let threeRepMax: number | null = null
+    let fiveRepMax: number | null = null
+    if (!workoutHistory) return { threeRepMax, fiveRepMax }
+
+    for (const entry of workoutHistory) {
+      for (const set of entry.sets) {
+        if (!set.completed) continue
+        if (set.setType === 'WARMUP' || set.setType === 'DROP') continue
+        if (set.actualWeight?.value == null || set.actualReps == null) continue
+
+        const weight = set.actualWeight.value
+        const reps = set.actualReps
+
+        if (reps >= 3 && (threeRepMax === null || weight > threeRepMax)) {
+          threeRepMax = weight
+        }
+        if (reps >= 5 && (fiveRepMax === null || weight > fiveRepMax)) {
+          fiveRepMax = weight
+        }
+      }
+    }
+    return { threeRepMax, fiveRepMax }
+  }, [workoutHistory])
 
   const {
     register,
@@ -297,6 +322,33 @@ function ExerciseDetailPage() {
                 </span>
               </div>
               <OneRmChart data={oneRmHistory ?? []} />
+            </div>
+          )}
+
+          {/* Personal Records */}
+          {exercise.supports1RM && workoutHistory && workoutHistory.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
+                PERSONAL RECORDS
+              </span>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="font-display text-2xl text-bone-white">
+                    {threeRepMax !== null ? `${threeRepMax} ${weightUnit}` : '--'}
+                  </span>
+                  <span className="font-body text-xs uppercase tracking-widest text-warm-ash">
+                    3RM
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="font-display text-2xl text-bone-white">
+                    {fiveRepMax !== null ? `${fiveRepMax} ${weightUnit}` : '--'}
+                  </span>
+                  <span className="font-body text-xs uppercase tracking-widest text-warm-ash">
+                    5RM
+                  </span>
+                </div>
+              </div>
             </div>
           )}
         </TabsContent>

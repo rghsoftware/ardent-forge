@@ -34,6 +34,7 @@ export type {
 export * from './workout-log'
 export * from './user'
 export * from './sharing'
+export * from './analytics'
 
 // program.ts re-exports sessionTypeSchema and SessionType from session.ts.
 // Exclude those names here to prevent ambiguous re-export errors.

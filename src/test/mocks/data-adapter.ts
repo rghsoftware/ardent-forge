@@ -61,6 +61,15 @@ export function createMockAdapter(
     setActiveProgram: vi.fn().mockResolvedValue({}),
     updateActiveProgram: vi.fn().mockResolvedValue({}),
     clearActiveProgram: vi.fn().mockResolvedValue(undefined),
+
+    // Analytics operations
+    getWeeklyVolume: vi.fn().mockResolvedValue([]),
+    getVaultSummary: vi.fn().mockResolvedValue({
+      totalWorkouts: 0,
+      totalVolumeLb: 0,
+      thisWeekWorkouts: 0,
+      thisWeekVolumeLb: 0,
+    }),
   }
 
   return { ...base, ...overrides }

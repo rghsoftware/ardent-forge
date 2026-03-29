@@ -4,6 +4,7 @@ import type {
   ExerciseFilters,
   ProgramFull,
   SessionTemplateFull,
+  VaultSummary,
   WorkoutLogSummary,
   WorkoutWithSets,
 } from './data-adapter'
@@ -23,6 +24,7 @@ import type {
   BlockWeek,
   ScheduledSession,
   ProgramActivation,
+  WeeklyVolumeEntry,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -1384,4 +1386,130 @@ export class TauriAdapter implements DataAdapter {
   async clearActiveProgram(userId: string): Promise<void> {
     await invokeCommand<void>('clear_active_program', { user_id: userId })
   }
+
+  // ---------------------------------------------------------------------------
+  // Analytics operations
+  // ---------------------------------------------------------------------------
+
+  async getWeeklyVolume(
+    userId: string,
+    exerciseId: string,
+    weeks = 8,
+  ): Promise<WeeklyVolumeEntry[]> {
+    // No dedicated Rust command exists yet, so fetch exercise workout history
+    // and aggregate tonnage by week in TypeScript.
+    // Use a generous limit to capture enough weeks of data.
+    const history = await this.getExerciseWorkoutHistory(userId, exerciseId, weeks * 7)
+
+    const weekMap = new Map<string, { label: string; tonnage: number; unit: 'lb' | 'kg' }>()
+
+    for (const { log, sets } of history) {
+      const startedAt = new Date(log.startedAt)
+      const weekStart = getMonday(startedAt)
+      const weekKey = weekStart.toISOString().slice(0, 10)
+
+      for (const set of sets) {
+        if (!set.completed || set.actualWeight == null || set.actualReps == null) continue
+
+        const tonnage = set.actualWeight.value * set.actualReps
+        const existing = weekMap.get(weekKey)
+        if (existing) {
+          existing.tonnage += tonnage
+        } else {
+          const label = formatWeekLabel(weekStart)
+          weekMap.set(weekKey, {
+            label,
+            tonnage,
+            unit: set.actualWeight.unit,
+          })
+        }
+      }
+    }
+
+    return Array.from(weekMap.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .slice(0, weeks)
+      .reverse()
+      .map(([weekStart, entry]) => ({
+        weekLabel: entry.label,
+        weekStart,
+        tonnage: Math.round(entry.tonnage),
+        unit: entry.unit,
+      }))
+  }
+
+  async getVaultSummary(userId: string): Promise<VaultSummary> {
+    // Fetch all completed workout logs and compute stats client-side.
+    const logs = await this.getWorkoutLogs(userId)
+    const completedLogs = logs.filter((l) => l.completedAt != null)
+
+    const monday = getMonday(new Date())
+
+    let totalWorkouts = 0
+    let totalVolumeLb = 0
+    let thisWeekWorkouts = 0
+    let thisWeekVolumeLb = 0
+
+    for (const log of completedLogs) {
+      totalWorkouts++
+      const isThisWeek = new Date(log.startedAt) >= monday
+      if (isThisWeek) thisWeekWorkouts++
+
+      // Fetch full workout data to calculate volume
+      const full = await this.getWorkoutLogFull(log.id)
+      if (!full) continue
+
+      for (const set of full.sets) {
+        if (!set.completed || set.actualWeight == null || set.actualReps == null) continue
+
+        let weightLb = set.actualWeight.value
+        if (set.actualWeight.unit === 'kg') {
+          weightLb = set.actualWeight.value * 2.20462
+        }
+        const volume = weightLb * set.actualReps
+        totalVolumeLb += volume
+        if (isThisWeek) thisWeekVolumeLb += volume
+      }
+    }
+
+    return {
+      totalWorkouts,
+      totalVolumeLb: Math.round(totalVolumeLb),
+      thisWeekWorkouts,
+      thisWeekVolumeLb: Math.round(thisWeekVolumeLb),
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Returns the Monday at 00:00 UTC of the week containing the given date. */
+function getMonday(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getUTCDay()
+  const diff = day === 0 ? 6 : day - 1
+  d.setUTCDate(d.getUTCDate() - diff)
+  d.setUTCHours(0, 0, 0, 0)
+  return d
+}
+
+/** Formats a date as "Mon DD" (e.g. "Mar 24"). */
+function formatWeekLabel(date: Date): string {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ]
+  return `${months[date.getUTCMonth()]} ${String(date.getUTCDate()).padStart(2, '0')}`
 }

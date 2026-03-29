@@ -1,8 +1,9 @@
 import type React from 'react'
 import { useMemo, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { PrBanner } from './pr-banner'
 import { formatDuration } from '@/lib/format-duration'
-import type { Weight, WorkoutLog, ProgramContext } from '@/domain/types'
+import type { Weight, WorkoutLog, ProgramContext, PersonalRecord } from '@/domain/types'
 import type {
   LoggedActivityGroupWithActivities,
   LoggedActivityWithSets,
@@ -17,6 +18,8 @@ interface WorkoutSummaryProps {
   programName?: string
   /** Block name shown in the session context line above the heading */
   blockName?: string
+  /** Detected personal records to celebrate in the summary */
+  personalRecords?: PersonalRecord[]
 }
 
 interface ExerciseSummary {
@@ -71,6 +74,7 @@ export function WorkoutSummary({
   onDone,
   programName,
   blockName,
+  personalRecords,
 }: WorkoutSummaryProps) {
   const programContext: ProgramContext | undefined = workoutLog.programContext ?? undefined
 
@@ -226,6 +230,9 @@ export function WorkoutSummary({
             </>
           )}
         </div>
+
+        {/* PR celebration banner */}
+        <PrBanner records={personalRecords ?? []} />
 
         {/* Secondary stats — asymmetric sizes, left-aligned */}
         <div className="mb-8 flex items-end gap-6" style={riseDelay(0.62)}>
