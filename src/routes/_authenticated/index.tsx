@@ -171,6 +171,34 @@ function TodayPage() {
         </div>
       )}
 
+      {/* Empty state -- only show when no program and no history */}
+      {completedWorkouts.length === 0 && !hasActiveProgram && !isProgramLoading && (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center text-warm-ash/40">
+          <span
+            className="material-symbols-outlined text-5xl"
+            style={{ fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 48" }}
+          >
+            fitness_center
+          </span>
+          <p className="text-sm uppercase tracking-widest font-heading">NO SESSIONS YET</p>
+          <p className="text-xs uppercase tracking-wider">TAP EXECUTE WORKOUT TO BEGIN</p>
+        </div>
+      )}
+
+      {/* Recent workouts */}
+      {completedWorkouts.length > 0 && (
+        <section>
+          <h2 className="text-xs uppercase tracking-widest text-warm-ash/60 mb-3 font-heading">
+            RECENT SESSIONS
+          </h2>
+          <div className="flex flex-col gap-2">
+            {completedWorkouts.map((workout) => (
+              <RecentWorkoutCard key={workout.id} workout={workout} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Ad-hoc workout CTA */}
       <div className={hasActiveProgram ? '' : 'mt-8'}>
         <div className="flex flex-col gap-2">
@@ -198,34 +226,6 @@ function TodayPage() {
           )}
         </div>
       </div>
-
-      {/* Recent workouts */}
-      {completedWorkouts.length > 0 && (
-        <section>
-          <h2 className="text-xs uppercase tracking-widest text-warm-ash/60 mb-3 font-heading">
-            RECENT SESSIONS
-          </h2>
-          <div className="flex flex-col gap-2">
-            {completedWorkouts.map((workout) => (
-              <RecentWorkoutCard key={workout.id} workout={workout} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Empty state -- only show when no program and no history */}
-      {completedWorkouts.length === 0 && !hasActiveProgram && !isProgramLoading && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center text-warm-ash/40">
-          <span
-            className="material-symbols-outlined text-5xl"
-            style={{ fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 48" }}
-          >
-            fitness_center
-          </span>
-          <p className="text-sm uppercase tracking-widest font-heading">NO SESSIONS YET</p>
-          <p className="text-xs uppercase tracking-wider">TAP EXECUTE WORKOUT TO BEGIN</p>
-        </div>
-      )}
     </div>
   )
 }

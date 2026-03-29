@@ -8,7 +8,7 @@ const navItems = [
   { label: 'PROGRAM BUILDER', icon: 'precision_manufacturing', to: '/builder' },
   { label: 'ANALYTICS', icon: 'monitoring', to: '/vault' },
   { label: 'LIBRARY', icon: 'library_books', to: '/library' },
-  { label: 'SETTINGS', icon: 'settings', to: '/settings' },
+  { label: 'SETTINGS', icon: 'settings', to: '/profile' },
 ] as const
 
 export function SidebarNav() {

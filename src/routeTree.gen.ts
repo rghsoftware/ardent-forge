@@ -15,7 +15,6 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedVaultRouteImport } from './routes/_authenticated/vault'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
 import { Route as AuthenticatedBuilderRouteImport } from './routes/_authenticated/builder'
@@ -52,11 +51,6 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
 const AuthenticatedVaultRoute = AuthenticatedVaultRouteImport.update({
   id: '/vault',
   path: '/vault',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
@@ -113,7 +107,6 @@ export interface FileRoutesByFullPath {
   '/builder': typeof AuthenticatedBuilderRoute
   '/library': typeof AuthenticatedLibraryRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/settings': typeof AuthenticatedSettingsRoute
   '/vault': typeof AuthenticatedVaultRoute
   '/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
   '/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
@@ -128,7 +121,6 @@ export interface FileRoutesByTo {
   '/builder': typeof AuthenticatedBuilderRoute
   '/library': typeof AuthenticatedLibraryRoute
   '/profile': typeof AuthenticatedProfileRoute
-  '/settings': typeof AuthenticatedSettingsRoute
   '/vault': typeof AuthenticatedVaultRoute
   '/': typeof AuthenticatedIndexRoute
   '/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
@@ -146,7 +138,6 @@ export interface FileRoutesById {
   '/_authenticated/builder': typeof AuthenticatedBuilderRoute
   '/_authenticated/library': typeof AuthenticatedLibraryRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
-  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/vault': typeof AuthenticatedVaultRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
@@ -165,7 +156,6 @@ export interface FileRouteTypes {
     | '/builder'
     | '/library'
     | '/profile'
-    | '/settings'
     | '/vault'
     | '/exercises/$exerciseId'
     | '/history/$workoutId'
@@ -180,7 +170,6 @@ export interface FileRouteTypes {
     | '/builder'
     | '/library'
     | '/profile'
-    | '/settings'
     | '/vault'
     | '/'
     | '/exercises/$exerciseId'
@@ -197,7 +186,6 @@ export interface FileRouteTypes {
     | '/_authenticated/builder'
     | '/_authenticated/library'
     | '/_authenticated/profile'
-    | '/_authenticated/settings'
     | '/_authenticated/vault'
     | '/_authenticated/'
     | '/_authenticated/exercises/$exerciseId'
@@ -256,13 +244,6 @@ declare module '@tanstack/react-router' {
       path: '/vault'
       fullPath: '/vault'
       preLoaderRoute: typeof AuthenticatedVaultRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/profile': {
@@ -328,7 +309,6 @@ interface AuthenticatedRouteChildren {
   AuthenticatedBuilderRoute: typeof AuthenticatedBuilderRoute
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
-  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedVaultRoute: typeof AuthenticatedVaultRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedExercisesExerciseIdRoute: typeof AuthenticatedExercisesExerciseIdRoute
@@ -342,7 +322,6 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBuilderRoute: AuthenticatedBuilderRoute,
   AuthenticatedLibraryRoute: AuthenticatedLibraryRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
-  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedVaultRoute: AuthenticatedVaultRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedExercisesExerciseIdRoute: AuthenticatedExercisesExerciseIdRoute,
