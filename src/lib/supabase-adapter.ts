@@ -1041,7 +1041,7 @@ export class SupabaseAdapter implements DataAdapter {
   }
 
   async createShareLink(
-    link: Omit<ShareLink, 'id' | 'createdAt' | 'updatedAt'>,
+    link: Omit<ShareLink, 'id' | 'isActive' | 'createdAt' | 'updatedAt'>,
   ): Promise<ShareLink> {
     const { data, error } = await this.client
       .from('share_links')

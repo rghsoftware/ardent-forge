@@ -38,39 +38,58 @@ export function ShareDialog({ entityType, entityId, trigger }: ShareDialogProps)
   const revokeMutation = useRevokeShareLink()
 
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copyError, setCopyError] = useState(false)
 
   const activeLinks = links.filter((link) => link.isActive)
 
   const handleGenerate = async () => {
     if (!userId) return
-    await createMutation.mutateAsync({
-      token: generateShareToken(),
-      entityType,
-      entityId,
-      createdBy: userId,
-      isActive: true,
-    })
+    try {
+      await createMutation.mutateAsync({
+        token: generateShareToken(),
+        entityType,
+        entityId,
+        createdBy: userId,
+      })
+    } catch {
+      // createMutation.isError drives the UI error state below
+    }
   }
 
   const handleRevoke = async (id: string) => {
-    await revokeMutation.mutateAsync(id)
+    try {
+      await revokeMutation.mutateAsync(id)
+    } catch {
+      // revokeMutation.isError drives the UI error state
+    }
   }
 
   const handleCopy = async (token: string, linkId: string) => {
-    const url = `https://ardentforge.app/s/${token}`
+    const url = `${window.location.origin}/s/${token}`
+    setCopyError(false)
     try {
       await navigator.clipboard.writeText(url)
       setCopiedId(linkId)
       setTimeout(() => setCopiedId(null), 2000)
     } catch {
-      // Fallback: select the input so the user can Ctrl+C
+      // Fallback: select the input so the user can manually Ctrl+C
       const input = document.querySelector<HTMLInputElement>(`[data-link-id="${linkId}"]`)
-      input?.select()
+      if (input) {
+        input.select()
+      } else {
+        setCopyError(true)
+      }
+    }
+  }
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setCopyError(false)
     }
   }
 
   return (
-    <Dialog>
+    <Dialog onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
 
       <DialogContent
@@ -166,7 +185,7 @@ export function ShareDialog({ entityType, entityId, trigger }: ShareDialogProps)
                         <input
                           type="text"
                           readOnly
-                          value={`https://ardentforge.app/s/${link.token}`}
+                          value={`${window.location.origin}/s/${link.token}`}
                           data-link-id={link.id}
                           className="flex-1 bg-surface-gunmetal text-bone-white text-xs px-3 py-2 rounded-none border-0 outline-none select-all truncate"
                           onClick={(e) => (e.target as HTMLInputElement).select()}
@@ -202,6 +221,11 @@ export function ShareDialog({ entityType, entityId, trigger }: ShareDialogProps)
                           </>
                         )}
                       </Button>
+                      {revokeMutation.isError && (
+                        <p className="text-xs text-warning-flare text-center">
+                          Failed to revoke. Try again.
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -212,6 +236,12 @@ export function ShareDialog({ entityType, entityId, trigger }: ShareDialogProps)
                     {ENTITY_LABELS[entityType].toLowerCase()}.
                   </p>
                 </div>
+              )}
+
+              {copyError && (
+                <p className="text-xs text-warning-flare text-center">
+                  Could not copy automatically. Select the URL above and press Ctrl+C.
+                </p>
               )}
             </>
           )}

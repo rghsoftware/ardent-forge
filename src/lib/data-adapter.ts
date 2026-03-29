@@ -151,7 +151,11 @@ export interface DataAdapter {
       block: Omit<Block, 'id' | 'programId'>
       weeks: Array<{
         week: Omit<BlockWeek, 'id' | 'blockId'>
-        sessions: Array<Omit<ScheduledSession, 'id' | 'blockWeekId'>>
+        sessions: Array<
+          Omit<ScheduledSession, 'id' | 'blockWeekId' | 'sessionTemplateId'> & {
+            sessionTemplateId?: string
+          }
+        >
       }>
     }>,
   ): Promise<ProgramFull>
@@ -183,7 +187,9 @@ export interface DataAdapter {
   // Share link operations
   getShareLinks(userId: string): Promise<ShareLink[]>
   getShareLinksForEntity(entityType: ShareableEntityType, entityId: string): Promise<ShareLink[]>
-  createShareLink(link: Omit<ShareLink, 'id' | 'createdAt' | 'updatedAt'>): Promise<ShareLink>
+  createShareLink(
+    link: Omit<ShareLink, 'id' | 'isActive' | 'createdAt' | 'updatedAt'>,
+  ): Promise<ShareLink>
   revokeShareLink(id: string): Promise<void>
   deleteShareLink(id: string): Promise<void>
 

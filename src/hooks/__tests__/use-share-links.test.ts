@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { renderHook, waitFor, act } from '@testing-library/react'
 import { TestWrapper } from '@/test/render-helpers'
 import { createMockAdapter } from '@/test/mocks/data-adapter'
 import type { DataAdapter } from '@/lib/data-adapter'
-import type { ShareLink } from '@/domain/types'
+import { shareTokenSchema } from '@/domain/types'
+import type { ShareLink, ShareToken } from '@/domain/types'
 
 let mockAdapter: DataAdapter
 
@@ -39,10 +40,12 @@ beforeEach(() => {
 // Helpers
 // ---------------------------------------------------------------------------
 
+const TEST_TOKEN = shareTokenSchema.parse('abc123def456')
+
 function buildShareLink(overrides?: Partial<ShareLink>): ShareLink {
   return {
     id: 'sl-1',
-    token: 'abc123def456',
+    token: TEST_TOKEN,
     entityType: 'PROGRAM',
     entityId: 'prog-1',
     createdBy: 'user-1',
@@ -59,7 +62,10 @@ function buildShareLink(overrides?: Partial<ShareLink>): ShareLink {
 
 describe('useShareLinks', () => {
   it('returns share links for a user', async () => {
-    const links = [buildShareLink(), buildShareLink({ id: 'sl-2', token: 'xyz789uvw012' })]
+    const links = [
+      buildShareLink(),
+      buildShareLink({ id: 'sl-2', token: shareTokenSchema.parse('xyz789uvw012') }),
+    ]
     vi.mocked(mockAdapter.getShareLinks).mockResolvedValue(links)
 
     const { result } = renderHook(() => useShareLinks('user-1'), { wrapper: TestWrapper })
@@ -117,7 +123,7 @@ describe('useResolveShareLink', () => {
       is_active: true,
       created_at: '2026-03-29T00:00:00Z',
     }
-    mockRpc.mockResolvedValue({ data: resolved, error: null })
+    mockRpc.mockResolvedValue({ data: [resolved], error: null })
 
     const { result } = renderHook(() => useResolveShareLink('abc123def456'), {
       wrapper: TestWrapper,
@@ -136,6 +142,34 @@ describe('useResolveShareLink', () => {
 
     expect(result.current.fetchStatus).toBe('idle')
     expect(mockRpc).not.toHaveBeenCalled()
+  })
+
+  it('transitions to isError when RPC returns an error', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: new Error('not found') })
+
+    const { result } = renderHook(() => useResolveShareLink('abc123def456'), {
+      wrapper: TestWrapper,
+    })
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
+    })
+
+    expect(result.current.data).toBeUndefined()
+  })
+
+  it('returns null when RPC returns an empty array (revoked/inactive link)', async () => {
+    mockRpc.mockResolvedValue({ data: [], error: null })
+
+    const { result } = renderHook(() => useResolveShareLink('abc123def456'), {
+      wrapper: TestWrapper,
+    })
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    expect(result.current.data).toBeNull()
   })
 })
 
@@ -162,6 +196,18 @@ describe('useSharedProgram', () => {
     expect(result.current.fetchStatus).toBe('idle')
     expect(mockRpc).not.toHaveBeenCalled()
   })
+
+  it('transitions to isError when RPC returns an error', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: new Error('server error') })
+
+    const { result } = renderHook(() => useSharedProgram('abc123def456'), {
+      wrapper: TestWrapper,
+    })
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
+    })
+  })
 })
 
 describe('useSharedWorkout', () => {
@@ -187,6 +233,18 @@ describe('useSharedWorkout', () => {
     expect(result.current.fetchStatus).toBe('idle')
     expect(mockRpc).not.toHaveBeenCalled()
   })
+
+  it('transitions to isError when RPC returns an error', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: new Error('server error') })
+
+    const { result } = renderHook(() => useSharedWorkout('abc123def456'), {
+      wrapper: TestWrapper,
+    })
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -201,19 +259,40 @@ describe('useCreateShareLink', () => {
     const { result } = renderHook(() => useCreateShareLink(), { wrapper: TestWrapper })
 
     await result.current.mutateAsync({
-      token: 'abc123def456',
+      token: TEST_TOKEN,
       entityType: 'PROGRAM',
       entityId: 'prog-1',
       createdBy: 'user-1',
-      isActive: true,
     })
 
     expect(mockAdapter.createShareLink).toHaveBeenCalledWith({
-      token: 'abc123def456',
+      token: TEST_TOKEN,
       entityType: 'PROGRAM',
       entityId: 'prog-1',
       createdBy: 'user-1',
-      isActive: true,
+    })
+  })
+
+  it('sets isError when adapter.createShareLink rejects', async () => {
+    vi.mocked(mockAdapter.createShareLink).mockRejectedValue(new Error('network error'))
+
+    const { result } = renderHook(() => useCreateShareLink(), { wrapper: TestWrapper })
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync({
+          token: 'abc123def456' as ShareToken,
+          entityType: 'PROGRAM',
+          entityId: 'prog-1',
+          createdBy: 'user-1',
+        })
+      } catch {
+        // expected to throw
+      }
+    })
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true)
     })
   })
 })
@@ -327,7 +406,6 @@ describe('useCloneProgram', () => {
                   dayOfWeek: undefined,
                   dayLabel: 'Day 1',
                   sessionType: 'STRENGTH',
-                  sessionTemplateId: 'st-1',
                   notes: undefined,
                 },
               ],
@@ -339,7 +417,6 @@ describe('useCloneProgram', () => {
                   dayOfWeek: undefined,
                   dayLabel: 'Day 1',
                   sessionType: 'STRENGTH',
-                  sessionTemplateId: 'st-1',
                   notes: undefined,
                 },
               ],

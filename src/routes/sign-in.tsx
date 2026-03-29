@@ -10,8 +10,9 @@ import { AuthPageShell } from '@/components/auth/auth-page-shell'
 import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
 
 export const Route = createFileRoute('/sign-in')({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { reason?: string; returnTo?: string } => ({
     reason: (search.reason as string) || undefined,
+    returnTo: (search.returnTo as string) || undefined,
   }),
   beforeLoad: ({ context }) => {
     if (context.auth.user && !context.auth.isGuest) throw redirect({ to: '/' })
@@ -29,7 +30,7 @@ type FormValues = z.infer<typeof schema>
 function SignInPage() {
   const auth = useAuth()
   const router = useRouter()
-  const { reason } = Route.useSearch()
+  const { reason, returnTo } = Route.useSearch()
   const {
     register,
     handleSubmit,
@@ -45,7 +46,7 @@ function SignInPage() {
     if (error) {
       setAuthError(error.message)
     } else {
-      router.navigate({ to: '/' })
+      router.navigate({ to: returnTo || '/' })
     }
   }
 

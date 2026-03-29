@@ -22,7 +22,8 @@ CREATE TABLE share_links (
     created_by      UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     is_active       BOOLEAN     NOT NULL DEFAULT true,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at      TIMESTAMPTZ         -- NULL means no expiry; non-NULL enforces time-limited links
 );
 
 COMMENT ON TABLE share_links IS 'Read-only share links for programs and workout logs (invariant SH-8).';
@@ -33,14 +34,11 @@ COMMENT ON COLUMN share_links.created_by IS 'User who created this share link. C
 COMMENT ON COLUMN share_links.is_active IS 'Whether the link is currently active. Deactivated links return nothing.';
 COMMENT ON COLUMN share_links.created_at IS 'Row creation timestamp.';
 COMMENT ON COLUMN share_links.updated_at IS 'Row last-modified timestamp. Auto-updated by trigger.';
+COMMENT ON COLUMN share_links.expires_at IS 'Optional expiry. NULL = perpetual. Active links with expires_at < now() are treated as expired.';
 
 -- ---------------------------------------------------------------------------
 -- 2. Indices
 -- ---------------------------------------------------------------------------
-
--- token lookups (UNIQUE constraint creates an implicit index, but we add
--- an explicit one for clarity and to match the codebase convention)
-CREATE INDEX idx_share_links_token ON share_links(token);
 
 -- listing a user's share links
 CREATE INDEX idx_share_links_created_by ON share_links(created_by);
@@ -90,7 +88,8 @@ RETURNS TABLE (
     entity_type TEXT,
     entity_id   UUID,
     is_active   BOOLEAN,
-    created_at  TIMESTAMPTZ
+    created_at  TIMESTAMPTZ,
+    expires_at  TIMESTAMPTZ
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -104,10 +103,12 @@ BEGIN
         sl.entity_type,
         sl.entity_id,
         sl.is_active,
-        sl.created_at
+        sl.created_at,
+        sl.expires_at
     FROM share_links sl
     WHERE sl.token = lookup_token
-      AND sl.is_active = true;
+      AND sl.is_active = true
+      AND (sl.expires_at IS NULL OR sl.expires_at > now());
 END;
 $$;
 
@@ -135,6 +136,7 @@ BEGIN
     FROM share_links
     WHERE token = lookup_token
       AND is_active = true
+      AND (expires_at IS NULL OR expires_at > now())
       AND entity_type = 'PROGRAM';
 
     IF v_entity_id IS NULL THEN
@@ -143,17 +145,45 @@ BEGIN
 
     -- Build full program hierarchy
     SELECT jsonb_build_object(
-        'program', row_to_json(p.*),
+        'program', jsonb_build_object(
+            'id', p.id,
+            'name', p.name,
+            'description', p.description,
+            'source', p.source,
+            'duration_weeks', p.duration_weeks,
+            'is_public', p.is_public,
+            'created_at', p.created_at,
+            'updated_at', p.updated_at
+        ),
         'blocks', (
             SELECT COALESCE(jsonb_agg(
                 jsonb_build_object(
-                    'block', row_to_json(b.*),
+                    'block', jsonb_build_object(
+                        'id', b.id,
+                        'program_id', b.program_id,
+                        'name', b.name,
+                        'ordinal', b.ordinal,
+                        'duration_weeks', b.duration_weeks,
+                        'block_type', b.block_type
+                    ),
                     'weeks', (
                         SELECT COALESCE(jsonb_agg(
                             jsonb_build_object(
-                                'week', row_to_json(bw.*),
+                                'week', jsonb_build_object(
+                                    'id', bw.id,
+                                    'block_id', bw.block_id,
+                                    'week_number', bw.week_number
+                                ),
                                 'sessions', (
-                                    SELECT COALESCE(jsonb_agg(row_to_json(ss.*)), '[]'::jsonb)
+                                    SELECT COALESCE(jsonb_agg(jsonb_build_object(
+                                        'id', ss.id,
+                                        'block_week_id', ss.block_week_id,
+                                        'day_of_week', ss.day_of_week,
+                                        'day_label', ss.day_label,
+                                        'session_type', ss.session_type,
+                                        'session_template_id', ss.session_template_id,
+                                        'notes', ss.notes
+                                    )), '[]'::jsonb)
                                     FROM scheduled_sessions ss
                                     WHERE ss.block_week_id = bw.id
                                 )
@@ -172,13 +202,30 @@ BEGIN
         'sessionTemplates', (
             SELECT COALESCE(jsonb_agg(
                 jsonb_build_object(
-                    'template', row_to_json(st.*),
+                    'template', jsonb_build_object(
+                        'id', st.id,
+                        'name', st.name,
+                        'notes', st.notes,
+                        'created_at', st.created_at,
+                        'updated_at', st.updated_at
+                    ),
                     'activityGroups', (
                         SELECT COALESCE(jsonb_agg(
                             jsonb_build_object(
-                                'group', row_to_json(ag.*),
+                                'group', jsonb_build_object(
+                                    'id', ag.id,
+                                    'session_template_id', ag.session_template_id,
+                                    'name', ag.name,
+                                    'ordinal', ag.ordinal
+                                ),
                                 'activities', (
-                                    SELECT COALESCE(jsonb_agg(row_to_json(a.*)), '[]'::jsonb)
+                                    SELECT COALESCE(jsonb_agg(jsonb_build_object(
+                                        'id', a.id,
+                                        'activity_group_id', a.activity_group_id,
+                                        'exercise_id', a.exercise_id,
+                                        'ordinal', a.ordinal,
+                                        'set_scheme', a.set_scheme
+                                    )), '[]'::jsonb)
                                     FROM activities a
                                     WHERE a.activity_group_id = ag.id
                                 )
@@ -231,6 +278,7 @@ BEGIN
     FROM share_links
     WHERE token = lookup_token
       AND is_active = true
+      AND (expires_at IS NULL OR expires_at > now())
       AND entity_type = 'WORKOUT_LOG';
 
     IF v_entity_id IS NULL THEN
@@ -242,7 +290,6 @@ BEGIN
         'workoutLog', (
             SELECT jsonb_build_object(
                 'id', wl.id,
-                'userId', wl.user_id,
                 'title', wl.title,
                 'startedAt', wl.started_at,
                 'completedAt', wl.completed_at,
@@ -266,13 +313,33 @@ BEGIN
         'activityGroups', (
             SELECT COALESCE(jsonb_agg(
                 jsonb_build_object(
-                    'group', row_to_json(lag_.*),
+                    'group', jsonb_build_object(
+                        'id', lag_.id,
+                        'workout_log_id', lag_.workout_log_id,
+                        'name', lag_.name,
+                        'ordinal', lag_.ordinal
+                    ),
                     'activities', (
                         SELECT COALESCE(jsonb_agg(
                             jsonb_build_object(
-                                'activity', row_to_json(la.*),
+                                'activity', jsonb_build_object(
+                                    'id', la.id,
+                                    'logged_group_id', la.logged_group_id,
+                                    'exercise_id', la.exercise_id,
+                                    'ordinal', la.ordinal
+                                ),
                                 'sets', (
-                                    SELECT COALESCE(jsonb_agg(row_to_json(ls.*)), '[]'::jsonb)
+                                    SELECT COALESCE(jsonb_agg(jsonb_build_object(
+                                        'id', ls.id,
+                                        'logged_activity_id', ls.logged_activity_id,
+                                        'set_number', ls.set_number,
+                                        'reps_completed', ls.reps_completed,
+                                        'weight_kg', ls.weight_kg,
+                                        'duration_seconds', ls.duration_seconds,
+                                        'distance_meters', ls.distance_meters,
+                                        'notes', ls.notes,
+                                        'completed_at', ls.completed_at
+                                    )), '[]'::jsonb)
                                     FROM logged_sets ls
                                     WHERE ls.logged_activity_id = la.id
                                 )
@@ -295,3 +362,10 @@ END;
 $$;
 
 COMMENT ON FUNCTION get_shared_workout(TEXT) IS 'Returns a workout log hierarchy (activity groups, activities, sets) as JSONB for a valid share token. Excludes private fields. SECURITY DEFINER for public access.';
+
+-- ---------------------------------------------------------------------------
+-- 8. Grants -- allow anon and authenticated roles to call public RPCs
+-- ---------------------------------------------------------------------------
+GRANT EXECUTE ON FUNCTION resolve_share_link(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_shared_program(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_shared_workout(TEXT) TO anon, authenticated;

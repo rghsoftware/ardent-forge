@@ -39,6 +39,7 @@ import {
   programSourceSchema,
   blockTypeSchema,
   shareableEntityTypeSchema,
+  shareTokenSchema,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -595,7 +596,7 @@ export function fromProgramActivation(
 export function toShareLink(row: ShareLinkRow): ShareLink {
   return {
     id: row.id,
-    token: row.token,
+    token: shareTokenSchema.parse(row.token),
     entityType: shareableEntityTypeSchema.parse(row.entity_type),
     entityId: row.entity_id,
     createdBy: row.created_by,

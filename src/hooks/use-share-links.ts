@@ -37,14 +37,17 @@ export function useResolveShareLink(token: string) {
       if (!client) throw new Error('No Supabase client')
       const { data, error } = await client.rpc('resolve_share_link', { lookup_token: token })
       if (error) throw error
-      return data as {
+      // RETURNS TABLE gives back an array; extract first row
+      const rows = data as Array<{
         id: string
         token: string
         entity_type: ShareableEntityType
         entity_id: string
         is_active: boolean
+        expires_at: string | null
         created_at: string
-      } | null
+      }> | null
+      return rows?.[0] ?? null
     },
     enabled: !!token,
   })
@@ -94,7 +97,7 @@ export function useCreateShareLink() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (link: Omit<ShareLink, 'id' | 'createdAt' | 'updatedAt'>) =>
+    mutationFn: (link: Omit<ShareLink, 'id' | 'isActive' | 'createdAt' | 'updatedAt'>) =>
       getAdapter().createShareLink(link),
     onError: (err) => {
       console.error('[share-links] Failed to create share link:', err)
@@ -171,7 +174,8 @@ export function useCloneProgram() {
                   dayOfWeek: ss.dayOfWeek,
                   dayLabel: ss.dayLabel,
                   sessionType: ss.sessionType,
-                  sessionTemplateId: ss.sessionTemplateId,
+                  // sessionTemplateId intentionally omitted -- original owner's templates are
+                  // not accessible to the cloning user. User can attach their own templates.
                   notes: ss.notes,
                 })),
             })),

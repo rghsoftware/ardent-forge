@@ -52,7 +52,28 @@ function SharedPageExpired() {
       </p>
       <Link
         to="/sign-in"
-        search={{ reason: undefined }}
+        search={{ reason: undefined, returnTo: undefined }}
+        className="mt-6 text-xs text-ember uppercase tracking-wider"
+      >
+        Go to Ardent Forge
+      </Link>
+    </div>
+  )
+}
+
+function SharedPageError() {
+  return (
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
+      <Icon name="cloud_off" size={48} className="mb-4 text-warm-ash/40" />
+      <h1 className="font-display text-lg font-medium uppercase tracking-wider text-bone-white">
+        Something went wrong
+      </h1>
+      <p className="mt-2 text-sm text-warm-ash/60">
+        Could not load this share link. Try again shortly.
+      </p>
+      <Link
+        to="/sign-in"
+        search={{ reason: undefined, returnTo: undefined }}
         className="mt-6 text-xs text-ember uppercase tracking-wider"
       >
         Go to Ardent Forge
@@ -97,10 +118,10 @@ function SharedTokenPage() {
   const isProgramLink = shareLink?.entity_type === 'PROGRAM'
   const isWorkoutLink = shareLink?.entity_type === 'WORKOUT_LOG'
 
-  const { data: programData, isLoading: isProgramLoading } = useSharedProgram(
+  const { data: programData, isLoading: isProgramLoading, isError: isProgramError } = useSharedProgram(
     isProgramLink ? token : '',
   )
-  const { data: workoutData, isLoading: isWorkoutLoading } = useSharedWorkout(
+  const { data: workoutData, isLoading: isWorkoutLoading, isError: isWorkoutError } = useSharedWorkout(
     isWorkoutLink ? token : '',
   )
 
@@ -109,14 +130,24 @@ function SharedTokenPage() {
     return <SharedPageSkeleton />
   }
 
-  // Error or no link found
-  if (isResolveError || !shareLink) {
+  // RPC threw an unexpected server/network error (not a "not found")
+  if (isResolveError) {
+    return <SharedPageError />
+  }
+
+  // Token not found, revoked, or expired
+  if (!shareLink) {
     return <SharedPageExpired />
   }
 
   // Entity data loading
   if ((isProgramLink && isProgramLoading) || (isWorkoutLink && isWorkoutLoading)) {
     return <SharedPageSkeleton />
+  }
+
+  // Entity data fetch error
+  if ((isProgramLink && isProgramError) || (isWorkoutLink && isWorkoutError)) {
+    return <SharedPageError />
   }
 
   // Program view

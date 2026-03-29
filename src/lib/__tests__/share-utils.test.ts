@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { shareTokenSchema } from '@/domain/types'
 import { generateShareToken } from '../share-utils'
 
 describe('generateShareToken', () => {
@@ -22,5 +23,10 @@ describe('generateShareToken', () => {
     generateShareToken()
     expect(spy).toHaveBeenCalled()
     spy.mockRestore()
+  })
+
+  it('generates a token that passes shareTokenSchema validation', () => {
+    const token = generateShareToken()
+    expect(() => shareTokenSchema.parse(token)).not.toThrow()
   })
 })
