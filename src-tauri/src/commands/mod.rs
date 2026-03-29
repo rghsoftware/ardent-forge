@@ -1,3 +1,4 @@
+pub mod app_config;
 pub mod exercises;
 pub mod guest;
 pub mod programs;

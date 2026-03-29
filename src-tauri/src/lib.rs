@@ -36,6 +36,11 @@ pub fn run() {
       Ok(())
     })
     .invoke_handler(tauri::generate_handler![
+      // App config
+      commands::app_config::get_app_config,
+      commands::app_config::set_app_config,
+      commands::app_config::clear_app_config,
+      commands::app_config::wipe_synced_data,
       // Exercises
       commands::exercises::get_exercises,
       commands::exercises::get_exercise,
