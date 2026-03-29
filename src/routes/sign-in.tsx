@@ -57,6 +57,12 @@ function SignInPage() {
         </p>
       )}
 
+      {reason === 'oauth_error' && (
+        <p className="bg-surface-gunmetal px-3 py-2 text-xs text-warm-ash">
+          Google sign-in failed. Please try again.
+        </p>
+      )}
+
       <p className="text-sm text-warm-ash">Sign in to your account</p>
 
       {/* Google sign-in */}
