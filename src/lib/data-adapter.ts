@@ -14,6 +14,8 @@ import type {
   BlockWeek,
   ScheduledSession,
   ProgramActivation,
+  ShareLink,
+  ShareableEntityType,
 } from '@/domain/types'
 import type { ExerciseCategory, MovementPattern, MuscleGroup } from '@/domain/types'
 import type { WeeklyVolumeEntry } from '@/domain/types'
@@ -177,6 +179,13 @@ export interface DataAdapter {
     updates: { currentBlockOrdinal?: number; currentWeekNumber?: number },
   ): Promise<ProgramActivation>
   clearActiveProgram(userId: string): Promise<void>
+
+  // Share link operations
+  getShareLinks(userId: string): Promise<ShareLink[]>
+  getShareLinksForEntity(entityType: ShareableEntityType, entityId: string): Promise<ShareLink[]>
+  createShareLink(link: Omit<ShareLink, 'id' | 'createdAt' | 'updatedAt'>): Promise<ShareLink>
+  revokeShareLink(id: string): Promise<void>
+  deleteShareLink(id: string): Promise<void>
 
   // Analytics operations
 

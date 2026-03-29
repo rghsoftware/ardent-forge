@@ -4,8 +4,8 @@ import { getConfigStore } from '@/lib/config-store'
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ location }) => {
-    // Allow /setup to load without a backend configuration (it's where the user provides one)
-    if (location.pathname === '/setup') return
+    // Allow /setup and public share routes to load without a backend configuration
+    if (location.pathname === '/setup' || location.pathname.startsWith('/s/')) return
 
     let hasConfig = false
     try {

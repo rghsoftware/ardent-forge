@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { formatDateLabel, formatDuration } from '@/lib/format-duration'
 import { Badge } from '@/components/ui/badge'
@@ -9,9 +10,15 @@ interface WorkoutDetailHeaderProps {
   log: WorkoutLog
   allSets: LoggedSet[]
   onDelete: () => void
+  shareAction?: ReactNode
 }
 
-export function WorkoutDetailHeader({ log, allSets, onDelete }: WorkoutDetailHeaderProps) {
+export function WorkoutDetailHeader({
+  log,
+  allSets,
+  onDelete,
+  shareAction,
+}: WorkoutDetailHeaderProps) {
   const startedAt = new Date(log.startedAt)
   const completedAt = log.completedAt ? new Date(log.completedAt) : null
 
@@ -98,13 +105,14 @@ export function WorkoutDetailHeader({ log, allSets, onDelete }: WorkoutDetailHea
         </div>
       )}
 
-      {/* Delete button */}
-      <div className="px-4 pb-4">
+      {/* Actions: share + delete */}
+      <div className="flex items-center gap-2 px-4 pb-4">
+        {shareAction}
         <Button
           variant="ghost"
           size="sm"
           onClick={onDelete}
-          className="w-full text-xs text-warning-flare"
+          className="flex-1 text-xs text-warning-flare"
         >
           Delete workout
         </Button>

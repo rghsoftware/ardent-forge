@@ -24,6 +24,8 @@ import type {
   BlockWeek,
   ScheduledSession,
   ProgramActivation,
+  ShareLink,
+  ShareableEntityType,
   WeeklyVolumeEntry,
 } from '@/domain/types'
 import type {
@@ -1385,6 +1387,35 @@ export class TauriAdapter implements DataAdapter {
 
   async clearActiveProgram(userId: string): Promise<void> {
     await invokeCommand<void>('clear_active_program', { user_id: userId })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Share link operations (not supported offline -- require Supabase)
+  // ---------------------------------------------------------------------------
+
+  async getShareLinks(_userId: string): Promise<ShareLink[]> {
+    throw new Error('Share links are not supported in offline mode')
+  }
+
+  async getShareLinksForEntity(
+    _entityType: ShareableEntityType,
+    _entityId: string,
+  ): Promise<ShareLink[]> {
+    throw new Error('Share links are not supported in offline mode')
+  }
+
+  async createShareLink(
+    _link: Omit<ShareLink, 'id' | 'isActive' | 'createdAt' | 'updatedAt'>,
+  ): Promise<ShareLink> {
+    throw new Error('Share links are not supported in offline mode')
+  }
+
+  async revokeShareLink(_id: string): Promise<void> {
+    throw new Error('Share links are not supported in offline mode')
+  }
+
+  async deleteShareLink(_id: string): Promise<void> {
+    throw new Error('Share links are not supported in offline mode')
   }
 
   // ---------------------------------------------------------------------------
