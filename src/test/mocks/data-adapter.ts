@@ -1,0 +1,65 @@
+import { vi } from 'vitest'
+import type { DataAdapter } from '@/lib/data-adapter'
+
+/**
+ * Creates a fully mocked DataAdapter where every method is a vi.fn()
+ * returning sensible defaults (empty arrays for lists, null for single lookups).
+ *
+ * Pass overrides to customize specific method implementations.
+ */
+export function createMockAdapter(
+  overrides?: Partial<{ [K in keyof DataAdapter]: DataAdapter[K] }>,
+): DataAdapter {
+  const base: DataAdapter = {
+    // Exercise operations
+    getExercises: vi.fn().mockResolvedValue([]),
+    getExercise: vi.fn().mockResolvedValue(null),
+    createExercise: vi.fn().mockResolvedValue({}),
+
+    // Workout log operations
+    getWorkoutLogs: vi.fn().mockResolvedValue([]),
+    getWorkoutLogsSummary: vi.fn().mockResolvedValue([]),
+    getWorkoutLog: vi.fn().mockResolvedValue(null),
+    getWorkoutLogFull: vi.fn().mockResolvedValue(null),
+    createWorkoutLog: vi.fn().mockResolvedValue({}),
+    updateWorkoutLog: vi.fn().mockResolvedValue({}),
+    deleteWorkoutLog: vi.fn().mockResolvedValue(undefined),
+    createLoggedActivityGroup: vi.fn().mockResolvedValue({}),
+    createLoggedActivity: vi.fn().mockResolvedValue({}),
+    createLoggedSet: vi.fn().mockResolvedValue({}),
+    updateLoggedSet: vi.fn().mockResolvedValue({}),
+
+    // Exercise history operations
+    getOneRepMaxHistory: vi.fn().mockResolvedValue([]),
+    getRecentlyUsedExerciseIds: vi.fn().mockResolvedValue([]),
+    getExerciseWorkoutHistory: vi.fn().mockResolvedValue([]),
+
+    // User profile operations
+    getUserProfile: vi.fn().mockResolvedValue(null),
+    updateUserProfile: vi.fn().mockResolvedValue({}),
+    saveOneRepMax: vi.fn().mockResolvedValue({}),
+
+    // Session template operations
+    getSessionTemplates: vi.fn().mockResolvedValue([]),
+    getSessionTemplate: vi.fn().mockResolvedValue(null),
+    getSessionTemplateFull: vi.fn().mockResolvedValue(null),
+    createSessionTemplateFull: vi.fn().mockResolvedValue({}),
+    updateSessionTemplateFull: vi.fn().mockResolvedValue({}),
+    deleteSessionTemplate: vi.fn().mockResolvedValue(undefined),
+
+    // Program operations
+    getPrograms: vi.fn().mockResolvedValue([]),
+    getProgramFull: vi.fn().mockResolvedValue(null),
+    createProgramFull: vi.fn().mockResolvedValue({}),
+    updateProgramFull: vi.fn().mockResolvedValue({}),
+    deleteProgram: vi.fn().mockResolvedValue(undefined),
+
+    // Program activation operations
+    getActiveProgram: vi.fn().mockResolvedValue(null),
+    setActiveProgram: vi.fn().mockResolvedValue({}),
+    updateActiveProgram: vi.fn().mockResolvedValue({}),
+    clearActiveProgram: vi.fn().mockResolvedValue(undefined),
+  }
+
+  return { ...base, ...overrides }
+}
