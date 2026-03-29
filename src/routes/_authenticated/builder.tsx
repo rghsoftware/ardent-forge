@@ -204,9 +204,9 @@ function BuilderPage() {
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-surface-anvil pb-8 font-body text-bone-white">
+    <div className="flex h-full flex-col bg-surface-anvil font-body text-bone-white">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-6 pb-2">
+      <div className="flex flex-shrink-0 items-center gap-3 px-4 pt-8 pb-4">
         <Button
           type="button"
           variant="ghost"
@@ -230,7 +230,7 @@ function BuilderPage() {
         </Button>
       </div>
 
-      <div className="px-4 pb-4">
+      <div className="flex-shrink-0 px-4 pb-6">
         <h1 className="font-display text-2xl font-medium uppercase tracking-wider text-bone-white">
           PROGRAM BUILDER
         </h1>
@@ -242,7 +242,7 @@ function BuilderPage() {
       </div>
 
       {/* Layout: sidebar + content on desktop, stacked on mobile */}
-      <div className="lg:grid lg:grid-cols-[320px_1fr] lg:gap-6 lg:px-4">
+      <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[320px_1fr] lg:gap-6 lg:px-4">
         {/* Sidebar: Program form */}
         <div className="px-4 pb-6 lg:px-0">
           <ProgramForm draft={draft} onChange={handleDraftChange} />
@@ -272,7 +272,7 @@ function BuilderPage() {
       </div>
 
       {/* Save button */}
-      <div className="px-4 pt-6">
+      <div className="flex-shrink-0 px-4 pt-6 pb-8">
         <Button
           type="button"
           variant="default"
