@@ -35,7 +35,7 @@ const baseShareLink = {
   id: 'sl-1',
   createdAt: '2025-01-01T00:00:00Z',
   updatedAt: '2025-01-01T00:00:00Z',
-  token: 'tok_abc123def456',
+  token: 'abc123def456',
   entityType: 'PROGRAM',
   entityId: 'prog-1',
   createdBy: 'user-1',
@@ -197,7 +197,7 @@ describe('ShareLink schema', () => {
     expect(shareLinkSchema.safeParse(baseShareLink).success).toBe(true)
   })
 
-  it('rejects empty token (min 1)', () => {
+  it('rejects invalid token format', () => {
     const bad = { ...baseShareLink, token: '' }
     expect(shareLinkSchema.safeParse(bad).success).toBe(false)
   })

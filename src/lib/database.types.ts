@@ -189,3 +189,14 @@ export interface ProgramActivationRow {
   created_at: string
   updated_at: string
 }
+
+export interface ShareLinkRow {
+  id: string
+  token: string
+  entity_type: 'PROGRAM' | 'WORKOUT_LOG'
+  entity_id: string
+  created_by: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}

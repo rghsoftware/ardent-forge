@@ -15,6 +15,7 @@ import type {
   BlockWeek,
   ScheduledSession,
   ProgramActivation,
+  ShareLink,
 } from '@/domain/types'
 import {
   entityId,
@@ -37,6 +38,8 @@ import {
   setSchemeSchema,
   programSourceSchema,
   blockTypeSchema,
+  shareableEntityTypeSchema,
+  shareTokenSchema,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -54,6 +57,7 @@ import type {
   BlockWeekRow,
   ScheduledSessionRow,
   ProgramActivationRow,
+  ShareLinkRow,
 } from './database.types'
 
 /**
@@ -583,4 +587,31 @@ export function fromProgramActivation(
     current_week_number: activation.currentWeekNumber,
     start_date: activation.startDate,
   }
+}
+
+// ---------------------------------------------------------------------------
+// ShareLink
+// ---------------------------------------------------------------------------
+
+export function toShareLink(row: ShareLinkRow): ShareLink {
+  return {
+    id: row.id,
+    token: shareTokenSchema.parse(row.token),
+    entityType: shareableEntityTypeSchema.parse(row.entity_type),
+    entityId: row.entity_id,
+    createdBy: row.created_by,
+    isActive: row.is_active,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export function fromShareLink(link: Partial<ShareLink>): Record<string, unknown> {
+  const row: Record<string, unknown> = {}
+  if (link.token !== undefined) row.token = link.token
+  if (link.entityType !== undefined) row.entity_type = link.entityType
+  if (link.entityId !== undefined) row.entity_id = link.entityId
+  if (link.createdBy !== undefined) row.created_by = link.createdBy
+  if (link.isActive !== undefined) row.is_active = link.isActive
+  return row
 }

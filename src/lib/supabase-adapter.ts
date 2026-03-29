@@ -23,6 +23,8 @@ import type {
   BlockWeek,
   ScheduledSession,
   ProgramActivation,
+  ShareLink,
+  ShareableEntityType,
   WeeklyVolumeEntry,
 } from '@/domain/types'
 import type {
@@ -41,6 +43,7 @@ import type {
   BlockWeekRow,
   ScheduledSessionRow,
   ProgramActivationRow,
+  ShareLinkRow,
 } from './database.types'
 import {
   toExercise,
@@ -72,6 +75,8 @@ import {
   toScheduledSession,
   fromScheduledSession,
   toProgramActivation,
+  toShareLink,
+  fromShareLink,
 } from './data-mapper'
 
 export class SupabaseAdapter implements DataAdapter {
@@ -1004,6 +1009,59 @@ export class SupabaseAdapter implements DataAdapter {
 
   async clearActiveProgram(userId: string): Promise<void> {
     const { error } = await this.client.from('program_activations').delete().eq('user_id', userId)
+    if (error) throw error
+  }
+
+  // ---------------------------------------------------------------------------
+  // Share link operations
+  // ---------------------------------------------------------------------------
+
+  async getShareLinks(userId: string): Promise<ShareLink[]> {
+    const { data, error } = await this.client
+      .from('share_links')
+      .select('*')
+      .eq('created_by', userId)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return (data as ShareLinkRow[]).map(toShareLink)
+  }
+
+  async getShareLinksForEntity(
+    entityType: ShareableEntityType,
+    entityId: string,
+  ): Promise<ShareLink[]> {
+    const { data, error } = await this.client
+      .from('share_links')
+      .select('*')
+      .eq('entity_type', entityType)
+      .eq('entity_id', entityId)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return (data as ShareLinkRow[]).map(toShareLink)
+  }
+
+  async createShareLink(
+    link: Omit<ShareLink, 'id' | 'isActive' | 'createdAt' | 'updatedAt'>,
+  ): Promise<ShareLink> {
+    const { data, error } = await this.client
+      .from('share_links')
+      .insert(fromShareLink(link))
+      .select()
+      .single()
+    if (error) throw error
+    return toShareLink(data as ShareLinkRow)
+  }
+
+  async revokeShareLink(id: string): Promise<void> {
+    const { error } = await this.client
+      .from('share_links')
+      .update({ is_active: false })
+      .eq('id', id)
+    if (error) throw error
+  }
+
+  async deleteShareLink(id: string): Promise<void> {
+    const { error } = await this.client.from('share_links').delete().eq('id', id)
     if (error) throw error
   }
 

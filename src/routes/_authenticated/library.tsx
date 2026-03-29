@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Icon } from '@/components/icon'
+import { ShareDialog } from '@/components/sharing/share-dialog'
 import { SOURCE_LABELS } from '@/components/program-builder/constants'
 import { SessionTemplateCard } from '@/components/session-builder/session-template-card'
 import {
@@ -498,6 +499,22 @@ function ProgramCard({
             Activate
           </Button>
         )}
+
+        <ShareDialog
+          entityType="PROGRAM"
+          entityId={program.id}
+          trigger={
+            <Button
+              variant="secondary"
+              size="sm"
+              className="min-h-12 text-xs uppercase tracking-wider"
+              aria-label={`Share ${program.name}`}
+            >
+              <Icon name="share" size={16} />
+              Share
+            </Button>
+          }
+        />
 
         <div
           role="button"

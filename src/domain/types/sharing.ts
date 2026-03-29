@@ -23,6 +23,17 @@ export const shareableEntityTypeSchema = z.enum(['PROGRAM', 'WORKOUT_LOG'])
 export type ShareableEntityType = z.infer<typeof shareableEntityTypeSchema>
 
 // ---------------------------------------------------------------------------
+// ShareToken -- branded type for share link tokens (12-char alphanumeric)
+// Prevents accidental substitution with other string IDs.
+// ---------------------------------------------------------------------------
+
+export const shareTokenSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9]{12}$/, 'Share token must be exactly 12 alphanumeric characters')
+  .brand<'ShareToken'>()
+export type ShareToken = z.infer<typeof shareTokenSchema>
+
+// ---------------------------------------------------------------------------
 // AccountabilityGroup -- a group of users sharing training accountability
 // invariant SH-4: size limits enforced at service layer, not schema
 // ---------------------------------------------------------------------------
@@ -95,7 +106,7 @@ export type DirectConnection = z.infer<typeof directConnectionSchema>
 // ---------------------------------------------------------------------------
 
 export const shareLinkSchema = syncableEntitySchema.extend({
-  token: z.string().min(1),
+  token: shareTokenSchema,
   entityType: shareableEntityTypeSchema,
   entityId: entityId,
   createdBy: entityId,
