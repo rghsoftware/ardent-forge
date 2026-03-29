@@ -46,10 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ user: session?.user ?? null, session, loading: false })
 
       if (event === 'SIGNED_IN' && session?.user) {
-        try {
-          // Auto-create user_profiles row on first sign-in.
-          // IMPERIAL is the default unit system per product spec.
-          // ignoreDuplicates ensures existing profiles are preserved on subsequent sign-ins.
+        // Fire-and-forget: do NOT await here. The auth-js client awaits
+        // onAuthStateChange callbacks during initialization, and PostgREST
+        // queries call getSession() which awaits initializePromise. Awaiting
+        // the upsert would create a circular deadlock.
+        void (async () => {
           const { error: profileError } = await supabase
             .from('user_profiles')
             .upsert(
@@ -59,9 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (profileError) {
             console.error('[auth] Failed to create user profile on sign-in:', profileError)
           }
-        } catch (err) {
+        })().catch((err: unknown) => {
           console.error('[auth] Unexpected error creating profile:', err)
-        }
+        })
 
         // Start Tauri sync engine with the fresh auth tokens
         if (isTauri() && session) {
