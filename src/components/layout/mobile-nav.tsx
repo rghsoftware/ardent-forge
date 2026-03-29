@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { Icon } from '@/components/icon'
 import { useAuth } from '@/lib/auth'
 
+// Mobile nav omits Builder (requires desktop viewport) and adds "Me" profile tab
 const navItems = [
   { label: 'Forge', icon: 'hardware', to: '/' },
   { label: 'Tracker', icon: 'history', to: '/history' },

@@ -57,7 +57,12 @@ export async function forcePull(): Promise<void> {
 export async function getSyncStatus(): Promise<SyncStateChanged | null> {
   if (!isTauri()) return null
   const statusJson = await invoke<string>('sync_get_status')
-  return JSON.parse(statusJson) as SyncStateChanged
+  try {
+    return JSON.parse(statusJson) as SyncStateChanged
+  } catch (err) {
+    console.error('[sync] Failed to parse sync status:', statusJson, err)
+    return null
+  }
 }
 
 export function onSyncStateChanged(

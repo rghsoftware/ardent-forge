@@ -7,11 +7,15 @@ interface RestTimerOverlayProps {
   onAdjust: (delta: number) => void
 }
 
+// Visual metaphor: rest timer behaves like cooling metal. When rest begins
+// (progress near 1), the overlay glows hot with fast ember pulses and warm text.
+// As rest elapses (progress toward 0), the pulse slows, glow fades, and text
+// cools to bone-white, signaling readiness for the next set.
 export function RestTimerOverlay({ restTimer, onSkip, onAdjust }: RestTimerOverlayProps) {
   if (!restTimer) return null
 
   const { remaining, total } = restTimer
-  const progress = Math.max(0, Math.min(1, remaining / total))
+  const progress = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0
 
   // Pulse slows as the metal cools: 1s when hot → 2.4s when cool
   const pulseDuration = `${(1 + (1 - progress) * 1.4).toFixed(2)}s`

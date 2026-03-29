@@ -28,6 +28,9 @@ pub async fn migrate_guest_data(
         "program_activations",
     ];
 
+    // SAFETY: table names are compile-time string literals from the hardcoded
+    // array above, never from user input. sqlx does not support parameterized
+    // table identifiers, so format!() is the standard approach here.
     for table in &user_id_tables {
         sqlx::query(&format!(
             "UPDATE {} SET user_id = ? WHERE user_id = ?",

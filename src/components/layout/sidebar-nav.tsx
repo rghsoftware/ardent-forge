@@ -4,6 +4,7 @@ import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 
+// Desktop sidebar shows all destinations including Builder (not suitable for mobile)
 const navItems = [
   { label: 'Forge', icon: 'hardware', to: '/' },
   { label: 'Tracker', icon: 'history', to: '/history' },
@@ -12,6 +13,7 @@ const navItems = [
   { label: 'Library', icon: 'library_books', to: '/library' },
 ] as const
 
+// Uses first and last name only (skips middle names) for two-letter initials
 function getInitials(
   user: { email?: string | null; user_metadata?: Record<string, unknown> } | null,
   isGuest: boolean,
@@ -30,6 +32,7 @@ function getInitials(
 export function SidebarNav() {
   const [collapsed, setCollapsed] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [signOutError, setSignOutError] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const { user, isGuest, signOut } = useAuth()
 
@@ -42,6 +45,15 @@ export function SidebarNav() {
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [menuOpen])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
   }, [menuOpen])
 
   const initials = getInitials(user, isGuest)
@@ -115,6 +127,7 @@ export function SidebarNav() {
           )}
           aria-label="Account menu"
           aria-expanded={menuOpen}
+          aria-haspopup="menu"
         >
           <span className="flex items-center justify-center w-7 h-7 rounded-full bg-ember/20 text-ember text-xs font-semibold uppercase shrink-0">
             {initials}
@@ -124,6 +137,7 @@ export function SidebarNav() {
 
         {menuOpen && (
           <div
+            role="menu"
             className={cn(
               'absolute bottom-full left-0 mb-1 bg-surface-iron border border-ghost-line/20 shadow-lg z-50 py-1',
               collapsed ? 'w-48' : 'w-full',
@@ -131,6 +145,7 @@ export function SidebarNav() {
           >
             <Link
               to="/profile"
+              role="menuitem"
               onClick={() => setMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-2 min-h-[40px] text-xs uppercase tracking-wider text-warm-ash hover:bg-surface-pit hover:text-ember"
             >
@@ -139,15 +154,28 @@ export function SidebarNav() {
             </Link>
             <div className="border-t border-ghost-line/15 my-1" />
             <button
+              role="menuitem"
               onClick={async () => {
-                setMenuOpen(false)
-                await signOut()
+                setSignOutError(null)
+                try {
+                  const { error } = await signOut()
+                  if (error) {
+                    setSignOutError('Sign out failed')
+                    return
+                  }
+                  setMenuOpen(false)
+                } catch {
+                  setSignOutError('Sign out failed')
+                }
               }}
               className="flex w-full items-center gap-3 px-4 py-2 min-h-[40px] text-xs uppercase tracking-wider text-warm-ash hover:bg-surface-pit hover:text-ember"
             >
               <Icon name="logout" size={16} className="shrink-0" />
               Sign Out
             </button>
+            {signOutError && (
+              <p className="px-4 py-1.5 text-xs text-warning-flare">{signOutError}</p>
+            )}
           </div>
         )}
       </div>

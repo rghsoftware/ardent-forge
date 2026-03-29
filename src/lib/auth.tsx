@@ -2,11 +2,16 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { AuthError, Session, User } from '@supabase/supabase-js'
 import { isTauri } from '@tauri-apps/api/core'
 import { getSupabaseClient } from './supabase'
+import { resetAdapter } from './adapter'
 import { initSync, stopSync } from './sync-bridge'
 import { useSyncStore } from '@/stores/sync-store'
 
+// Guest mode is Tauri-only. In Tauri, the TauriAdapter writes to local SQLite
+// using GUEST_USER_ID as the owner. In browser mode there is no local storage
+// layer, so guest data would have nowhere to persist.
 export const GUEST_USER_ID = 'guest-local'
 const GUEST_STORAGE_KEY = 'ardent-forge-guest'
+const SYNTHETIC_GUEST_USER = { id: GUEST_USER_ID, email: 'guest@local' } as unknown as User
 
 interface AuthState {
   user: User | null
@@ -34,17 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Eagerly restore guest session so we never flash the sign-in page.
   // localStorage is synchronous and safe to read during initialization.
   const isRestoredGuest = isTauri() && localStorage.getItem(GUEST_STORAGE_KEY) === 'true'
-  const syntheticGuestUser = { id: GUEST_USER_ID, email: 'guest@local' } as unknown as User
 
   const [state, setState] = useState<AuthState>(
     isRestoredGuest
-      ? { user: syntheticGuestUser, session: null, loading: false, isGuest: true }
+      ? { user: SYNTHETIC_GUEST_USER, session: null, loading: false, isGuest: true }
       : { user: null, session: null, loading: true, isGuest: false },
   )
 
   const continueAsGuest = () => {
-    const syntheticUser = { id: GUEST_USER_ID, email: 'guest@local' } as unknown as User
-    setState({ user: syntheticUser, session: null, loading: false, isGuest: true })
+    setState({ user: SYNTHETIC_GUEST_USER, session: null, loading: false, isGuest: true })
     localStorage.setItem(GUEST_STORAGE_KEY, 'true')
   }
 
@@ -70,6 +73,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ user: session?.user ?? null, session, loading: false, isGuest: false })
 
       if (event === 'SIGNED_IN' && session?.user) {
+        resetAdapter()
+
         // Fire-and-forget: do NOT await here. The auth-js client awaits
         // onAuthStateChange callbacks during initialization, and PostgREST
         // queries call getSession() which awaits initializePromise. Awaiting
@@ -106,9 +111,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (event === 'SIGNED_OUT') {
+        resetAdapter()
+
         if (isTauri()) {
           stopSync().catch((err) => {
             console.error('[sync] Failed to stop sync engine:', err)
+            useSyncStore.getState().setSyncState('error', 'Failed to stop sync')
           })
         }
       }
@@ -149,6 +157,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
+    localStorage.removeItem(GUEST_STORAGE_KEY)
+    setState({ user: null, session: null, loading: false, isGuest: false })
     const { error } = await supabase.auth.signOut()
     return { error: error ?? undefined }
   }

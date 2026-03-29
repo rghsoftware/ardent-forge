@@ -15,7 +15,7 @@ import { MobileNav } from '@/components/layout/mobile-nav'
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ context }) => {
     if (!context.auth.loading && !context.auth.user && !context.auth.isGuest) {
-      throw redirect({ to: '/sign-in' })
+      throw redirect({ to: '/sign-in', search: { reason: 'session-expired' } })
     }
   },
   component: AuthenticatedLayout,
@@ -32,7 +32,7 @@ function AuthenticatedLayout() {
   // another tab).
   useEffect(() => {
     if (!loading && !user && !isGuest) {
-      navigate({ to: '/sign-in' })
+      navigate({ to: '/sign-in', search: { reason: 'session-expired' } })
     }
   }, [loading, user, isGuest, navigate])
 

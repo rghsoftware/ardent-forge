@@ -232,7 +232,7 @@
     border-color: rgba(91, 64, 57, 0.15);
   }
 
-  /* Forge line draw — scaleX from left */
+  /* Accent line on summary/auth cards -- draws left to right on mount to signal completion */
   @keyframes forge-draw {
     from {
       transform: scaleX(0);
@@ -242,7 +242,7 @@
     }
   }
 
-  /* Rise — fade in while floating up */
+  /* Staggered entrance for summary stats and ghost previews -- conveys progressive reveal */
   @keyframes rise {
     from {
       opacity: 0;
@@ -254,7 +254,7 @@
     }
   }
 
-  /* Cooling metal — rest timer ember pulse */
+  /* Rest timer glow overlay -- duration controlled dynamically in rest-timer-overlay.tsx */
   @keyframes ember-pulse {
     0%,
     100% {

@@ -3,6 +3,7 @@ import { useExercises } from '@/hooks/use-exercises'
 import { useSaveOneRepMax, useUpdateUserProfile } from '@/hooks/use-user-profile'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
 import {
   Dialog,
   DialogContent,
@@ -149,28 +150,28 @@ export function OneRmManagement({ userId, exerciseMaxes, preferredUnits }: OneRm
           <div className="space-y-6">
             {/* Weight input -- underline style */}
             <div className="space-y-2">
-              <label className="font-sans text-xs font-medium text-warm-ash">
+              <label className={FORGE_LABEL_CLASS}>
                 Weight (
                 {(
                   editingMax?.weight.unit ?? (preferredUnits === 'METRIC' ? 'kg' : 'lb')
                 ).toUpperCase()}
                 )
               </label>
-              <input
+              <ForgeInput
                 type="number"
                 inputMode="decimal"
                 step="any"
                 min="0"
                 value={editWeight}
                 onChange={(e) => setEditWeight(e.target.value)}
-                className="w-full border-b-2 border-surface-steel bg-transparent px-0 py-2 font-display text-3xl text-bone-white outline-none transition-colors focus:border-ember"
+                className="font-display text-3xl"
               />
               {weightError && <p className="text-xs text-warning-flare">{weightError}</p>}
             </div>
 
             {/* Tested vs Estimated toggle */}
             <div className="space-y-2">
-              <label className="font-sans text-xs font-medium text-warm-ash">Type</label>
+              <label className={FORGE_LABEL_CLASS}>Type</label>
               <ToggleGroup
                 type="single"
                 value={editEstimated}

@@ -3,6 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useAuth } from '@/lib/auth'
 import { useUserProfile, useUpdateUserProfile } from '@/hooks/use-user-profile'
 import { Button } from '@/components/ui/button'
+import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { OneRmManagement } from '@/components/profile/one-rm-management'
@@ -21,6 +22,7 @@ function ProfilePage() {
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [bodyweight, setBodyweight] = useState<string | null>(null)
   const [preferredUnits, setPreferredUnits] = useState<PreferredUnits | null>(null)
+  const [signOutError, setSignOutError] = useState<string | null>(null)
 
   // Derive effective values: local state overrides profile data
   const effectiveDisplayName = displayName ?? profile?.displayName ?? ''
@@ -49,15 +51,17 @@ function ProfilePage() {
       setDisplayName(null)
       setBodyweight(null)
       setPreferredUnits(null)
-    } catch {
-      // Error state available via updateProfile.isError
+    } catch (err) {
+      console.error('[profile] Failed to save settings:', err)
     }
   }
 
   const handleSignOut = async () => {
+    setSignOutError(null)
     const { error } = await auth.signOut()
     if (error) {
       console.error('[auth] Sign out failed:', error)
+      setSignOutError('Sign out failed. Please try again.')
     }
   }
 
@@ -109,23 +113,20 @@ function ProfilePage() {
               <div className="mt-4 space-y-6">
                 {/* Display name */}
                 <div className="space-y-1">
-                  <label className="font-sans text-xs font-medium text-warm-ash">
-                    Display name
-                  </label>
-                  <input
+                  <label className={FORGE_LABEL_CLASS}>Display name</label>
+                  <ForgeInput
                     type="text"
                     value={effectiveDisplayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="Enter display name"
-                    className="w-full border-b-2 border-surface-steel bg-transparent px-0 py-2 font-body text-base text-bone-white outline-none transition-colors placeholder:text-surface-steel focus:border-ember"
                   />
                 </div>
 
                 {/* Bodyweight */}
                 <div className="space-y-1">
-                  <label className="font-sans text-xs font-medium text-warm-ash">Bodyweight</label>
+                  <label className={FORGE_LABEL_CLASS}>Bodyweight</label>
                   <div className="flex items-end gap-3">
-                    <input
+                    <ForgeInput
                       type="number"
                       inputMode="decimal"
                       step="any"
@@ -133,7 +134,7 @@ function ProfilePage() {
                       value={effectiveBodyweight}
                       onChange={(e) => setBodyweight(e.target.value)}
                       placeholder="0"
-                      className="flex-1 border-b-2 border-surface-steel bg-transparent px-0 py-2 font-display text-2xl text-bone-white outline-none transition-colors placeholder:text-surface-steel focus:border-ember"
+                      className="flex-1 font-display text-2xl"
                     />
                     <span className="pb-2 font-sans text-sm text-warm-ash">{bodyweightUnit}</span>
                   </div>
@@ -141,9 +142,7 @@ function ProfilePage() {
 
                 {/* Preferred units */}
                 <div className="space-y-2">
-                  <label className="font-sans text-xs font-medium text-warm-ash">
-                    Preferred units
-                  </label>
+                  <label className={FORGE_LABEL_CLASS}>Preferred units</label>
                   <ToggleGroup
                     type="single"
                     value={effectiveUnits}
@@ -206,13 +205,18 @@ function ProfilePage() {
                     </p>
                   </div>
                 ) : (
-                  <Button
-                    variant="outline"
-                    className="min-h-[48px] w-full border-surface-steel text-warning-flare hover:bg-surface-gunmetal"
-                    onClick={handleSignOut}
-                  >
-                    Sign out
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      className="min-h-[48px] w-full border-surface-steel text-warning-flare hover:bg-surface-gunmetal"
+                      onClick={handleSignOut}
+                    >
+                      Sign out
+                    </Button>
+                    {signOutError && (
+                      <p className="mt-2 text-xs text-warning-flare">{signOutError}</p>
+                    )}
+                  </>
                 )}
               </div>
             </section>

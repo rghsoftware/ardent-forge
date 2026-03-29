@@ -28,8 +28,8 @@ export function DeleteWorkoutDialog({
     try {
       await deleteWorkoutLog.mutateAsync(workoutId)
       onSuccess()
-    } catch {
-      // Error state available via deleteWorkoutLog.isError
+    } catch (err) {
+      console.error('[history] Failed to delete workout:', err)
     }
   }
 

@@ -1,3 +1,4 @@
+import type React from 'react'
 import { useMemo, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { formatDuration } from '@/lib/format-duration'
@@ -12,9 +13,9 @@ interface WorkoutSummaryProps {
   loggedGroups: LoggedActivityGroupWithActivities[]
   exerciseNames: Record<string, string>
   onDone: () => void
-  /** Program name to display in progress section (when programContext exists) */
+  /** Program name shown in the session context line above the heading */
   programName?: string
-  /** Block name to display in progress section */
+  /** Block name shown in the session context line above the heading */
   blockName?: string
 }
 
@@ -27,23 +28,40 @@ interface ExerciseSummary {
 }
 
 // Animates a number from 0 to target using ease-out-cubic.
+// Restarting: if target changes, the animation replays from 0.
+// No-op: if target is 0, value remains 0 (no animation runs).
 function useCountUp(target: number, duration = 900, delay = 500) {
   const [value, setValue] = useState(0)
   useEffect(() => {
     if (target === 0) return
+    let rafId: number
     const timer = setTimeout(() => {
       const start = performance.now()
       const tick = (now: number) => {
         const progress = Math.min((now - start) / duration, 1)
         const eased = 1 - Math.pow(1 - progress, 3)
         setValue(Math.round(eased * target))
-        if (progress < 1) requestAnimationFrame(tick)
+        if (progress < 1) rafId = requestAnimationFrame(tick)
       }
-      requestAnimationFrame(tick)
+      rafId = requestAnimationFrame(tick)
     }, delay)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      cancelAnimationFrame(rafId)
+    }
   }, [target, duration, delay])
   return value
+}
+
+function riseDelay(seconds: number): React.CSSProperties {
+  return { animation: `rise 0.4s ease-out ${seconds}s both` }
+}
+
+function getAdherenceColor(percent: number | null): string {
+  if (percent == null) return ''
+  if (percent >= 90) return 'text-ember'
+  if (percent >= 70) return 'text-warm-ash'
+  return 'text-warning-flare'
 }
 
 export function WorkoutSummary({
@@ -144,14 +162,7 @@ export function WorkoutSummary({
     day: 'numeric',
   })
 
-  const adherenceColor =
-    stats.adherencePercent == null
-      ? ''
-      : stats.adherencePercent >= 90
-        ? 'text-ember'
-        : stats.adherencePercent >= 70
-          ? 'text-warm-ash'
-          : 'text-warning-flare'
+  const adherenceColor = getAdherenceColor(stats.adherencePercent)
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-pit">
@@ -169,7 +180,7 @@ export function WorkoutSummary({
         {programContext && (
           <p
             className="mb-4 text-[11px] text-warm-ash/50 uppercase tracking-widest"
-            style={{ animation: 'rise 0.4s ease-out 0.2s both' }}
+            style={riseDelay(0.2)}
           >
             {programName ?? 'Program'} · {blockName ?? 'Block'} · Week {programContext.weekNumber}
             {programContext.dayLabel ? ` · ${programContext.dayLabel}` : ''}
@@ -177,7 +188,7 @@ export function WorkoutSummary({
         )}
 
         {/* Heading */}
-        <div className="mb-8" style={{ animation: 'rise 0.4s ease-out 0.35s both' }}>
+        <div className="mb-8" style={riseDelay(0.35)}>
           <h1 className="font-display text-2xl font-bold text-bone-white leading-tight">
             Session complete.
           </h1>
@@ -185,10 +196,7 @@ export function WorkoutSummary({
         </div>
 
         {/* Hero — top set if strength work exists, otherwise duration */}
-        <div
-          className="mb-8 border-t border-surface-steel pt-5"
-          style={{ animation: 'rise 0.4s ease-out 0.5s both' }}
-        >
+        <div className="mb-8 border-t border-surface-steel pt-5" style={riseDelay(0.5)}>
           {topSetInfo ? (
             <>
               <span className="text-[11px] text-warm-ash/50 uppercase tracking-widest">
@@ -220,10 +228,7 @@ export function WorkoutSummary({
         </div>
 
         {/* Secondary stats — asymmetric sizes, left-aligned */}
-        <div
-          className="mb-8 flex items-end gap-6"
-          style={{ animation: 'rise 0.4s ease-out 0.62s both' }}
-        >
+        <div className="mb-8 flex items-end gap-6" style={riseDelay(0.62)}>
           {/* Duration — only shown as secondary when top set took the hero spot */}
           {topSetInfo && (
             <div>
@@ -281,7 +286,7 @@ export function WorkoutSummary({
               <div
                 key={ex.exerciseId}
                 className="flex items-center justify-between border-b border-surface-steel/30 py-3"
-                style={{ animation: `rise 0.3s ease-out ${0.72 + i * 0.06}s both` }}
+                style={riseDelay(0.72 + i * 0.06)}
               >
                 <span className="flex-1 text-sm text-bone-white">{ex.name}</span>
                 <span className="mr-4 text-[11px] tabular-nums text-warm-ash/40">
@@ -296,7 +301,7 @@ export function WorkoutSummary({
         )}
 
         {/* Done */}
-        <div className="mt-8" style={{ animation: 'rise 0.4s ease-out 0.85s both' }}>
+        <div className="mt-8" style={riseDelay(0.85)}>
           <Button variant="default" size="lg" onClick={onDone} className="min-h-12 w-full">
             Done
           </Button>
