@@ -2,10 +2,11 @@ import { Link } from '@tanstack/react-router'
 import { Icon } from '@/components/icon'
 
 const navItems = [
-  { label: 'FORGE', icon: 'construction', to: '/' },
-  { label: 'TRACKER', icon: 'timer', to: '/history' },
-  { label: 'LIBRARY', icon: 'library_books', to: '/library' },
-  { label: 'VAULT', icon: 'monitoring', to: '/vault' },
+  { label: 'Today', icon: 'home', to: '/' },
+  { label: 'History', icon: 'history', to: '/history' },
+  { label: 'Library', icon: 'library_books', to: '/library' },
+  { label: 'Analytics', icon: 'monitoring', to: '/vault' },
+  { label: 'Profile', icon: 'person', to: '/profile' },
 ] as const
 
 export function MobileNav() {

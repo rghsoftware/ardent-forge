@@ -4,11 +4,12 @@ import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { label: 'DASHBOARD', icon: 'grid_view', to: '/' },
-  { label: 'PROGRAM BUILDER', icon: 'precision_manufacturing', to: '/builder' },
-  { label: 'ANALYTICS', icon: 'monitoring', to: '/vault' },
-  { label: 'LIBRARY', icon: 'library_books', to: '/library' },
-  { label: 'SETTINGS', icon: 'settings', to: '/profile' },
+  { label: 'Today', icon: 'home', to: '/' },
+  { label: 'History', icon: 'history', to: '/history' },
+  { label: 'Builder', icon: 'precision_manufacturing', to: '/builder' },
+  { label: 'Analytics', icon: 'monitoring', to: '/vault' },
+  { label: 'Library', icon: 'library_books', to: '/library' },
+  { label: 'Profile', icon: 'person', to: '/profile' },
 ] as const
 
 export function SidebarNav() {
