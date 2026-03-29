@@ -1,0 +1,25 @@
+{$SITE_URL} {
+    # Supabase API routes -- proxied through Kong gateway
+    handle /rest/v1/* {
+        reverse_proxy kong:8000
+    }
+
+    handle /auth/v1/* {
+        reverse_proxy kong:8000
+    }
+
+    handle /realtime/v1/* {
+        reverse_proxy kong:8000
+    }
+
+    # Supabase Studio admin dashboard (when enabled)
+    handle /studio/* {
+        uri strip_prefix /studio
+        reverse_proxy studio:3000
+    }
+
+    # Web app -- catch-all for the SPA
+    handle {
+        reverse_proxy web:80
+    }
+}

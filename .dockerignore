@@ -1,0 +1,41 @@
+# Exclude from Docker build context
+# Prevents node_modules override, secret leakage, and bloated image layers
+
+# Dependencies -- installed fresh inside the container
+node_modules
+
+# Previous builds -- container does its own build
+dist
+
+# Secrets -- never bake into images
+.env
+.env.bak
+.env.local
+.env.*.local
+
+# Git and editor metadata
+.git
+.gitignore
+.gitattributes
+.vscode
+.idea
+.DS_Store
+
+# Project-specific dirs not needed for the web or migrations build
+.claude
+src-tauri
+
+# Docs and config files not needed at runtime
+docs
+*.md
+!README.md
+
+# Test artifacts
+test-results
+playwright-report
+vitest.config.ts
+
+# Docker sub-dirs not needed in the web build context
+# Note: docker/web/ and docker/migrations/ ARE needed by their respective Dockerfiles
+docker/kong
+docker/caddy
