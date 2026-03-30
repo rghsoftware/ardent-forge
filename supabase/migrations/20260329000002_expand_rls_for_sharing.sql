@@ -77,8 +77,8 @@ CREATE POLICY "workout_logs_connection_read"
 
 -- ---------------------------------------------------------------------------
 -- logged_activity_groups: group peer read
--- Uses the denormalized user_id column for the ownership check, then joins
--- back to workout_logs only for the SH-9 started_at comparison.
+-- Joins through workout_logs for both the ownership check and the SH-9
+-- started_at comparison.
 -- ---------------------------------------------------------------------------
 CREATE POLICY "logged_activity_groups_group_peer_read"
     ON logged_activity_groups FOR SELECT
@@ -119,8 +119,8 @@ CREATE POLICY "logged_activity_groups_connection_read"
 
 -- ---------------------------------------------------------------------------
 -- logged_activities: group peer read
--- Uses denormalized user_id for the connection check. Joins through
--- logged_activity_groups -> workout_logs for the SH-9 started_at check.
+-- Joins through logged_activity_groups and workout_logs for the group
+-- membership and SH-9 checks.
 -- ---------------------------------------------------------------------------
 CREATE POLICY "logged_activities_group_peer_read"
     ON logged_activities FOR SELECT

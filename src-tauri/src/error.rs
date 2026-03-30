@@ -15,6 +15,7 @@ pub enum ErrorKind {
     Conflict,
     Validation,
     Database,
+    Unauthorized,
     #[allow(dead_code)]
     Internal,
     Sync,
@@ -42,6 +43,14 @@ impl AppError {
             kind: ErrorKind::Validation,
             message: message.to_string(),
             field: Some(field.to_string()),
+        }
+    }
+
+    pub fn unauthorized(message: &str) -> Self {
+        Self {
+            kind: ErrorKind::Unauthorized,
+            message: message.to_string(),
+            field: None,
         }
     }
 

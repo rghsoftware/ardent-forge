@@ -11,7 +11,8 @@
 --    optional coach roles with asymmetric read/write visibility. The owner
 --    (user_id) is the user who created the group and has full admin rights.
 --    Invariant SH-4: max 20 members, max 3 coaches (enforced via trigger on
---    group_members). Max 5 groups per user enforced at the adapter layer.
+--    group_members). Max 5 groups per user enforced at the adapter layer
+--    (cross-table count not suitable for a single-table trigger).
 -- ---------------------------------------------------------------------------
 CREATE TABLE accountability_groups (
     id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -25,14 +26,11 @@ CREATE TABLE accountability_groups (
 );
 
 COMMENT ON TABLE accountability_groups IS 'Accountability groups for mutual training visibility and optional coaching.';
-COMMENT ON COLUMN accountability_groups.id IS 'Primary key. Auto-generated UUID.';
 COMMENT ON COLUMN accountability_groups.user_id IS 'Group owner/creator. Has full admin rights over the group.';
 COMMENT ON COLUMN accountability_groups.name IS 'Group display name. Must be 1-200 characters.';
 COMMENT ON COLUMN accountability_groups.description IS 'Optional free-text description of the group purpose.';
 COMMENT ON COLUMN accountability_groups.data_retention_days IS 'Days to retain a departed member''s data in group view. 1-90, default 30.';
 COMMENT ON COLUMN accountability_groups.created_by IS 'User who originally created the group. Audit trail field.';
-COMMENT ON COLUMN accountability_groups.created_at IS 'Row creation timestamp.';
-COMMENT ON COLUMN accountability_groups.updated_at IS 'Row last-modified timestamp. Auto-updated by trigger.';
 
 -- ---------------------------------------------------------------------------
 -- 2. group_members
@@ -55,14 +53,11 @@ CREATE TABLE group_members (
 );
 
 COMMENT ON TABLE group_members IS 'Membership records linking users to accountability groups with role-based permissions.';
-COMMENT ON COLUMN group_members.id IS 'Primary key. Auto-generated UUID.';
 COMMENT ON COLUMN group_members.group_id IS 'Parent group. Cascade-deletes when the group is removed.';
 COMMENT ON COLUMN group_members.user_id IS 'The member user. Cascade-deletes when the user is removed.';
 COMMENT ON COLUMN group_members.role IS 'Member role: COACH (read all, write programs) or MEMBER (read peers only).';
 COMMENT ON COLUMN group_members.share_history_before_join IS 'Whether pre-join workout history is visible to the group. Default false. Invariant SH-9.';
 COMMENT ON COLUMN group_members.joined_at IS 'Timestamp when the user joined the group.';
-COMMENT ON COLUMN group_members.created_at IS 'Row creation timestamp.';
-COMMENT ON COLUMN group_members.updated_at IS 'Row last-modified timestamp. Auto-updated by trigger.';
 
 -- ---------------------------------------------------------------------------
 -- 3. group_invites
@@ -84,14 +79,11 @@ CREATE TABLE group_invites (
 );
 
 COMMENT ON TABLE group_invites IS 'Invite codes for joining accountability groups. Codes are revocable and time-limited.';
-COMMENT ON COLUMN group_invites.id IS 'Primary key. Auto-generated UUID.';
 COMMENT ON COLUMN group_invites.group_id IS 'Target group. Cascade-deletes when the group is removed.';
 COMMENT ON COLUMN group_invites.code IS 'Unique invite code in AF-XXXXXXXX format. Auto-generated from UUID.';
 COMMENT ON COLUMN group_invites.created_by IS 'Coach or owner who created the invite.';
 COMMENT ON COLUMN group_invites.expires_at IS 'Expiration timestamp. Invite is invalid after this time.';
 COMMENT ON COLUMN group_invites.is_active IS 'Whether the invite is currently active. Set to false to revoke.';
-COMMENT ON COLUMN group_invites.created_at IS 'Row creation timestamp.';
-COMMENT ON COLUMN group_invites.updated_at IS 'Row last-modified timestamp. Auto-updated by trigger.';
 
 -- ---------------------------------------------------------------------------
 -- 4. direct_connections
@@ -116,15 +108,12 @@ CREATE TABLE direct_connections (
 );
 
 COMMENT ON TABLE direct_connections IS 'Peer-to-peer accountability links with optional per-direction write access.';
-COMMENT ON COLUMN direct_connections.id IS 'Primary key. Auto-generated UUID.';
 COMMENT ON COLUMN direct_connections.requester_id IS 'User who initiated the connection request.';
 COMMENT ON COLUMN direct_connections.recipient_id IS 'User who received the connection request.';
 COMMENT ON COLUMN direct_connections.status IS 'Connection lifecycle: PENDING, ACTIVE, or DECLINED.';
 COMMENT ON COLUMN direct_connections.requester_grants_write IS 'Whether the requester grants write access to the recipient. Default false.';
 COMMENT ON COLUMN direct_connections.recipient_grants_write IS 'Whether the recipient grants write access to the requester. Default false.';
 COMMENT ON COLUMN direct_connections.accepted_at IS 'Timestamp when the connection was accepted. NULL until status becomes ACTIVE.';
-COMMENT ON COLUMN direct_connections.created_at IS 'Row creation timestamp.';
-COMMENT ON COLUMN direct_connections.updated_at IS 'Row last-modified timestamp. Auto-updated by trigger.';
 
 -- ---------------------------------------------------------------------------
 -- 5. Indices
@@ -371,7 +360,8 @@ CREATE TRIGGER enforce_group_size_limits_trigger
 -- Trigger: prevent_role_self_escalation
 -- Blocks a non-coach member from promoting their own role.
 -- A member may update their own record (e.g. share_history_before_join), but
--- only a COACH in the group may change the role column. (PE-1 fix)
+-- only a COACH in the group may change the role column.
+-- Prevents non-coach members from escalating their own role (SH-2 enforcement).
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION prevent_role_self_escalation()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
@@ -395,7 +385,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION prevent_role_self_escalation() IS 'BEFORE UPDATE trigger on group_members preventing non-coach members from escalating their own role (PE-1 / SH-2 enforcement).';
+COMMENT ON FUNCTION prevent_role_self_escalation() IS 'BEFORE UPDATE trigger on group_members preventing non-coach members from escalating their own role (SH-2 enforcement).';
 
 CREATE TRIGGER prevent_role_self_escalation_trigger
     BEFORE UPDATE ON group_members

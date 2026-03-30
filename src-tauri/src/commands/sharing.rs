@@ -129,7 +129,11 @@ pub async fn update_group(
     .ok_or_else(|| AppError::not_found("AccountabilityGroup", &id))?;
 
     let final_name = name.unwrap_or(existing.name);
-    let final_description = description.or(existing.description);
+    let final_description = match description {
+        Some(d) if d.is_empty() => None,  // explicit clear
+        Some(d) => Some(d),               // update
+        None => existing.description,     // keep existing
+    };
     let final_retention = data_retention_days.unwrap_or(existing.data_retention_days);
 
     sqlx::query(
@@ -156,15 +160,34 @@ pub async fn update_group(
 }
 
 /// Deletes an accountability group by ID. Cascades to members and invites.
+/// Only the group owner (user_id on the group) can delete.
 #[tauri::command]
 pub async fn delete_group(
     pool: State<'_, SqlitePool>,
     id: String,
+    user_id: String,
 ) -> Result<(), AppError> {
-    sqlx::query("DELETE FROM accountability_groups WHERE id = ?")
+    // Verify caller is the group owner
+    let group = sqlx::query_as::<_, AccountabilityGroupRow>(
+        "SELECT * FROM accountability_groups WHERE id = ?",
+    )
+    .bind(&id)
+    .fetch_optional(pool.inner())
+    .await?
+    .ok_or_else(|| AppError::not_found("AccountabilityGroup", &id))?;
+
+    if group.user_id != user_id {
+        return Err(AppError::unauthorized("Only the group owner can delete this group"));
+    }
+
+    let result = sqlx::query("DELETE FROM accountability_groups WHERE id = ?")
         .bind(&id)
         .execute(pool.inner())
         .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("AccountabilityGroup", &id));
+    }
 
     Ok(())
 }
@@ -190,34 +213,78 @@ pub async fn get_group_members(
 }
 
 /// Removes a member from a group.
+/// Caller must be a coach in the group, or the user removing themselves.
 #[tauri::command]
 pub async fn remove_group_member(
     pool: State<'_, SqlitePool>,
     group_id: String,
     user_id: String,
+    caller_id: String,
 ) -> Result<(), AppError> {
-    sqlx::query("DELETE FROM group_members WHERE group_id = ? AND user_id = ?")
+    // Allow self-removal without coach check
+    if caller_id != user_id {
+        // Verify caller is a coach
+        let caller_member = sqlx::query_as::<_, GroupMemberRow>(
+            "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?",
+        )
+        .bind(&group_id)
+        .bind(&caller_id)
+        .fetch_optional(pool.inner())
+        .await?;
+
+        match caller_member {
+            Some(m) if m.role == "COACH" => {}
+            _ => return Err(AppError::unauthorized("Only coaches can remove other members")),
+        }
+    }
+
+    let result = sqlx::query("DELETE FROM group_members WHERE group_id = ? AND user_id = ?")
         .bind(&group_id)
         .bind(&user_id)
         .execute(pool.inner())
         .await?;
 
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("GroupMember", &format!("{group_id}/{user_id}")));
+    }
+
     Ok(())
 }
 
 /// Updates a group member's role.
+/// Caller must be a coach. Cannot escalate own role to COACH.
 #[tauri::command]
 pub async fn update_member_role(
     pool: State<'_, SqlitePool>,
     group_id: String,
     user_id: String,
     role: String,
+    caller_id: String,
 ) -> Result<GroupMemberRow, AppError> {
     let now = now_unix();
 
     // Validate role
     if role != "COACH" && role != "MEMBER" {
         return Err(AppError::validation("role", "Role must be COACH or MEMBER"));
+    }
+
+    // Prevent self-escalation to COACH
+    if caller_id == user_id && role == "COACH" {
+        return Err(AppError::validation("role", "Cannot promote yourself to coach"));
+    }
+
+    // Verify caller is a coach in the group
+    let caller_member = sqlx::query_as::<_, GroupMemberRow>(
+        "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?",
+    )
+    .bind(&group_id)
+    .bind(&caller_id)
+    .fetch_optional(pool.inner())
+    .await?;
+
+    match caller_member {
+        Some(m) if m.role == "COACH" => {}
+        _ => return Err(AppError::unauthorized("Only coaches can update member roles")),
     }
 
     // If promoting to COACH, check coach limit (max 3)
@@ -322,18 +389,47 @@ pub async fn get_group_invites(
 }
 
 /// Revokes an invite code by setting is_active to 0.
+/// Caller must be a coach in the invite's group.
 #[tauri::command]
 pub async fn revoke_invite(
     pool: State<'_, SqlitePool>,
     invite_id: String,
+    user_id: String,
 ) -> Result<(), AppError> {
     let now = now_unix();
 
-    sqlx::query("UPDATE group_invites SET is_active = 0, updated_at = ? WHERE id = ?")
+    // Fetch the invite to get its group_id
+    let invite = sqlx::query_as::<_, GroupInviteRow>(
+        "SELECT * FROM group_invites WHERE id = ?",
+    )
+    .bind(&invite_id)
+    .fetch_optional(pool.inner())
+    .await?
+    .ok_or_else(|| AppError::not_found("GroupInvite", &invite_id))?;
+
+    // Verify caller is a coach in the invite's group
+    let caller_member = sqlx::query_as::<_, GroupMemberRow>(
+        "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?",
+    )
+    .bind(&invite.group_id)
+    .bind(&user_id)
+    .fetch_optional(pool.inner())
+    .await?;
+
+    match caller_member {
+        Some(m) if m.role == "COACH" => {}
+        _ => return Err(AppError::unauthorized("Only coaches can revoke invites")),
+    }
+
+    let result = sqlx::query("UPDATE group_invites SET is_active = 0, updated_at = ? WHERE id = ?")
         .bind(now)
         .bind(&invite_id)
         .execute(pool.inner())
         .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("GroupInvite", &invite_id));
+    }
 
     Ok(())
 }
@@ -356,6 +452,19 @@ pub async fn join_group_by_code(
     .fetch_optional(pool.inner())
     .await?
     .ok_or_else(|| AppError::validation("code", "Invalid or expired invite code"))?;
+
+    // Check if user is already a member of this group
+    let existing_member = sqlx::query_as::<_, GroupMemberRow>(
+        "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?",
+    )
+    .bind(&invite.group_id)
+    .bind(&user_id)
+    .fetch_optional(pool.inner())
+    .await?;
+
+    if existing_member.is_some() {
+        return Err(AppError::validation("code", "You are already a member of this group"));
+    }
 
     // Check user group limit (max 5)
     let user_group_count: (i64,) =
@@ -429,6 +538,23 @@ pub async fn request_connection(
         ));
     }
 
+    // Bidirectional duplicate check: (A,B) or (B,A)
+    let existing = sqlx::query_as::<_, DirectConnectionRow>(
+        "SELECT * FROM direct_connections \
+         WHERE (requester_id = ? AND recipient_id = ?) \
+            OR (requester_id = ? AND recipient_id = ?)",
+    )
+    .bind(&requester_id)
+    .bind(&recipient_id)
+    .bind(&recipient_id)
+    .bind(&requester_id)
+    .fetch_optional(pool.inner())
+    .await?;
+
+    if existing.is_some() {
+        return Err(AppError::conflict("A connection between these users already exists"));
+    }
+
     let id = Uuid::new_v4().to_string();
     let now = now_unix();
 
@@ -494,24 +620,42 @@ pub async fn get_pending_connections(
     Ok(rows)
 }
 
-/// Accepts a connection request.
+/// Accepts a connection request. Only the recipient can accept.
 #[tauri::command]
 pub async fn accept_connection(
     pool: State<'_, SqlitePool>,
     connection_id: String,
+    user_id: String,
 ) -> Result<DirectConnectionRow, AppError> {
     let now = now_unix();
 
-    sqlx::query(
+    // Fetch and verify caller is the recipient
+    let existing = sqlx::query_as::<_, DirectConnectionRow>(
+        "SELECT * FROM direct_connections WHERE id = ?",
+    )
+    .bind(&connection_id)
+    .fetch_optional(pool.inner())
+    .await?
+    .ok_or_else(|| AppError::not_found("DirectConnection", &connection_id))?;
+
+    if existing.recipient_id != user_id {
+        return Err(AppError::unauthorized("Only the recipient can accept a connection request"));
+    }
+
+    let result = sqlx::query(
         "UPDATE direct_connections \
          SET status = 'ACTIVE', accepted_at = ?, updated_at = ? \
-         WHERE id = ?",
+         WHERE id = ? AND status = 'PENDING'",
     )
     .bind(now)
     .bind(now)
     .bind(&connection_id)
     .execute(pool.inner())
     .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::validation("connection_id", "Connection is not in PENDING status"));
+    }
 
     let row = sqlx::query_as::<_, DirectConnectionRow>(
         "SELECT * FROM direct_connections WHERE id = ?",
@@ -523,21 +667,39 @@ pub async fn accept_connection(
     Ok(row)
 }
 
-/// Declines a connection request.
+/// Declines a connection request. Only the recipient can decline.
 #[tauri::command]
 pub async fn decline_connection(
     pool: State<'_, SqlitePool>,
     connection_id: String,
+    user_id: String,
 ) -> Result<DirectConnectionRow, AppError> {
     let now = now_unix();
 
-    sqlx::query(
-        "UPDATE direct_connections SET status = 'DECLINED', updated_at = ? WHERE id = ?",
+    // Fetch and verify caller is the recipient
+    let existing = sqlx::query_as::<_, DirectConnectionRow>(
+        "SELECT * FROM direct_connections WHERE id = ?",
+    )
+    .bind(&connection_id)
+    .fetch_optional(pool.inner())
+    .await?
+    .ok_or_else(|| AppError::not_found("DirectConnection", &connection_id))?;
+
+    if existing.recipient_id != user_id {
+        return Err(AppError::unauthorized("Only the recipient can decline a connection request"));
+    }
+
+    let result = sqlx::query(
+        "UPDATE direct_connections SET status = 'DECLINED', updated_at = ? WHERE id = ? AND status = 'PENDING'",
     )
     .bind(now)
     .bind(&connection_id)
     .execute(pool.inner())
     .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::validation("connection_id", "Connection is not in PENDING status"));
+    }
 
     let row = sqlx::query_as::<_, DirectConnectionRow>(
         "SELECT * FROM direct_connections WHERE id = ?",
@@ -550,20 +712,40 @@ pub async fn decline_connection(
 }
 
 /// Removes (deletes) a connection.
+/// Caller must be either the requester or the recipient.
 #[tauri::command]
 pub async fn remove_connection(
     pool: State<'_, SqlitePool>,
     connection_id: String,
+    user_id: String,
 ) -> Result<(), AppError> {
-    sqlx::query("DELETE FROM direct_connections WHERE id = ?")
+    // Verify caller is a participant
+    let existing = sqlx::query_as::<_, DirectConnectionRow>(
+        "SELECT * FROM direct_connections WHERE id = ?",
+    )
+    .bind(&connection_id)
+    .fetch_optional(pool.inner())
+    .await?
+    .ok_or_else(|| AppError::not_found("DirectConnection", &connection_id))?;
+
+    if existing.requester_id != user_id && existing.recipient_id != user_id {
+        return Err(AppError::unauthorized("Only connection participants can remove a connection"));
+    }
+
+    let result = sqlx::query("DELETE FROM direct_connections WHERE id = ?")
         .bind(&connection_id)
         .execute(pool.inner())
         .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("DirectConnection", &connection_id));
+    }
 
     Ok(())
 }
 
 /// Updates write access for a connection. Determines direction based on user_id.
+/// Caller must be either the requester or the recipient.
 #[tauri::command]
 pub async fn update_connection_write_access(
     pool: State<'_, SqlitePool>,
@@ -583,6 +765,7 @@ pub async fn update_connection_write_access(
     .await?
     .ok_or_else(|| AppError::not_found("DirectConnection", &connection_id))?;
 
+    // Explicit auth check: caller must be a participant
     if existing.requester_id == user_id {
         sqlx::query(
             "UPDATE direct_connections SET requester_grants_write = ?, updated_at = ? WHERE id = ?",
@@ -592,7 +775,7 @@ pub async fn update_connection_write_access(
         .bind(&connection_id)
         .execute(pool.inner())
         .await?;
-    } else {
+    } else if existing.recipient_id == user_id {
         sqlx::query(
             "UPDATE direct_connections SET recipient_grants_write = ?, updated_at = ? WHERE id = ?",
         )
@@ -601,6 +784,8 @@ pub async fn update_connection_write_access(
         .bind(&connection_id)
         .execute(pool.inner())
         .await?;
+    } else {
+        return Err(AppError::unauthorized("Only connection participants can update write access"));
     }
 
     let row = sqlx::query_as::<_, DirectConnectionRow>(
@@ -628,6 +813,7 @@ struct FeedWorkoutRow {
 }
 
 /// Row for exercise count aggregation.
+/// Note: counts logged_activity_groups (supersets/circuits), not individual exercises.
 #[derive(Debug, sqlx::FromRow)]
 struct ExerciseCountRow {
     workout_log_id: String,
@@ -636,7 +822,7 @@ struct ExerciseCountRow {
 
 /// Returns the group activity feed: recent completed workouts from fellow group members.
 /// Excludes private fields (perceived_difficulty, bodyweight_at_session, overall_notes).
-/// Respects share_history_before_join for the viewing user.
+/// Respects each member's share_history_before_join (SH-9: the data owner controls visibility).
 #[tauri::command]
 pub async fn get_group_activity_feed(
     pool: State<'_, SqlitePool>,
@@ -647,14 +833,15 @@ pub async fn get_group_activity_feed(
 ) -> Result<Vec<GroupActivityFeedEntry>, AppError> {
     let feed_limit = limit.unwrap_or(20);
 
-    // Get viewer's member record for share_history_before_join check
-    let viewer_member = sqlx::query_as::<_, GroupMemberRow>(
+    // Verify viewer is a member of the group
+    let _viewer_member = sqlx::query_as::<_, GroupMemberRow>(
         "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?",
     )
     .bind(&group_id)
     .bind(&user_id)
     .fetch_optional(pool.inner())
-    .await?;
+    .await?
+    .ok_or_else(|| AppError::unauthorized("You are not a member of this group"))?;
 
     // Get peer members (excluding self)
     let peer_members = sqlx::query_as::<_, GroupMemberRow>(
@@ -669,17 +856,31 @@ pub async fn get_group_activity_feed(
         return Ok(Vec::new());
     }
 
-    // Build member role map
+    // Build per-member maps: role and SH-9 history visibility
     let member_ids: Vec<String> = peer_members.iter().map(|m| m.user_id.clone()).collect();
     let role_map: std::collections::HashMap<String, String> = peer_members
         .iter()
         .map(|m| (m.user_id.clone(), m.role.clone()))
         .collect();
 
+    // SH-9: Map each member to their joined_at if they do NOT share history before join.
+    // The data owner's flag controls visibility, not the viewer's.
+    let history_cutoff_map: std::collections::HashMap<String, Option<i64>> = peer_members
+        .iter()
+        .map(|m| {
+            let cutoff = if m.share_history_before_join == 0 {
+                m.joined_at // workouts before this timestamp are hidden
+            } else {
+                None // no cutoff, all history visible
+            };
+            (m.user_id.clone(), cutoff)
+        })
+        .collect();
+
     // Build the IN clause placeholders
     let placeholders = member_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
 
-    // Build query with optional before and share_history_before_join filters
+    // Query all completed workouts from peer members (filter SH-9 post-fetch per owner)
     let mut conditions = vec![
         format!("user_id IN ({placeholders})"),
         "completed_at IS NOT NULL".to_string(),
@@ -687,14 +888,6 @@ pub async fn get_group_activity_feed(
 
     if before.is_some() {
         conditions.push("started_at < ?".to_string());
-    }
-
-    if let Some(ref vm) = viewer_member {
-        if vm.share_history_before_join == 0 {
-            if let Some(joined_at) = vm.joined_at {
-                conditions.push(format!("started_at >= {joined_at}"));
-            }
-        }
     }
 
     let where_clause = conditions.join(" AND ");
@@ -720,8 +913,24 @@ pub async fn get_group_activity_feed(
         return Ok(Vec::new());
     }
 
+    // SH-9: Filter logs per data owner's share_history_before_join setting
+    let filtered_logs: Vec<FeedWorkoutRow> = logs
+        .into_iter()
+        .filter(|log| {
+            let uid = log.user_id.as_deref().unwrap_or_default();
+            match history_cutoff_map.get(uid) {
+                Some(Some(cutoff)) => log.started_at >= *cutoff,
+                _ => true, // no cutoff or unknown member, allow
+            }
+        })
+        .collect();
+
+    if filtered_logs.is_empty() {
+        return Ok(Vec::new());
+    }
+
     // Get exercise counts
-    let log_ids: Vec<String> = logs.iter().map(|l| l.id.clone()).collect();
+    let log_ids: Vec<String> = filtered_logs.iter().map(|l| l.id.clone()).collect();
     let log_placeholders = log_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
     let count_sql = format!(
         "SELECT workout_log_id, COUNT(*) as cnt \
@@ -739,7 +948,7 @@ pub async fn get_group_activity_feed(
         .map(|c| (c.workout_log_id, c.cnt))
         .collect();
 
-    let entries = logs
+    let entries = filtered_logs
         .into_iter()
         .map(|log| {
             let uid = log.user_id.clone().unwrap_or_default();

@@ -66,6 +66,7 @@ export interface ActivityFeedOptions {
 export interface ActivityFeedWorkoutSummary {
   id: string
   userId: string
+  /** Reserved for future user profile integration */
   userDisplayName?: string
   title: string | null
   startedAt: string
@@ -76,7 +77,7 @@ export interface ActivityFeedWorkoutSummary {
 
 export interface GroupActivityFeedEntry extends ActivityFeedWorkoutSummary {
   groupId: string
-  memberRole: string
+  memberRole: GroupRole
 }
 
 export interface ConnectionActivityFeedEntry extends ActivityFeedWorkoutSummary {

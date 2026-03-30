@@ -78,6 +78,14 @@ export function MemberCard({ member, isCoach, currentUserId, groupId }: MemberCa
           </>
         )}
       </div>
+
+      {(updateRole.isError || removeMember.isError) && (
+        <p className="text-xs text-warning-flare mt-1 px-4 pb-2">
+          {updateRole.isError
+            ? updateRole.error?.message || 'Failed to update role'
+            : removeMember.error?.message || 'Failed to remove member'}
+        </p>
+      )}
     </div>
   )
 }

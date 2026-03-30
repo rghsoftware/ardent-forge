@@ -238,6 +238,9 @@ function MembersTab({
               {createInvite.isPending ? 'Creating...' : 'New invite'}
             </Button>
           </div>
+          {createInvite.isError && (
+            <p className="text-xs text-warning-flare">Failed to create invite</p>
+          )}
           {activeInvites.length === 0 ? (
             <p className="text-xs text-warm-ash/40">
               No active invites. Create one to add members.
@@ -282,11 +285,28 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
 
   if (isLoading) return <DetailSkeleton />
 
-  if (isError || !group) {
+  if (isError) {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
         <Icon name="error" size={36} className="mb-3 text-warning-flare" />
-        <p className="font-display text-sm text-warning-flare">Group not found</p>
+        <p className="font-display text-sm text-warning-flare">Failed to load group</p>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-4"
+          onClick={() => navigate({ to: `/groups/${groupId}` })}
+        >
+          Retry
+        </Button>
+      </div>
+    )
+  }
+
+  if (!group) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
+        <Icon name="search_off" size={36} className="mb-3 text-warm-ash/50" />
+        <p className="font-display text-sm text-warm-ash">Group not found</p>
         <Button
           variant="ghost"
           size="sm"

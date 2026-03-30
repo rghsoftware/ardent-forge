@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS direct_connections (
     created_at              INTEGER,
     updated_at              INTEGER,
     UNIQUE (requester_id, recipient_id),
-    CHECK (requester_id != recipient_id)
+    CHECK (requester_id != recipient_id),
+    CHECK (status != 'ACTIVE' OR accepted_at IS NOT NULL)
 );
 
 -- ============================================================

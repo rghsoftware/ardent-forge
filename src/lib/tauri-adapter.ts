@@ -727,6 +727,8 @@ function toProgramActivationRowFromTauri(r: TauriProgramActivationResponse): Pro
 function toAccountabilityGroupRowFromTauri(
   r: TauriAccountabilityGroupResponse,
 ): AccountabilityGroupRow {
+  if (!r.created_at || !r.updated_at)
+    console.warn(`[tauri-adapter] Null timestamp in AccountabilityGroup ${r.id}`)
   return {
     id: r.id,
     user_id: r.user_id,
@@ -740,6 +742,8 @@ function toAccountabilityGroupRowFromTauri(
 }
 
 function toGroupMemberRowFromTauri(r: TauriGroupMemberResponse): GroupMemberRow {
+  if (!r.created_at || !r.updated_at)
+    console.warn(`[tauri-adapter] Null timestamp in GroupMember ${r.id}`)
   return {
     id: r.id,
     group_id: r.group_id,
@@ -753,6 +757,8 @@ function toGroupMemberRowFromTauri(r: TauriGroupMemberResponse): GroupMemberRow 
 }
 
 function toGroupInviteRowFromTauri(r: TauriGroupInviteResponse): GroupInviteRow {
+  if (!r.created_at || !r.updated_at)
+    console.warn(`[tauri-adapter] Null timestamp in GroupInvite ${r.id}`)
   return {
     id: r.id,
     group_id: r.group_id,
@@ -766,6 +772,8 @@ function toGroupInviteRowFromTauri(r: TauriGroupInviteResponse): GroupInviteRow 
 }
 
 function toDirectConnectionRowFromTauri(r: TauriDirectConnectionResponse): DirectConnectionRow {
+  if (!r.created_at || !r.updated_at)
+    console.warn(`[tauri-adapter] Null timestamp in DirectConnection ${r.id}`)
   return {
     id: r.id,
     requester_id: r.requester_id,
@@ -1675,7 +1683,7 @@ export class TauriAdapter implements DataAdapter {
   }
 
   async deleteGroup(id: string): Promise<void> {
-    await invokeCommand<void>('delete_group', { id })
+    await invokeCommand<void>('delete_group', { id, user_id: this.userId })
   }
 
   // ---------------------------------------------------------------------------
@@ -1690,7 +1698,11 @@ export class TauriAdapter implements DataAdapter {
   }
 
   async removeGroupMember(groupId: string, userId: string): Promise<void> {
-    await invokeCommand<void>('remove_group_member', { group_id: groupId, user_id: userId })
+    await invokeCommand<void>('remove_group_member', {
+      group_id: groupId,
+      user_id: userId,
+      caller_id: this.userId,
+    })
   }
 
   async updateMemberRole(groupId: string, userId: string, role: GroupRole): Promise<GroupMember> {
@@ -1698,6 +1710,7 @@ export class TauriAdapter implements DataAdapter {
       group_id: groupId,
       user_id: userId,
       role,
+      caller_id: this.userId,
     })
     return toGroupMember(toGroupMemberRowFromTauri(row))
   }
@@ -1722,7 +1735,7 @@ export class TauriAdapter implements DataAdapter {
   }
 
   async revokeInvite(inviteId: string): Promise<void> {
-    await invokeCommand<void>('revoke_invite', { invite_id: inviteId })
+    await invokeCommand<void>('revoke_invite', { invite_id: inviteId, user_id: this.userId })
   }
 
   async joinGroupByCode(code: string): Promise<GroupMember> {
@@ -1762,6 +1775,7 @@ export class TauriAdapter implements DataAdapter {
   async acceptConnection(connectionId: string): Promise<DirectConnection> {
     const row = await invokeCommand<TauriDirectConnectionResponse>('accept_connection', {
       connection_id: connectionId,
+      user_id: this.userId,
     })
     return toDirectConnection(toDirectConnectionRowFromTauri(row))
   }
@@ -1769,12 +1783,16 @@ export class TauriAdapter implements DataAdapter {
   async declineConnection(connectionId: string): Promise<DirectConnection> {
     const row = await invokeCommand<TauriDirectConnectionResponse>('decline_connection', {
       connection_id: connectionId,
+      user_id: this.userId,
     })
     return toDirectConnection(toDirectConnectionRowFromTauri(row))
   }
 
   async removeConnection(connectionId: string): Promise<void> {
-    await invokeCommand<void>('remove_connection', { connection_id: connectionId })
+    await invokeCommand<void>('remove_connection', {
+      connection_id: connectionId,
+      user_id: this.userId,
+    })
   }
 
   async updateConnectionWriteAccess(
@@ -1818,7 +1836,7 @@ export class TauriAdapter implements DataAdapter {
       durationSeconds: e.duration_seconds,
       exerciseCount: e.exercise_count,
       groupId: e.group_id,
-      memberRole: e.member_role,
+      memberRole: e.member_role as GroupRole,
     }))
   }
 

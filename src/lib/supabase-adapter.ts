@@ -1189,6 +1189,16 @@ export class SupabaseAdapter implements DataAdapter {
       .single()
 
     if (error) throw error
+
+    // C2: Insert creator as COACH member so browser-mode flow matches Tauri behavior
+    const { error: memberError } = await this.client.from('group_members').insert({
+      group_id: data.id,
+      user_id: userId,
+      role: 'COACH',
+      share_history_before_join: false,
+    })
+    if (memberError) throw memberError
+
     return toAccountabilityGroup(data)
   }
 
@@ -1524,10 +1534,12 @@ export class SupabaseAdapter implements DataAdapter {
 
     let exerciseCounts: Record<string, number> = {}
     if (logIds.length > 0) {
-      const { data: activityGroups } = await this.client
+      const { data: activityGroups, error: countError } = await this.client
         .from('logged_activity_groups')
         .select('workout_log_id')
         .in('workout_log_id', logIds)
+
+      if (countError) throw countError
 
       exerciseCounts = {}
       for (const ag of activityGroups ?? []) {
@@ -1598,10 +1610,12 @@ export class SupabaseAdapter implements DataAdapter {
 
     let exerciseCounts: Record<string, number> = {}
     if (logIds.length > 0) {
-      const { data: activityGroups } = await this.client
+      const { data: activityGroups, error: countError } = await this.client
         .from('logged_activity_groups')
         .select('workout_log_id')
         .in('workout_log_id', logIds)
+
+      if (countError) throw countError
 
       exerciseCounts = {}
       for (const ag of activityGroups ?? []) {
@@ -1609,25 +1623,27 @@ export class SupabaseAdapter implements DataAdapter {
       }
     }
 
-    return (logs ?? []).map((log) => {
-      let durationSeconds: number | null = null
-      if (log.completed_at && log.started_at) {
-        durationSeconds = Math.floor(
-          (new Date(log.completed_at).getTime() - new Date(log.started_at).getTime()) / 1000,
-        )
-      }
+    return (logs ?? [])
+      .filter((log) => connectionMap[log.user_id] !== undefined)
+      .map((log) => {
+        let durationSeconds: number | null = null
+        if (log.completed_at && log.started_at) {
+          durationSeconds = Math.floor(
+            (new Date(log.completed_at).getTime() - new Date(log.started_at).getTime()) / 1000,
+          )
+        }
 
-      return {
-        id: log.id,
-        userId: log.user_id,
-        title: log.title,
-        startedAt: log.started_at,
-        completedAt: log.completed_at,
-        durationSeconds,
-        exerciseCount: exerciseCounts[log.id] ?? 0,
-        connectionId: connectionMap[log.user_id] ?? '',
-      }
-    })
+        return {
+          id: log.id,
+          userId: log.user_id,
+          title: log.title,
+          startedAt: log.started_at,
+          completedAt: log.completed_at,
+          durationSeconds,
+          exerciseCount: exerciseCounts[log.id] ?? 0,
+          connectionId: connectionMap[log.user_id],
+        }
+      })
   }
 }
 

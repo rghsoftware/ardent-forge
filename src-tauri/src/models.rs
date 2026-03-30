@@ -342,8 +342,8 @@ pub struct GroupInviteRow {
     pub group_id: String,
     pub code: String,
     pub created_by: String,
-    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
-    pub expires_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_required")]
+    pub expires_at: i64,
     pub is_active: i64, // boolean 0/1
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
