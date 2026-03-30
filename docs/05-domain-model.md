@@ -148,6 +148,18 @@ classDiagram
     Activity "*" --> "1" Exercise : references
 
     WorkoutLog "1" --> "*" LoggedSet : records
+
+    class EventItem {
+        +name: string
+        +category: string?
+        +quantity: number
+        +isPacked: boolean
+        +sortOrder: number
+        +notes: string?
+    }
+
+    SessionTemplate "1" --> "*" EventItem : "packing list (EVENT only)"
+    WorkoutLog "1" --> "*" EventItem : "packing list (EVENT only)"
 ```
 
 ---
@@ -200,12 +212,13 @@ flowchart TB
 
 ### Aggregate Rules
 
-| Aggregate        | Root            | Owned Entities                                 | Notes                            |
-| ---------------- | --------------- | ---------------------------------------------- | -------------------------------- |
-| Program          | Program         | Block, BlockWeek, ScheduledSession             | Full program hierarchy           |
-| Session Template | SessionTemplate | ActivityGroup, Activity                        | Reusable session definitions     |
-| Workout Log      | WorkoutLog      | LoggedActivityGroup, LoggedActivity, LoggedSet | Complete workout record          |
-| User             | UserProfile     | OneRepMax entries                              | User settings and training maxes |
+| Aggregate        | Root            | Owned Entities                                                                    | Notes                                              |
+| ---------------- | --------------- | --------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Program          | Program         | Block, BlockWeek, ScheduledSession                                                | Full program hierarchy                             |
+| Session Template | SessionTemplate | ActivityGroup, Activity, EventItem (when category = EVENT)                        | Reusable session definitions                       |
+| Workout Log      | WorkoutLog      | LoggedActivityGroup, LoggedActivity, LoggedSet, EventItem (when category = EVENT) | Complete workout record                            |
+| User             | UserProfile     | OneRepMax entries                                                                 | User settings and training maxes                   |
+| Conversation     | Conversation    | ConversationParticipant, Message                                                  | Chat channel with participants and message history |
 
 ---
 
@@ -386,7 +399,7 @@ erDiagram
         string block_week_id FK
         int day_of_week "nullable for floating"
         string day_label "Day 1, Day 3, etc."
-        enum session_type "STRENGTH, CONDITIONING, SE, MIXED"
+        enum session_type "STRENGTH, CONDITIONING, SE, MIXED, EVENT"
         string session_template_id FK
         string notes "optional"
     }
@@ -548,6 +561,7 @@ flowchart LR
         ST2["CONDITIONING"]
         ST3["SE"]
         ST4["MIXED"]
+        ST5["EVENT"]
     end
 ```
 
@@ -735,6 +749,143 @@ flowchart LR
 
 ---
 
+## Chat Domain
+
+Four new entities supporting in-app messaging.
+
+**Conversation** — Represents a messaging channel. Has a type discriminator (direct or group), an optional title (for group conversations), and an optional reference to a Group entity (for group-linked conversations). `updated_at` is bumped on each new message to support sorting by recency. A Conversation has many ConversationParticipants and many Messages.
+
+**ConversationParticipant** — Junction entity linking a UserProfile to a Conversation. Tracks `last_read_at` (read position cursor), `is_archived` (retention preference), and `left_at` (departure timestamp, nullable). A UserProfile participates in many Conversations; a Conversation has many Participants.
+
+**Message** — A single message within a Conversation. Has a `message_type` discriminator (text, workout, media, system), a `content` field (text body or JSON WorkoutSnapshot for workout-type messages), and a sender reference (nullable for system messages). Messages are append-only in the initial release. A Message may have zero or one MediaAttachment.
+
+**MediaAttachment** — Reference to an externally hosted media asset (Cloudflare Stream for video, Supabase Storage for images and files). Stores provider name, provider asset ID, media type (video, image, or file), thumbnail URL, duration (for video), file size, original filename, MIME type, and processing status. No binary data stored. Belongs to exactly one Message.
+
+**WorkoutSnapshot** is a value object serialized from existing Workout, Program, or Template entities at share time. It has no identity of its own and is stored as JSON in the `content` field of a Message with `message_type = 'workout'`. The snapshot captures all fields necessary to render a workout card (exercise names, sets, reps, weights, percentages, rest periods, notes) and is frozen at the moment of sharing -- it does not reference the source entity and remains viewable even if the original is deleted or made private.
+
+```mermaid
+classDiagram
+    class Conversation {
+        +id: string
+        +type: direct | group
+        +title: string?
+        +groupId: string?
+        +createdAt: string
+        +updatedAt: string
+    }
+
+    class ConversationParticipant {
+        +id: string
+        +conversationId: string
+        +userId: string
+        +joinedAt: string
+        +lastReadAt: string
+        +isArchived: boolean
+        +leftAt: string?
+    }
+
+    class Message {
+        +id: string
+        +conversationId: string
+        +senderId: string?
+        +messageType: text | workout | media | system
+        +content: string?
+        +createdAt: string
+        +syncStatus: pending | synced | failed
+    }
+
+    class MediaAttachment {
+        +id: string
+        +messageId: string
+        +provider: cloudflare_stream | supabase_storage
+        +providerAssetId: string
+        +mediaType: video | image | file
+        +thumbnailUrl: string?
+        +durationSeconds: number?
+        +fileSizeBytes: number?
+        +originalFilename: string?
+        +mimeType: string?
+        +status: processing | ready | failed
+        +createdAt: string
+    }
+
+    class WorkoutSnapshot {
+        <<value object>>
+        +exerciseName: string
+        +sets: number?
+        +reps: number?
+        +weight: Weight?
+        +percentage: number?
+        +restPeriod: Duration?
+        +notes: string?
+    }
+
+    class AccountabilityGroup {
+    }
+
+    class UserProfile {
+    }
+
+    Conversation "1" --> "*" ConversationParticipant : has
+    Conversation "1" --> "*" Message : contains
+    Conversation "*" --> "0..1" AccountabilityGroup : references
+    ConversationParticipant "*" --> "1" UserProfile : links
+    Message "*" --> "0..1" UserProfile : sender
+    Message "1" --> "0..1" MediaAttachment : has
+    Message ..> WorkoutSnapshot : "content (workout type)"
+```
+
+---
+
+## Event Entities
+
+Entities supporting event tracking and packing lists within the program model. An event is a session with `category: EVENT` that uses a parallel data structure instead of activity groups, activities, and exercises.
+
+```mermaid
+classDiagram
+    class EventMetadata {
+        <<value object>>
+        +eventDate: string?
+        +location: string?
+        +latitude: number?
+        +longitude: number?
+        +eventUrl: string?
+        +requirements: EventRequirement[]
+    }
+
+    class EventRequirement {
+        <<value object>>
+        +key: string
+        +value: string
+        +unit: string?
+        +notes: string?
+    }
+
+    class EventItem {
+        +id: string
+        +name: string
+        +category: string?
+        +quantity: number
+        +isPacked: boolean
+        +sortOrder: number
+        +notes: string?
+    }
+
+    SessionTemplate "1" --> "0..1" EventMetadata : "when category = EVENT"
+    SessionTemplate "1" --> "*" EventItem : "when category = EVENT"
+    WorkoutLog "1" --> "0..1" EventMetadata : "when category = EVENT"
+    WorkoutLog "1" --> "*" EventItem : "when category = EVENT"
+    EventMetadata "1" --> "*" EventRequirement : "contains"
+```
+
+`EventMetadata` is a value object stored as a JSON column on `session_templates` and `workout_logs`. It is only populated when `category = 'EVENT'`. It contains the event date, location (with optional coordinates for map linking), a URL to the event's external page, and an array of freeform requirements.
+
+`EventRequirement` is a value object within `EventMetadata`. Requirements are freeform key-value pairs representing event-specific constraints such as ruck weight, distance, cutoff time, or corral assignment. Values are untyped strings for human reference -- the app does not perform arithmetic on them.
+
+`EventItem` is an entity (has its own ID) representing a single item on an event's packing list. Items have a free-text category for UI grouping, a quantity, a packed/not-packed boolean, and a sort order for positioning within a category. Items are stored in a dedicated `event_items` table with a polymorphic foreign key to either `session_templates` or `workout_logs`.
+
+---
+
 ## Relationships Summary
 
 ```mermaid
@@ -757,8 +908,10 @@ erDiagram
 
     SESSION_TEMPLATE ||--o{ ACTIVITY_GROUP : "contains"
     ACTIVITY_GROUP ||--o{ ACTIVITY : "contains"
+    SESSION_TEMPLATE ||--o{ EVENT_ITEM : "packing list"
 
     WORKOUT_LOG ||--o{ LOGGED_ACTIVITY_GROUP : "contains"
+    WORKOUT_LOG ||--o{ EVENT_ITEM : "packing list"
     WORKOUT_LOG ||--o{ SHARE_LINK : "shared via"
     LOGGED_ACTIVITY_GROUP ||--o{ LOGGED_ACTIVITY : "contains"
     LOGGED_ACTIVITY ||--o{ LOGGED_SET : "records"
@@ -784,6 +937,12 @@ erDiagram
 | Group activity feed                    | GroupMember, WorkoutLog                                      | Medium (when viewing group) |
 | Coach's member list with last activity | GroupMember, WorkoutLog                                      | Low                         |
 | Resolve share link                     | ShareLink, Program or WorkoutLog                             | Low                         |
+| Event packing list                     | EventItem (via session_template or workout_log)              | Medium (event detail view)  |
+| Next upcoming event                    | SessionTemplate, ScheduledSession                            | Medium (Today screen)       |
+| Toggle packing item                    | EventItem                                                    | High (during event prep)    |
+| Conversation list                      | Conversation, ConversationParticipant                        | High (chat list screen)     |
+| Message history                        | Message, ConversationParticipant                             | High (conversation detail)  |
+| Unread counts                          | Message, ConversationParticipant                             | High (unread indicators)    |
 
 ### Query Optimization Notes
 
@@ -796,3 +955,5 @@ erDiagram
 - Index on `GroupMember(user_id)` for "my groups" query
 - Index on `DirectConnection(requester_id)` and `(recipient_id)` for connection lookup
 - Unique index on `ShareLink(token)` for share link resolution
+- Index on `event_items(session_template_id)` for template packing list lookup
+- Index on `event_items(workout_log_id)` for logged event packing list lookup

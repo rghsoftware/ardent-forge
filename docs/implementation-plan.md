@@ -127,8 +127,57 @@
                             │ Account-  │ │ Coach     │
                             │ ability   │ │ Write     │
                             │ Groups    │ │ Access    │
-                            └───────────┘ └───────────┘
+                            └───────────┘ └─────┬─────┘
+                                                │
+        ═════════════════════════════════╪═════════════════════
+         Phase 3-4 Complete              │   Social + Analytics
+        ═════════════════════════════════╪═════════════════════
+                                         │
+                                ┌────────┼────────┐
+                                ▼                 ▼
+                         ┌───────────┐     ┌───────────┐
+                         │ STEP 19:  │     │ STEP 20:  │
+                         │ Runtime   │     │ Docker &  │
+                         │ Backend   │     │ Self-Host │
+                         │ Config    │     │           │
+                         └─────┬─────┘     └───────────┘
+                               │
+        ═══════════════════════╪═══════════════════════════════
+         Phase 5 Complete       │   Ready for Play Store release
+        ═══════════════════════╪═══════════════════════════════
+                               │
+              ┌────────────────┼───────────┐
+              ▼                ▼           ▼
+       ┌───────────┐  ┌───────────┐ ┌───────────┐
+       │ STEP 21:  │  │ STEP 22:  │ │ STEP 26:  │
+       │ Chat Data │  │ Supabase  │ │ Retention │
+       │ Layer     │  │ Realtime  │ │ + Archive │
+       │           │  │ (AFTER 21)│ │ (AFTER 21)│
+       └─────┬─────┘  └─────┬─────┘ └─────┬─────┘
+             │               │              │
+             └───────┬────────┘             │
+                     ▼                      │
+           ┌──────────────┐                 │
+           │ STEP 23:     │                 │
+           │ Chat UI      │                 │
+           │ (biggest)    │                 │
+           └──────┬───────┘                 │
+                  │                         │
+         ┌────────┼────────┐                │
+         ▼                 ▼                │
+  ┌───────────┐     ┌───────────┐           │
+  │ STEP 24:  │     │ STEP 25:  │           │
+  │ Workout   │     │ Video +   │           │
+  │ Sharing   │     │ Image     │           │
+  │ in Chat   │     │ Sharing   │           │
+  └───────────┘     └───────────┘           │
+                                            │
+  ══════════════════════════╪═══════════════╪════
+   Phase 6 Complete         │   Chat & Media working
+  ══════════════════════════════════════════════
 ```
+
+> **Note on ordering:** Step 19 and Step 20 are shown after Phase 3-4 for dependency graph clarity, but Step 19 can be executed at any point after Phase 1 (Step 9). It modifies the Supabase client initialization and adds a settings screen — both of which exist by Step 9. Step 20 (Docker) can be done at any point after Step 3 (Supabase schema exists). Neither step depends on Steps 10-18. The only hard requirement is that Step 19 must be complete before any Play Store or public distribution.
 
 ---
 
@@ -404,16 +453,17 @@ Canonical TypeScript types and Zod validation schemas in `src/domain/`. These ar
 
 ### Type files created
 
-| File             | Contents                                                                   | Source Doc                           |
-| ---------------- | -------------------------------------------------------------------------- | ------------------------------------ |
-| `units.ts`       | Weight, Distance, Duration, Pace, NumberRange, OneRepMax                   | 05-domain-model.md §Value Objects    |
-| `exercise.ts`    | Exercise, ExerciseCategory, MovementPattern, MuscleGroup, Equipment        | 05-domain-model.md §Exercise         |
-| `set-scheme.ts`  | SetScheme (12-variant union), LoadSpec (7-variant union)                   | 05-domain-model.md §SetScheme        |
-| `session.ts`     | SessionTemplate, ActivityGroup, Activity, GroupType, ScoringType           | 05-domain-model.md §Session Template |
-| `program.ts`     | Program, Block, BlockWeek, ScheduledSession, ProgramSource, BlockType      | 05-domain-model.md §Program          |
-| `workout-log.ts` | WorkoutLog, LoggedActivityGroup, LoggedActivity, LoggedSet, SetType        | 05-domain-model.md §WorkoutLog       |
-| `user.ts`        | UserProfile, OneRepMaxHistory                                              | 05-domain-model.md §UserProfile      |
-| `sharing.ts`     | AccountabilityGroup, GroupMember, GroupInvite, DirectConnection, ShareLink | 02-prd-sharing.md §Data Model        |
+| File             | Contents                                                                                           | Source Doc                                                       |
+| ---------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `units.ts`       | Weight, Distance, Duration, Pace, NumberRange, OneRepMax                                           | 05-domain-model.md §Value Objects                                |
+| `exercise.ts`    | Exercise, ExerciseCategory, MovementPattern, MuscleGroup, Equipment                                | 05-domain-model.md §Exercise                                     |
+| `set-scheme.ts`  | SetScheme (12-variant union), LoadSpec (7-variant union)                                           | 05-domain-model.md §SetScheme                                    |
+| `session.ts`     | SessionTemplate, ActivityGroup, Activity, GroupType, ScoringType, SessionCategory (includes EVENT) | 05-domain-model.md §Session Template                             |
+| `program.ts`     | Program, Block, BlockWeek, ScheduledSession, ProgramSource, BlockType                              | 05-domain-model.md §Program                                      |
+| `workout-log.ts` | WorkoutLog, LoggedActivityGroup, LoggedActivity, LoggedSet, SetType                                | 05-domain-model.md §WorkoutLog                                   |
+| `user.ts`        | UserProfile, OneRepMaxHistory                                                                      | 05-domain-model.md §UserProfile                                  |
+| `sharing.ts`     | AccountabilityGroup, GroupMember, GroupInvite, DirectConnection, ShareLink                         | 02-prd-sharing.md §Data Model                                    |
+| `event.ts`       | EventMetadata, EventRequirement, EventItem, Zod schemas                                            | 04-prd-events.md §Data Model, 05-domain-model.md §Event Entities |
 
 ### Done ✅
 
@@ -449,6 +499,8 @@ Supabase project configuration and database schema. Uses the new publishable key
 ### 3b–3e. Schema, RLS, Indices, Seed Data
 
 Phase 0 tables created via migrations: `exercises`, `workout_logs`, `logged_activity_groups`, `logged_activities`, `logged_sets`, `user_profiles`, `one_rep_max_history`.
+
+> **Note:** The `event_items` table and `event_metadata` columns on `session_templates`/`workout_logs` are added as a Phase 2 migration in Step 13.5a, not in the initial Phase 0 schema.
 
 RLS enabled with simple user isolation: `user_id = auth.uid()`. Indices for key query patterns. Exercise dictionary seeded with 50+ common exercises.
 
@@ -1080,6 +1132,127 @@ The "Today's Workout" flow: load prescribed session, calculate weights from 1RMs
 
 ---
 
+## STEP 13.5: Events & Packing Lists
+
+**Dependencies:** Step 10 (session templates exist), Step 6 (workout logging exists)
+**Priority:** P1
+**Docs:** `04-prd-events.md`, `05-domain-model.md` §Event Entities, `06-invariants.md` §Event Invariants, `08-erd.md` §Event Tables
+
+### What to build
+
+Event session type with packing lists and freeform requirements. Events are sessions with `category: EVENT` that display event metadata and a checkable packing list instead of exercises and sets.
+
+### 13.5a. Database migration
+
+Add `event_metadata` nullable JSON column to `session_templates` and `workout_logs` tables. Create `event_items` table with polymorphic FK (session_template_id XOR workout_log_id), CHECK constraints per `08-erd.md` §Event Tables.
+
+Migration includes:
+
+- `event_metadata` column on `session_templates` (TEXT, nullable)
+- `event_metadata` column on `workout_logs` (TEXT, nullable)
+- `event_items` table with CHECK constraint for FK exclusivity
+- Partial indices on `event_items(session_template_id)` and `event_items(workout_log_id)`
+- RLS policies for `event_items` (user_id = auth.uid())
+
+### 13.5b. Domain types + Zod schemas
+
+Add to `src/domain/`:
+
+| Type          | File       | Contents                                                     |
+| ------------- | ---------- | ------------------------------------------------------------ |
+| EventMetadata | `event.ts` | EventMetadata value object, EventRequirement value object    |
+| EventItem     | `event.ts` | EventItem entity type                                        |
+| Zod schemas   | `event.ts` | eventMetadataSchema, eventRequirementSchema, eventItemSchema |
+
+Update `session.ts`: Add `EVENT` to the SessionCategory enum and update the SessionTemplate type to include optional `eventMetadata` field.
+
+Update `workout-log.ts`: Add optional `eventMetadata` field to WorkoutLog type.
+
+### 13.5c. Data adapter methods
+
+Add to the data adapter interface:
+
+| Method                                | Purpose                                  |
+| ------------------------------------- | ---------------------------------------- |
+| `getEventItems(parentId, parentType)` | Fetch packing list for a template or log |
+| `saveEventItem(item)`                 | Create or update a packing list item     |
+| `deleteEventItem(itemId)`             | Remove an item from the list             |
+| `toggleEventItemPacked(itemId)`       | Toggle isPacked on a single item         |
+| `reorderEventItems(items)`            | Batch update sort_order values           |
+
+Implement in both Supabase adapter (browser mode) and Tauri adapter (native mode, when Step 8 is complete).
+
+### 13.5d. Event creation UI
+
+Event creation form accessible from:
+
+- Program builder (Step 12) -- adding an event session to a block week
+- Quick-log -- creating a standalone event workout log
+- Clone -- duplicating an event template with isPacked reset
+
+Form sections per `10-user-flows.md` §Flow 10:
+
+- Event name (required, underline input)
+- Date/time (optional, date + time pickers)
+- Location (optional, underline input + coordinates toggle)
+- Event URL (optional, underline input)
+- Requirements (expandable section, key-value-unit-notes form)
+- Packing list (expandable section, name-category-quantity-notes form)
+
+All text uses industrial vocabulary: "ADD REQUIREMENT", "ADD ITEM", "SAVE EVENT"
+
+### 13.5e. Event detail + packing check-off UI
+
+Event detail screen per `10-user-flows.md` §Flow 11:
+
+- Event header with name, date, location, countdown badge
+- Location as tappable map link (when coordinates present, opens platform maps)
+- Event URL as tappable external link
+- Requirements displayed as key-value list in `surface-steel` card
+- Packing list as categorized checklist with:
+  - Items grouped by `category` value
+  - Collapsible category sections
+  - Single-tap toggle for isPacked (< 100ms feedback)
+  - Progress bar per category and overall (`ember` on `surface-steel` track)
+  - Drag-and-drop reorder within categories (dnd-kit)
+
+### 13.5f. Event in program timeline
+
+- Events display with distinct visual treatment in program timeline (⚑ icon, `surface-steel` card with `ember` accent)
+- Event date shown alongside the program week/day label
+- Countdown badge visible on Today screen when next event is within 30 days
+
+### 13.5g. Event countdown notification
+
+Per `11-notification-design.md` §Type 4:
+
+- New `event_reminders` notification channel (Android)
+- Configurable reminder intervals (default: 7 days, 3 days, 1 day before)
+- Notification includes packing progress when items exist
+- Respects quiet hours
+- "VIEW EVENT" action navigates to event detail
+
+### Done when
+
+- [ ] `EVENT` is a valid SessionCategory in domain types
+- [ ] event_metadata column exists on session_templates and workout_logs
+- [ ] event_items table exists with CHECK constraints and indices
+- [ ] Zod schemas validate EventMetadata, EventRequirement, EventItem
+- [ ] Data adapter supports getEventItems, saveEventItem, deleteEventItem, toggleEventItemPacked, reorderEventItems
+- [ ] Event creation form renders with all fields (name, date, location, URL, requirements, packing list)
+- [ ] Event detail screen displays metadata, requirements, and packing list
+- [ ] Single-tap packing toggle works with < 100ms feedback
+- [ ] Progress indicator updates on pack/unpack
+- [ ] Drag-and-drop reorder works for packing list items
+- [ ] Events display correctly in program timeline with ⚑ icon
+- [ ] Clone operation resets isPacked to false on all items
+- [ ] Event countdown notification fires at configured intervals
+- [ ] Location renders as tappable map link when coordinates present
+- [ ] RLS policies enforce user_id isolation on event_items
+- [ ] All text uses industrial vocabulary (no emoji, no exclamation marks)
+
+---
+
 ## ═══ PHASE 2 COMPLETE ═══
 
 **Checkpoint:** Users can create programs, build session templates with all 12 SetScheme types, follow structured multi-week periodized programs with percentage-based loading, and log workouts with prescribed-vs-actual tracking. The TB template library provides ready-made programs. All UI follows Iron & Ember design system.
@@ -1342,6 +1515,821 @@ Coach can create/edit programs for group members and update their 1RMs.
 
 ---
 
+## STEP 19: Runtime Backend Configuration
+
+**Dependencies:** Step 4 (Supabase adapter + auth), Step 8 (Tauri shell + SQLite). Can be done in parallel with Steps 10-18.
+**Priority:** P0 (required before Play Store release)
+**Docs:** `03-prd-hosting.md`, `07-architecture.md` §Configuration Layer, `06-invariants.md` §Configuration Invariants
+
+### What to build
+
+Runtime configuration system allowing users to point the app at any Supabase instance. Replaces the current eager Supabase client initialization with a lazy, config-store-driven approach.
+
+### 19a. Config store interface + implementations
+
+Define a `ConfigStore` interface with methods: `getConfig`, `setConfig`, `clearConfig`, `hasConfig`. Two implementations follow the existing adapter pattern.
+
+| Implementation | Storage                                           | Read Timing                          |
+| -------------- | ------------------------------------------------- | ------------------------------------ |
+| Browser        | `localStorage` key `ardentforge:config`           | Synchronous                          |
+| Tauri          | SQLite `app_config` table (key-value, local-only) | Async via `invoke('get_app_config')` |
+
+The `app_config` table is created in the existing SQLite migration set but is excluded from the sync engine's table list. It has two columns: `key` (TEXT PRIMARY KEY) and `value` (TEXT, JSON string).
+
+New Tauri commands for Step 8's Rust backend:
+
+| Command            | Purpose                                                  |
+| ------------------ | -------------------------------------------------------- |
+| `get_app_config`   | Read a config key from `app_config`                      |
+| `set_app_config`   | Write a config key to `app_config`                       |
+| `clear_app_config` | Delete a config key                                      |
+| `wipe_synced_data` | Drop and recreate all synced tables (for backend change) |
+
+### 19b. Supabase client lazy initialization
+
+Refactor `src/lib/supabase.ts` from eager module-level initialization to a lazy factory.
+
+Current behavior: `createClient(import.meta.env.VITE_SUPABASE_URL, ...)` runs at import time.
+
+New behavior: A `getSupabaseClient()` function reads from the config store on first call, constructs the client, and caches it. Returns `null` if no config exists. On config change, the cached client is discarded.
+
+The Supabase adapter and all TanStack Query hooks that reference the client are updated to use the factory. The sync engine (Rust) also reads the config store for its Supabase connection.
+
+### 19c. Connection validator
+
+A validation function that takes a URL and publishable key, attempts a lightweight request against the target Supabase instance, and returns a result indicating success, connection failure, or missing schema.
+
+Validation steps: first, hit the REST API root to confirm the instance is reachable and the key is accepted. Second, attempt a simple query against a known table (e.g., `SELECT 1 FROM exercises LIMIT 1`) to confirm the schema is present. The second step distinguishes between "valid Supabase but no Ardent Forge schema" and "fully configured."
+
+### 19d. Backend setup screen
+
+A new route at `/setup` with the Iron & Ember design system. This screen is shown only when no valid configuration exists (first launch with failed defaults, or after config is cleared).
+
+| Element         | Design                                                                |
+| --------------- | --------------------------------------------------------------------- |
+| Heading         | "CONFIGURE BACKEND" in `text-industrial`                              |
+| URL field       | Underline input, placeholder "Supabase URL"                           |
+| Key field       | Underline input, placeholder "Publishable Key"                        |
+| Validate button | `forge` CTA: "CONNECT"                                                |
+| Status          | Inline feedback: connecting spinner, success checkmark, error message |
+| Help link       | "Self-hosting? See the setup guide" → links to GitHub docs            |
+
+### 19e. Settings UI: Backend section
+
+Add a "Backend" section to the existing Settings route. Shows current Supabase URL (truncated, with copy button). "CHANGE BACKEND" button opens an edit form identical to the setup screen, but with a confirmation dialog warning about data reset (Tauri only, per CF-3).
+
+| Platform | Change Behavior                                                                                       |
+| -------- | ----------------------------------------------------------------------------------------------------- |
+| Browser  | Clear auth session → re-validate → persist → redirect to sign-in                                      |
+| Tauri    | Confirm dialog → wipe synced SQLite tables → clear auth → re-validate → persist → redirect to sign-in |
+
+### 19f. Root route guard
+
+Add a config check to the TanStack Router root layout. Before the existing auth guard runs, check `configStore.hasConfig()`. If false, redirect to `/setup`. This ensures no part of the app attempts to use a Supabase client before one can be constructed.
+
+### Done when
+
+- [ ] Config store reads and writes correctly (browser: localStorage, Tauri: SQLite)
+- [ ] Supabase client initializes lazily from config store
+- [ ] App with no env vars and no stored config shows setup screen on launch
+- [ ] App with valid bundled defaults skips setup screen (smart default flow)
+- [ ] Connection validator distinguishes: reachable + schema present, reachable + no schema, unreachable
+- [ ] Setup screen validates and persists config, then proceeds to auth
+- [ ] Settings page shows current backend URL
+- [ ] Changing backend in browser mode: clears auth, re-validates, persists, redirects to sign-in
+- [ ] Changing backend in Tauri mode: shows confirmation, wipes synced tables, clears auth, persists
+- [ ] `app_config` table is never included in sync operations
+- [ ] Existing workout logging flow works identically after refactor
+- [ ] All existing tests pass (client initialization change is transparent to consumers)
+
+---
+
+## STEP 20: Docker & Self-Hosting
+
+**Dependencies:** Step 3 (Supabase migrations exist), Step 19 (runtime config for mobile users connecting to self-hosted instances). Can be done in parallel with Steps 10-18.
+**Priority:** P1
+**Docs:** `03-prd-hosting.md` §Docker Composition
+
+### What to build
+
+Docker Compose configuration for one-command self-hosted deployment, plus self-hosting documentation.
+
+### 20a. Docker Compose file
+
+A `docker-compose.yml` at the repository root that provisions the full stack. Based on Supabase's official self-hosted Compose file with two additions: a migration init container and a web app container.
+
+| Container        | Source                                     | Notes                                                                               |
+| ---------------- | ------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Supabase stack   | Official `supabase/docker`                 | Postgres, Kong, GoTrue, PostgREST, Realtime, Studio                                 |
+| Migration runner | `supabase/cli`                             | Runs `supabase db push` against local Postgres using `service_role` key, then exits |
+| Web app          | Multi-stage Dockerfile (Bun build → nginx) | Serves Vite production build, build-time env vars from Compose `.env`               |
+| Caddy            | `caddy:alpine`                             | Reverse proxy, automatic TLS via Let's Encrypt                                      |
+
+### 20b. Environment configuration
+
+Create `.env.example` with all required variables, default values where safe, and comments explaining each. Include a shell script (`scripts/generate-keys.sh`) that generates the JWT secret and derives the anon and service_role keys using the Supabase key generation algorithm.
+
+### 20c. Web app Dockerfile
+
+Multi-stage build:
+
+| Stage | Base              | Purpose                                                                |
+| ----- | ----------------- | ---------------------------------------------------------------------- |
+| Build | `oven/bun:latest` | `bun install` + `bun run build` with env vars                          |
+| Serve | `nginx:alpine`    | Copy build output to nginx html dir, custom nginx.conf for SPA routing |
+
+The nginx config handles SPA fallback (all routes → `index.html`) and sets appropriate cache headers (hashed assets: immutable, `index.html`: no-cache).
+
+### 20d. Migration init container
+
+A lightweight container that waits for Postgres to be healthy (via `pg_isready`), then applies all migrations from `supabase/migrations/`. Uses the `service_role` key from the Compose `.env`. Exits with code 0 on success, allowing dependent containers to start.
+
+On subsequent runs, already-applied migrations are skipped (Supabase CLI tracks applied migrations in a `schema_migrations` table).
+
+### 20e. Caddy configuration
+
+A `Caddyfile` that routes traffic:
+
+| Path                                         | Target                      |
+| -------------------------------------------- | --------------------------- |
+| `/` and static assets                        | Web app container (nginx)   |
+| `/rest/v1/*`, `/auth/v1/*`, `/realtime/v1/*` | Kong (Supabase API gateway) |
+| `/studio/*` (optional)                       | Supabase Studio             |
+
+Caddy handles TLS automatically via Let's Encrypt using the `SITE_URL` from `.env`.
+
+### 20f. Self-hosting documentation
+
+A `docs/self-hosting.md` file (or a section in the main README) covering both deployment paths.
+
+**Docker path:** Prerequisites, clone, configure `.env`, generate keys, `docker compose up -d`, verify. Includes a troubleshooting section for common issues (port conflicts, DNS, TLS).
+
+**Supabase Cloud path:** Prerequisites, create project, link, push schema, deploy web app, configure mobile app. Shorter since Supabase handles infrastructure.
+
+Both paths end with: "To connect the Play Store app, open Settings → Backend and enter your instance URL and publishable key."
+
+### 20g. Health check and monitoring
+
+Add health check endpoints to the Docker containers so `docker compose ps` shows meaningful status. The web app container health check is a simple HTTP GET to `/`. The migration runner has no health check (it exits).
+
+### Done when
+
+- [ ] `docker compose up -d` starts all containers from a clean state
+- [ ] Migration runner applies schema and exits cleanly
+- [ ] Web app loads at `SITE_URL` with Iron & Ember design
+- [ ] User can register, sign in, and log a workout via the web interface
+- [ ] Play Store app connects to Docker-hosted instance after configuring URL in Settings
+- [ ] Supabase Studio accessible at `SITE_URL/studio` (when enabled)
+- [ ] `docker compose down && docker compose up -d` is idempotent (data persists, migrations don't re-run)
+- [ ] `.env.example` documents all variables with comments
+- [ ] `scripts/generate-keys.sh` produces valid JWT secret and derived keys
+- [ ] Self-hosting docs cover both Docker and Supabase Cloud paths
+- [ ] Caddy handles TLS automatically
+
+---
+
+## STEP 21: Chat Data Layer
+
+**Dependencies:** Step 4 (data adapter pattern), Step 9 (sync engine for offline message queueing), Step 17 (accountability groups + direct connections for relationship checks)
+**Priority:** P2
+**Docs:** `12-prd-chat.md` §Data Model + §Social Model Integration, `06-invariants.md` §Chat Invariants, `08-erd.md`
+
+### What to build
+
+Database tables, RLS policies, data adapter extension, and Zod schemas for the chat domain. No UI in this step -- this is pure data plumbing.
+
+### 21a. Supabase schema additions
+
+Create four new tables via migrations: `conversations`, `conversation_participants`, `messages`, `media_attachments`. All column definitions per `12-prd-chat.md` §Data Model.
+
+Key constraints:
+
+| Table                       | Constraint                                                        | Invariant |
+| --------------------------- | ----------------------------------------------------------------- | --------- |
+| `conversations`             | CHECK (type IN ('direct', 'group'))                               | --        |
+| `conversation_participants` | UNIQUE (conversation_id, user_id)                                 | CH-2      |
+| `conversation_participants` | Unique partial index on participant pair for direct conversations | CH-2      |
+| `messages`                  | CHECK (message_type IN ('text', 'workout', 'media', 'system'))    | --        |
+| `messages`                  | INDEX on (conversation_id, created_at)                            | CH-5      |
+| `media_attachments`         | CHECK (provider IN ('cloudflare_stream', 'supabase_storage'))     | --        |
+| `media_attachments`         | CHECK (status IN ('processing', 'ready', 'failed'))               | --        |
+
+### 21b. RLS policies
+
+All four tables get Row Level Security enabled. Policies enforce CH-1 (conversation access requires participation):
+
+| Table                       | Operation | Policy                                                                      |
+| --------------------------- | --------- | --------------------------------------------------------------------------- |
+| `conversations`             | SELECT    | User has active (non-departed) row in `conversation_participants`           |
+| `conversation_participants` | SELECT    | User is a participant in the same conversation                              |
+| `conversation_participants` | INSERT    | User is adding themselves, or is a participant adding to a group they're in |
+| `messages`                  | SELECT    | User participates in the message's conversation                             |
+| `messages`                  | INSERT    | User participates in conversation AND `left_at` IS NULL                     |
+| `media_attachments`         | SELECT    | Inherits from parent message's conversation participation check             |
+| `media_attachments`         | INSERT    | User participates in the parent message's conversation                      |
+
+### 21c. SQLite schema additions (Tauri)
+
+Create matching tables in the SQLite migration set. The `messages` table gains an additional `sync_status` column (TEXT, default 'synced', CHECK IN ('pending', 'synced', 'failed')) that exists only in SQLite, not in Postgres. This column drives the offline message queueing state machine.
+
+New Tauri commands:
+
+| Command                 | Purpose                                           |
+| ----------------------- | ------------------------------------------------- |
+| `create_conversation`   | Insert conversation + initial participants        |
+| `get_conversations`     | Query user's conversations, ordered by updated_at |
+| `get_conversation`      | Get single conversation with participants         |
+| `send_message`          | Insert message to SQLite with sync_status pending |
+| `get_messages`          | Query messages for a conversation, paginated      |
+| `update_last_read`      | Set last_read_at for a participant                |
+| `get_unread_counts`     | Count unread messages per conversation            |
+| `leave_conversation`    | Set left_at on participant record                 |
+| `save_media_attachment` | Insert or update media attachment metadata        |
+| `toggle_archive`        | Set is_archived on participant record             |
+
+### 21d. Chat adapter interface
+
+Extend the data adapter interface with a `ChatAdapter` facet. This follows the same pattern as the existing data adapter -- interface definition in `src/domain/`, Supabase and Tauri implementations in their respective adapter directories.
+
+| Method                   | Return Type               | Description                                   |
+| ------------------------ | ------------------------- | --------------------------------------------- |
+| `createConversation`     | `Conversation`            | Create direct or group conversation           |
+| `getConversations`       | `Conversation[]`          | All user's conversations, sorted by recency   |
+| `getConversation`        | `Conversation`            | Single conversation with participants         |
+| `findDirectConversation` | `Conversation \| null`    | Find existing direct conversation with a user |
+| `sendMessage`            | `Message`                 | Persist a new message                         |
+| `getMessages`            | `Message[]`               | Paginated messages for a conversation         |
+| `getMessagesSince`       | `Message[]`               | Messages newer than a timestamp (catch-up)    |
+| `updateLastRead`         | `void`                    | Update read cursor for current user           |
+| `getUnreadCounts`        | `Map<string, number>`     | Unread counts per conversation                |
+| `addParticipant`         | `ConversationParticipant` | Add user to group conversation                |
+| `leaveConversation`      | `void`                    | Set left_at on current user's participation   |
+| `toggleArchive`          | `void`                    | Toggle is_archived flag                       |
+| `saveMediaAttachment`    | `MediaAttachment`         | Create or update media attachment record      |
+
+### 21e. Zod schemas
+
+New schema files in `src/domain/`:
+
+| File              | Contents                                                                      | Source Doc                 |
+| ----------------- | ----------------------------------------------------------------------------- | -------------------------- |
+| `conversation.ts` | Conversation, ConversationType, ConversationParticipant                       | 12-prd-chat.md §Data Model |
+| `message.ts`      | Message, MessageType, WorkoutSnapshot (value object), SyncStatus (local-only) | 12-prd-chat.md §Messaging  |
+| `media.ts`        | MediaAttachment, MediaProvider, MediaType, MediaStatus                        | 12-prd-chat.md §Data Model |
+
+The `WorkoutSnapshot` schema reuses existing exercise, set scheme, and logged set schemas but wraps them in a self-contained structure suitable for JSON serialization into the message content field.
+
+### 21f. Sync engine extension
+
+Extend the Rust sync engine to include the four chat tables in the sync boundary. Messages use the `sync_status` column for offline queueing:
+
+- On send while offline: insert to SQLite with `sync_status = 'pending'`
+- On connectivity restored: push pending messages to Supabase, set `sync_status = 'synced'` with server-assigned timestamp
+- On push failure after retries: set `sync_status = 'failed'`
+
+The sync engine treats messages as append-only (CH-7). No update or delete sync needed for messages in the initial release.
+
+Media attachment records sync metadata only (URLs, status, thumbnail URL). Binary files are never synced to SQLite (CH-6).
+
+### Done when
+
+- [ ] All four tables created via Supabase migration
+- [ ] RLS policies enforce conversation membership on all operations
+- [ ] Unauthenticated requests to chat tables rejected
+- [ ] User can only read messages in conversations they participate in
+- [ ] Direct conversation uniqueness constraint prevents duplicates
+- [ ] SQLite tables mirror Postgres schema (plus `sync_status` on messages)
+- [ ] All Tauri commands work: CRUD for conversations, messages, participants
+- [ ] Chat adapter interface defined with all methods
+- [ ] Supabase adapter implements all chat methods
+- [ ] Tauri adapter implements all chat methods via Tauri commands
+- [ ] Zod schemas validate conversation, message, and media attachment types
+- [ ] WorkoutSnapshot schema serializes/deserializes from existing workout types
+- [ ] Sync engine pushes pending messages on reconnect
+- [ ] Sync engine pulls new messages on reconnect (catch-up query)
+- [ ] `domain/` chat types have zero React or framework dependencies
+
+---
+
+## STEP 22: Supabase Realtime Integration
+
+**Dependencies:** Step 21 (chat tables and adapter exist)
+**Priority:** P2
+**Docs:** `12-prd-chat.md` §Message Ordering and Delivery, `07-architecture.md` §Supabase Realtime Integration
+
+### What to build
+
+Real-time message delivery via Supabase Realtime Broadcast. Typing indicators. Catch-up-then-subscribe reconnection pattern.
+
+### 22a. Broadcast channel management
+
+Each conversation maps to a private Supabase Realtime Broadcast channel. The channel topic is the conversation ID. The app subscribes to channels for all active conversations when the chat feature is entered, and unsubscribes when the user leaves chat.
+
+Channel lifecycle:
+
+| Event                     | Action                                                                     |
+| ------------------------- | -------------------------------------------------------------------------- |
+| User opens chat list      | Subscribe to channels for all conversations with unread or recent activity |
+| User opens a conversation | Subscribe to that conversation's channel (if not already subscribed)       |
+| User leaves chat          | Unsubscribe from all channels (conserve connections)                       |
+| App backgrounds           | Unsubscribe from all channels                                              |
+| App foregrounds           | Run catch-up query, then re-subscribe                                      |
+| New conversation created  | Subscribe to the new channel                                               |
+| User leaves conversation  | Unsubscribe from that channel                                              |
+
+### 22b. Message delivery events
+
+When a user sends a message, two things happen simultaneously:
+
+1. The message is inserted into the `messages` table via the chat adapter (persistence).
+2. A Broadcast event is sent on the conversation's channel with the message payload (real-time notification).
+
+Connected participants receive the Broadcast event and append the message to their local conversation view. The Broadcast event is a lightweight notification -- recipients verify the message exists in their local store (or fetch it) rather than relying solely on the Broadcast payload.
+
+Event payload:
+
+| Field             | Type   | Description                                         |
+| ----------------- | ------ | --------------------------------------------------- |
+| `type`            | string | `'message'`                                         |
+| `message_id`      | string | UUID of the new message                             |
+| `conversation_id` | string | UUID of the conversation                            |
+| `sender_id`       | string | UUID of the sender                                  |
+| `message_type`    | string | `'text'`, `'workout'`, `'media'`, `'system'`        |
+| `preview`         | string | First 100 characters of content (for notifications) |
+| `created_at`      | string | Server timestamp (ISO 8601)                         |
+
+### 22c. Typing indicators
+
+Typing indicators are ephemeral Broadcast events on the same channel. They are never persisted.
+
+| Field       | Type   | Description                |
+| ----------- | ------ | -------------------------- |
+| `type`      | string | `'typing'`                 |
+| `user_id`   | string | UUID of the typing user    |
+| `user_name` | string | Display name for rendering |
+
+The sender emits a typing event on each keystroke, debounced to at most once per 2 seconds. Recipients display the typing indicator for 3 seconds after the last received typing event, then clear it. No typing indicator is shown for the user's own input.
+
+### 22d. Catch-up-then-subscribe pattern
+
+On app foreground or reconnection:
+
+1. For each conversation the user participates in, query `getMessagesSince(conversation_id, last_read_at)`.
+2. Insert any missed messages into the local store.
+3. Update unread counts.
+4. Subscribe to Broadcast channels for live updates.
+
+This ordering ensures no messages are missed during the gap between offline and subscription. The catch-up query uses the `last_read_at` cursor from `conversation_participants` to avoid re-fetching already-seen messages.
+
+### 22e. TanStack Query integration
+
+| Hook                  | Query Key                                    | Adapter Method / Realtime                               |
+| --------------------- | -------------------------------------------- | ------------------------------------------------------- |
+| `useConversations`    | `['conversations']`                          | `getConversations`                                      |
+| `useConversation`     | `['conversation', id]`                       | `getConversation`                                       |
+| `useMessages`         | `['messages', conversationId, cursor]`       | `getMessages` (infinite query)                          |
+| `useUnreadCounts`     | `['unread-counts']`                          | `getUnreadCounts`                                       |
+| `useSendMessage`      | mutation, invalidates `['messages', convId]` | `sendMessage` + Broadcast                               |
+| `useRealtimeMessages` | -- (side effect)                             | Broadcast subscription, appends to `['messages']` cache |
+
+The `useMessages` hook uses TanStack Query's infinite query pattern for cursor-based pagination (load older messages on scroll-up). New messages from Realtime are appended to the newest page.
+
+### 22f. Tauri-specific considerations
+
+In Tauri mode, the Realtime subscription can run either in the WebView (via the Supabase JS client, same as browser mode) or in the Rust backend via a native WebSocket client. The simpler approach -- using the WebView's Supabase client -- is recommended for the initial release. The Rust-native approach is only needed if WebView backgrounding kills the WebSocket connection on Android; if so, the Rust backend can maintain the connection and forward events to the WebView via Tauri events.
+
+Test the WebView approach first. If WebSocket connections drop on Android background, add a Rust-side keepalive as a follow-up.
+
+### Done when
+
+- [ ] Broadcast channel subscribes per conversation on chat entry
+- [ ] Sending a message triggers both DB insert and Broadcast event
+- [ ] Remote messages appear in < 500ms for connected participants
+- [ ] Typing indicator shows when remote user is composing
+- [ ] Typing indicator clears after 3 seconds of inactivity
+- [ ] Catch-up query fetches missed messages on reconnect
+- [ ] No duplicate messages after catch-up + subscription overlap
+- [ ] Channel subscriptions cleaned up on chat exit and app background
+- [ ] Unread counts update in real time when messages arrive
+- [ ] TanStack Query infinite query loads older messages on scroll-up
+- [ ] Works in both browser mode and Tauri WebView
+
+---
+
+## STEP 23: Chat UI
+
+**Dependencies:** Step 22 (Realtime working), Step 1.5 (Iron & Ember design system)
+**Priority:** P2
+**Docs:** `12-prd-chat.md` §Conversation Types + §Messaging + §Blocking, `10-user-flows.md` §Chat Flows, `DESIGN.md`
+
+### What to build
+
+The most time-intensive chat step. Conversation list, conversation detail with virtualized message list, compose bar, system messages, unread indicators, and blocking. All UI follows Iron & Ember: dark-only, zero border-radius, tonal surface layering.
+
+### 23a. Navigation: COMMS tab
+
+Add a fifth tab to the bottom navigation (mobile) and sidebar (desktop):
+
+| Icon                     | Label | Route    |
+| ------------------------ | ----- | -------- |
+| `chat` (Material Symbol) | COMMS | `/comms` |
+
+Update the nav from 4 items to 5. Mobile bottom nav touch targets remain >= 48px. Desktop sidebar adds the item below VAULT.
+
+### 23b. Conversation list screen (`/comms`)
+
+Displays all conversations the user participates in, sorted by most recent activity (`updated_at` descending).
+
+| Element              | Design                                                                         |
+| -------------------- | ------------------------------------------------------------------------------ |
+| Conversation row     | `surface-iron` card, zero border-radius                                        |
+| Avatar / group icon  | 40px circle on `surface-steel` -- initials for direct, group icon for group    |
+| Title                | Space Grotesk `text-label-large` -- other user's name or group title           |
+| Last message preview | Inter `body-small`, truncated to one line, `text-secondary` color              |
+| Timestamp            | Inter `label-small`, right-aligned, relative time ("3m", "2h", "Yesterday")    |
+| Unread indicator     | `ember` dot (8px circle) next to timestamp, title rendered bold                |
+| Empty state          | "NO ACTIVE CHANNELS" centered, `text-secondary`, with "START CONVERSATION" CTA |
+
+### 23c. New conversation flow
+
+- "NEW" button (top-right, `forge` CTA) opens a contact picker
+- Contact picker shows friends and group members from existing connections
+- Single selection → create direct conversation (or navigate to existing per CH-2)
+- Multi-selection (3+ users) → create ad-hoc group with title prompt
+- Group conversations linked to a group entity are created from the group detail screen, not from the contact picker
+
+### 23d. Conversation detail screen (`/comms/:id`)
+
+The core chat view. A virtualized message list with a compose bar at the bottom.
+
+**Header:**
+
+| Element           | Design                                                            |
+| ----------------- | ----------------------------------------------------------------- |
+| Back button       | `arrow_back` icon, navigates to conversation list                 |
+| Title             | Space Grotesk `text-label-large` -- conversation name             |
+| Participant count | Inter `label-small`, `text-secondary` -- "(4 members)" for groups |
+| Menu              | `more_vert` icon → actions (leave, archive, block for direct)     |
+
+**Message list:**
+
+| Element           | Design                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------- |
+| Own messages      | Right-aligned bubbles on `surface-steel` background                                         |
+| Other messages    | Left-aligned bubbles on `surface-iron` background                                           |
+| Sender name       | Inter `label-small` in `ember` above the bubble (group conversations only)                  |
+| Timestamp         | Inter `label-small`, `text-secondary`, shown on first message of a time cluster (5-min gap) |
+| System messages   | Centered, no bubble, Inter `body-small` in `text-secondary`                                 |
+| Pending indicator | `schedule` Material Symbol next to own pending messages                                     |
+| Date separator    | Centered date label on `surface-charcoal` -- "TODAY", "YESTERDAY", or formatted date        |
+
+The message list uses virtualization (e.g., `@tanstack/react-virtual`) for performance with large conversation histories. Scroll position anchors to the bottom on new messages. Scrolling up loads older messages via the infinite query (Step 22e).
+
+**Compose bar:**
+
+| Element           | Design                                                        |
+| ----------------- | ------------------------------------------------------------- |
+| Container         | Sticky bottom, `surface-anvil` background, zero border-radius |
+| Text input        | Underline input, placeholder "Message..." in `text-secondary` |
+| Send button       | `send` Material Symbol, `ember` color when input has content  |
+| Attachment button | `attach_file` Material Symbol, opens attachment picker        |
+| Typing indicator  | Above compose bar: "[Name] is typing..." animated dots        |
+
+### 23e. Attachment picker
+
+Triggered by the attachment button in the compose bar. Presents options relevant to the current conversation:
+
+| Option  | Icon             | Action                                                 |
+| ------- | ---------------- | ------------------------------------------------------ |
+| Video   | `videocam`       | Opens device camera/gallery for video (<=60s, <=50 MB) |
+| Photo   | `photo_camera`   | Opens device camera/gallery for image (<=10 MB)        |
+| Workout | `fitness_center` | Opens workout picker (from Step 24)                    |
+| File    | `description`    | Opens file picker for documents (<= 25 MB)             |
+
+The picker is a bottom sheet (mobile) or dropdown (desktop), styled with `surface-steel` cards.
+
+### 23f. Blocking UI
+
+- Block action available from conversation header menu (direct conversations) or from a user's profile
+- Block confirmation dialog: "Block [Name]? Their messages will be hidden in all conversations."
+- Blocked user's messages filtered client-side (not deleted from DB)
+- Blocked indicator in direct conversation: "This conversation is blocked. Unblock to resume."
+- Unblock available from Settings or from the blocked conversation
+
+### 23g. Group conversation management
+
+- Participant list viewable from conversation header (tap participant count or from menu)
+- Add participant: "ADD MEMBER" button (group conversations only), opens contact picker filtered to friends not already in the conversation
+- Leave confirmation dialog: "Leave this conversation? You won't receive new messages."
+- System messages generated for join/leave events
+
+### Done when
+
+- [ ] COMMS tab appears in bottom nav (mobile) and sidebar (desktop) with `chat` icon
+- [ ] Conversation list shows all conversations sorted by recency
+- [ ] Unread indicator (ember dot + bold) shows for conversations with new messages
+- [ ] Empty state renders when user has no conversations
+- [ ] New direct conversation creates or navigates to existing (CH-2)
+- [ ] New ad-hoc group conversation creates with title prompt
+- [ ] Message bubbles render: own (right, `surface-steel`), other (left, `surface-iron`)
+- [ ] System messages render centered without bubble
+- [ ] Sender names shown in group conversations, hidden in direct
+- [ ] Timestamps cluster correctly (5-minute gap rule)
+- [ ] Date separators show between day boundaries
+- [ ] Pending messages show clock icon, re-sort on sync
+- [ ] Compose bar: send button, attachment button, underline input
+- [ ] Typing indicator appears and clears correctly
+- [ ] Message list virtualized -- smooth scrolling with 500+ messages
+- [ ] Scroll-up loads older messages (infinite query)
+- [ ] Block/unblock works, blocked messages hidden
+- [ ] Group participant list viewable
+- [ ] Add participant and leave conversation work
+- [ ] Touch targets >= 48px on all interactive elements
+- [ ] All UI follows Iron & Ember: zero border-radius, tonal layering, industrial vocabulary
+
+---
+
+## STEP 24: Workout Sharing in Chat
+
+**Dependencies:** Step 23 (chat UI exists), Step 6 (workout log display components)
+**Priority:** P2
+**Docs:** `12-prd-chat.md` §Workout Sharing, `10-user-flows.md` §Flow: Share a Workout to Chat
+
+### What to build
+
+Share workout logs, programs, and templates into conversations as frozen snapshots. Render shared workouts as cards within chat bubbles.
+
+### 24a. Workout snapshot serializer
+
+A function that takes a WorkoutLog, Program, or SessionTemplate and produces a self-contained `WorkoutSnapshot` JSON payload. The snapshot includes all data needed to render the workout card without any database lookups: exercise names, sets with reps/weight/percentage, rest periods, notes, and duration.
+
+| Source Entity   | Snapshot Contents                                                      |
+| --------------- | ---------------------------------------------------------------------- |
+| WorkoutLog      | Date, duration, exercises with logged sets (actual values), notes      |
+| Program         | Name, block/week structure, session names, exercise lists              |
+| SessionTemplate | Name, activity groups, exercises, set schemes with resolved parameters |
+
+The snapshot never includes the source entity's ID or user ID. It is a value object with no identity or foreign key references.
+
+### 24b. Workout picker (from chat attachment)
+
+When the user taps the "Workout" option in the attachment picker:
+
+- Show a list of recent workout logs (last 20), programs, and templates
+- Segmented control: "LOGS" / "PROGRAMS" / "TEMPLATES" -- flat `surface-steel` badges
+- Each item shows: name/date, exercise summary, duration (for logs)
+- Tap to select → confirmation → message created with `message_type = 'workout'`
+
+### 24c. Share-from-detail flow
+
+A "SHARE" button on workout log detail, program detail, and session template detail screens. Tapping opens a conversation picker (list of user's conversations). Select conversation → snapshot created → message sent.
+
+### 24d. Workout card message rendering
+
+Workout-type messages render as a card within the chat bubble:
+
+| Element        | Design                                                                        |
+| -------------- | ----------------------------------------------------------------------------- |
+| Card container | `surface-charcoal` inside the message bubble, zero border-radius              |
+| Header         | Space Grotesk `text-label-large`: "WORKOUT LOG" / "PROGRAM" / "TEMPLATE"      |
+| Title / date   | Exercise names or program name, date if workout log                           |
+| Summary        | Inter `body-small`: set count, volume, duration                               |
+| Expand action  | "VIEW DETAILS" text button in `ember` -- expands to full set-by-set breakdown |
+
+The expanded view reuses existing workout display components from Step 6, rendered inline within the chat conversation. The card collapses on a second tap.
+
+### Done when
+
+- [ ] Workout snapshot serializes WorkoutLog, Program, and SessionTemplate
+- [ ] Snapshot contains all rendering data -- no DB lookups needed to display
+- [ ] Workout picker shows recent logs, programs, and templates
+- [ ] Selecting a workout creates a message with `message_type = 'workout'`
+- [ ] Share-from-detail flow works on workout log, program, and template screens
+- [ ] Workout card renders inside chat bubble with correct Iron & Ember styling
+- [ ] "VIEW DETAILS" expands to full set-by-set breakdown
+- [ ] Workout cards display correctly offline (snapshot is self-contained)
+- [ ] Snapshot does not include source entity ID or user ID (privacy)
+
+---
+
+## STEP 25: Video + Image Sharing
+
+**Dependencies:** Step 23 (chat UI with attachment picker exists)
+**Priority:** P2
+**Docs:** `12-prd-chat.md` §Media Sharing + §Video Platform Integration, `07-architecture.md` §Media Provider Interface + §Edge Functions
+
+### What to build
+
+Cloudflare Stream integration for video, Supabase Storage for images. Client-side upload with progress, inline playback, and signed URL access control.
+
+### 25a. Cloudflare Stream account setup
+
+- Create Cloudflare Stream account
+- Generate API token with Stream write permissions
+- Store API token as a Supabase Vault secret (accessible from Edge Functions)
+- Configure webhook URL pointing to the `chat-media-webhook` Edge Function
+
+### 25b. Media provider interface
+
+Define a `MediaProvider` interface in `src/domain/` that abstracts the video platform:
+
+| Method                       | Return Type        | Description                                    |
+| ---------------------------- | ------------------ | ---------------------------------------------- |
+| `getUploadUrl(metadata)`     | `{ url, assetId }` | Get a direct creator upload URL for the client |
+| `getPlaybackUrl(assetId)`    | `string`           | Get the HLS manifest URL for playback          |
+| `getSignedUrl(assetId, ttl)` | `string`           | Get a time-limited signed playback URL         |
+| `deleteAsset(assetId)`       | `void`             | Delete a video asset from the provider         |
+
+The initial implementation is `CloudflareStreamProvider`. The interface allows swapping to Mux later without changing the chat layer.
+
+### 25c. Edge Function: `chat-media-upload-url`
+
+An authenticated Supabase Edge Function that:
+
+1. Verifies the caller is authenticated
+2. Validates upload parameters (max duration: 60s, max size: 50 MB)
+3. Calls the Cloudflare Stream API to create a direct creator upload URL (TUS endpoint)
+4. Returns the upload URL and asset ID to the client
+
+The function reads the Stream API token from Supabase Vault. The client never sees the API token.
+
+### 25d. Edge Function: `chat-media-webhook`
+
+A webhook receiver for Cloudflare Stream transcoding events:
+
+| Stream Event      | Action                                                                 |
+| ----------------- | ---------------------------------------------------------------------- |
+| `ready.to.stream` | Update `media_attachments` record: status → 'ready', set thumbnail URL |
+| `encoding.failed` | Update `media_attachments` record: status → 'failed'                   |
+
+The webhook validates the incoming request using a shared secret. On status update, a Broadcast event is sent on the conversation's channel to notify connected participants that the video is playable.
+
+### 25e. Client-side video upload flow
+
+1. User selects or records a video via the attachment picker (Step 23e)
+2. Client validates constraints: duration <= 60s, size <= 50 MB, format is MP4/MOV/WebM
+3. Client calls `chat-media-upload-url` Edge Function → receives TUS upload URL + asset ID
+4. Client creates a `messages` record with `message_type = 'media'` and a `media_attachments` record with `status = 'processing'`
+5. Client uploads video to Cloudflare Stream via TUS protocol (resumable, shows progress)
+6. Upload progress displayed as a horizontal progress bar in `ember` on `surface-steel` track inside the message bubble
+7. When transcoding completes (webhook → DB update → Broadcast event), the message bubble updates to show a playable thumbnail
+
+Upload error handling:
+
+| Error               | Behavior                                                            |
+| ------------------- | ------------------------------------------------------------------- |
+| File too large      | Reject before upload with inline error: "Video exceeds 50 MB limit" |
+| Duration too long   | Reject before upload: "Video exceeds 60 second limit"               |
+| Upload fails midway | Retry up to 3 times (TUS is resumable); show "RETRY" button         |
+| Transcoding fails   | Show `error` icon: "Processing failed. Tap to retry."               |
+| Transcoding timeout | After 5 minutes with no webhook, set status to 'failed'             |
+
+### 25f. Client-side image upload flow
+
+1. User selects or captures an image via attachment picker
+2. Client validates: size <= 10 MB, format is JPEG/PNG/WebP/HEIC
+3. Client uploads to Supabase Storage bucket `chat-images` using the Supabase client
+4. On upload complete, create message with `message_type = 'media'` and `media_attachments` record with `status = 'ready'` (no transcoding needed)
+
+Supabase Storage RLS on the `chat-images` bucket: authenticated users can upload; download is allowed for users who participate in the message's conversation (enforced via signed URLs).
+
+### 25g. Client-side file upload flow
+
+1. User selects a file via the attachment picker (Step 23e)
+2. Client validates constraints: size <= 25 MB, extension is in the allowed list (PDF, DOC, DOCX, XLS, XLSX, CSV, TXT, ZIP), blocked extensions (exe, bat, sh, cmd, ps1, msi, app, dmg, jar, com, scr, vbs, wsf) are rejected
+3. Client uploads to Supabase Storage bucket `chat-files` using the Supabase client
+4. On upload complete, create message with `message_type = 'file'` and a `media_attachments` record with `status = 'ready'`, `original_filename`, and `mime_type` populated
+5. File card renders immediately in the conversation on success
+
+Upload error handling:
+
+| Error                   | Behavior                                                           |
+| ----------------------- | ------------------------------------------------------------------ |
+| File too large          | Reject before upload with inline error: "File exceeds 25 MB limit" |
+| Blocked extension       | Reject before upload: "File type not allowed"                      |
+| Format not in allowlist | Reject before upload: "Unsupported file type"                      |
+| Upload fails            | Retry up to 3 times; show "RETRY" button on persistent failure     |
+
+Supabase Storage RLS on the `chat-files` bucket: authenticated users can upload; download requires participation in the message's conversation (enforced via signed URLs).
+
+### 25h. Media message rendering
+
+| Media Status  | Rendering                                                                                 |
+| ------------- | ----------------------------------------------------------------------------------------- |
+| Processing    | Pulsing placeholder rectangle on `surface-charcoal`, "PROCESSING..." label                |
+| Ready (video) | Thumbnail image with `play_circle` overlay icon in `ember`, tap to play                   |
+| Ready (image) | Inline image preview (max-width 280px), tap to expand full-screen                         |
+| Ready (file)  | File card: document-type icon, original filename, file size, "DOWNLOAD" button in `ember` |
+| Failed        | `error` icon with "FAILED" label, "RETRY" text button in `ember`                          |
+
+Video playback: open in an inline player within the conversation. The player uses Cloudflare Stream's embedded player or hls.js with the HLS manifest URL. Player controls match Iron & Ember palette. Full-screen toggle available.
+
+### 25i. Signed URL access control
+
+When a participant taps to play a video, the client requests a signed playback URL from a Supabase Edge Function. The Edge Function:
+
+1. Verifies the caller participates in the message's conversation
+2. Calls Cloudflare Stream to generate a signed URL with 1-hour TTL
+3. Returns the signed URL to the client
+
+The signed URL is cached client-side for its TTL to avoid redundant Edge Function calls on repeated playback.
+
+### Done when
+
+- [ ] Cloudflare Stream account configured with API token in Supabase Vault
+- [ ] `chat-media-upload-url` Edge Function returns valid TUS upload URL
+- [ ] `chat-media-webhook` Edge Function processes transcoding events
+- [ ] Video upload from mobile: select/record → progress bar → playable thumbnail
+- [ ] Video upload constraints enforced (60s, 50 MB)
+- [ ] Image upload to Supabase Storage works
+- [ ] Image constraints enforced (10 MB)
+- [ ] Processing state renders pulsing placeholder
+- [ ] Ready state renders playable thumbnail (video) or inline preview (image)
+- [ ] Failed state renders with retry option
+- [ ] Video plays inline with hls.js or Cloudflare player
+- [ ] Signed URL access control prevents unauthorized playback
+- [ ] Media uploads only work online -- offline attempt shows clear message
+- [ ] Thumbnails cached locally for offline display
+- [ ] Media provider interface defined; Cloudflare implementation is swappable
+- [ ] All media UI follows Iron & Ember palette
+- [ ] File upload to Supabase Storage `chat-files` bucket works
+- [ ] File constraints enforced (25 MB, allowed formats, blocked extensions)
+- [ ] File card renders with document-type icon, original filename, size, and download button
+- [ ] File upload only works online -- offline attempt shows clear message
+- [ ] `original_filename` and `mime_type` stored in `media_attachments` record
+- [ ] File messages render with `message_type = 'file'`
+
+---
+
+## STEP 26: Message Retention + Archiving
+
+**Dependencies:** Step 21 (chat tables exist)
+**Priority:** P3
+**Docs:** `12-prd-chat.md` §Message Retention
+
+### What to build
+
+Automated 90-day message cleanup with per-conversation opt-in archiving. Can be built in parallel with Steps 22-25 since it only depends on the data layer.
+
+### 26a. Retention cleanup function
+
+A Supabase Edge Function (`chat-retention-cleanup`) or pg_cron job that runs daily and:
+
+1. Identifies messages older than 90 days
+2. For each candidate message, checks whether any participant in the message's conversation has `is_archived = true`
+3. If no participant has archived → delete the message and its `media_attachments`
+4. For deleted media attachments with `provider = 'cloudflare_stream'`, call the Cloudflare Stream API to delete the video asset
+5. For deleted media attachments with `provider = 'supabase_storage'`, delete the file from the appropriate bucket (`chat-images` for images, `chat-files` for document files)
+
+The function runs with `service_role` permissions (bypasses RLS). It processes messages in batches (100 per iteration) to avoid long-running transactions.
+
+### 26b. Orphan media cleanup
+
+A secondary check for media attachments whose parent message no longer exists (edge case from race conditions or manual deletion):
+
+1. Query `media_attachments` where no matching `messages` row exists
+2. Delete from Cloudflare Stream / Supabase Storage
+3. Delete the orphan `media_attachments` record
+
+### 26c. Archive toggle UI
+
+In the conversation header menu (the `more_vert` dropdown from Step 23d):
+
+| Action    | Label                  | Behavior                                                       |
+| --------- | ---------------------- | -------------------------------------------------------------- |
+| Archive   | "ARCHIVE CONVERSATION" | Sets `is_archived = true`, toast: "Messages will be preserved" |
+| Unarchive | "REMOVE ARCHIVE"       | Sets `is_archived = false`, toast: "90-day retention applies"  |
+
+The archive state is per-user, per-conversation. One user archiving does not affect another user's retention. The archive toggle is a simple boolean flip on the `conversation_participants` record.
+
+Archived conversations display an `archive` Material Symbol badge next to the title in the conversation list.
+
+### 26d. Retention info in settings
+
+Add a brief explanation in Settings → Data section: "Chat messages are automatically deleted after 90 days. Archive a conversation to keep its messages indefinitely."
+
+### Done when
+
+- [ ] Retention cleanup runs daily (Edge Function or pg_cron)
+- [ ] Messages older than 90 days are deleted when no participant has archived
+- [ ] Archived conversations are exempt from retention cleanup
+- [ ] Cloudflare Stream assets deleted when their message is deleted
+- [ ] Supabase Storage images deleted when their message is deleted
+- [ ] Supabase Storage document files deleted when their message is deleted
+- [ ] Orphan media attachments cleaned up
+- [ ] Archive toggle works from conversation menu
+- [ ] Archive badge shows in conversation list
+- [ ] Retention explanation in Settings → Data
+- [ ] Retention function is idempotent (safe to run multiple times)
+
+---
+
+## ═══ PHASE 6 COMPLETE ═══
+
+**Checkpoint:** Users can send text messages in direct and group conversations. Workouts can be shared as frozen snapshots with inline card rendering. Videos (<= 60s lift critique clips) and images can be shared with inline playback. Messages auto-delete after 90 days unless archived. All chat respects the existing social model: friend connections, group membership, and coach/member relationships. Chat visibility is independent of group member list visibility.
+
+---
+
 ## Integration Testing Milestones
 
 ### Milestone 1: First Workout in Browser (after Steps 5 + 6)
@@ -1370,40 +2358,69 @@ Coach can create/edit programs for group members and update their 1RMs.
 
 - Coach creates program for member → member activates → logs workout → coach sees completion
 
+### Milestone 6: First Chat Message (after Step 23)
+
+- User A sends text message to User B → B sees it in < 1 second
+- User A sends message while offline → clock icon shown → message delivers on reconnect
+- Verify Iron & Ember chat bubble styling on actual mobile device
+
+### Milestone 7: Workout Shared in Chat (after Step 24)
+
+- User A logs a workout → shares to conversation with User B → B sees workout card → B taps "VIEW DETAILS" → full set-by-set breakdown renders inline
+
+### Milestone 8: Lift Critique Video (after Step 25)
+
+- User A records a 30-second squat video → shares to group chat → video uploads with progress bar → transcoding completes → all group members can play the video inline
+
 ---
 
 ## Timeline Mapping
 
-| Step                                  | Priority | Est. Effort    | Can Parallel With  |
-| ------------------------------------- | -------- | -------------- | ------------------ |
-| 1. Project Scaffold                   | P0       | 0.5 day        | —                  |
-| **1.5. Design System (Iron & Ember)** | **P0**   | **1 day**      | —                  |
-| 2. Domain Types + Zod                 | P0       | 1.5 days       | 3 (Supabase setup) |
-| 3. Supabase Setup                     | P0       | 0.5 day        | Step 2             |
-| 4. Data Adapter + Auth                | P0       | 2 days         | —                  |
-| 5. Exercise Dictionary + 1RMs         | P0       | 2 days         | —                  |
-| 6. Active Workout Logging             | P0       | 4 days         | —                  |
-| 7. Workout History                    | P0       | 1.5 days       | —                  |
-| **Phase 0 subtotal**                  |          | **~13 days**   |                    |
-| 8. Tauri Shell + Rust/SQLite          | P0       | 3 days         | —                  |
-| 9. Sync Engine + Rest Timer           | P0       | 2.5 days       | —                  |
-| **Phase 1 subtotal**                  |          | **~5.5 days**  |                    |
-| 10. Session Templates + SetScheme     | P0       | 3 days         | —                  |
-| 11. Program Structure                 | P0       | 2 days         | —                  |
-| 12. Program Builder (DnD)             | P1       | 3 days         | —                  |
-| 13. Programmed Workout Logging        | P0       | 2.5 days       | —                  |
-| **Phase 2 subtotal**                  |          | **~10.5 days** |                    |
-| 14. Progress Analytics + PR           | P1       | 2.5 days       | 15                 |
-| 15. Notification System               | P1       | 1.5 days       | 14                 |
-| 16. Share Links                       | P1       | 1.5 days       | 14, 15             |
-| 17. Accountability Groups             | P2       | 3 days         | —                  |
-| 18. Coach Write Access                | P2       | 2 days         | —                  |
-| **Phase 3-4 subtotal**                |          | **~11 days**   |                    |
-| **Total**                             |          | **~40 days**   |                    |
+| Step                                  | Priority | Est. Effort    | Can Parallel With                             |
+| ------------------------------------- | -------- | -------------- | --------------------------------------------- |
+| 1. Project Scaffold                   | P0       | 0.5 day        | —                                             |
+| **1.5. Design System (Iron & Ember)** | **P0**   | **1 day**      | —                                             |
+| 2. Domain Types + Zod                 | P0       | 1.5 days       | 3 (Supabase setup)                            |
+| 3. Supabase Setup                     | P0       | 0.5 day        | Step 2                                        |
+| 4. Data Adapter + Auth                | P0       | 2 days         | —                                             |
+| 5. Exercise Dictionary + 1RMs         | P0       | 2 days         | —                                             |
+| 6. Active Workout Logging             | P0       | 4 days         | —                                             |
+| 7. Workout History                    | P0       | 1.5 days       | —                                             |
+| **Phase 0 subtotal**                  |          | **~13 days**   |                                               |
+| 8. Tauri Shell + Rust/SQLite          | P0       | 3 days         | —                                             |
+| 9. Sync Engine + Rest Timer           | P0       | 2.5 days       | —                                             |
+| **Phase 1 subtotal**                  |          | **~5.5 days**  |                                               |
+| 10. Session Templates + SetScheme     | P0       | 3 days         | —                                             |
+| 11. Program Structure                 | P0       | 2 days         | —                                             |
+| 12. Program Builder (DnD)             | P1       | 3 days         | —                                             |
+| 13. Programmed Workout Logging        | P0       | 2.5 days       | —                                             |
+| 13.5. Events & Packing Lists          | P1       | 2 days         | —                                             |
+| **Phase 2 subtotal**                  |          | **~12.5 days** |                                               |
+| 14. Progress Analytics + PR           | P1       | 2.5 days       | 15                                            |
+| 15. Notification System               | P1       | 1.5 days       | 14                                            |
+| 16. Share Links                       | P1       | 1.5 days       | 14, 15                                        |
+| 17. Accountability Groups             | P2       | 3 days         | —                                             |
+| 18. Coach Write Access                | P2       | 2 days         | —                                             |
+| **Phase 3-4 subtotal**                |          | **~11 days**   |                                               |
+| 19. Runtime Backend Config            | P0       | 2 days         | Steps 10-18                                   |
+| 20. Docker & Self-Hosting             | P1       | 2 days         | Steps 10-18 (after Step 19 for mobile config) |
+| **Phase 5 subtotal**                  |          | **~4 days**    |                                               |
+| 21. Chat Data Layer                   | P2       | 3 days         | --                                            |
+| 22. Supabase Realtime Integration     | P2       | 2 days         | --                                            |
+| 23. Chat UI                           | P2       | 5 days         | --                                            |
+| 24. Workout Sharing in Chat           | P2       | 2 days         | 25                                            |
+| 25. Video + Image Sharing             | P2       | 4 days         | 24                                            |
+| 26. Message Retention + Archiving     | P3       | 1 day          | 22, 23, 24, 25                                |
+| **Phase 6 subtotal**                  |          | **~17 days**   |                                               |
+| **Total**                             |          | **~63 days**   |                                               |
 
 > **Critical path to browser MVP:** Steps 1 → 1.5 → 2/3 → 4 → 5 → 6 → 7 = ~13 days
 > **Critical path to Tauri GO/NO-GO:** + Steps 8 → 9 = ~18.5 days
 > **Critical path to programmed workouts:** + Steps 10 → 11 → 13 = ~26 days
+> **Critical path to Play Store release:** All phases + Step 19 = minimum viable for distribution.
+> **Critical path to text chat MVP:** + Steps 21 → 22 → 23 = ~36 days
+> **Critical path to full chat with video:** + Steps 24 + 25 = ~42 days (24 and 25 can parallel)
+> **Retention can ship any time after Step 21.**
 
 ---
 
@@ -1413,17 +2430,29 @@ Coach can create/edit programs for group members and update their 1RMs.
 
 At community scale (< 50 users), Ardent Forge stays well within Supabase's free tier:
 
-| Resource       | Free Tier        | Ardent Forge Est. Usage |
-| -------------- | ---------------- | ----------------------- |
-| Database       | 500 MB           | < 50 MB                 |
-| Auth           | 50K MAU          | < 50 users              |
-| Realtime       | 200 concurrent   | < 10                    |
-| Edge Functions | 500K invocations | 0 (not used)            |
-| Storage        | 1 GB             | 0 (no file uploads)     |
+| Resource       | Free Tier        | Ardent Forge Est. Usage (with chat)                    |
+| -------------- | ---------------- | ------------------------------------------------------ |
+| Database       | 500 MB           | < 100 MB (messages add ~50 MB/year at 10 active users) |
+| Auth           | 50K MAU          | < 50 users                                             |
+| Realtime       | 200 concurrent   | < 20 (chat subscriptions)                              |
+| Edge Functions | 500K invocations | < 1K/month (media upload URLs + webhooks)              |
+| Storage        | 1 GB             | < 500 MB (chat images and files; video on Cloudflare)  |
+
+> **Video note:** Video storage and delivery is handled by Cloudflare Stream, not Supabase Storage. At 10 active users sharing ~20 clips per week, Cloudflare Stream costs are under $5/month on the Starter Bundle.
 
 ### API Keys
 
 Ardent Forge uses the new Supabase publishable key (`sb_publishable_...`) instead of the legacy `anon` JWT key. The publishable key is sent in the `apikey` header by the Supabase client library. Benefits: independently rotatable, no JWT secret coupling, shorter and easier to manage. Legacy `anon` key still works but is deprecated.
+
+### Self-Hosted Supabase
+
+Self-hosted Supabase uses the same API surface as Supabase Cloud. The Ardent Forge app does not distinguish between them -- both are accessed via the same Supabase JS client with the same URL and publishable key pattern.
+
+The main operational difference is that self-hosted Supabase uses a locally-derived JWT secret and key pair rather than Supabase Cloud's managed keys. The migration runner and key generation script handle this automatically.
+
+### Key Generation
+
+Supabase derives the `anon` (publishable) and `service_role` keys from a JWT secret. The `scripts/generate-keys.sh` helper generates a random JWT secret and produces both keys using the standard Supabase algorithm (HS256-signed JWTs with role claims). This matches what Supabase Cloud does internally when you create a project.
 
 ### JSON Columns
 
@@ -1447,21 +2476,40 @@ Complex types (SetScheme, LoadSpec, Weight, prescribed values) are stored as JSO
 
 ## Design Decisions Summary
 
-| #   | Decision                                             | Rationale                                                                      |
-| --- | ---------------------------------------------------- | ------------------------------------------------------------------------------ |
-| 1   | Phase 0 is browser-only against Supabase             | Validates data model and UX before committing to Tauri                         |
-| 2   | Data adapter pattern from day one                    | Switching between Supabase and Tauri/SQLite is transparent                     |
-| 3   | SetScheme as discriminated union, not generic schema | Each workout type gets first-class field validation                            |
-| 4   | JSON columns for complex nested types                | Avoids explosion of junction tables for SetScheme variants                     |
-| 5   | 1RM history is insert-only                           | Audit trail for progression, never lose historical data                        |
-| 6   | Pre-fill + confirm pattern for programmed logging    | Minimizes taps (2 per set) while allowing deviation                            |
-| 7   | Rest timer in Rust, not JavaScript                   | Survives WebView backgrounding on mobile                                       |
-| 8   | RLS expansion deferred to Steps 17-18                | Simple `user_id = auth.uid()` for Phases 0-2, complexity only when needed      |
-| 9   | Coach creates programs owned by member               | Member always controls their data, coach access is revocable                   |
-| 10  | Same React app for all platforms                     | Eliminates duplication between web and native                                  |
-| 11  | Iron & Ember design system before feature work       | Full shadcn overrides upfront prevent style debt across 14 feature steps       |
-| 12  | Publishable key over legacy anon key                 | Independently rotatable, no JWT secret coupling, Supabase recommended          |
-| 13  | Bun over npm                                         | Faster installs, native TypeScript, simpler toolchain                          |
-| 14  | TanStack Router (not Start) for Tauri compatibility  | Start requires a server for SSR; Tauri runs in a serverless WebView            |
-| 15  | Material Symbols + Lucide dual icon strategy         | Material Symbols for app icons (fitness-specific), Lucide for shadcn internals |
-| 16  | Fonts bundled locally in Tauri builds                | No Google Fonts network dependency in native offline-first builds              |
+| #   | Decision                                              | Rationale                                                                                                                      |
+| --- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Phase 0 is browser-only against Supabase              | Validates data model and UX before committing to Tauri                                                                         |
+| 2   | Data adapter pattern from day one                     | Switching between Supabase and Tauri/SQLite is transparent                                                                     |
+| 3   | SetScheme as discriminated union, not generic schema  | Each workout type gets first-class field validation                                                                            |
+| 4   | JSON columns for complex nested types                 | Avoids explosion of junction tables for SetScheme variants                                                                     |
+| 5   | 1RM history is insert-only                            | Audit trail for progression, never lose historical data                                                                        |
+| 6   | Pre-fill + confirm pattern for programmed logging     | Minimizes taps (2 per set) while allowing deviation                                                                            |
+| 7   | Rest timer in Rust, not JavaScript                    | Survives WebView backgrounding on mobile                                                                                       |
+| 8   | RLS expansion deferred to Steps 17-18                 | Simple `user_id = auth.uid()` for Phases 0-2, complexity only when needed                                                      |
+| 9   | Coach creates programs owned by member                | Member always controls their data, coach access is revocable                                                                   |
+| 10  | Same React app for all platforms                      | Eliminates duplication between web and native                                                                                  |
+| 11  | Iron & Ember design system before feature work        | Full shadcn overrides upfront prevent style debt across 14 feature steps                                                       |
+| 12  | Publishable key over legacy anon key                  | Independently rotatable, no JWT secret coupling, Supabase recommended                                                          |
+| 13  | Bun over npm                                          | Faster installs, native TypeScript, simpler toolchain                                                                          |
+| 14  | TanStack Router (not Start) for Tauri compatibility   | Start requires a server for SSR; Tauri runs in a serverless WebView                                                            |
+| 15  | Material Symbols + Lucide dual icon strategy          | Material Symbols for app icons (fitness-specific), Lucide for shadcn internals                                                 |
+| 16  | Fonts bundled locally in Tauri builds                 | No Google Fonts network dependency in native offline-first builds                                                              |
+| 17  | Runtime config over build-time config                 | Single APK works against any Supabase instance; self-hosters don't need to build from source                                   |
+| 18  | Config in localStorage / SQLite, not Supabase         | Config must be readable before Supabase client exists; chicken-and-egg                                                         |
+| 19  | Backend change wipes local SQLite                     | Cross-instance data in one SQLite database corrupts sync invariants                                                            |
+| 20  | Docker uses Supabase official self-hosted stack       | Maintained upstream, well-documented, matches the Supabase Cloud API surface                                                   |
+| 21  | Migration runner as init container                    | `service_role` key stays inside Docker network; client app never has DDL permissions                                           |
+| 22  | Caddy over nginx for reverse proxy                    | Automatic TLS with zero config; simpler for self-hosters who aren't sysadmins                                                  |
+| 23  | Multi-stage web app build                             | No Node/Bun runtime in production; smaller image; nginx is battle-tested for static serving                                    |
+| 24  | Supabase Realtime Broadcast for chat delivery         | Aligns with existing stack; avoids new vendor; sufficient for expected scale                                                   |
+| 25  | Cloudflare Stream for video hosting                   | Simpler pricing than Mux; free encoding; swappable via MediaProvider interface                                                 |
+| 26  | 90-day message retention with opt-in archiving        | Balances storage cost and privacy; archive flag is per-participant per-conversation                                            |
+| 27  | Frozen workout snapshots for chat sharing             | Avoids permission edge cases; self-contained for offline display; no live reference needed                                     |
+| 28  | Chat participation supersedes group member_visibility | Cannot hide identity within a conversation; joining is voluntary consent                                                       |
+| 29  | Push notifications deferred                           | Platform complexity (APNs/FCM) not justified for friends-and-family scale                                                      |
+| 30  | Messages are append-only (no edit/delete)             | Simplifies sync to append-only replication with no conflict resolution for mutations                                           |
+| 31  | Cloudflare Stream signed URLs for access control      | Server-side signing via Edge Function; client never sees API token; 1-hour TTL                                                 |
+| 32  | Images on Supabase Storage, video on Cloudflare       | Images are small static files (no transcoding); avoids a second external provider for images                                   |
+| 33  | WebView Realtime over Rust-native WebSocket           | Simpler; reuses existing Supabase JS client; only move to Rust if Android background kills WS                                  |
+| 34  | TUS protocol for video uploads                        | Resumable; handles mobile network interruptions gracefully; Cloudflare Stream native support                                   |
+| 35  | Supabase Storage for generic file sharing             | Avoids a third external provider; document types are low-risk; 25 MB cap and allowlist enforce safety; inline preview deferred |
