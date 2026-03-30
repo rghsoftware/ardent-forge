@@ -20,11 +20,14 @@ import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AuthenticatedVaultRouteImport } from './routes/_authenticated/vault'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
+import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
+import { Route as AuthenticatedConnectionsRouteImport } from './routes/_authenticated/connections'
 import { Route as AuthenticatedBuilderRouteImport } from './routes/_authenticated/builder'
 import { Route as AuthenticatedHistoryIndexRouteImport } from './routes/_authenticated/history/index'
 import { Route as AuthenticatedExercisesIndexRouteImport } from './routes/_authenticated/exercises/index'
 import { Route as AuthenticatedLogWorkoutIdRouteImport } from './routes/_authenticated/log.$workoutId'
 import { Route as AuthenticatedHistoryWorkoutIdRouteImport } from './routes/_authenticated/history/$workoutId'
+import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authenticated/groups.$groupId'
 import { Route as AuthenticatedExercisesExerciseIdRouteImport } from './routes/_authenticated/exercises/$exerciseId'
 
 const SignUpRoute = SignUpRouteImport.update({
@@ -81,6 +84,17 @@ const AuthenticatedLibraryRoute = AuthenticatedLibraryRouteImport.update({
   path: '/library',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedGroupsRoute = AuthenticatedGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedConnectionsRoute =
+  AuthenticatedConnectionsRouteImport.update({
+    id: '/connections',
+    path: '/connections',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedBuilderRoute = AuthenticatedBuilderRouteImport.update({
   id: '/builder',
   path: '/builder',
@@ -110,6 +124,12 @@ const AuthenticatedHistoryWorkoutIdRoute =
     path: '/history/$workoutId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedGroupsGroupIdRoute =
+  AuthenticatedGroupsGroupIdRouteImport.update({
+    id: '/$groupId',
+    path: '/$groupId',
+    getParentRoute: () => AuthenticatedGroupsRoute,
+  } as any)
 const AuthenticatedExercisesExerciseIdRoute =
   AuthenticatedExercisesExerciseIdRouteImport.update({
     id: '/exercises/$exerciseId',
@@ -124,12 +144,15 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/builder': typeof AuthenticatedBuilderRoute
+  '/connections': typeof AuthenticatedConnectionsRoute
+  '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/library': typeof AuthenticatedLibraryRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/vault': typeof AuthenticatedVaultRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/s/$token': typeof STokenRoute
   '/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
+  '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
   '/log/$workoutId': typeof AuthenticatedLogWorkoutIdRoute
   '/exercises/': typeof AuthenticatedExercisesIndexRoute
@@ -141,6 +164,8 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/builder': typeof AuthenticatedBuilderRoute
+  '/connections': typeof AuthenticatedConnectionsRoute
+  '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/library': typeof AuthenticatedLibraryRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/vault': typeof AuthenticatedVaultRoute
@@ -148,6 +173,7 @@ export interface FileRoutesByTo {
   '/s/$token': typeof STokenRoute
   '/': typeof AuthenticatedIndexRoute
   '/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
+  '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
   '/log/$workoutId': typeof AuthenticatedLogWorkoutIdRoute
   '/exercises': typeof AuthenticatedExercisesIndexRoute
@@ -161,6 +187,8 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/_authenticated/builder': typeof AuthenticatedBuilderRoute
+  '/_authenticated/connections': typeof AuthenticatedConnectionsRoute
+  '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/_authenticated/library': typeof AuthenticatedLibraryRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/vault': typeof AuthenticatedVaultRoute
@@ -168,6 +196,7 @@ export interface FileRoutesById {
   '/s/$token': typeof STokenRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
+  '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/_authenticated/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
   '/_authenticated/log/$workoutId': typeof AuthenticatedLogWorkoutIdRoute
   '/_authenticated/exercises/': typeof AuthenticatedExercisesIndexRoute
@@ -182,12 +211,15 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/builder'
+    | '/connections'
+    | '/groups'
     | '/library'
     | '/profile'
     | '/vault'
     | '/auth/callback'
     | '/s/$token'
     | '/exercises/$exerciseId'
+    | '/groups/$groupId'
     | '/history/$workoutId'
     | '/log/$workoutId'
     | '/exercises/'
@@ -199,6 +231,8 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/builder'
+    | '/connections'
+    | '/groups'
     | '/library'
     | '/profile'
     | '/vault'
@@ -206,6 +240,7 @@ export interface FileRouteTypes {
     | '/s/$token'
     | '/'
     | '/exercises/$exerciseId'
+    | '/groups/$groupId'
     | '/history/$workoutId'
     | '/log/$workoutId'
     | '/exercises'
@@ -218,6 +253,8 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/_authenticated/builder'
+    | '/_authenticated/connections'
+    | '/_authenticated/groups'
     | '/_authenticated/library'
     | '/_authenticated/profile'
     | '/_authenticated/vault'
@@ -225,6 +262,7 @@ export interface FileRouteTypes {
     | '/s/$token'
     | '/_authenticated/'
     | '/_authenticated/exercises/$exerciseId'
+    | '/_authenticated/groups/$groupId'
     | '/_authenticated/history/$workoutId'
     | '/_authenticated/log/$workoutId'
     | '/_authenticated/exercises/'
@@ -320,6 +358,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLibraryRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/groups': {
+      id: '/_authenticated/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof AuthenticatedGroupsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/connections': {
+      id: '/_authenticated/connections'
+      path: '/connections'
+      fullPath: '/connections'
+      preLoaderRoute: typeof AuthenticatedConnectionsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/builder': {
       id: '/_authenticated/builder'
       path: '/builder'
@@ -355,6 +407,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHistoryWorkoutIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/groups/$groupId': {
+      id: '/_authenticated/groups/$groupId'
+      path: '/$groupId'
+      fullPath: '/groups/$groupId'
+      preLoaderRoute: typeof AuthenticatedGroupsGroupIdRouteImport
+      parentRoute: typeof AuthenticatedGroupsRoute
+    }
     '/_authenticated/exercises/$exerciseId': {
       id: '/_authenticated/exercises/$exerciseId'
       path: '/exercises/$exerciseId'
@@ -365,8 +424,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedGroupsRouteChildren {
+  AuthenticatedGroupsGroupIdRoute: typeof AuthenticatedGroupsGroupIdRoute
+}
+
+const AuthenticatedGroupsRouteChildren: AuthenticatedGroupsRouteChildren = {
+  AuthenticatedGroupsGroupIdRoute: AuthenticatedGroupsGroupIdRoute,
+}
+
+const AuthenticatedGroupsRouteWithChildren =
+  AuthenticatedGroupsRoute._addFileChildren(AuthenticatedGroupsRouteChildren)
+
 interface AuthenticatedRouteChildren {
   AuthenticatedBuilderRoute: typeof AuthenticatedBuilderRoute
+  AuthenticatedConnectionsRoute: typeof AuthenticatedConnectionsRoute
+  AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedVaultRoute: typeof AuthenticatedVaultRoute
@@ -380,6 +452,8 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBuilderRoute: AuthenticatedBuilderRoute,
+  AuthenticatedConnectionsRoute: AuthenticatedConnectionsRoute,
+  AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
   AuthenticatedLibraryRoute: AuthenticatedLibraryRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedVaultRoute: AuthenticatedVaultRoute,

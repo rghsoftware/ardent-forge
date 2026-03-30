@@ -190,6 +190,51 @@ export interface ProgramActivationRow {
   updated_at: string
 }
 
+export interface AccountabilityGroupRow {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  data_retention_days: number
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface GroupMemberRow {
+  id: string
+  group_id: string
+  user_id: string
+  role: 'COACH' | 'MEMBER'
+  share_history_before_join: boolean
+  joined_at: string
+  created_at: string
+  updated_at: string
+}
+
+export interface GroupInviteRow {
+  id: string
+  group_id: string
+  code: string
+  created_by: string
+  expires_at: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface DirectConnectionRow {
+  id: string
+  requester_id: string
+  recipient_id: string
+  status: 'PENDING' | 'ACTIVE' | 'DECLINED'
+  requester_grants_write: boolean
+  recipient_grants_write: boolean
+  accepted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface ShareLinkRow {
   id: string
   token: string

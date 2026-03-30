@@ -14,6 +14,11 @@ import type {
   BlockWeek,
   ScheduledSession,
   ProgramActivation,
+  AccountabilityGroup,
+  GroupMember,
+  GroupInvite,
+  DirectConnection,
+  GroupRole,
   ShareLink,
   ShareableEntityType,
 } from '@/domain/types'
@@ -47,6 +52,38 @@ export type VaultSummary = {
   totalVolumeLb: number
   thisWeekWorkouts: number
   thisWeekVolumeLb: number
+}
+
+// ---------------------------------------------------------------------------
+// Activity Feed types
+// ---------------------------------------------------------------------------
+
+export interface ActivityFeedOptions {
+  /** ISO 8601 datetime cursor for keyset pagination */
+  before?: string
+  /** Maximum entries to return (default 20) */
+  limit?: number
+}
+
+export interface ActivityFeedWorkoutSummary {
+  id: string
+  userId: string
+  /** Reserved for future user profile integration */
+  userDisplayName?: string
+  title: string | null
+  startedAt: string
+  completedAt: string | null
+  durationSeconds: number | null
+  exerciseCount: number
+}
+
+export interface GroupActivityFeedEntry extends ActivityFeedWorkoutSummary {
+  groupId: string
+  memberRole: GroupRole
+}
+
+export interface ConnectionActivityFeedEntry extends ActivityFeedWorkoutSummary {
+  connectionId: string
 }
 
 export interface ExerciseFilters {
@@ -200,4 +237,53 @@ export interface DataAdapter {
 
   /** Returns aggregate workout and volume stats for the vault summary card. */
   getVaultSummary(userId: string): Promise<VaultSummary>
+
+  // ============================================================
+  // Accountability Groups
+  // ============================================================
+  createGroup(
+    group: Pick<AccountabilityGroup, 'name' | 'description' | 'dataRetentionDays'>,
+  ): Promise<AccountabilityGroup>
+  getGroups(): Promise<AccountabilityGroup[]>
+  getGroup(id: string): Promise<AccountabilityGroup | null>
+  updateGroup(
+    id: string,
+    updates: Partial<Pick<AccountabilityGroup, 'name' | 'description' | 'dataRetentionDays'>>,
+  ): Promise<AccountabilityGroup>
+  deleteGroup(id: string): Promise<void>
+
+  // ============================================================
+  // Group Members
+  // ============================================================
+  getGroupMembers(groupId: string): Promise<GroupMember[]>
+  removeGroupMember(groupId: string, userId: string): Promise<void>
+  updateMemberRole(groupId: string, userId: string, role: GroupRole): Promise<GroupMember>
+
+  // ============================================================
+  // Group Invites
+  // ============================================================
+  createInvite(groupId: string): Promise<GroupInvite>
+  getGroupInvites(groupId: string): Promise<GroupInvite[]>
+  revokeInvite(inviteId: string): Promise<void>
+  joinGroupByCode(code: string): Promise<GroupMember>
+
+  // ============================================================
+  // Direct Connections
+  // ============================================================
+  requestConnection(recipientId: string): Promise<DirectConnection>
+  getConnections(): Promise<DirectConnection[]>
+  getPendingConnections(): Promise<DirectConnection[]>
+  acceptConnection(connectionId: string): Promise<DirectConnection>
+  declineConnection(connectionId: string): Promise<DirectConnection>
+  removeConnection(connectionId: string): Promise<void>
+  updateConnectionWriteAccess(connectionId: string, grantsWrite: boolean): Promise<DirectConnection>
+
+  // ============================================================
+  // Activity Feed
+  // ============================================================
+  getGroupActivityFeed(
+    groupId: string,
+    options?: ActivityFeedOptions,
+  ): Promise<GroupActivityFeedEntry[]>
+  getConnectionActivityFeed(options?: ActivityFeedOptions): Promise<ConnectionActivityFeedEntry[]>
 }

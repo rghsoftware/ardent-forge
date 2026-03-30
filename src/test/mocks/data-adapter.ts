@@ -77,6 +77,37 @@ export function createMockAdapter(
       thisWeekWorkouts: 0,
       thisWeekVolumeLb: 0,
     }),
+
+    // Accountability Group operations
+    createGroup: vi.fn().mockResolvedValue({}),
+    getGroups: vi.fn().mockResolvedValue([]),
+    getGroup: vi.fn().mockResolvedValue(null),
+    updateGroup: vi.fn().mockResolvedValue({}),
+    deleteGroup: vi.fn().mockResolvedValue(undefined),
+
+    // Group Member operations
+    getGroupMembers: vi.fn().mockResolvedValue([]),
+    removeGroupMember: vi.fn().mockResolvedValue(undefined),
+    updateMemberRole: vi.fn().mockResolvedValue({}),
+
+    // Group Invite operations
+    createInvite: vi.fn().mockResolvedValue({}),
+    getGroupInvites: vi.fn().mockResolvedValue([]),
+    revokeInvite: vi.fn().mockResolvedValue(undefined),
+    joinGroupByCode: vi.fn().mockResolvedValue({}),
+
+    // Direct Connection operations
+    requestConnection: vi.fn().mockResolvedValue({}),
+    getConnections: vi.fn().mockResolvedValue([]),
+    getPendingConnections: vi.fn().mockResolvedValue([]),
+    acceptConnection: vi.fn().mockResolvedValue({}),
+    declineConnection: vi.fn().mockResolvedValue({}),
+    removeConnection: vi.fn().mockResolvedValue(undefined),
+    updateConnectionWriteAccess: vi.fn().mockResolvedValue({}),
+
+    // Activity Feed operations
+    getGroupActivityFeed: vi.fn().mockResolvedValue([]),
+    getConnectionActivityFeed: vi.fn().mockResolvedValue([]),
   }
 
   return { ...base, ...overrides }

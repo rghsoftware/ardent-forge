@@ -39,10 +39,10 @@ export type ShareToken = z.infer<typeof shareTokenSchema>
 // ---------------------------------------------------------------------------
 
 export const accountabilityGroupSchema = syncableEntitySchema.extend({
-  name: z.string().min(1),
+  name: z.string().min(1).max(200),
   description: z.string().optional(),
   createdBy: entityId,
-  dataRetentionDays: z.number().int().positive(),
+  dataRetentionDays: z.number().int().min(1).max(90),
 })
 export type AccountabilityGroup = z.infer<typeof accountabilityGroupSchema>
 
@@ -88,6 +88,9 @@ export const directConnectionSchema = syncableEntitySchema
     requesterGrantsWrite: z.boolean(),
     recipientGrantsWrite: z.boolean(),
     acceptedAt: isoDateTime.optional(), // null until accepted
+  })
+  .refine((data) => data.requesterId !== data.recipientId, {
+    message: 'Cannot connect with yourself',
   })
   .refine(
     (data) => {

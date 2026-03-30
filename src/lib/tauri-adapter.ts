@@ -1,7 +1,10 @@
 import { invoke } from '@tauri-apps/api/core'
 import type {
+  ActivityFeedOptions,
+  ConnectionActivityFeedEntry,
   DataAdapter,
   ExerciseFilters,
+  GroupActivityFeedEntry,
   ProgramFull,
   SessionTemplateFull,
   VaultSummary,
@@ -27,6 +30,11 @@ import type {
   ShareLink,
   ShareableEntityType,
   WeeklyVolumeEntry,
+  AccountabilityGroup,
+  GroupMember,
+  GroupInvite,
+  DirectConnection,
+  GroupRole,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -44,6 +52,10 @@ import type {
   BlockWeekRow,
   ScheduledSessionRow,
   ProgramActivationRow,
+  AccountabilityGroupRow,
+  GroupMemberRow,
+  GroupInviteRow,
+  DirectConnectionRow,
 } from './database.types'
 import {
   toExercise,
@@ -72,6 +84,12 @@ import {
   toScheduledSession,
   toProgramActivation,
 } from './data-mapper'
+import {
+  toAccountabilityGroup,
+  toGroupMember,
+  toGroupInvite,
+  toDirectConnection,
+} from './sharing-mappers'
 
 // ---------------------------------------------------------------------------
 // Rust Response types -- mirrors models.rs Response structs as received by TS.
@@ -297,6 +315,80 @@ interface TauriProgramFullResponse {
   blocks: TauriBlockResponse[]
   block_weeks: TauriBlockWeekResponse[]
   scheduled_sessions: TauriScheduledSessionResponse[]
+}
+
+// ---------------------------------------------------------------------------
+// Sharing response types -- mirrors sharing model structs in Rust.
+// Booleans arrive as 0/1 integers. Timestamps as ISO 8601 strings
+// (serialized by serde_unix).
+// ---------------------------------------------------------------------------
+
+interface TauriAccountabilityGroupResponse {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  data_retention_days: number
+  created_by: string
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TauriGroupMemberResponse {
+  id: string
+  group_id: string
+  user_id: string
+  role: string
+  share_history_before_join: number // 0/1
+  joined_at: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TauriGroupInviteResponse {
+  id: string
+  group_id: string
+  code: string
+  created_by: string
+  expires_at: string | null
+  is_active: number // 0/1
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TauriDirectConnectionResponse {
+  id: string
+  requester_id: string
+  recipient_id: string
+  status: string
+  requester_grants_write: number // 0/1
+  recipient_grants_write: number // 0/1
+  accepted_at: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+interface TauriGroupActivityFeedEntry {
+  id: string
+  user_id: string
+  title: string | null
+  started_at: string
+  completed_at: string | null
+  duration_seconds: number | null
+  exercise_count: number
+  group_id: string
+  member_role: string
+}
+
+interface TauriConnectionActivityFeedEntry {
+  id: string
+  user_id: string
+  title: string | null
+  started_at: string
+  completed_at: string | null
+  duration_seconds: number | null
+  exercise_count: number
+  connection_id: string
 }
 
 // ---------------------------------------------------------------------------
@@ -631,12 +723,81 @@ function toProgramActivationRowFromTauri(r: TauriProgramActivationResponse): Pro
 }
 
 // ---------------------------------------------------------------------------
+// Sharing row converters: Tauri Response -> TS Row types
+// ---------------------------------------------------------------------------
+
+function toAccountabilityGroupRowFromTauri(
+  r: TauriAccountabilityGroupResponse,
+): AccountabilityGroupRow {
+  if (!r.created_at || !r.updated_at)
+    console.warn(`[tauri-adapter] Null timestamp in AccountabilityGroup ${r.id}`)
+  return {
+    id: r.id,
+    user_id: r.user_id,
+    name: r.name,
+    description: r.description,
+    data_retention_days: r.data_retention_days,
+    created_by: r.created_by,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+function toGroupMemberRowFromTauri(r: TauriGroupMemberResponse): GroupMemberRow {
+  if (!r.created_at || !r.updated_at)
+    console.warn(`[tauri-adapter] Null timestamp in GroupMember ${r.id}`)
+  return {
+    id: r.id,
+    group_id: r.group_id,
+    user_id: r.user_id,
+    role: r.role as 'COACH' | 'MEMBER',
+    share_history_before_join: intToBool(r.share_history_before_join),
+    joined_at: r.joined_at ?? new Date().toISOString(),
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+function toGroupInviteRowFromTauri(r: TauriGroupInviteResponse): GroupInviteRow {
+  if (!r.created_at || !r.updated_at)
+    console.warn(`[tauri-adapter] Null timestamp in GroupInvite ${r.id}`)
+  return {
+    id: r.id,
+    group_id: r.group_id,
+    code: r.code,
+    created_by: r.created_by,
+    expires_at: r.expires_at ?? new Date().toISOString(),
+    is_active: intToBool(r.is_active),
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+function toDirectConnectionRowFromTauri(r: TauriDirectConnectionResponse): DirectConnectionRow {
+  if (!r.created_at || !r.updated_at)
+    console.warn(`[tauri-adapter] Null timestamp in DirectConnection ${r.id}`)
+  return {
+    id: r.id,
+    requester_id: r.requester_id,
+    recipient_id: r.recipient_id,
+    status: r.status as 'PENDING' | 'ACTIVE' | 'DECLINED',
+    requester_grants_write: intToBool(r.requester_grants_write),
+    recipient_grants_write: intToBool(r.recipient_grants_write),
+    accepted_at: r.accepted_at,
+    created_at: r.created_at ?? new Date().toISOString(),
+    updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+// ---------------------------------------------------------------------------
 // TauriAdapter
 // ---------------------------------------------------------------------------
 
 export class TauriAdapter implements DataAdapter {
-  constructor(_userId: string) {
-    // userId reserved for future offline-first ownership queries
+  private readonly userId: string
+
+  constructor(userId: string) {
+    this.userId = userId
   }
 
   // ---------------------------------------------------------------------------
@@ -1509,6 +1670,231 @@ export class TauriAdapter implements DataAdapter {
       thisWeekWorkouts,
       thisWeekVolumeLb: Math.round(thisWeekVolumeLb),
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Accountability Group operations
+  // ---------------------------------------------------------------------------
+
+  async createGroup(
+    group: Pick<AccountabilityGroup, 'name' | 'description' | 'dataRetentionDays'>,
+  ): Promise<AccountabilityGroup> {
+    const row = await invokeCommand<TauriAccountabilityGroupResponse>('create_group', {
+      name: group.name,
+      description: group.description ?? null,
+      data_retention_days: group.dataRetentionDays ?? 30,
+      user_id: this.userId,
+    })
+    return toAccountabilityGroup(toAccountabilityGroupRowFromTauri(row))
+  }
+
+  async getGroups(): Promise<AccountabilityGroup[]> {
+    const rows = await invokeCommand<TauriAccountabilityGroupResponse[]>('get_groups', {
+      user_id: this.userId,
+    })
+    return rows.map((r) => toAccountabilityGroup(toAccountabilityGroupRowFromTauri(r)))
+  }
+
+  async getGroup(id: string): Promise<AccountabilityGroup | null> {
+    const row = await invokeCommand<TauriAccountabilityGroupResponse | null>('get_group', { id })
+    return row ? toAccountabilityGroup(toAccountabilityGroupRowFromTauri(row)) : null
+  }
+
+  async updateGroup(
+    id: string,
+    updates: Partial<Pick<AccountabilityGroup, 'name' | 'description' | 'dataRetentionDays'>>,
+  ): Promise<AccountabilityGroup> {
+    const row = await invokeCommand<TauriAccountabilityGroupResponse>('update_group', {
+      id,
+      name: updates.name ?? null,
+      description: updates.description ?? null,
+      data_retention_days: updates.dataRetentionDays ?? null,
+    })
+    return toAccountabilityGroup(toAccountabilityGroupRowFromTauri(row))
+  }
+
+  async deleteGroup(id: string): Promise<void> {
+    await invokeCommand<void>('delete_group', { id, user_id: this.userId })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Group Member operations
+  // ---------------------------------------------------------------------------
+
+  async getGroupMembers(groupId: string): Promise<GroupMember[]> {
+    const rows = await invokeCommand<TauriGroupMemberResponse[]>('get_group_members', {
+      group_id: groupId,
+    })
+    return rows.map((r) => toGroupMember(toGroupMemberRowFromTauri(r)))
+  }
+
+  async removeGroupMember(groupId: string, userId: string): Promise<void> {
+    await invokeCommand<void>('remove_group_member', {
+      group_id: groupId,
+      user_id: userId,
+      caller_id: this.userId,
+    })
+  }
+
+  async updateMemberRole(groupId: string, userId: string, role: GroupRole): Promise<GroupMember> {
+    const row = await invokeCommand<TauriGroupMemberResponse>('update_member_role', {
+      group_id: groupId,
+      user_id: userId,
+      role,
+      caller_id: this.userId,
+    })
+    return toGroupMember(toGroupMemberRowFromTauri(row))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Group Invite operations
+  // ---------------------------------------------------------------------------
+
+  async createInvite(groupId: string): Promise<GroupInvite> {
+    const row = await invokeCommand<TauriGroupInviteResponse>('create_invite', {
+      group_id: groupId,
+      user_id: this.userId,
+    })
+    return toGroupInvite(toGroupInviteRowFromTauri(row))
+  }
+
+  async getGroupInvites(groupId: string): Promise<GroupInvite[]> {
+    const rows = await invokeCommand<TauriGroupInviteResponse[]>('get_group_invites', {
+      group_id: groupId,
+    })
+    return rows.map((r) => toGroupInvite(toGroupInviteRowFromTauri(r)))
+  }
+
+  async revokeInvite(inviteId: string): Promise<void> {
+    await invokeCommand<void>('revoke_invite', { invite_id: inviteId, user_id: this.userId })
+  }
+
+  async joinGroupByCode(code: string): Promise<GroupMember> {
+    const row = await invokeCommand<TauriGroupMemberResponse>('join_group_by_code', {
+      code,
+      user_id: this.userId,
+    })
+    return toGroupMember(toGroupMemberRowFromTauri(row))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Direct Connection operations
+  // ---------------------------------------------------------------------------
+
+  async requestConnection(recipientId: string): Promise<DirectConnection> {
+    const row = await invokeCommand<TauriDirectConnectionResponse>('request_connection', {
+      requester_id: this.userId,
+      recipient_id: recipientId,
+    })
+    return toDirectConnection(toDirectConnectionRowFromTauri(row))
+  }
+
+  async getConnections(): Promise<DirectConnection[]> {
+    const rows = await invokeCommand<TauriDirectConnectionResponse[]>('get_connections', {
+      user_id: this.userId,
+    })
+    return rows.map((r) => toDirectConnection(toDirectConnectionRowFromTauri(r)))
+  }
+
+  async getPendingConnections(): Promise<DirectConnection[]> {
+    const rows = await invokeCommand<TauriDirectConnectionResponse[]>('get_pending_connections', {
+      user_id: this.userId,
+    })
+    return rows.map((r) => toDirectConnection(toDirectConnectionRowFromTauri(r)))
+  }
+
+  async acceptConnection(connectionId: string): Promise<DirectConnection> {
+    const row = await invokeCommand<TauriDirectConnectionResponse>('accept_connection', {
+      connection_id: connectionId,
+      user_id: this.userId,
+    })
+    return toDirectConnection(toDirectConnectionRowFromTauri(row))
+  }
+
+  async declineConnection(connectionId: string): Promise<DirectConnection> {
+    const row = await invokeCommand<TauriDirectConnectionResponse>('decline_connection', {
+      connection_id: connectionId,
+      user_id: this.userId,
+    })
+    return toDirectConnection(toDirectConnectionRowFromTauri(row))
+  }
+
+  async removeConnection(connectionId: string): Promise<void> {
+    await invokeCommand<void>('remove_connection', {
+      connection_id: connectionId,
+      user_id: this.userId,
+    })
+  }
+
+  async updateConnectionWriteAccess(
+    connectionId: string,
+    grantsWrite: boolean,
+  ): Promise<DirectConnection> {
+    const row = await invokeCommand<TauriDirectConnectionResponse>(
+      'update_connection_write_access',
+      {
+        connection_id: connectionId,
+        user_id: this.userId,
+        grants_write: grantsWrite,
+      },
+    )
+    return toDirectConnection(toDirectConnectionRowFromTauri(row))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Activity Feed operations
+  // ---------------------------------------------------------------------------
+
+  async getGroupActivityFeed(
+    groupId: string,
+    options: ActivityFeedOptions = {},
+  ): Promise<GroupActivityFeedEntry[]> {
+    const { before, limit = 20 } = options
+
+    const entries = await invokeCommand<TauriGroupActivityFeedEntry[]>('get_group_activity_feed', {
+      group_id: groupId,
+      user_id: this.userId,
+      before: before ? isoToUnixSeconds(before) : null,
+      limit,
+    })
+
+    return entries.map((e) => ({
+      id: e.id,
+      userId: e.user_id,
+      title: e.title,
+      startedAt: e.started_at,
+      completedAt: e.completed_at,
+      durationSeconds: e.duration_seconds,
+      exerciseCount: e.exercise_count,
+      groupId: e.group_id,
+      memberRole: e.member_role as GroupRole,
+    }))
+  }
+
+  async getConnectionActivityFeed(
+    options: ActivityFeedOptions = {},
+  ): Promise<ConnectionActivityFeedEntry[]> {
+    const { before, limit = 20 } = options
+
+    const entries = await invokeCommand<TauriConnectionActivityFeedEntry[]>(
+      'get_connection_activity_feed',
+      {
+        user_id: this.userId,
+        before: before ? isoToUnixSeconds(before) : null,
+        limit,
+      },
+    )
+
+    return entries.map((e) => ({
+      id: e.id,
+      userId: e.user_id,
+      title: e.title,
+      startedAt: e.started_at,
+      completedAt: e.completed_at,
+      durationSeconds: e.duration_seconds,
+      exerciseCount: e.exercise_count,
+      connectionId: e.connection_id,
+    }))
   }
 }
 
