@@ -302,3 +302,98 @@ pub struct ProgramFull {
     pub block_weeks: Vec<BlockWeekRow>,
     pub scheduled_sessions: Vec<ScheduledSessionRow>,
 }
+
+// ============================================================
+// Sharing row structs -- mirror SQLite tables 1:1
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct AccountabilityGroupRow {
+    pub id: String,
+    pub user_id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub data_retention_days: i64,
+    pub created_by: String,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct GroupMemberRow {
+    pub id: String,
+    pub group_id: String,
+    pub user_id: String,
+    pub role: String,
+    pub share_history_before_join: i64, // boolean 0/1
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub joined_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct GroupInviteRow {
+    pub id: String,
+    pub group_id: String,
+    pub code: String,
+    pub created_by: String,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub expires_at: Option<i64>,
+    pub is_active: i64, // boolean 0/1
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct DirectConnectionRow {
+    pub id: String,
+    pub requester_id: String,
+    pub recipient_id: String,
+    pub status: String,
+    pub requester_grants_write: i64, // boolean 0/1
+    pub recipient_grants_write: i64, // boolean 0/1
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub accepted_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub updated_at: Option<i64>,
+}
+
+// ============================================================
+// Sharing composite / feed structs
+// ============================================================
+
+/// Activity feed entry for group workout visibility.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupActivityFeedEntry {
+    pub id: String,
+    pub user_id: String,
+    pub title: Option<String>,
+    pub started_at: String,         // ISO 8601
+    pub completed_at: Option<String>, // ISO 8601
+    pub duration_seconds: Option<i64>,
+    pub exercise_count: i64,
+    pub group_id: String,
+    pub member_role: String,
+}
+
+/// Activity feed entry for connection workout visibility.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ConnectionActivityFeedEntry {
+    pub id: String,
+    pub user_id: String,
+    pub title: Option<String>,
+    pub started_at: String,         // ISO 8601
+    pub completed_at: Option<String>, // ISO 8601
+    pub duration_seconds: Option<i64>,
+    pub exercise_count: i64,
+    pub connection_id: String,
+}

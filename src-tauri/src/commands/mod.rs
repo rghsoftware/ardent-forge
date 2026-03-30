@@ -5,6 +5,7 @@ pub mod notification;
 pub mod programs;
 pub mod rest_timer;
 pub mod session_templates;
+pub mod sharing;
 pub mod sync;
 pub mod user_profile;
 pub mod workout_logs;

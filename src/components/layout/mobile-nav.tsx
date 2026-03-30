@@ -8,6 +8,8 @@ const navItems = [
   { label: 'Tracker', icon: 'history', to: '/history' },
   { label: 'Library', icon: 'library_books', to: '/library' },
   { label: 'Vault', icon: 'monitoring', to: '/vault' },
+  { label: 'Groups', icon: 'group', to: '/groups' },
+  { label: 'Connections', icon: 'person_add', to: '/connections' },
 ] as const
 
 export function MobileNav() {

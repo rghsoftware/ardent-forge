@@ -101,6 +101,28 @@ pub fn run() {
       // Notifications
       commands::notification::schedule_session_reminder,
       commands::notification::cancel_session_reminder,
+      // Sharing
+      commands::sharing::create_group,
+      commands::sharing::get_groups,
+      commands::sharing::get_group,
+      commands::sharing::update_group,
+      commands::sharing::delete_group,
+      commands::sharing::get_group_members,
+      commands::sharing::remove_group_member,
+      commands::sharing::update_member_role,
+      commands::sharing::create_invite,
+      commands::sharing::get_group_invites,
+      commands::sharing::revoke_invite,
+      commands::sharing::join_group_by_code,
+      commands::sharing::request_connection,
+      commands::sharing::get_connections,
+      commands::sharing::get_pending_connections,
+      commands::sharing::accept_connection,
+      commands::sharing::decline_connection,
+      commands::sharing::remove_connection,
+      commands::sharing::update_connection_write_access,
+      commands::sharing::get_group_activity_feed,
+      commands::sharing::get_connection_activity_feed,
     ])
     .run(tauri::generate_context!())
     .unwrap_or_else(|e| panic!("Tauri application error: {e}"));

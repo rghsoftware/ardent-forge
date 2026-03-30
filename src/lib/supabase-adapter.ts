@@ -6,6 +6,9 @@ import type {
   SessionTemplateFull,
   VaultSummary,
   WorkoutLogSummary,
+  ActivityFeedOptions,
+  GroupActivityFeedEntry,
+  ConnectionActivityFeedEntry,
 } from './data-adapter'
 import type {
   Exercise,
@@ -24,6 +27,11 @@ import type {
   ScheduledSession,
   ProgramActivation,
   WeeklyVolumeEntry,
+  AccountabilityGroup,
+  GroupMember,
+  GroupInvite,
+  DirectConnection,
+  GroupRole,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -73,6 +81,12 @@ import {
   fromScheduledSession,
   toProgramActivation,
 } from './data-mapper'
+import {
+  toAccountabilityGroup,
+  toGroupMember,
+  toGroupInvite,
+  toDirectConnection,
+} from './sharing-mappers'
 
 export class SupabaseAdapter implements DataAdapter {
   private client: SupabaseClient
@@ -1151,6 +1165,469 @@ export class SupabaseAdapter implements DataAdapter {
       thisWeekWorkouts,
       thisWeekVolumeLb: Math.round(thisWeekVolumeLb),
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Accountability Group operations
+  // ---------------------------------------------------------------------------
+
+  async createGroup(
+    group: Pick<AccountabilityGroup, 'name' | 'description' | 'dataRetentionDays'>,
+  ): Promise<AccountabilityGroup> {
+    const userId = await this.getCurrentUserId()
+
+    const { data, error } = await this.client
+      .from('accountability_groups')
+      .insert({
+        name: group.name,
+        description: group.description ?? null,
+        data_retention_days: group.dataRetentionDays,
+        user_id: userId,
+        created_by: userId,
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+    return toAccountabilityGroup(data)
+  }
+
+  async getGroups(): Promise<AccountabilityGroup[]> {
+    const { data, error } = await this.client
+      .from('accountability_groups')
+      .select()
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return (data ?? []).map(toAccountabilityGroup)
+  }
+
+  async getGroup(id: string): Promise<AccountabilityGroup | null> {
+    const { data, error } = await this.client
+      .from('accountability_groups')
+      .select()
+      .eq('id', id)
+      .maybeSingle()
+
+    if (error) throw error
+    return data ? toAccountabilityGroup(data) : null
+  }
+
+  async updateGroup(
+    id: string,
+    updates: Partial<Pick<AccountabilityGroup, 'name' | 'description' | 'dataRetentionDays'>>,
+  ): Promise<AccountabilityGroup> {
+    const patch: Record<string, unknown> = {}
+    if (updates.name !== undefined) patch.name = updates.name
+    if (updates.description !== undefined) patch.description = updates.description
+    if (updates.dataRetentionDays !== undefined)
+      patch.data_retention_days = updates.dataRetentionDays
+
+    const { data, error } = await this.client
+      .from('accountability_groups')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return toAccountabilityGroup(data)
+  }
+
+  async deleteGroup(id: string): Promise<void> {
+    const { error } = await this.client.from('accountability_groups').delete().eq('id', id)
+    if (error) throw error
+  }
+
+  // ---------------------------------------------------------------------------
+  // Group Member operations
+  // ---------------------------------------------------------------------------
+
+  async getGroupMembers(groupId: string): Promise<GroupMember[]> {
+    const { data, error } = await this.client
+      .from('group_members')
+      .select()
+      .eq('group_id', groupId)
+      .order('joined_at', { ascending: true })
+
+    if (error) throw error
+    return (data ?? []).map(toGroupMember)
+  }
+
+  async removeGroupMember(groupId: string, userId: string): Promise<void> {
+    const { error } = await this.client
+      .from('group_members')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+
+    if (error) throw error
+  }
+
+  async updateMemberRole(groupId: string, userId: string, role: GroupRole): Promise<GroupMember> {
+    const { data, error } = await this.client
+      .from('group_members')
+      .update({ role })
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return toGroupMember(data)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Group Invite operations
+  // ---------------------------------------------------------------------------
+
+  async createInvite(groupId: string): Promise<GroupInvite> {
+    const userId = await this.getCurrentUserId()
+
+    // expires_at = 7 days from now
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 7)
+
+    const { data, error } = await this.client
+      .from('group_invites')
+      .insert({
+        group_id: groupId,
+        created_by: userId,
+        expires_at: expiresAt.toISOString(),
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+    return toGroupInvite(data)
+  }
+
+  async getGroupInvites(groupId: string): Promise<GroupInvite[]> {
+    const { data, error } = await this.client
+      .from('group_invites')
+      .select()
+      .eq('group_id', groupId)
+      .eq('is_active', true)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return (data ?? []).map(toGroupInvite)
+  }
+
+  async revokeInvite(inviteId: string): Promise<void> {
+    const { error } = await this.client
+      .from('group_invites')
+      .update({ is_active: false })
+      .eq('id', inviteId)
+
+    if (error) throw error
+  }
+
+  async joinGroupByCode(code: string): Promise<GroupMember> {
+    const userId = await this.getCurrentUserId()
+
+    // Find the invite
+    const { data: invite, error: inviteError } = await this.client
+      .from('group_invites')
+      .select()
+      .eq('code', code)
+      .eq('is_active', true)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle()
+
+    if (inviteError) throw inviteError
+    if (!invite) throw new Error('Invalid or expired invite code')
+
+    // Check user group limit (max 5 groups)
+    const { count, error: countError } = await this.client
+      .from('group_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+
+    if (countError) throw countError
+    if ((count ?? 0) >= 5) throw new Error('Maximum group limit (5) reached')
+
+    // Add member (group size enforced by DB trigger)
+    const { data, error } = await this.client
+      .from('group_members')
+      .insert({
+        group_id: invite.group_id,
+        user_id: userId,
+        role: 'MEMBER',
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+    return toGroupMember(data)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Direct Connection operations
+  // ---------------------------------------------------------------------------
+
+  async requestConnection(recipientId: string): Promise<DirectConnection> {
+    const userId = await this.getCurrentUserId()
+
+    const { data, error } = await this.client
+      .from('direct_connections')
+      .insert({
+        requester_id: userId,
+        recipient_id: recipientId,
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+    return toDirectConnection(data)
+  }
+
+  async getConnections(): Promise<DirectConnection[]> {
+    const { data, error } = await this.client
+      .from('direct_connections')
+      .select()
+      .eq('status', 'ACTIVE')
+      .order('accepted_at', { ascending: false })
+
+    if (error) throw error
+    return (data ?? []).map(toDirectConnection)
+  }
+
+  async getPendingConnections(): Promise<DirectConnection[]> {
+    const { data, error } = await this.client
+      .from('direct_connections')
+      .select()
+      .eq('status', 'PENDING')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return (data ?? []).map(toDirectConnection)
+  }
+
+  async acceptConnection(connectionId: string): Promise<DirectConnection> {
+    const { data, error } = await this.client
+      .from('direct_connections')
+      .update({
+        status: 'ACTIVE',
+        accepted_at: new Date().toISOString(),
+      })
+      .eq('id', connectionId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return toDirectConnection(data)
+  }
+
+  async declineConnection(connectionId: string): Promise<DirectConnection> {
+    const { data, error } = await this.client
+      .from('direct_connections')
+      .update({ status: 'DECLINED' })
+      .eq('id', connectionId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return toDirectConnection(data)
+  }
+
+  async removeConnection(connectionId: string): Promise<void> {
+    const { error } = await this.client.from('direct_connections').delete().eq('id', connectionId)
+    if (error) throw error
+  }
+
+  async updateConnectionWriteAccess(
+    connectionId: string,
+    grantsWrite: boolean,
+  ): Promise<DirectConnection> {
+    const userId = await this.getCurrentUserId()
+
+    // Fetch the connection to determine if user is requester or recipient
+    const { data: existing, error: fetchError } = await this.client
+      .from('direct_connections')
+      .select()
+      .eq('id', connectionId)
+      .single()
+
+    if (fetchError) throw fetchError
+
+    const patch =
+      existing.requester_id === userId
+        ? { requester_grants_write: grantsWrite }
+        : { recipient_grants_write: grantsWrite }
+
+    const { data, error } = await this.client
+      .from('direct_connections')
+      .update(patch)
+      .eq('id', connectionId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return toDirectConnection(data)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Activity Feed operations
+  // ---------------------------------------------------------------------------
+
+  async getGroupActivityFeed(
+    groupId: string,
+    options: ActivityFeedOptions = {},
+  ): Promise<GroupActivityFeedEntry[]> {
+    const { before, limit = 20 } = options
+    const userId = await this.getCurrentUserId()
+
+    // Fetch all group members (excluding self) with their history-sharing settings.
+    // SH-9: share_history_before_join is controlled by the DATA OWNER, not the viewer.
+    // Each member's own flag determines whether their pre-join history is visible to others.
+    const { data: members, error: membersError } = await this.client
+      .from('group_members')
+      .select('user_id, role, share_history_before_join, joined_at')
+      .eq('group_id', groupId)
+      .neq('user_id', userId)
+
+    if (membersError) throw membersError
+    if (!members?.length) return []
+
+    const memberIds = members.map((m) => m.user_id)
+    const memberRoleMap = Object.fromEntries(members.map((m) => [m.user_id, m.role]))
+    // Map: userId -> earliest visible started_at (null = no restriction)
+    const memberHistoryFrom = Object.fromEntries(
+      members.map((m) => [m.user_id, m.share_history_before_join ? null : m.joined_at]),
+    )
+
+    // Build workout_logs query -- deliberately exclude private fields (SH-7)
+    let query = this.client
+      .from('workout_logs')
+      .select('id, user_id, title, started_at, completed_at')
+      .in('user_id', memberIds)
+      .not('completed_at', 'is', null)
+      .order('started_at', { ascending: false })
+      .limit(limit)
+
+    if (before) query = query.lt('started_at', before)
+
+    const { data: rawLogs, error: logsError } = await query
+    if (logsError) throw logsError
+
+    // SH-9: Filter out pre-join logs for members who have not opted in to sharing history.
+    // RLS enforces this at the DB level; this adapter filter is an extra safety layer.
+    const logs = (rawLogs ?? []).filter((log) => {
+      const historyFrom = memberHistoryFrom[log.user_id]
+      return historyFrom === null || log.started_at >= historyFrom
+    })
+
+    // Get exercise counts per workout
+    const logIds = logs.map((l) => l.id)
+
+    let exerciseCounts: Record<string, number> = {}
+    if (logIds.length > 0) {
+      const { data: activityGroups } = await this.client
+        .from('logged_activity_groups')
+        .select('workout_log_id')
+        .in('workout_log_id', logIds)
+
+      exerciseCounts = {}
+      for (const ag of activityGroups ?? []) {
+        exerciseCounts[ag.workout_log_id] = (exerciseCounts[ag.workout_log_id] ?? 0) + 1
+      }
+    }
+
+    return (logs ?? []).map((log) => {
+      let durationSeconds: number | null = null
+      if (log.completed_at && log.started_at) {
+        durationSeconds = Math.floor(
+          (new Date(log.completed_at).getTime() - new Date(log.started_at).getTime()) / 1000,
+        )
+      }
+
+      return {
+        id: log.id,
+        userId: log.user_id,
+        title: log.title,
+        startedAt: log.started_at,
+        completedAt: log.completed_at,
+        durationSeconds,
+        exerciseCount: exerciseCounts[log.id] ?? 0,
+        groupId,
+        memberRole: memberRoleMap[log.user_id] ?? 'MEMBER',
+      }
+    })
+  }
+
+  async getConnectionActivityFeed(
+    options: ActivityFeedOptions = {},
+  ): Promise<ConnectionActivityFeedEntry[]> {
+    const { before, limit = 20 } = options
+    const userId = await this.getCurrentUserId()
+
+    // Get active connections
+    const { data: connections, error: connError } = await this.client
+      .from('direct_connections')
+      .select('id, requester_id, recipient_id')
+      .eq('status', 'ACTIVE')
+
+    if (connError) throw connError
+    if (!connections?.length) return []
+
+    const connectionMap: Record<string, string> = {}
+    const peerIds: string[] = []
+    for (const conn of connections) {
+      const peerId = conn.requester_id === userId ? conn.recipient_id : conn.requester_id
+      peerIds.push(peerId)
+      connectionMap[peerId] = conn.id
+    }
+
+    // Fetch peer logs -- exclude private fields
+    let query = this.client
+      .from('workout_logs')
+      .select('id, user_id, title, started_at, completed_at')
+      .in('user_id', peerIds)
+      .not('completed_at', 'is', null)
+      .order('started_at', { ascending: false })
+      .limit(limit)
+
+    if (before) query = query.lt('started_at', before)
+
+    const { data: logs, error: logsError } = await query
+    if (logsError) throw logsError
+
+    const logIds = (logs ?? []).map((l) => l.id)
+
+    let exerciseCounts: Record<string, number> = {}
+    if (logIds.length > 0) {
+      const { data: activityGroups } = await this.client
+        .from('logged_activity_groups')
+        .select('workout_log_id')
+        .in('workout_log_id', logIds)
+
+      exerciseCounts = {}
+      for (const ag of activityGroups ?? []) {
+        exerciseCounts[ag.workout_log_id] = (exerciseCounts[ag.workout_log_id] ?? 0) + 1
+      }
+    }
+
+    return (logs ?? []).map((log) => {
+      let durationSeconds: number | null = null
+      if (log.completed_at && log.started_at) {
+        durationSeconds = Math.floor(
+          (new Date(log.completed_at).getTime() - new Date(log.started_at).getTime()) / 1000,
+        )
+      }
+
+      return {
+        id: log.id,
+        userId: log.user_id,
+        title: log.title,
+        startedAt: log.started_at,
+        completedAt: log.completed_at,
+        durationSeconds,
+        exerciseCount: exerciseCounts[log.id] ?? 0,
+        connectionId: connectionMap[log.user_id] ?? '',
+      }
+    })
   }
 }
 

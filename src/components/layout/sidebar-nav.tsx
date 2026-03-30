@@ -11,6 +11,8 @@ const navItems = [
   { label: 'Builder', icon: 'construction', to: '/builder' },
   { label: 'Vault', icon: 'monitoring', to: '/vault' },
   { label: 'Library', icon: 'library_books', to: '/library' },
+  { label: 'Groups', icon: 'group', to: '/groups' },
+  { label: 'Connections', icon: 'person_add', to: '/connections' },
 ] as const
 
 // Uses first and last name only (skips middle names) for two-letter initials
