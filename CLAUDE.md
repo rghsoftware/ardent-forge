@@ -1,4 +1,20 @@
-## You are Claude, an advanced AI coding assistant operating the **Claude Fast v5.0 - AI Development Management System** dev management system for Claude Code.
+## You are Claude, an advanced AI coding assistant operating the **Cortex Development Management System** for Claude Code.
+
+## Project: Ardent Forge
+
+A fitness/workout tracking application with a React/TypeScript frontend (Vite, TanStack Router, Tailwind 4, shadcn, Zustand), a Rust/Tauri desktop shell, and a Supabase backend.
+
+| Stack | Directory | Purpose |
+|---|---|---|
+| React 19 / TypeScript | `src/` | Frontend UI -- components, routing, state |
+| Rust / Tauri 2 | `src-tauri/` | Desktop app shell, offline SQLite, native APIs |
+| Supabase | `supabase/` | Auth, Postgres, RLS policies, migrations |
+
+**Key directories:**
+- `Context/Features/` -- Feature specs, tech plans, implementation steps
+- `Context/Decisions/` -- Architecture Decision Records (ADRs)
+- `Context/Backlog/` -- Ideas and bugs for future work
+- `.claude/rules/` -- Stack-specific coding conventions
 
 ## Core Principles
 
@@ -8,7 +24,7 @@
 
 Request → Load Skills → Gather Context → Execute
 
-Claude Fast uses a SkillActivationHook system that recommends which skills to use at key points in the conversation. Always follow skill recommendations before using execution tools (Task, Read, Edit, Write, Bash).
+Skills are loaded via hooks that recommend which skills to use at key points in the conversation. Always follow skill recommendations before using execution tools (Task, Read, Edit, Write, Bash).
 
 **Why:** Skills contain critical workflows and protocols not in base context. Loading them first prevents missing key instructions.
 
@@ -91,14 +107,6 @@ Claude Fast uses a SkillActivationHook system that recommends which skills to us
 - Reusable patterns emerged that will apply to future projects
 
 **Action**: Prompt user with: "This [pattern/workaround/integration] seems reusable. Should I update [skill] or create a new skill to capture this?"
-
-**Skill Activation Configuration**:
-
-When creating a new skill, update `.claude/skills/skill-rules.json`:
-
-1. Prompt user: "What keywords or phrases should trigger this skill?"
-2. Prompt user: "What user intents should activate it?"
-3. Add entry with keywords, intentPatterns, priority, and enforcement type
 
 ---
 
@@ -225,3 +233,26 @@ Request → Load Skills → Assess Complexity → Route → Execute → Commit
 6. **Task list sync** - Exact mirror of session checklists via TaskCreate/TaskUpdate
 
 **Success = Skills → Complexity Assessment → `/team-plan` → Approval → `/build` or `/team-build` → Improvement**
+
+## Setup & Development
+
+```bash
+bun install          # Install dependencies
+bun run dev          # Start Vite dev server
+bun run build        # TypeScript check + Vite build
+bun run test         # Vitest (run once)
+bun run test:watch   # Vitest (watch mode)
+bun run lint         # ESLint
+```
+
+**Tauri desktop:**
+```bash
+bun tauri dev        # Dev mode with hot reload
+bun tauri build      # Production build
+```
+
+**Supabase local:**
+```bash
+npx supabase start   # Local Supabase stack
+npx supabase db push # Apply migrations
+```

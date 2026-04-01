@@ -1,7 +1,7 @@
 {
   "statusLine": {
     "type": "command",
-    "command": "node .claude/hooks/ContextRecoveryHook/statusline-monitor.mjs"
+    "command": "bun run hooks/context-recovery/statusline-monitor.ts"
   },
   "permissions": {
     "allow": [
@@ -18,9 +18,6 @@
       "Bash(mkdir:*)",
       "Bash(cp:*)",
       "Bash(mv:*)",
-      "Bash(node:*)",
-      "Bash(npm:*)",
-      "Bash(pnpm:*)",
       "Bash(bun:*)"
     ],
     "deny": [],
@@ -32,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/SkillActivationHook/skill-activation-prompt.mjs"
+            "command": "bun run hooks/skill-activation/skill-activation.ts"
           }
         ]
       }
@@ -42,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/ContextRecoveryHook/conv-backup.mjs",
+            "command": "bun run hooks/context-recovery/conv-backup.ts",
             "async": true
           }
         ]
@@ -54,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/FormatterHook/formatter.mjs"
+            "command": "bun run hooks/formatter/formatter.ts"
           }
         ]
       }
