@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { getConfigStore } from '@/lib/config-store'
 import type { BackendConfig } from '@/lib/config-store'
@@ -22,10 +22,15 @@ export const Route = createFileRoute('/setup')({
 function SetupPage() {
   const router = useRouter()
 
-  const [url, setUrl] = useState(import.meta.env.VITE_SUPABASE_URL?.trim() ?? '')
-  const [key, setKey] = useState(import.meta.env.VITE_SUPABASE_PUB_KEY?.trim() ?? '')
+  const envUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? ''
+  const envKey = import.meta.env.VITE_SUPABASE_PUB_KEY?.trim() ?? ''
+  const hasEnvVars = Boolean(envUrl && envKey)
+
+  const [url, setUrl] = useState(envUrl)
+  const [key, setKey] = useState(envKey)
   const [status, setStatus] = useState<ConnectionUiStatus>('idle')
   const [message, setMessage] = useState('')
+  const autoValidated = useRef(false)
 
   const handleConnect = async () => {
     if (!url || !key) {
@@ -59,16 +64,28 @@ function SetupPage() {
     }
 
     setStatus(result.status)
-    setMessage(
-      result.status === 'no-schema'
-        ? 'Connected, but database schema not found. See the setup guide.'
-        : 'Cannot reach server. Check URL and key.',
-    )
+    setMessage(result.message)
   }
+
+  // Auto-validate when env vars pre-fill both fields so the user
+  // immediately sees why the connection failed instead of a blank form.
+  useEffect(() => {
+    if (hasEnvVars && !autoValidated.current) {
+      autoValidated.current = true
+      handleConnect()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <AuthPageShell>
       <p className="text-sm text-warm-ash">Configure Backend</p>
+
+      {hasEnvVars && status !== 'ok' && status !== 'idle' && status !== 'validating' && (
+        <p className="rounded-md bg-warning-flare/10 px-3 py-2 text-xs text-warning-flare">
+          Environment variables were detected but the connection failed. Check the values below.
+        </p>
+      )}
 
       <div className="space-y-5">
         <div className="space-y-1">
