@@ -1,8 +1,49 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { validateConnection } from '../connection-validator'
 
 // ---------------------------------------------------------------------------
-// validateConnection -- unit tests
+// Mock @supabase/supabase-js
+// ---------------------------------------------------------------------------
+
+const mockSelect = vi.fn()
+const mockLimit = vi.fn()
+const mockAbortSignal = vi.fn()
+const mockFrom = vi.fn()
+
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: vi.fn(() => ({
+    from: mockFrom,
+  })),
+}))
+
+function setupChain(result: { data?: unknown; error?: unknown }) {
+  mockAbortSignal.mockResolvedValue(result)
+  mockLimit.mockReturnValue({ abortSignal: mockAbortSignal })
+  mockSelect.mockReturnValue({ limit: mockLimit })
+  mockFrom.mockReturnValue({ select: mockSelect })
+}
+
+// Helper to set up different results for reachability (call 1) and schema (call 2) checks.
+function setupChainSequence(
+  first: { data?: unknown; error?: unknown },
+  second: { data?: unknown; error?: unknown },
+) {
+  let callCount = 0
+  mockFrom.mockImplementation(() => {
+    callCount++
+    const result = callCount === 1 ? first : second
+    return {
+      select: vi.fn(() => ({
+        limit: vi.fn(() => ({
+          abortSignal: vi.fn().mockResolvedValue(result),
+        })),
+      })),
+    }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tests
 // ---------------------------------------------------------------------------
 
 describe('validateConnection', () => {
@@ -10,51 +51,53 @@ describe('validateConnection', () => {
   const key = 'test-anon-key'
 
   beforeEach(() => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve({ ok: true, status: 200 })),
-    )
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
+    vi.clearAllMocks()
   })
 
   // -----------------------------------------------------------------------
   // Happy path
   // -----------------------------------------------------------------------
 
-  it('returns ok when both fetches succeed', async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, status: 200 })
-      .mockResolvedValueOnce({ ok: true, status: 200 })
-    vi.stubGlobal('fetch', mockFetch)
+  it('returns ok when both queries succeed', async () => {
+    setupChainSequence({ data: [], error: null }, { data: [{ id: '1' }], error: null })
 
     const result = await validateConnection(url, key)
 
     expect(result).toEqual({ status: 'ok' })
-    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(mockFrom).toHaveBeenCalledTimes(2)
   })
 
   // -----------------------------------------------------------------------
-  // Step 1 failures -- reachability
+  // Step 1 failures -- reachability / key validity
   // -----------------------------------------------------------------------
 
-  it('returns unreachable when step 1 responds with non-2xx', async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({ ok: false, status: 500 })
-    vi.stubGlobal('fetch', mockFetch)
+  it('returns unreachable when key is invalid (401)', async () => {
+    setupChain({
+      error: { message: 'Invalid API key', status: 401 },
+    })
 
     const result = await validateConnection(url, key)
 
     expect(result.status).toBe('unreachable')
-    expect((result as { message: string }).message).toContain('500')
+    expect((result as { message: string }).message).toContain('API key')
   })
 
-  it('returns unreachable with timeout message when step 1 throws TimeoutError', async () => {
-    const timeoutError = new DOMException('signal timed out', 'TimeoutError')
-    const mockFetch = vi.fn().mockRejectedValueOnce(timeoutError)
-    vi.stubGlobal('fetch', mockFetch)
+  it('returns unreachable when key is forbidden (403)', async () => {
+    setupChain({
+      error: { message: 'Forbidden', status: 403 },
+    })
+
+    const result = await validateConnection(url, key)
+
+    expect(result.status).toBe('unreachable')
+    expect((result as { message: string }).message).toContain('API key')
+  })
+
+  it('returns unreachable with timeout message on AbortError', async () => {
+    mockAbortSignal.mockRejectedValue(new DOMException('signal timed out', 'TimeoutError'))
+    mockLimit.mockReturnValue({ abortSignal: mockAbortSignal })
+    mockSelect.mockReturnValue({ limit: mockLimit })
+    mockFrom.mockReturnValue({ select: mockSelect })
 
     const result = await validateConnection(url, key)
 
@@ -62,9 +105,10 @@ describe('validateConnection', () => {
     expect((result as { message: string }).message).toContain('timed out')
   })
 
-  it('returns unreachable when step 1 throws a network TypeError', async () => {
-    const mockFetch = vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch'))
-    vi.stubGlobal('fetch', mockFetch)
+  it('returns unreachable on network failure', async () => {
+    setupChain({
+      error: { message: 'FetchError: Failed to fetch', status: undefined },
+    })
 
     const result = await validateConnection(url, key)
 
@@ -73,15 +117,29 @@ describe('validateConnection', () => {
   })
 
   // -----------------------------------------------------------------------
-  // Step 2 failures -- schema check
+  // Step 1 passes, step 2 failures -- schema check
   // -----------------------------------------------------------------------
 
-  it('returns no-schema when step 1 ok but step 2 returns 404', async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, status: 200 })
-      .mockResolvedValueOnce({ ok: false, status: 404 })
-    vi.stubGlobal('fetch', mockFetch)
+  it('proceeds to schema check when reachability query returns table-not-found', async () => {
+    // Step 1: table doesn't exist (expected) -- means server is reachable
+    // Step 2: exercises table succeeds
+    setupChainSequence(
+      { error: { message: 'relation does not exist', code: '42P01' } },
+      { data: [{ id: '1' }], error: null },
+    )
+
+    const result = await validateConnection(url, key)
+
+    expect(result).toEqual({ status: 'ok' })
+  })
+
+  it('returns no-schema when exercises table does not exist', async () => {
+    // Step 1 passes (no error)
+    // Step 2 fails with a schema error
+    setupChainSequence(
+      { data: [], error: null },
+      { error: { message: 'relation "exercises" does not exist', code: '42P01', status: 404 } },
+    )
 
     const result = await validateConnection(url, key)
 
@@ -89,38 +147,11 @@ describe('validateConnection', () => {
     expect((result as { message: string }).message).toContain('database schema')
   })
 
-  it('returns unreachable when step 1 ok but step 2 throws a network TypeError', async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, status: 200 })
-      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-    vi.stubGlobal('fetch', mockFetch)
-
-    const result = await validateConnection(url, key)
-
-    expect(result.status).toBe('unreachable')
-    expect((result as { message: string }).message).toContain('network error')
-  })
-
-  it('returns unreachable with API key message when step 2 returns 401', async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, status: 200 })
-      .mockResolvedValueOnce({ ok: false, status: 401 })
-    vi.stubGlobal('fetch', mockFetch)
-
-    const result = await validateConnection(url, key)
-
-    expect(result.status).toBe('unreachable')
-    expect((result as { message: string }).message).toContain('API key')
-  })
-
-  it('returns unreachable with API key message when step 2 returns 403', async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, status: 200 })
-      .mockResolvedValueOnce({ ok: false, status: 403 })
-    vi.stubGlobal('fetch', mockFetch)
+  it('returns unreachable when schema check gets 401', async () => {
+    setupChainSequence(
+      { data: [], error: null },
+      { error: { message: 'Unauthorized', status: 401 } },
+    )
 
     const result = await validateConnection(url, key)
 
@@ -129,27 +160,15 @@ describe('validateConnection', () => {
   })
 
   // -----------------------------------------------------------------------
-  // Header verification
+  // Uses Supabase client (not raw fetch)
   // -----------------------------------------------------------------------
 
-  it('sends correct headers on the step 2 request', async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, status: 200 })
-      .mockResolvedValueOnce({ ok: true, status: 200 })
-    vi.stubGlobal('fetch', mockFetch)
+  it('creates a Supabase client with the provided url and key', async () => {
+    const { createClient } = await import('@supabase/supabase-js')
+    setupChainSequence({ data: [], error: null }, { data: [], error: null })
 
     await validateConnection(url, key)
 
-    // Step 2 is the second call
-    const [step2Url, step2Init] = mockFetch.mock.calls[1]
-
-    expect(step2Url).toBe(`${url}/rest/v1/exercises?select=id&limit=1`)
-    expect(step2Init.headers).toEqual(
-      expect.objectContaining({
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-      }),
-    )
+    expect(createClient).toHaveBeenCalledWith(url, key)
   })
 })

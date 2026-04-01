@@ -220,7 +220,7 @@ Apply `practices/branch-completion.md` for branch handling.
 
 ## Session File Template
 
-**Note:** For complex work, the `/team-plan` command generates the session/plan file automatically. Use this template only for moderate work where you create the session file manually.
+**Note:** For complex work, the `/team-plan` command generates the session/blueprint file automatically. Use this template only for moderate work where you create the session file manually.
 
 For `/team-plan` output format, see `.claude/commands/team-plan.md` (Plan Format section).
 

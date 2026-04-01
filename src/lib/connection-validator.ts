@@ -1,3 +1,5 @@
+import { createClient } from '@supabase/supabase-js'
+
 export type ValidationResult =
   | { status: 'ok' }
   | { status: 'no-schema'; message: string }
@@ -6,26 +8,65 @@ export type ValidationResult =
 export type ConnectionUiStatus = ValidationResult['status'] | 'idle' | 'validating'
 
 /**
- * Validates a Supabase connection by testing reachability and schema presence.
+ * Validates a Supabase connection by creating a temporary client and querying
+ * through it. This supports both legacy anon keys and new publishable keys
+ * (sb_publishable_xxx) since the client library handles auth headers internally.
  *
- * Step 1 -- hit the PostgREST root to confirm the instance is reachable.
+ * Step 1 -- lightweight RPC to confirm the instance is reachable and the key is valid.
  * Step 2 -- query the `exercises` table to confirm the Ardent Forge schema
  *           has been applied.
  */
 export async function validateConnection(url: string, key: string): Promise<ValidationResult> {
   const normalizedUrl = url.replace(/\/+$/, '')
 
-  // Step 1: Reachability check
+  let client: ReturnType<typeof createClient>
   try {
-    const reachRes = await fetch(`${normalizedUrl}/rest/v1/`, {
-      headers: { apikey: key },
-      signal: AbortSignal.timeout(8000),
-    })
+    client = createClient(normalizedUrl, key)
+  } catch {
+    return {
+      status: 'unreachable',
+      message: 'Invalid Supabase URL or key format.',
+    }
+  }
 
-    if (!reachRes.ok) {
-      return {
-        status: 'unreachable',
-        message: `Server responded with ${reachRes.status}`,
+  // Step 1: Reachability + key validity check
+  // Use a lightweight query that works regardless of schema state.
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8000)
+
+    const { error } = await client
+      .from('_placeholder_reachability_check')
+      .select('*', { count: 'exact', head: true })
+      .limit(0)
+      .abortSignal(controller.signal)
+
+    clearTimeout(timer)
+
+    // A 401/403 means the key is invalid. A 404 or "relation does not exist"
+    // error is fine -- it means the server is reachable and the key works.
+    if (error) {
+      const code = (error as unknown as { code?: string }).code
+      const status = (error as unknown as { status?: number }).status
+      const msg = error.message?.toLowerCase() ?? ''
+
+      if (status === 401 || status === 403 || msg.includes('invalid api key') || msg.includes('invalid claim')) {
+        return {
+          status: 'unreachable',
+          message: 'API key is not valid for this project. Check that the key matches the URL.',
+        }
+      }
+
+      // Any other error (like "relation does not exist") means the server
+      // is reachable and the key authenticated -- proceed to schema check.
+      if (code !== 'PGRST116' && !msg.includes('does not exist') && status !== 404 && code !== '42P01') {
+        // Unexpected error that isn't a missing-table error
+        if (msg.includes('fetch') || msg.includes('network') || msg.includes('failed')) {
+          return {
+            status: 'unreachable',
+            message: 'Could not reach the Supabase instance. Check the URL and your network.',
+          }
+        }
       }
     }
   } catch (err) {
@@ -43,28 +84,32 @@ export async function validateConnection(url: string, key: string): Promise<Vali
     }
   }
 
-  // Step 2: Schema presence check
+  // Step 2: Schema presence check -- query an Ardent Forge table
   try {
-    const schemaRes = await fetch(`${normalizedUrl}/rest/v1/exercises?select=id&limit=1`, {
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-      },
-      signal: AbortSignal.timeout(8000),
-    })
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8000)
 
-    if (!schemaRes.ok) {
-      if (schemaRes.status === 401 || schemaRes.status === 403) {
+    const { error } = await client
+      .from('exercises')
+      .select('id')
+      .limit(1)
+      .abortSignal(controller.signal)
+
+    clearTimeout(timer)
+
+    if (error) {
+      const status = (error as unknown as { status?: number }).status
+
+      if (status === 401 || status === 403) {
         return {
           status: 'unreachable',
-          message:
-            'API key does not have access to this project. Check that the key matches the URL.',
+          message: 'API key does not have access to this project. Check that the key matches the URL.',
         }
       }
+
       return {
         status: 'no-schema',
-        message:
-          'Could not verify the database schema. Ensure the database migrations have been run.',
+        message: 'Could not verify the database schema. Ensure the database migrations have been run.',
       }
     }
   } catch (err) {
