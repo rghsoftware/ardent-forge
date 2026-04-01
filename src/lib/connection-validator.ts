@@ -18,7 +18,10 @@ export async function validateConnection(url: string, key: string): Promise<Vali
   // Step 1: Reachability check
   try {
     const reachRes = await fetch(`${normalizedUrl}/rest/v1/`, {
-      headers: { apikey: key },
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+      },
       signal: AbortSignal.timeout(8000),
     })
 
