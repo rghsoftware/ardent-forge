@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::sync::SyncEngine;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 #[tauri::command]
 pub async fn sync_set_auth(
@@ -48,12 +48,43 @@ pub async fn sync_force_push(state: State<'_, SyncEngine>) -> Result<(), AppErro
 }
 
 #[tauri::command]
-pub async fn sync_force_pull(state: State<'_, SyncEngine>) -> Result<(), AppError> {
-    let current_state = state.current_state().await;
-    if let crate::sync::SyncState::Offline = current_state {
-        return Err(AppError::sync("Not authenticated for sync"));
+pub async fn sync_force_pull(
+    state: State<'_, SyncEngine>,
+    app_handle: AppHandle,
+) -> Result<(), AppError> {
+    let creds = state.credentials().await;
+    match creds {
+        Some(creds) => {
+            state
+                .transition_state(crate::sync::SyncState::Pulling)
+                .await;
+            match crate::sync::pull::pull_all(
+                state.pool(),
+                &creds.supabase_url,
+                &creds.supabase_key,
+                &creds.access_token,
+                &app_handle,
+            )
+            .await
+            {
+                Ok(()) => {
+                    state
+                        .transition_state(crate::sync::SyncState::Idle)
+                        .await;
+                    Ok(())
+                }
+                Err(e) => {
+                    state
+                        .transition_state(crate::sync::SyncState::Error {
+                            message: e.to_string(),
+                        })
+                        .await;
+                    Err(AppError::sync(&e.to_string()))
+                }
+            }
+        }
+        None => Err(AppError::sync("Not authenticated for sync")),
     }
-    Err(AppError::sync("Force pull is not yet implemented"))
 }
 
 #[tauri::command]
