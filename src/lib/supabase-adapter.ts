@@ -2000,15 +2000,24 @@ export class SupabaseAdapter implements DataAdapter {
     return toMessage(data as MessageRow)
   }
 
-  async getMessages(conversationId: string, limit: number, offset: number): Promise<Message[]> {
-    const { data, error } = await this.client
+  async getMessages(
+    conversationId: string,
+    options: { before?: string; limit: number },
+  ): Promise<Message[]> {
+    let query = this.client
       .from('messages')
       .select('*')
       .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true })
-      .range(offset, offset + limit - 1)
+      .order('created_at', { ascending: false })
+      .limit(options.limit)
+
+    if (options.before) {
+      query = query.lt('created_at', options.before)
+    }
+
+    const { data, error } = await query
     if (error) throw error
-    return (data as MessageRow[]).map(toMessage)
+    return (data as MessageRow[]).map(toMessage).reverse()
   }
 
   async getMessagesSince(conversationId: string, since: string): Promise<Message[]> {

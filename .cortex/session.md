@@ -1,56 +1,40 @@
-# Session: 002 - Events & Packing Lists
+# Session: 005 - Supabase Realtime Integration
 
-**Feature**: `Context/Features/002-events-packing-lists/`
-**Started**: 2026-04-01
+**Feature**: `Context/Features/005-Supabase-Realtime/`
+**Started**: 2026-04-02
 **Status**: Complete
 
 ## Team
 
-| Name | Role | Status |
-|------|------|--------|
-| backend-engineer | Database migrations, RLS, SQL | Done |
-| domain-engineer | Zod schemas, domain types, mappers | Done |
-| data-engineer | DataAdapter, SupabaseAdapter, hooks | Done |
-| frontend-engineer | React components, forms, DnD | Done |
-| native-engineer | Rust/Tauri notifications | Done |
-| quality-engineer | Cross-cutting validation | Done |
+| Name | Role | Tasks |
+|------|------|-------|
+| domain-engineer | Broadcast schemas, RealtimeManager, adapter interface | S001, S002, S005 |
+| rust-engineer | Cursor-based Rust command, Tauri adapter | S003 |
+| frontend-specialist | Foreground detector, hooks, wiring | S004, S006, S007 |
+| quality-engineer | Cross-cutting validation | S008 |
 
 ## Wave Execution Log
 
-### Wave 1: Database + Domain Foundation
-- [x] S001: Database migration for event tables
-- [x] S002: Domain types and Zod schemas
-- [x] S003: Row types, data mappers, adapter interface
-- [x] S004: SupabaseAdapter implementation
-- [x] S004-V: Validate Wave 1
+### Wave 1: Foundation (parallel)
+- [x] S001: Broadcast Payload Zod Schemas
+- [x] S002: Cursor-Based getMessages -- TypeScript Side
+- [x] S003: Cursor-Based get_messages -- Rust + Tauri Adapter
+- [x] S004: Foreground Detector Module
 
-### Wave 2: TanStack Query Hooks + Event Creation UI
-- [x] S005: TanStack Query hooks for events
-- [x] S006: Event creation form component
-- [x] S007: Event card for library list
-- [x] S007-V: Validate Wave 2
+### Wave 2: RealtimeManager
+- [x] S005: RealtimeManager Module
 
-### Wave 3: Event Detail + Packing Check-off
-- [x] S008: Event detail and packing list components
-- [x] S009: Integrate event detail into existing routes
-- [x] S009-V: Validate Wave 3
+### Wave 3: Hooks + Wiring
+- [x] S006: TanStack Query Chat Hooks
+- [x] S007: RealtimeManager Initialization Wiring
 
-### Wave 4: DnD Reorder + Clone + Program Timeline
-- [x] S010: Drag-and-drop packing list reorder
-- [x] S011: Clone with isPacked reset
-- [x] S012: Events in program timeline
-- [x] S012-V: Validate Wave 4
+### Wave 4: Validation
+- [x] S008: Quality Validation -- 22/22 assertions PASS
 
-### Wave 5: Today Screen Countdown + Notifications
-- [x] S013: Today screen event countdown badge
-- [x] S014: Event countdown notifications (Rust)
-- [x] S014-V: Validate Feature Complete
+## Activity Log
 
-## Fixes Applied (2026-04-02)
-- Fixed S014 bug: Rust event_reminder.rs read `"date"` instead of `"eventDate"` from JSON metadata
-- Completed S012: Added event date display in program-preview.tsx grid cells and detail sections
-- Fixed progress bar styling: `bg-surface-iron` -> `bg-surface-steel` per spec
-- Fixed all TypeScript compilation errors: TauriAdapter stubs, test fixtures, import cleanup
-- Build: `bun run build` passes clean
-- Tests: 48/53 files pass (5 failures are pre-existing, unrelated to events feature)
-- Rust: `cargo check` passes clean
+- [2026-04-02] Session created. Starting Wave 1 with 4 parallel agents.
+- [2026-04-02] Wave 1 complete (S001-S004). Clean compile.
+- [2026-04-02] Wave 2 complete (S005). Clean compile.
+- [2026-04-02] Wave 3 complete (S006-S007). Clean compile.
+- [2026-04-02] Wave 4 complete (S008). All 22 assertions PASS.

@@ -322,7 +322,7 @@ export interface DataAdapter {
   getConversation(id: string): Promise<Conversation | null>
   findDirectConversation(otherUserId: string): Promise<Conversation | null>
   sendMessage(conversationId: string, messageType: MessageType, content?: string): Promise<Message>
-  getMessages(conversationId: string, limit: number, offset: number): Promise<Message[]>
+  getMessages(conversationId: string, options: { before?: string; limit: number }): Promise<Message[]>
   getMessagesSince(conversationId: string, since: string): Promise<Message[]>
   updateLastRead(conversationId: string): Promise<void>
   getUnreadCounts(): Promise<Map<string, number>>
