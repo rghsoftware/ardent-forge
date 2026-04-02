@@ -350,6 +350,34 @@ pub async fn send_message(
     Ok(row)
 }
 
+/// Fetches messages created after a given timestamp for a conversation.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `conversation_id`: The conversation to fetch messages for.
+/// - `since`: Unix epoch seconds; only messages with `created_at > since` are returned.
+///
+/// # Returns
+/// A vector of `MessageRow` ordered by `created_at` ascending.
+#[tauri::command]
+pub async fn get_messages_since(
+    pool: State<'_, SqlitePool>,
+    conversation_id: String,
+    since: i64,
+) -> Result<Vec<MessageRow>, AppError> {
+    let rows = sqlx::query_as::<_, MessageRow>(
+        "SELECT * FROM messages \
+         WHERE conversation_id = ? AND created_at > ? \
+         ORDER BY created_at ASC",
+    )
+    .bind(&conversation_id)
+    .bind(since)
+    .fetch_all(pool.inner())
+    .await?;
+
+    Ok(rows)
+}
+
 /// Fetches paginated messages for a conversation.
 ///
 /// # Parameters

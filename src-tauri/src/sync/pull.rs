@@ -336,7 +336,6 @@ async fn handle_realtime_message(pool: &SqlitePool, payload: &Value, app_handle:
 }
 
 async fn upsert_row(pool: &SqlitePool, table: &str, record: &Value) -> Result<(), sqlx::Error> {
-    #[cfg(not(test))]
     if !crate::sync::SYNCABLE_TABLES.contains(&table) {
         log::error!("[pull] upsert_row called with non-allowlisted table: {table}");
         return Err(sqlx::Error::Protocol(format!(
@@ -440,7 +439,6 @@ async fn upsert_row(pool: &SqlitePool, table: &str, record: &Value) -> Result<()
 }
 
 async fn delete_row(pool: &SqlitePool, table: &str, row_id: &str) -> Result<(), sqlx::Error> {
-    #[cfg(not(test))]
     if !crate::sync::SYNCABLE_TABLES.contains(&table) {
         log::error!("[pull] delete_row called with non-allowlisted table: {table}");
         return Err(sqlx::Error::Protocol(format!(
@@ -610,7 +608,7 @@ mod tests {
             .expect("connect in-memory db");
 
         sqlx::query(
-            "CREATE TABLE test_table (
+            "CREATE TABLE exercises (
                 id TEXT PRIMARY KEY,
                 name TEXT,
                 is_custom INTEGER,
@@ -620,7 +618,7 @@ mod tests {
         )
         .execute(&pool)
         .await
-        .expect("create test_table");
+        .expect("create exercises table");
 
         pool
     }
@@ -637,10 +635,10 @@ mod tests {
             "aliases": ["bench", "bp"]
         });
 
-        upsert_row(&pool, "test_table", &record).await.unwrap();
+        upsert_row(&pool, "exercises", &record).await.unwrap();
 
         let row = sqlx::query(
-            "SELECT id, name, is_custom, updated_at, aliases FROM test_table WHERE id = ?",
+            "SELECT id, name, is_custom, updated_at, aliases FROM exercises WHERE id = ?",
         )
         .bind("row-1")
         .fetch_one(&pool)
@@ -669,7 +667,7 @@ mod tests {
 
         // Seed a local row with old timestamp
         sqlx::query(
-            "INSERT INTO test_table (id, name, is_custom, updated_at, aliases)
+            "INSERT INTO exercises (id, name, is_custom, updated_at, aliases)
              VALUES ('row-2', 'Old Name', 0, 100, NULL)",
         )
         .execute(&pool)
@@ -685,9 +683,9 @@ mod tests {
             "aliases": null
         });
 
-        upsert_row(&pool, "test_table", &record).await.unwrap();
+        upsert_row(&pool, "exercises", &record).await.unwrap();
 
-        let row = sqlx::query("SELECT name, is_custom, updated_at FROM test_table WHERE id = ?")
+        let row = sqlx::query("SELECT name, is_custom, updated_at FROM exercises WHERE id = ?")
             .bind("row-2")
             .fetch_one(&pool)
             .await
@@ -708,7 +706,7 @@ mod tests {
 
         // Seed a local row with a very large timestamp (far future)
         sqlx::query(
-            "INSERT INTO test_table (id, name, is_custom, updated_at, aliases)
+            "INSERT INTO exercises (id, name, is_custom, updated_at, aliases)
              VALUES ('row-3', 'Local Name', 1, 9999999999, NULL)",
         )
         .execute(&pool)
@@ -724,10 +722,10 @@ mod tests {
             "aliases": null
         });
 
-        upsert_row(&pool, "test_table", &record).await.unwrap();
+        upsert_row(&pool, "exercises", &record).await.unwrap();
 
         // Verify local data is unchanged
-        let row = sqlx::query("SELECT name, is_custom FROM test_table WHERE id = ?")
+        let row = sqlx::query("SELECT name, is_custom FROM exercises WHERE id = ?")
             .bind("row-3")
             .fetch_one(&pool)
             .await
@@ -752,9 +750,9 @@ mod tests {
             "aliases": null
         });
 
-        upsert_row(&pool, "test_table", &record).await.unwrap();
+        upsert_row(&pool, "exercises", &record).await.unwrap();
 
-        let row = sqlx::query("SELECT id, name, is_custom, aliases FROM test_table WHERE id = ?")
+        let row = sqlx::query("SELECT id, name, is_custom, aliases FROM exercises WHERE id = ?")
             .bind("row-4")
             .fetch_one(&pool)
             .await
@@ -783,9 +781,9 @@ mod tests {
             "nonexistent_column": "should be ignored"
         });
 
-        upsert_row(&pool, "test_table", &record).await.unwrap();
+        upsert_row(&pool, "exercises", &record).await.unwrap();
 
-        let row = sqlx::query("SELECT name FROM test_table WHERE id = ?")
+        let row = sqlx::query("SELECT name FROM exercises WHERE id = ?")
             .bind("row-5")
             .fetch_one(&pool)
             .await
@@ -805,9 +803,9 @@ mod tests {
             "updated_at": 1000
         });
 
-        upsert_row(&pool, "test_table", &record).await.unwrap();
+        upsert_row(&pool, "exercises", &record).await.unwrap();
 
-        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM test_table")
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM exercises")
             .fetch_one(&pool)
             .await
             .unwrap();

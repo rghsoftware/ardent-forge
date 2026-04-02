@@ -2062,7 +2062,10 @@ export class SupabaseAdapter implements DataAdapter {
       // If last_read_at is null, all messages are unread -- no filter needed
 
       const { count, error } = await query
-      if (error) throw error
+      if (error) {
+        console.warn(`[getUnreadCounts] Failed for conversation ${p.conversation_id}:`, error.message)
+        continue
+      }
       counts.set(p.conversation_id, count ?? 0)
     }
 

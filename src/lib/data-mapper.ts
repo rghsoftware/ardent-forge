@@ -722,7 +722,7 @@ export function toConversationParticipant(
     return {
       id: row.id,
       createdAt: row.joined_at,
-      updatedAt: row.joined_at,
+      updatedAt: row.last_read_at ?? row.joined_at,
       conversationId: row.conversation_id,
       userId: row.user_id,
       lastReadAt: row.last_read_at ?? undefined,

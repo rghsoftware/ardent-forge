@@ -134,6 +134,7 @@ pub fn run() {
             commands::chat::get_conversation,
             commands::chat::send_message,
             commands::chat::get_messages,
+            commands::chat::get_messages_since,
             commands::chat::update_last_read,
             commands::chat::get_unread_counts,
             commands::chat::leave_conversation,

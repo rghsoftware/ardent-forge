@@ -2158,17 +2158,12 @@ export class TauriAdapter implements DataAdapter {
   }
 
   async getMessagesSince(conversationId: string, since: string): Promise<Message[]> {
-    // No dedicated Rust command -- fetch all messages and filter client-side
-    // Use a large limit to capture messages since the timestamp
-    const all = await invokeCommand<TauriMessageResponse[]>('get_messages', {
+    const sinceEpoch = Math.floor(new Date(since).getTime() / 1000)
+    const rows = await invokeCommand<TauriMessageResponse[]>('get_messages_since', {
       conversation_id: conversationId,
-      limit: 1000,
-      offset: 0,
+      since: sinceEpoch,
     })
-    const sinceTime = new Date(since).getTime()
-    return all
-      .filter((r) => new Date(r.created_at).getTime() > sinceTime)
-      .map((r) => toMessage(toMessageRowFromTauri(r)))
+    return rows.map((r) => toMessage(toMessageRowFromTauri(r)))
   }
 
   async updateLastRead(conversationId: string): Promise<void> {
