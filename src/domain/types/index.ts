@@ -11,6 +11,7 @@
 export * from './units'
 export * from './set-scheme'
 export * from './session'
+export * from './event'
 
 // exercise.ts re-exports SyncableEntity from units.ts -- exclude it here to
 // prevent ambiguous re-export since units.ts already covers it above.

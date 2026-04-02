@@ -35,6 +35,7 @@ import type {
   GroupInvite,
   DirectConnection,
   GroupRole,
+  EventItem,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -517,6 +518,7 @@ function toWorkoutLogRow(r: TauriWorkoutLogResponse): WorkoutLogRow {
     perceived_difficulty: r.perceived_difficulty,
     bodyweight_at_session: parseJson(r.bodyweight_at_session, 'bodyweight_at_session'),
     overall_notes: r.overall_notes,
+    event_metadata: null, // Event features deferred for Tauri offline mode (W-8)
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -611,6 +613,7 @@ function toSessionTemplateRowFromTauri(r: TauriSessionTemplateResponse): Session
     rest_between_groups: r.rest_between_groups,
     time_cap: r.time_cap,
     scoring: r.scoring,
+    event_metadata: null, // Event features deferred for Tauri offline mode (W-8)
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -1255,6 +1258,7 @@ export class TauriAdapter implements DataAdapter {
       template: toSessionTemplate(toSessionTemplateRowFromTauri(full.template)),
       groups: full.groups.map((g) => toActivityGroupFlat(toActivityGroupRowFromTauri(g))),
       activities: full.activities.map((a) => toActivity(toActivityRowFromTauri(a))),
+      eventItems: [],
     }
   }
 
@@ -1307,6 +1311,7 @@ export class TauriAdapter implements DataAdapter {
       template: toSessionTemplate(toSessionTemplateRowFromTauri(result.template)),
       groups: result.groups.map((g) => toActivityGroupFlat(toActivityGroupRowFromTauri(g))),
       activities: result.activities.map((a) => toActivity(toActivityRowFromTauri(a))),
+      eventItems: [],
     }
   }
 
@@ -1361,11 +1366,48 @@ export class TauriAdapter implements DataAdapter {
       template: toSessionTemplate(toSessionTemplateRowFromTauri(result.template)),
       groups: result.groups.map((g) => toActivityGroupFlat(toActivityGroupRowFromTauri(g))),
       activities: result.activities.map((a) => toActivity(toActivityRowFromTauri(a))),
+      eventItems: [],
     }
   }
 
   async deleteSessionTemplate(id: string): Promise<void> {
     await invokeCommand<void>('delete_session_template', { id })
+  }
+
+  async cloneSessionTemplate(_id: string, _userId: string): Promise<SessionTemplateFull> {
+    throw new Error('Not implemented in offline mode')
+  }
+
+  // ---------------------------------------------------------------------------
+  // Event item operations (deferred for offline/Tauri -- W-8)
+  // ---------------------------------------------------------------------------
+
+  async getEventItems(_parentId: string, _parentType: 'template' | 'log'): Promise<EventItem[]> {
+    throw new Error('Not implemented in offline mode')
+  }
+
+  async saveEventItem(
+    _item: Omit<EventItem, 'id' | 'createdAt' | 'updatedAt'>,
+    _parentId: string,
+    _parentType: 'template' | 'log',
+  ): Promise<EventItem> {
+    throw new Error('Not implemented in offline mode')
+  }
+
+  async updateEventItem(_item: EventItem): Promise<EventItem> {
+    throw new Error('Not implemented in offline mode')
+  }
+
+  async deleteEventItem(_itemId: string): Promise<void> {
+    throw new Error('Not implemented in offline mode')
+  }
+
+  async toggleEventItemPacked(_itemId: string, _isPacked: boolean): Promise<EventItem> {
+    throw new Error('Not implemented in offline mode')
+  }
+
+  async reorderEventItems(_items: Array<{ id: string; sortOrder: number }>): Promise<void> {
+    throw new Error('Not implemented in offline mode')
   }
 
   // ---------------------------------------------------------------------------

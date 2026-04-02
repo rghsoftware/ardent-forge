@@ -31,6 +31,8 @@ import {
   fromScheduledSession,
   toProgramActivation,
   fromProgramActivation,
+  toEventItem,
+  fromEventItem,
 } from '../data-mapper'
 import type {
   ExerciseRow,
@@ -48,6 +50,7 @@ import type {
   BlockWeekRow,
   ScheduledSessionRow,
   ProgramActivationRow,
+  EventItemRow,
 } from '../database.types'
 
 // ===========================================================================
@@ -113,6 +116,7 @@ const workoutLogRowFull: WorkoutLogRow = {
   perceived_difficulty: 7,
   bodyweight_at_session: { value: 185, unit: 'lb' },
   overall_notes: 'Felt strong today',
+  event_metadata: null,
   created_at: now,
   updated_at: later,
 }
@@ -128,6 +132,7 @@ const workoutLogRowNulls: WorkoutLogRow = {
   perceived_difficulty: null,
   bodyweight_at_session: null,
   overall_notes: null,
+  event_metadata: null,
   created_at: now,
   updated_at: now,
 }
@@ -1499,6 +1504,7 @@ const sessionTemplateRowFull: SessionTemplateRow = {
   rest_between_groups: JSON.stringify({ seconds: 120 }),
   time_cap: JSON.stringify({ seconds: 3600 }),
   scoring: 'NONE',
+  event_metadata: null,
   created_at: now,
   updated_at: now,
 }
@@ -1512,6 +1518,7 @@ const sessionTemplateRowNulls: SessionTemplateRow = {
   rest_between_groups: null,
   time_cap: null,
   scoring: 'FOR_TIME',
+  event_metadata: null,
   created_at: now,
   updated_at: now,
 }
@@ -2039,5 +2046,100 @@ describe('toProgramActivation / fromProgramActivation', () => {
     expect(row.current_block_ordinal).toBe(1)
     expect(row.current_week_number).toBe(2)
     expect(row.start_date).toBe('2025-06-15')
+  })
+})
+
+// ===========================================================================
+// EventItem
+// ===========================================================================
+
+const eventItemRow: EventItemRow = {
+  id: 'ei-001',
+  session_template_id: 'st-001',
+  workout_log_id: null,
+  user_id: userId,
+  name: 'Ruck plate',
+  category: 'Gear',
+  quantity: 2,
+  is_packed: true,
+  sort_order: 3,
+  notes: 'The heavy one',
+  created_at: now,
+  updated_at: later,
+}
+
+describe('EventItem mappers', () => {
+  it('toEventItem maps all fields from snake_case to camelCase', () => {
+    const result = toEventItem(eventItemRow)
+    expect(result.id).toBe('ei-001')
+    expect(result.sessionTemplateId).toBe('st-001')
+    expect(result.workoutLogId).toBeUndefined()
+    expect(result.userId).toBe(userId)
+    expect(result.name).toBe('Ruck plate')
+    expect(result.category).toBe('Gear')
+    expect(result.quantity).toBe(2)
+    expect(result.isPacked).toBe(true)
+    expect(result.sortOrder).toBe(3)
+    expect(result.notes).toBe('The heavy one')
+    expect(result.createdAt).toBe(now)
+    expect(result.updatedAt).toBe(later)
+  })
+
+  it('toEventItem converts null optional fields to undefined', () => {
+    const row: EventItemRow = {
+      ...eventItemRow,
+      session_template_id: null,
+      workout_log_id: 'wl-001',
+      category: null,
+      notes: null,
+    }
+    const result = toEventItem(row)
+    expect(result.sessionTemplateId).toBeUndefined()
+    expect(result.workoutLogId).toBe('wl-001')
+    expect(result.category).toBeUndefined()
+    expect(result.notes).toBeUndefined()
+  })
+
+  it('fromEventItem maps camelCase to snake_case for template parent', () => {
+    const domain = toEventItem(eventItemRow)
+    const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+    const row = fromEventItem(body, 'st-001', 'template')
+    expect(row.session_template_id).toBe('st-001')
+    expect(row.workout_log_id).toBeNull()
+    expect(row.user_id).toBe(userId)
+    expect(row.name).toBe('Ruck plate')
+    expect(row.category).toBe('Gear')
+    expect(row.quantity).toBe(2)
+    expect(row.is_packed).toBe(true)
+    expect(row.sort_order).toBe(3)
+    expect(row.notes).toBe('The heavy one')
+  })
+
+  it('fromEventItem maps camelCase to snake_case for log parent', () => {
+    const domain = toEventItem(eventItemRow)
+    const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+    const row = fromEventItem(body, 'wl-001', 'log')
+    expect(row.session_template_id).toBeNull()
+    expect(row.workout_log_id).toBe('wl-001')
+  })
+
+  it('fromEventItem converts undefined optional fields to null', () => {
+    const row = fromEventItem(
+      {
+        sessionTemplateId: undefined,
+        workoutLogId: undefined,
+        userId,
+        name: 'Water bottle',
+        category: undefined,
+        quantity: 1,
+        isPacked: false,
+        sortOrder: 0,
+        notes: undefined,
+      },
+      'st-001',
+      'template',
+    )
+    expect(row.category).toBeNull()
+    expect(row.notes).toBeNull()
   })
 })

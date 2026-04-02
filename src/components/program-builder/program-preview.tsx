@@ -281,15 +281,53 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                               )
                             }
 
+                            const isEventCell = session.sessionType === 'EVENT'
+                            const eventDate = isEventCell
+                              ? sessionTemplates.get(session.sessionTemplateId)?.template
+                                  .eventMetadata?.eventDate
+                              : undefined
+
                             return (
                               <div
                                 key={`cell-${col.dayOfWeek}`}
-                                className="flex min-h-[60px] flex-col bg-surface-charcoal p-1"
+                                className={`flex min-h-[60px] flex-col p-1 ${
+                                  isEventCell
+                                    ? 'border-l-2 border-ember bg-surface-iron'
+                                    : 'bg-surface-charcoal'
+                                }`}
                               >
-                                <span className="line-clamp-2 text-[9px] font-medium text-bone-white">
-                                  {session.templateName ?? 'UNNAMED'}
-                                </span>
-                                <span className="mt-0.5 inline-block self-start bg-surface-steel px-1 py-0.5 text-[8px] font-medium uppercase tracking-wider text-warm-ash">
+                                <div className="flex items-start gap-0.5">
+                                  {isEventCell && (
+                                    <Icon
+                                      name="flag"
+                                      size={9}
+                                      fill
+                                      className="mt-0.5 shrink-0 text-ember"
+                                    />
+                                  )}
+                                  <span
+                                    className={`line-clamp-2 text-[9px] font-medium text-bone-white ${
+                                      isEventCell ? 'uppercase tracking-wider' : ''
+                                    }`}
+                                  >
+                                    {session.templateName ?? 'UNNAMED'}
+                                  </span>
+                                </div>
+                                {isEventCell && eventDate && (
+                                  <span className="text-[8px] tracking-wider text-ember/80">
+                                    {new Date(eventDate).toLocaleDateString(undefined, {
+                                      month: 'short',
+                                      day: 'numeric',
+                                    })}
+                                  </span>
+                                )}
+                                <span
+                                  className={`mt-0.5 inline-block self-start px-1 py-0.5 text-[8px] font-medium uppercase tracking-wider ${
+                                    isEventCell
+                                      ? 'bg-ember/15 text-ember'
+                                      : 'bg-surface-steel text-warm-ash'
+                                  }`}
+                                >
                                   {session.sessionType}
                                 </span>
                               </div>
@@ -304,15 +342,64 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                             const templateFull = sessionTemplates.get(session.sessionTemplateId)
                             if (!templateFull) return null
 
+                            const isEventDetail = session.sessionType === 'EVENT'
+                            const eventMeta = isEventDetail
+                              ? templateFull.template.eventMetadata
+                              : undefined
+
+                            // EVENT sessions show event summary instead of exercise table
+                            if (isEventDetail) {
+                              return (
+                                <div key={session.clientId} className="flex flex-col gap-0">
+                                  <div className="border-l-2 border-ember bg-surface-iron px-2 py-1.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <Icon
+                                        name="flag"
+                                        size={12}
+                                        fill
+                                        className="shrink-0 text-ember"
+                                      />
+                                      <span className="font-display text-[11px] font-medium uppercase tracking-wider text-ember">
+                                        {session.templateName ?? 'UNNAMED'}
+                                      </span>
+                                    </div>
+                                    {eventMeta?.eventDate && (
+                                      <span className="mt-0.5 block text-[10px] tracking-wider text-warm-ash">
+                                        {new Date(eventMeta.eventDate).toLocaleDateString(
+                                          undefined,
+                                          { weekday: 'short', month: 'short', day: 'numeric' },
+                                        )}
+                                      </span>
+                                    )}
+                                    {eventMeta?.location && (
+                                      <span className="mt-0.5 block text-[10px] tracking-wider text-warm-ash/70">
+                                        {eventMeta.location}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {templateFull.eventItems.length > 0 && (
+                                    <div className="bg-surface-gunmetal px-2 py-1">
+                                      <span className="text-[10px] tracking-wider text-warm-ash/60">
+                                        {templateFull.eventItems.length} PACKING{' '}
+                                        {templateFull.eventItems.length === 1 ? 'ITEM' : 'ITEMS'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            }
+
                             const groupedActivities = buildGroupedActivities(templateFull)
                             if (groupedActivities.length === 0) return null
 
                             return (
                               <div key={session.clientId} className="flex flex-col gap-0">
                                 <div className="bg-surface-steel px-2 py-1.5">
-                                  <span className="text-[11px] font-medium uppercase tracking-wider text-bone-white">
-                                    {session.templateName ?? 'UNNAMED'}
-                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[11px] font-medium uppercase tracking-wider text-bone-white">
+                                      {session.templateName ?? 'UNNAMED'}
+                                    </span>
+                                  </div>
                                 </div>
 
                                 <div className="grid grid-cols-[1fr_auto_auto] gap-2 bg-surface-gunmetal px-2 py-1">

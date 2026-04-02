@@ -48,6 +48,15 @@ export function createMockAdapter(
     createSessionTemplateFull: vi.fn().mockResolvedValue({}),
     updateSessionTemplateFull: vi.fn().mockResolvedValue({}),
     deleteSessionTemplate: vi.fn().mockResolvedValue(undefined),
+    cloneSessionTemplate: vi.fn().mockResolvedValue({}),
+
+    // Event item operations
+    getEventItems: vi.fn().mockResolvedValue([]),
+    saveEventItem: vi.fn().mockResolvedValue({}),
+    updateEventItem: vi.fn().mockResolvedValue({}),
+    deleteEventItem: vi.fn().mockResolvedValue(undefined),
+    toggleEventItemPacked: vi.fn().mockResolvedValue({}),
+    reorderEventItems: vi.fn().mockResolvedValue(undefined),
 
     // Program operations
     getPrograms: vi.fn().mockResolvedValue([]),

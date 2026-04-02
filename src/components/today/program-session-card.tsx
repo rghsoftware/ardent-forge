@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { Icon } from '@/components/icon'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface ProgramSessionCardProps {
@@ -21,6 +22,7 @@ const SESSION_TYPE_COLORS: Record<string, string> = {
   CONDITIONING: 'bg-arc/15 text-arc',
   SE: 'bg-quenched/15 text-quenched',
   MIXED: 'bg-cooling-bloom/15 text-cooling-bloom',
+  EVENT: 'bg-ember/15 text-ember',
 }
 
 // ---------------------------------------------------------------------------
@@ -88,12 +90,17 @@ export function ProgramSessionCard({
     return <ProgramSessionCardSkeleton />
   }
 
+  const isEvent = sessionType === 'EVENT'
   const badgeColor = sessionType
     ? (SESSION_TYPE_COLORS[sessionType] ?? 'bg-surface-gunmetal text-warm-ash')
     : null
 
   return (
-    <div className="flex flex-col gap-4 bg-surface-iron p-5 milled-edge">
+    <div
+      className={`flex flex-col gap-4 p-5 milled-edge ${
+        isEvent ? 'border-l-2 border-ember bg-surface-iron' : 'bg-surface-iron'
+      }`}
+    >
       {/* Program header -- program name + block/week context */}
       <div className="flex flex-col gap-0.5">
         <span className="font-heading text-xs text-ember">{programName}</span>
@@ -109,7 +116,18 @@ export function ProgramSessionCard({
           {/* Session info -- name, type badge, exercise count */}
           <div className="flex flex-col gap-2">
             {sessionName && (
-              <span className="font-heading text-base text-bone-white">{sessionName}</span>
+              <div className="flex items-center gap-2">
+                {isEvent && <Icon name="flag" size={18} fill className="shrink-0 text-ember" />}
+                <span
+                  className={
+                    isEvent
+                      ? 'font-display text-base uppercase tracking-wider text-bone-white'
+                      : 'font-heading text-base text-bone-white'
+                  }
+                >
+                  {sessionName}
+                </span>
+              </div>
             )}
             <div className="flex items-center gap-2">
               {badgeColor && (
@@ -128,7 +146,7 @@ export function ProgramSessionCard({
             className="w-full min-h-12 text-xs font-medium"
             onClick={onStartSession}
           >
-            Start today&apos;s session
+            {isEvent ? 'Start event session' : "Start today's session"}
           </Button>
         </>
       )}

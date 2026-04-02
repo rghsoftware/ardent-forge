@@ -40,6 +40,7 @@ export interface WorkoutLogRow {
   perceived_difficulty: number | null
   bodyweight_at_session: unknown
   overall_notes: string | null
+  event_metadata: unknown
   created_at: string
   updated_at: string
 }
@@ -108,6 +109,22 @@ export interface SessionTemplateRow {
   rest_between_groups: string | null
   time_cap: string | null
   scoring: string
+  event_metadata: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface EventItemRow {
+  id: string
+  session_template_id: string | null
+  workout_log_id: string | null
+  user_id: string
+  name: string
+  category: string | null
+  quantity: number
+  is_packed: boolean
+  sort_order: number
+  notes: string | null
   created_at: string
   updated_at: string
 }

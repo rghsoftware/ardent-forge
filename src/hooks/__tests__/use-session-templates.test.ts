@@ -95,6 +95,7 @@ describe('useSessionTemplateFull', () => {
       template: buildSessionTemplate({ id: 'st-1' }),
       groups: [groupFlat],
       activities: [activity],
+      eventItems: [],
     }
     vi.mocked(mockAdapter.getSessionTemplateFull).mockResolvedValue(full)
 
@@ -130,6 +131,7 @@ describe('useCreateSessionTemplate', () => {
       template: buildSessionTemplate({ id: 'st-new' }),
       groups: [groupFlat],
       activities: [activity],
+      eventItems: [],
     }
     vi.mocked(mockAdapter.createSessionTemplateFull).mockResolvedValue(full)
 
@@ -172,6 +174,7 @@ describe('useUpdateSessionTemplate', () => {
       template: buildSessionTemplate({ id: 'st-1' }),
       groups: [groupFlat],
       activities: [],
+      eventItems: [],
     }
     vi.mocked(mockAdapter.updateSessionTemplateFull).mockResolvedValue(full)
 

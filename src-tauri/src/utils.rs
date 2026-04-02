@@ -35,7 +35,8 @@ pub mod serde_unix {
     where
         S: Serializer,
     {
-        let iso = Utc.timestamp_opt(*ts, 0)
+        let iso = Utc
+            .timestamp_opt(*ts, 0)
             .single()
             .map(|dt| dt.to_rfc3339())
             .unwrap_or_else(|| {

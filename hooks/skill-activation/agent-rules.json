@@ -1,0 +1,39 @@
+﻿{
+  "agents": {
+    "quality-engineer": {
+      "promptTriggers": {
+        "keywords": ["test", "validate", "quality", "tdd", "coverage"],
+        "intentPatterns": ["write.*test", "validate.*code", "check.*quality", "test.*driven"]
+      },
+      "priority": "high"
+    },
+    "security-auditor": {
+      "promptTriggers": {
+        "keywords": ["security", "audit", "vulnerability", "auth", "permissions"],
+        "intentPatterns": ["security.*review", "audit.*code", "check.*vulnerab"]
+      },
+      "priority": "high"
+    },
+    "performance-optimizer": {
+      "promptTriggers": {
+        "keywords": ["performance", "optimize", "slow", "benchmark", "profiling"],
+        "intentPatterns": ["optimi.*perform", "speed.*up", "make.*faster"]
+      },
+      "priority": "medium"
+    },
+    "debugger-detective": {
+      "promptTriggers": {
+        "keywords": ["debug", "bug", "error", "crash", "broken", "failing"],
+        "intentPatterns": ["debug.*issue", "fix.*bug", "why.*fail", "investigate.*error"]
+      },
+      "priority": "high"
+    },
+    "deep-researcher": {
+      "promptTriggers": {
+        "keywords": ["research", "investigate", "explore", "compare options"],
+        "intentPatterns": ["research.*option", "investigate.*approach", "explore.*alternat"]
+      },
+      "priority": "medium"
+    }
+  }
+}

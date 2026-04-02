@@ -16,6 +16,7 @@ import type {
   ScheduledSession,
   ProgramActivation,
   ShareLink,
+  EventItem,
 } from '@/domain/types'
 import {
   entityId,
@@ -40,6 +41,7 @@ import {
   blockTypeSchema,
   shareableEntityTypeSchema,
   shareTokenSchema,
+  eventMetadataSchema,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -58,6 +60,7 @@ import type {
   ScheduledSessionRow,
   ProgramActivationRow,
   ShareLinkRow,
+  EventItemRow,
 } from './database.types'
 
 /**
@@ -132,6 +135,8 @@ export function toWorkoutLog(row: WorkoutLogRow): WorkoutLog {
     bodyweightAtSession:
       row.bodyweight_at_session != null ? weightSchema.parse(row.bodyweight_at_session) : undefined,
     overallNotes: row.overall_notes ?? undefined,
+    eventMetadata:
+      row.event_metadata != null ? eventMetadataSchema.parse(row.event_metadata) : undefined,
   }
 }
 
@@ -148,6 +153,7 @@ export function fromWorkoutLog(
     perceived_difficulty: log.perceivedDifficulty ?? null,
     bodyweight_at_session: log.bodyweightAtSession ?? null,
     overall_notes: log.overallNotes ?? null,
+    event_metadata: log.eventMetadata ?? null,
   }
 }
 
@@ -343,6 +349,10 @@ export function toSessionTemplate(row: SessionTemplateRow): SessionTemplate {
         : undefined,
     timeCap: row.time_cap != null ? durationSchema.parse(JSON.parse(row.time_cap)) : undefined,
     scoring: scoringTypeSchema.parse(row.scoring),
+    eventMetadata:
+      row.event_metadata != null
+        ? eventMetadataSchema.parse(JSON.parse(row.event_metadata))
+        : undefined,
   }
 }
 
@@ -359,6 +369,7 @@ export function fromSessionTemplate(
       : null,
     time_cap: template.timeCap ? JSON.stringify(template.timeCap) : null,
     scoring: template.scoring,
+    event_metadata: template.eventMetadata ? JSON.stringify(template.eventMetadata) : null,
   }
 }
 
@@ -614,4 +625,43 @@ export function fromShareLink(link: Partial<ShareLink>): Record<string, unknown>
   if (link.createdBy !== undefined) row.created_by = link.createdBy
   if (link.isActive !== undefined) row.is_active = link.isActive
   return row
+}
+
+// ---------------------------------------------------------------------------
+// EventItem
+// ---------------------------------------------------------------------------
+
+export function toEventItem(row: EventItemRow): EventItem {
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    sessionTemplateId: row.session_template_id ?? undefined,
+    workoutLogId: row.workout_log_id ?? undefined,
+    userId: row.user_id,
+    name: row.name,
+    category: row.category ?? undefined,
+    quantity: row.quantity,
+    isPacked: row.is_packed,
+    sortOrder: row.sort_order,
+    notes: row.notes ?? undefined,
+  }
+}
+
+export function fromEventItem(
+  item: Omit<EventItem, 'id' | 'createdAt' | 'updatedAt'>,
+  parentId: string,
+  parentType: 'template' | 'log',
+): Partial<EventItemRow> {
+  return {
+    session_template_id: parentType === 'template' ? parentId : null,
+    workout_log_id: parentType === 'log' ? parentId : null,
+    user_id: item.userId,
+    name: item.name,
+    category: item.category ?? null,
+    quantity: item.quantity,
+    is_packed: item.isPacked,
+    sort_order: item.sortOrder,
+    notes: item.notes ?? null,
+  }
 }

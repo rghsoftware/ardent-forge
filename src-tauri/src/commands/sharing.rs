@@ -130,9 +130,9 @@ pub async fn update_group(
 
     let final_name = name.unwrap_or(existing.name);
     let final_description = match description {
-        Some(d) if d.is_empty() => None,  // explicit clear
-        Some(d) => Some(d),               // update
-        None => existing.description,     // keep existing
+        Some(d) if d.is_empty() => None, // explicit clear
+        Some(d) => Some(d),              // update
+        None => existing.description,    // keep existing
     };
     let final_retention = data_retention_days.unwrap_or(existing.data_retention_days);
 
@@ -177,7 +177,9 @@ pub async fn delete_group(
     .ok_or_else(|| AppError::not_found("AccountabilityGroup", &id))?;
 
     if group.user_id != user_id {
-        return Err(AppError::unauthorized("Only the group owner can delete this group"));
+        return Err(AppError::unauthorized(
+            "Only the group owner can delete this group",
+        ));
     }
 
     let result = sqlx::query("DELETE FROM accountability_groups WHERE id = ?")
@@ -234,7 +236,11 @@ pub async fn remove_group_member(
 
         match caller_member {
             Some(m) if m.role == "COACH" => {}
-            _ => return Err(AppError::unauthorized("Only coaches can remove other members")),
+            _ => {
+                return Err(AppError::unauthorized(
+                    "Only coaches can remove other members",
+                ))
+            }
         }
     }
 
@@ -245,7 +251,10 @@ pub async fn remove_group_member(
         .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::not_found("GroupMember", &format!("{group_id}/{user_id}")));
+        return Err(AppError::not_found(
+            "GroupMember",
+            &format!("{group_id}/{user_id}"),
+        ));
     }
 
     Ok(())
@@ -270,7 +279,10 @@ pub async fn update_member_role(
 
     // Prevent self-escalation to COACH
     if caller_id == user_id && role == "COACH" {
-        return Err(AppError::validation("role", "Cannot promote yourself to coach"));
+        return Err(AppError::validation(
+            "role",
+            "Cannot promote yourself to coach",
+        ));
     }
 
     // Verify caller is a coach in the group
@@ -284,16 +296,21 @@ pub async fn update_member_role(
 
     match caller_member {
         Some(m) if m.role == "COACH" => {}
-        _ => return Err(AppError::unauthorized("Only coaches can update member roles")),
+        _ => {
+            return Err(AppError::unauthorized(
+                "Only coaches can update member roles",
+            ))
+        }
     }
 
     // If promoting to COACH, check coach limit (max 3)
     if role == "COACH" {
-        let coach_count: (i64,) =
-            sqlx::query_as("SELECT COUNT(*) FROM group_members WHERE group_id = ? AND role = 'COACH'")
-                .bind(&group_id)
-                .fetch_one(pool.inner())
-                .await?;
+        let coach_count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM group_members WHERE group_id = ? AND role = 'COACH'",
+        )
+        .bind(&group_id)
+        .fetch_one(pool.inner())
+        .await?;
 
         if coach_count.0 >= 3 {
             return Err(AppError::validation(
@@ -303,13 +320,15 @@ pub async fn update_member_role(
         }
     }
 
-    sqlx::query("UPDATE group_members SET role = ?, updated_at = ? WHERE group_id = ? AND user_id = ?")
-        .bind(&role)
-        .bind(now)
-        .bind(&group_id)
-        .bind(&user_id)
-        .execute(pool.inner())
-        .await?;
+    sqlx::query(
+        "UPDATE group_members SET role = ?, updated_at = ? WHERE group_id = ? AND user_id = ?",
+    )
+    .bind(&role)
+    .bind(now)
+    .bind(&group_id)
+    .bind(&user_id)
+    .execute(pool.inner())
+    .await?;
 
     let row = sqlx::query_as::<_, GroupMemberRow>(
         "SELECT * FROM group_members WHERE group_id = ? AND user_id = ?",
@@ -357,12 +376,10 @@ pub async fn create_invite(
     .execute(pool.inner())
     .await?;
 
-    let row = sqlx::query_as::<_, GroupInviteRow>(
-        "SELECT * FROM group_invites WHERE id = ?",
-    )
-    .bind(&id)
-    .fetch_one(pool.inner())
-    .await?;
+    let row = sqlx::query_as::<_, GroupInviteRow>("SELECT * FROM group_invites WHERE id = ?")
+        .bind(&id)
+        .fetch_one(pool.inner())
+        .await?;
 
     Ok(row)
 }
@@ -399,13 +416,11 @@ pub async fn revoke_invite(
     let now = now_unix();
 
     // Fetch the invite to get its group_id
-    let invite = sqlx::query_as::<_, GroupInviteRow>(
-        "SELECT * FROM group_invites WHERE id = ?",
-    )
-    .bind(&invite_id)
-    .fetch_optional(pool.inner())
-    .await?
-    .ok_or_else(|| AppError::not_found("GroupInvite", &invite_id))?;
+    let invite = sqlx::query_as::<_, GroupInviteRow>("SELECT * FROM group_invites WHERE id = ?")
+        .bind(&invite_id)
+        .fetch_optional(pool.inner())
+        .await?
+        .ok_or_else(|| AppError::not_found("GroupInvite", &invite_id))?;
 
     // Verify caller is a coach in the invite's group
     let caller_member = sqlx::query_as::<_, GroupMemberRow>(
@@ -463,7 +478,10 @@ pub async fn join_group_by_code(
     .await?;
 
     if existing_member.is_some() {
-        return Err(AppError::validation("code", "You are already a member of this group"));
+        return Err(AppError::validation(
+            "code",
+            "You are already a member of this group",
+        ));
     }
 
     // Check user group limit (max 5)
@@ -510,12 +528,10 @@ pub async fn join_group_by_code(
     .execute(pool.inner())
     .await?;
 
-    let row = sqlx::query_as::<_, GroupMemberRow>(
-        "SELECT * FROM group_members WHERE id = ?",
-    )
-    .bind(&member_id)
-    .fetch_one(pool.inner())
-    .await?;
+    let row = sqlx::query_as::<_, GroupMemberRow>("SELECT * FROM group_members WHERE id = ?")
+        .bind(&member_id)
+        .fetch_one(pool.inner())
+        .await?;
 
     Ok(row)
 }
@@ -552,7 +568,9 @@ pub async fn request_connection(
     .await?;
 
     if existing.is_some() {
-        return Err(AppError::conflict("A connection between these users already exists"));
+        return Err(AppError::conflict(
+            "A connection between these users already exists",
+        ));
     }
 
     let id = Uuid::new_v4().to_string();
@@ -572,12 +590,11 @@ pub async fn request_connection(
     .execute(pool.inner())
     .await?;
 
-    let row = sqlx::query_as::<_, DirectConnectionRow>(
-        "SELECT * FROM direct_connections WHERE id = ?",
-    )
-    .bind(&id)
-    .fetch_one(pool.inner())
-    .await?;
+    let row =
+        sqlx::query_as::<_, DirectConnectionRow>("SELECT * FROM direct_connections WHERE id = ?")
+            .bind(&id)
+            .fetch_one(pool.inner())
+            .await?;
 
     Ok(row)
 }
@@ -630,16 +647,17 @@ pub async fn accept_connection(
     let now = now_unix();
 
     // Fetch and verify caller is the recipient
-    let existing = sqlx::query_as::<_, DirectConnectionRow>(
-        "SELECT * FROM direct_connections WHERE id = ?",
-    )
-    .bind(&connection_id)
-    .fetch_optional(pool.inner())
-    .await?
-    .ok_or_else(|| AppError::not_found("DirectConnection", &connection_id))?;
+    let existing =
+        sqlx::query_as::<_, DirectConnectionRow>("SELECT * FROM direct_connections WHERE id = ?")
+            .bind(&connection_id)
+            .fetch_optional(pool.inner())
+            .await?
+            .ok_or_else(|| AppError::not_found("DirectConnection", &connection_id))?;
 
     if existing.recipient_id != user_id {
-        return Err(AppError::unauthorized("Only the recipient can accept a connection request"));
+        return Err(AppError::unauthorized(
+            "Only the recipient can accept a connection request",
+        ));
     }
 
     let result = sqlx::query(
@@ -654,15 +672,17 @@ pub async fn accept_connection(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::validation("connection_id", "Connection is not in PENDING status"));
+        return Err(AppError::validation(
+            "connection_id",
+            "Connection is not in PENDING status",
+        ));
     }
 
-    let row = sqlx::query_as::<_, DirectConnectionRow>(
-        "SELECT * FROM direct_connections WHERE id = ?",
-    )
-    .bind(&connection_id)
-    .fetch_one(pool.inner())
-    .await?;
+    let row =
+        sqlx::query_as::<_, DirectConnectionRow>("SELECT * FROM direct_connections WHERE id = ?")
+            .bind(&connection_id)
+            .fetch_one(pool.inner())
+            .await?;
 
     Ok(row)
 }
@@ -677,16 +697,17 @@ pub async fn decline_connection(
     let now = now_unix();
 
     // Fetch and verify caller is the recipient
-    let existing = sqlx::query_as::<_, DirectConnectionRow>(
-        "SELECT * FROM direct_connections WHERE id = ?",
-    )
-    .bind(&connection_id)
-    .fetch_optional(pool.inner())
-    .await?
-    .ok_or_else(|| AppError::not_found("DirectConnection", &connection_id))?;
+    let existing =
+        sqlx::query_as::<_, DirectConnectionRow>("SELECT * FROM direct_connections WHERE id = ?")
+            .bind(&connection_id)
+            .fetch_optional(pool.inner())
+            .await?
+            .ok_or_else(|| AppError::not_found("DirectConnection", &connection_id))?;
 
     if existing.recipient_id != user_id {
-        return Err(AppError::unauthorized("Only the recipient can decline a connection request"));
+        return Err(AppError::unauthorized(
+            "Only the recipient can decline a connection request",
+        ));
     }
 
     let result = sqlx::query(
@@ -698,15 +719,17 @@ pub async fn decline_connection(
     .await?;
 
     if result.rows_affected() == 0 {
-        return Err(AppError::validation("connection_id", "Connection is not in PENDING status"));
+        return Err(AppError::validation(
+            "connection_id",
+            "Connection is not in PENDING status",
+        ));
     }
 
-    let row = sqlx::query_as::<_, DirectConnectionRow>(
-        "SELECT * FROM direct_connections WHERE id = ?",
-    )
-    .bind(&connection_id)
-    .fetch_one(pool.inner())
-    .await?;
+    let row =
+        sqlx::query_as::<_, DirectConnectionRow>("SELECT * FROM direct_connections WHERE id = ?")
+            .bind(&connection_id)
+            .fetch_one(pool.inner())
+            .await?;
 
     Ok(row)
 }
@@ -720,16 +743,17 @@ pub async fn remove_connection(
     user_id: String,
 ) -> Result<(), AppError> {
     // Verify caller is a participant
-    let existing = sqlx::query_as::<_, DirectConnectionRow>(
-        "SELECT * FROM direct_connections WHERE id = ?",
-    )
-    .bind(&connection_id)
-    .fetch_optional(pool.inner())
-    .await?
-    .ok_or_else(|| AppError::not_found("DirectConnection", &connection_id))?;
+    let existing =
+        sqlx::query_as::<_, DirectConnectionRow>("SELECT * FROM direct_connections WHERE id = ?")
+            .bind(&connection_id)
+            .fetch_optional(pool.inner())
+            .await?
+            .ok_or_else(|| AppError::not_found("DirectConnection", &connection_id))?;
 
     if existing.requester_id != user_id && existing.recipient_id != user_id {
-        return Err(AppError::unauthorized("Only connection participants can remove a connection"));
+        return Err(AppError::unauthorized(
+            "Only connection participants can remove a connection",
+        ));
     }
 
     let result = sqlx::query("DELETE FROM direct_connections WHERE id = ?")
@@ -757,13 +781,12 @@ pub async fn update_connection_write_access(
     let grants_write_int: i64 = if grants_write { 1 } else { 0 };
 
     // Fetch existing to determine direction
-    let existing = sqlx::query_as::<_, DirectConnectionRow>(
-        "SELECT * FROM direct_connections WHERE id = ?",
-    )
-    .bind(&connection_id)
-    .fetch_optional(pool.inner())
-    .await?
-    .ok_or_else(|| AppError::not_found("DirectConnection", &connection_id))?;
+    let existing =
+        sqlx::query_as::<_, DirectConnectionRow>("SELECT * FROM direct_connections WHERE id = ?")
+            .bind(&connection_id)
+            .fetch_optional(pool.inner())
+            .await?
+            .ok_or_else(|| AppError::not_found("DirectConnection", &connection_id))?;
 
     // Explicit auth check: caller must be a participant
     if existing.requester_id == user_id {
@@ -785,15 +808,16 @@ pub async fn update_connection_write_access(
         .execute(pool.inner())
         .await?;
     } else {
-        return Err(AppError::unauthorized("Only connection participants can update write access"));
+        return Err(AppError::unauthorized(
+            "Only connection participants can update write access",
+        ));
     }
 
-    let row = sqlx::query_as::<_, DirectConnectionRow>(
-        "SELECT * FROM direct_connections WHERE id = ?",
-    )
-    .bind(&connection_id)
-    .fetch_one(pool.inner())
-    .await?;
+    let row =
+        sqlx::query_as::<_, DirectConnectionRow>("SELECT * FROM direct_connections WHERE id = ?")
+            .bind(&connection_id)
+            .fetch_one(pool.inner())
+            .await?;
 
     Ok(row)
 }
@@ -955,9 +979,7 @@ pub async fn get_group_activity_feed(
             let started_iso = unix_to_iso(log.started_at);
             let completed_iso = unix_to_iso_opt(log.completed_at);
 
-            let duration_seconds = log
-                .completed_at
-                .map(|ca| ca - log.started_at);
+            let duration_seconds = log.completed_at.map(|ca| ca - log.started_at);
 
             GroupActivityFeedEntry {
                 id: log.id.clone(),
@@ -968,7 +990,10 @@ pub async fn get_group_activity_feed(
                 duration_seconds,
                 exercise_count: *count_map.get(&log.id).unwrap_or(&0),
                 group_id: group_id.clone(),
-                member_role: role_map.get(&uid).cloned().unwrap_or_else(|| "MEMBER".to_string()),
+                member_role: role_map
+                    .get(&uid)
+                    .cloned()
+                    .unwrap_or_else(|| "MEMBER".to_string()),
             }
         })
         .collect();
@@ -1076,9 +1101,7 @@ pub async fn get_connection_activity_feed(
             let started_iso = unix_to_iso(log.started_at);
             let completed_iso = unix_to_iso_opt(log.completed_at);
 
-            let duration_seconds = log
-                .completed_at
-                .map(|ca| ca - log.started_at);
+            let duration_seconds = log.completed_at.map(|ca| ca - log.started_at);
 
             ConnectionActivityFeedEntry {
                 id: log.id.clone(),
@@ -1088,10 +1111,7 @@ pub async fn get_connection_activity_feed(
                 completed_at: completed_iso,
                 duration_seconds,
                 exercise_count: *count_map.get(&log.id).unwrap_or(&0),
-                connection_id: connection_map
-                    .get(&uid)
-                    .cloned()
-                    .unwrap_or_default(),
+                connection_id: connection_map.get(&uid).cloned().unwrap_or_default(),
             }
         })
         .collect();

@@ -60,8 +60,7 @@ fn coerce_value(sqlite_type: &str, json_val: &Value) -> Value {
                     chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f")
                 {
                     json!(dt.and_utc().timestamp())
-                } else if let Ok(dt) =
-                    chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S")
+                } else if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S")
                 {
                     json!(dt.and_utc().timestamp())
                 } else {
@@ -115,10 +114,7 @@ pub async fn pull_table(
 
     let mut offset: usize = 0;
     loop {
-        let url = format!(
-            "{}/rest/v1/{}?select=*&order=id",
-            supabase_url, table
-        );
+        let url = format!("{}/rest/v1/{}?select=*&order=id", supabase_url, table);
 
         let range_end = offset + PAGE_SIZE - 1;
         let response = client
@@ -178,13 +174,18 @@ pub async fn pull_all(
     let client = Client::new();
 
     for table in super::SYNCABLE_TABLES {
-        pull_table(pool, &client, table, supabase_url, supabase_key, access_token, app_handle)
-            .await?;
+        pull_table(
+            pool,
+            &client,
+            table,
+            supabase_url,
+            supabase_key,
+            access_token,
+            app_handle,
+        )
+        .await?;
 
-        let _ = app_handle.emit(
-            "sync:data_changed",
-            json!({"table": table}),
-        );
+        let _ = app_handle.emit("sync:data_changed", json!({"table": table}));
     }
 
     Ok(())
@@ -233,16 +234,14 @@ pub async fn start_realtime_subscription(
     // Listen for messages
     while let Some(msg) = ws_stream.next().await {
         match msg {
-            Ok(Message::Text(text)) => {
-                match serde_json::from_str::<Value>(&text) {
-                    Ok(payload) => {
-                        handle_realtime_message(&pool, &payload, &app_handle).await;
-                    }
-                    Err(e) => {
-                        log::debug!("[pull] Failed to parse WebSocket JSON: {e}");
-                    }
+            Ok(Message::Text(text)) => match serde_json::from_str::<Value>(&text) {
+                Ok(payload) => {
+                    handle_realtime_message(&pool, &payload, &app_handle).await;
                 }
-            }
+                Err(e) => {
+                    log::debug!("[pull] Failed to parse WebSocket JSON: {e}");
+                }
+            },
             Ok(Message::Ping(data)) => {
                 let _ = ws_stream.send(Message::Pong(data)).await;
             }
@@ -258,10 +257,7 @@ pub async fn start_realtime_subscription(
 }
 
 async fn handle_realtime_message(pool: &SqlitePool, payload: &Value, app_handle: &AppHandle) {
-    let event = payload
-        .get("event")
-        .and_then(|e| e.as_str())
-        .unwrap_or("");
+    let event = payload.get("event").and_then(|e| e.as_str()).unwrap_or("");
 
     if event != "postgres_changes" {
         return;
@@ -340,8 +336,8 @@ async fn handle_realtime_message(pool: &SqlitePool, payload: &Value, app_handle:
 }
 
 async fn upsert_row(pool: &SqlitePool, table: &str, record: &Value) -> Result<(), sqlx::Error> {
-    use crate::sync::conflict::Winner;
     use crate::sync::conflict::resolve_conflict;
+    use crate::sync::conflict::Winner;
 
     let row_id = record.get("id").and_then(|id| id.as_str()).unwrap_or("");
     if row_id.is_empty() {
@@ -497,11 +493,13 @@ mod tests {
     fn parse_timestamp_iso_without_timezone() {
         let val = json!("2026-03-27T14:30:00.000");
         let ts = parse_remote_timestamp(Some(&val));
-        let expected =
-            chrono::NaiveDateTime::parse_from_str("2026-03-27T14:30:00.000", "%Y-%m-%dT%H:%M:%S%.f")
-                .unwrap()
-                .and_utc()
-                .timestamp();
+        let expected = chrono::NaiveDateTime::parse_from_str(
+            "2026-03-27T14:30:00.000",
+            "%Y-%m-%dT%H:%M:%S%.f",
+        )
+        .unwrap()
+        .and_utc()
+        .timestamp();
         assert_eq!(ts, expected);
     }
 
@@ -625,11 +623,13 @@ mod tests {
 
         upsert_row(&pool, "test_table", &record).await.unwrap();
 
-        let row = sqlx::query("SELECT id, name, is_custom, updated_at, aliases FROM test_table WHERE id = ?")
-            .bind("row-1")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+        let row = sqlx::query(
+            "SELECT id, name, is_custom, updated_at, aliases FROM test_table WHERE id = ?",
+        )
+        .bind("row-1")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
 
         let id: String = row.get("id");
         let name: String = row.get("name");

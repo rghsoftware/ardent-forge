@@ -104,11 +104,10 @@ pub async fn get_program_full(
     id: String,
 ) -> Result<Option<ProgramFull>, AppError> {
     // Fetch the program
-    let program =
-        sqlx::query_as::<_, ProgramRow>("SELECT * FROM programs WHERE id = ?")
-            .bind(&id)
-            .fetch_optional(pool.inner())
-            .await?;
+    let program = sqlx::query_as::<_, ProgramRow>("SELECT * FROM programs WHERE id = ?")
+        .bind(&id)
+        .fetch_optional(pool.inner())
+        .await?;
 
     let program = match program {
         Some(p) => p,
@@ -116,12 +115,11 @@ pub async fn get_program_full(
     };
 
     // Fetch blocks
-    let blocks = sqlx::query_as::<_, BlockRow>(
-        "SELECT * FROM blocks WHERE program_id = ? ORDER BY ordinal",
-    )
-    .bind(&id)
-    .fetch_all(pool.inner())
-    .await?;
+    let blocks =
+        sqlx::query_as::<_, BlockRow>("SELECT * FROM blocks WHERE program_id = ? ORDER BY ordinal")
+            .bind(&id)
+            .fetch_all(pool.inner())
+            .await?;
 
     let block_ids: Vec<String> = blocks.iter().map(|b| b.id.clone()).collect();
 
@@ -249,11 +247,10 @@ pub async fn create_program_full(
         .execute(&mut *tx)
         .await?;
 
-        let block_row =
-            sqlx::query_as::<_, BlockRow>("SELECT * FROM blocks WHERE id = ?")
-                .bind(&block_id)
-                .fetch_one(&mut *tx)
-                .await?;
+        let block_row = sqlx::query_as::<_, BlockRow>("SELECT * FROM blocks WHERE id = ?")
+            .bind(&block_id)
+            .fetch_one(&mut *tx)
+            .await?;
         all_blocks.push(block_row);
 
         for week_input in &block_input.weeks {
@@ -278,12 +275,11 @@ pub async fn create_program_full(
             .execute(&mut *tx)
             .await?;
 
-            let week_row = sqlx::query_as::<_, BlockWeekRow>(
-                "SELECT * FROM block_weeks WHERE id = ?",
-            )
-            .bind(&week_id)
-            .fetch_one(&mut *tx)
-            .await?;
+            let week_row =
+                sqlx::query_as::<_, BlockWeekRow>("SELECT * FROM block_weeks WHERE id = ?")
+                    .bind(&week_id)
+                    .fetch_one(&mut *tx)
+                    .await?;
             all_weeks.push(week_row);
 
             for session_input in &week_input.sessions {
@@ -323,11 +319,10 @@ pub async fn create_program_full(
         }
     }
 
-    let program_row =
-        sqlx::query_as::<_, ProgramRow>("SELECT * FROM programs WHERE id = ?")
-            .bind(&program_id)
-            .fetch_one(&mut *tx)
-            .await?;
+    let program_row = sqlx::query_as::<_, ProgramRow>("SELECT * FROM programs WHERE id = ?")
+        .bind(&program_id)
+        .fetch_one(&mut *tx)
+        .await?;
 
     tx.commit().await?;
 
@@ -426,11 +421,10 @@ pub async fn update_program_full(
         .execute(&mut *tx)
         .await?;
 
-        let block_row =
-            sqlx::query_as::<_, BlockRow>("SELECT * FROM blocks WHERE id = ?")
-                .bind(&block_id)
-                .fetch_one(&mut *tx)
-                .await?;
+        let block_row = sqlx::query_as::<_, BlockRow>("SELECT * FROM blocks WHERE id = ?")
+            .bind(&block_id)
+            .fetch_one(&mut *tx)
+            .await?;
         all_blocks.push(block_row);
 
         for week_input in &block_input.weeks {
@@ -455,12 +449,11 @@ pub async fn update_program_full(
             .execute(&mut *tx)
             .await?;
 
-            let week_row = sqlx::query_as::<_, BlockWeekRow>(
-                "SELECT * FROM block_weeks WHERE id = ?",
-            )
-            .bind(&week_id)
-            .fetch_one(&mut *tx)
-            .await?;
+            let week_row =
+                sqlx::query_as::<_, BlockWeekRow>("SELECT * FROM block_weeks WHERE id = ?")
+                    .bind(&week_id)
+                    .fetch_one(&mut *tx)
+                    .await?;
             all_weeks.push(week_row);
 
             for session_input in &week_input.sessions {
@@ -500,11 +493,10 @@ pub async fn update_program_full(
         }
     }
 
-    let program_row =
-        sqlx::query_as::<_, ProgramRow>("SELECT * FROM programs WHERE id = ?")
-            .bind(&program_id)
-            .fetch_one(&mut *tx)
-            .await?;
+    let program_row = sqlx::query_as::<_, ProgramRow>("SELECT * FROM programs WHERE id = ?")
+        .bind(&program_id)
+        .fetch_one(&mut *tx)
+        .await?;
 
     tx.commit().await?;
 
@@ -526,10 +518,7 @@ pub async fn update_program_full(
 /// # Returns
 /// `Ok(())` on success, or a not-found error if no program matches the ID.
 #[tauri::command]
-pub async fn delete_program(
-    pool: State<'_, SqlitePool>,
-    id: String,
-) -> Result<(), AppError> {
+pub async fn delete_program(pool: State<'_, SqlitePool>, id: String) -> Result<(), AppError> {
     let result = sqlx::query("DELETE FROM programs WHERE id = ?")
         .bind(&id)
         .execute(pool.inner())
@@ -588,9 +577,7 @@ pub async fn set_active_program(
 ) -> Result<ProgramActivationRow, AppError> {
     let activation_id = Uuid::new_v4().to_string();
     let now = now_unix();
-    let date = start_date.unwrap_or_else(|| {
-        chrono::Utc::now().format("%Y-%m-%d").to_string()
-    });
+    let date = start_date.unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string());
 
     sqlx::query(
         "INSERT INTO program_activations \

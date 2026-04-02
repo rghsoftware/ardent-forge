@@ -21,6 +21,7 @@ import type {
   GroupRole,
   ShareLink,
   ShareableEntityType,
+  EventItem,
 } from '@/domain/types'
 import type { ExerciseCategory, MovementPattern, MuscleGroup } from '@/domain/types'
 import type { WeeklyVolumeEntry } from '@/domain/types'
@@ -38,6 +39,7 @@ export type SessionTemplateFull = {
   template: SessionTemplate
   groups: Array<Omit<ActivityGroup, 'activities'>>
   activities: Activity[]
+  eventItems: EventItem[]
 }
 
 export type ProgramFull = {
@@ -177,7 +179,20 @@ export interface DataAdapter {
       activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
     }>,
   ): Promise<SessionTemplateFull>
+  cloneSessionTemplate(id: string, userId: string): Promise<SessionTemplateFull>
   deleteSessionTemplate(id: string): Promise<void>
+
+  // Event item operations
+  getEventItems(parentId: string, parentType: 'template' | 'log'): Promise<EventItem[]>
+  saveEventItem(
+    item: Omit<EventItem, 'id' | 'createdAt' | 'updatedAt'>,
+    parentId: string,
+    parentType: 'template' | 'log',
+  ): Promise<EventItem>
+  updateEventItem(item: EventItem): Promise<EventItem>
+  deleteEventItem(itemId: string): Promise<void>
+  toggleEventItemPacked(itemId: string, isPacked: boolean): Promise<EventItem>
+  reorderEventItems(items: Array<{ id: string; sortOrder: number }>): Promise<void>
 
   // Program operations
   getPrograms(userId: string): Promise<Program[]>

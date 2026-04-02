@@ -34,6 +34,7 @@ import type {
   GroupInvite,
   DirectConnection,
   GroupRole,
+  EventItem,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -52,6 +53,7 @@ import type {
   ScheduledSessionRow,
   ProgramActivationRow,
   ShareLinkRow,
+  EventItemRow,
 } from './database.types'
 import {
   toExercise,
@@ -85,6 +87,8 @@ import {
   toProgramActivation,
   toShareLink,
   fromShareLink,
+  toEventItem,
+  fromEventItem,
 } from './data-mapper'
 import {
   toAccountabilityGroup,
@@ -603,11 +607,16 @@ export class SupabaseAdapter implements DataAdapter {
     const groups = (groupData as ActivityGroupRow[]).map(toActivityGroupFlat)
     const groupIds = groups.map((g) => g.id)
 
+    const template = toSessionTemplate(templateData as SessionTemplateRow)
+
     if (groupIds.length === 0) {
+      const eventItems =
+        template.category === 'EVENT' ? await this.getEventItems(id, 'template') : []
       return {
-        template: toSessionTemplate(templateData as SessionTemplateRow),
+        template,
         groups,
         activities: [],
+        eventItems,
       }
     }
 
@@ -619,10 +628,13 @@ export class SupabaseAdapter implements DataAdapter {
     if (actError) throw actError
     const activities = (actData as ActivityRow[]).map(toActivity)
 
+    const eventItems = template.category === 'EVENT' ? await this.getEventItems(id, 'template') : []
+
     return {
-      template: toSessionTemplate(templateData as SessionTemplateRow),
+      template,
       groups,
       activities,
+      eventItems,
     }
   }
 
@@ -672,7 +684,12 @@ export class SupabaseAdapter implements DataAdapter {
       }
     }
 
-    return { template: createdTemplate, groups: allGroups, activities: allActivities }
+    return {
+      template: createdTemplate,
+      groups: allGroups,
+      activities: allActivities,
+      eventItems: [],
+    }
   }
 
   // TODO: These writes are non-atomic. Migrate to a Supabase RPC stored procedure to ensure consistency. See PR #11.
@@ -729,12 +746,125 @@ export class SupabaseAdapter implements DataAdapter {
       }
     }
 
-    return { template: updatedTemplate, groups: allGroups, activities: allActivities }
+    const eventItems =
+      updatedTemplate.category === 'EVENT' ? await this.getEventItems(template.id, 'template') : []
+
+    return { template: updatedTemplate, groups: allGroups, activities: allActivities, eventItems }
+  }
+
+  async cloneSessionTemplate(id: string, _userId: string): Promise<SessionTemplateFull> {
+    // 1. Fetch the full template
+    const original = await this.getSessionTemplateFull(id)
+    if (!original) throw new Error('Template not found')
+
+    // 2. Clone template with activity groups
+    const { id: _id, createdAt: _ca, updatedAt: _ua, ...templateData } = original.template
+    const clonedFull = await this.createSessionTemplateFull(
+      { ...templateData, name: `${templateData.name} (Copy)` },
+      original.groups.map((g) => ({
+        group: { ...g, sessionTemplateId: '' },
+        activities: original.activities
+          .filter((a) => a.activityGroupId === g.id)
+          .map(({ id: _aid, activityGroupId: _agid, ...actData }) => actData),
+      })),
+    )
+
+    // 3. Clone event items with isPacked = false (EV-5 invariant)
+    const clonedItems: EventItem[] = []
+    for (const item of original.eventItems) {
+      const clonedItem = await this.saveEventItem(
+        {
+          userId: item.userId,
+          name: item.name,
+          category: item.category,
+          quantity: item.quantity,
+          isPacked: false, // EV-5: always reset
+          sortOrder: item.sortOrder,
+          notes: item.notes,
+        },
+        clonedFull.template.id,
+        'template',
+      )
+      clonedItems.push(clonedItem)
+    }
+
+    return { ...clonedFull, eventItems: clonedItems }
   }
 
   async deleteSessionTemplate(id: string): Promise<void> {
     const { error } = await this.client.from('session_templates').delete().eq('id', id)
     if (error) throw error
+  }
+
+  // ---------------------------------------------------------------------------
+  // Event item operations
+  // ---------------------------------------------------------------------------
+
+  async getEventItems(parentId: string, parentType: 'template' | 'log'): Promise<EventItem[]> {
+    const column = parentType === 'template' ? 'session_template_id' : 'workout_log_id'
+    const { data, error } = await this.client
+      .from('event_items')
+      .select('*')
+      .eq(column, parentId)
+      .order('category')
+      .order('sort_order')
+    if (error) throw error
+    return (data as EventItemRow[]).map(toEventItem)
+  }
+
+  async saveEventItem(
+    item: Omit<EventItem, 'id' | 'createdAt' | 'updatedAt'>,
+    parentId: string,
+    parentType: 'template' | 'log',
+  ): Promise<EventItem> {
+    const row = fromEventItem(item, parentId, parentType)
+    const { data, error } = await this.client.from('event_items').insert(row).select().single()
+    if (error) throw error
+    return toEventItem(data as EventItemRow)
+  }
+
+  async updateEventItem(item: EventItem): Promise<EventItem> {
+    const { data, error } = await this.client
+      .from('event_items')
+      .update({
+        name: item.name,
+        category: item.category ?? null,
+        quantity: item.quantity,
+        is_packed: item.isPacked,
+        sort_order: item.sortOrder,
+        notes: item.notes ?? null,
+      })
+      .eq('id', item.id)
+      .select()
+      .single()
+    if (error) throw error
+    return toEventItem(data as EventItemRow)
+  }
+
+  async deleteEventItem(itemId: string): Promise<void> {
+    const { error } = await this.client.from('event_items').delete().eq('id', itemId)
+    if (error) throw error
+  }
+
+  async toggleEventItemPacked(itemId: string, isPacked: boolean): Promise<EventItem> {
+    const { data, error } = await this.client
+      .from('event_items')
+      .update({ is_packed: isPacked })
+      .eq('id', itemId)
+      .select()
+      .single()
+    if (error) throw error
+    return toEventItem(data as EventItemRow)
+  }
+
+  async reorderEventItems(items: Array<{ id: string; sortOrder: number }>): Promise<void> {
+    const results = await Promise.all(
+      items.map(({ id, sortOrder }) =>
+        this.client.from('event_items').update({ sort_order: sortOrder }).eq('id', id),
+      ),
+    )
+    const firstError = results.find((r) => r.error)?.error
+    if (firstError) throw firstError
   }
 
   // ---------------------------------------------------------------------------

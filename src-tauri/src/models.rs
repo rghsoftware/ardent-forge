@@ -9,14 +9,14 @@ use serde::{Deserialize, Serialize};
 pub struct ExerciseRow {
     pub id: String,
     pub name: String,
-    pub aliases: Option<String>,           // JSON array
+    pub aliases: Option<String>, // JSON array
     pub category: String,
     pub movement_pattern: Option<String>,
-    pub muscle_groups: Option<String>,     // JSON array
-    pub is_bilateral: Option<i32>,         // boolean 0/1
-    pub supports_1rm: Option<i32>,         // boolean 0/1
+    pub muscle_groups: Option<String>,      // JSON array
+    pub is_bilateral: Option<i32>,          // boolean 0/1
+    pub supports_1rm: Option<i32>,          // boolean 0/1
     pub equipment_required: Option<String>, // JSON array
-    pub is_custom: Option<i32>,            // boolean, default 0
+    pub is_custom: Option<i32>,             // boolean, default 0
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
@@ -33,10 +33,10 @@ pub struct WorkoutLogRow {
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub completed_at: Option<i64>,
     pub session_template_id: Option<String>,
-    pub program_context: Option<String>,       // JSON
+    pub program_context: Option<String>, // JSON
     pub overall_notes: Option<String>,
-    pub perceived_difficulty: Option<i32>,      // 1-10
-    pub bodyweight_at_session: Option<String>,  // JSON Weight
+    pub perceived_difficulty: Option<i32>,     // 1-10
+    pub bodyweight_at_session: Option<String>, // JSON Weight
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
@@ -51,7 +51,7 @@ pub struct LoggedActivityGroupRow {
     pub group_type: String,
     pub ordinal: i32,
     pub actual_rounds_completed: Option<i32>,
-    pub completion_time: Option<String>,  // JSON Duration
+    pub completion_time: Option<String>, // JSON Duration
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
@@ -79,17 +79,17 @@ pub struct LoggedSetRow {
     pub user_id: Option<String>,
     pub set_number: i32,
     pub set_type: String,
-    pub prescribed: Option<String>,         // JSON
+    pub prescribed: Option<String>, // JSON
     pub actual_reps: Option<i32>,
-    pub actual_weight: Option<String>,      // JSON Weight
-    pub actual_duration: Option<String>,    // JSON Duration
-    pub actual_distance: Option<String>,    // JSON Distance
-    pub actual_pace: Option<String>,        // JSON Pace
+    pub actual_weight: Option<String>,   // JSON Weight
+    pub actual_duration: Option<String>, // JSON Duration
+    pub actual_distance: Option<String>, // JSON Distance
+    pub actual_pace: Option<String>,     // JSON Pace
     pub actual_heart_rate: Option<i32>,
-    pub ruck_load: Option<String>,          // JSON Weight
-    pub elevation_gain: Option<String>,     // JSON Distance
-    pub rpe: Option<i32>,                   // 1-10
-    pub completed: Option<i32>,             // boolean 0/1
+    pub ruck_load: Option<String>,      // JSON Weight
+    pub elevation_gain: Option<String>, // JSON Distance
+    pub rpe: Option<i32>,               // 1-10
+    pub completed: Option<i32>,         // boolean 0/1
     pub notes: Option<String>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
@@ -101,11 +101,11 @@ pub struct LoggedSetRow {
 pub struct UserProfileRow {
     pub id: String,
     pub display_name: Option<String>,
-    pub preferred_units: Option<String>,    // default IMPERIAL
-    pub bodyweight: Option<String>,         // JSON Weight
-    pub training_age: Option<String>,       // JSON Duration
-    pub exercise_maxes: Option<String>,     // JSON map
-    pub max_reps: Option<String>,           // JSON map
+    pub preferred_units: Option<String>, // default IMPERIAL
+    pub bodyweight: Option<String>,      // JSON Weight
+    pub training_age: Option<String>,    // JSON Duration
+    pub exercise_maxes: Option<String>,  // JSON map
+    pub max_reps: Option<String>,        // JSON map
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
@@ -117,8 +117,8 @@ pub struct OneRepMaxHistoryRow {
     pub id: String,
     pub user_id: String,
     pub exercise_id: String,
-    pub weight: String,                     // JSON Weight (NOT NULL)
-    pub estimated: Option<i32>,             // boolean 0/1
+    pub weight: String,         // JSON Weight (NOT NULL)
+    pub estimated: Option<i32>, // boolean 0/1
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_required")]
     pub recorded_at: i64,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
@@ -166,8 +166,8 @@ pub struct SessionTemplateRow {
     pub name: String,
     pub description: Option<String>,
     pub category: String,
-    pub rest_between_groups: Option<String>,  // JSON Duration
-    pub time_cap: Option<String>,             // JSON Duration
+    pub rest_between_groups: Option<String>, // JSON Duration
+    pub time_cap: Option<String>,            // JSON Duration
     pub scoring: String,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
@@ -196,7 +196,7 @@ pub struct ActivityRow {
     pub activity_group_id: String,
     pub exercise_id: String,
     pub ordinal: i32,
-    pub set_scheme: String,  // JSON SetScheme
+    pub set_scheme: String, // JSON SetScheme
     pub notes: Option<String>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
@@ -377,7 +377,7 @@ pub struct GroupActivityFeedEntry {
     pub id: String,
     pub user_id: String,
     pub title: Option<String>,
-    pub started_at: String,         // ISO 8601
+    pub started_at: String,           // ISO 8601
     pub completed_at: Option<String>, // ISO 8601
     pub duration_seconds: Option<i64>,
     pub exercise_count: i64,
@@ -391,7 +391,7 @@ pub struct ConnectionActivityFeedEntry {
     pub id: String,
     pub user_id: String,
     pub title: Option<String>,
-    pub started_at: String,         // ISO 8601
+    pub started_at: String,           // ISO 8601
     pub completed_at: Option<String>, // ISO 8601
     pub duration_seconds: Option<i64>,
     pub exercise_count: i64,
