@@ -6,6 +6,16 @@ import { messageBroadcastPayloadSchema, typingBroadcastPayloadSchema } from './r
 import { createForegroundDetector, type ForegroundDetector } from './foreground-detector'
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** How long a typing indicator persists after the last received event. */
+const TYPING_EXPIRY_MS = 3_000
+
+/** Minimum interval between outbound typing broadcasts per conversation. */
+const TYPING_DEBOUNCE_MS = 2_000
+
+// ---------------------------------------------------------------------------
 // RealtimeManager -- core interface for Supabase Realtime Broadcast channels
 // ---------------------------------------------------------------------------
 
@@ -22,8 +32,10 @@ export interface RealtimeManager {
   /** Send a typing indicator (debounced to max 1 per 2 seconds per conversation). */
   broadcastTyping(conversationId: string, userId: string, userName: string): void
 
-  /** Callback fired when a validated message broadcast arrives. */
-  onMessage: ((conversationId: string, payload: MessageBroadcastPayload) => void) | null
+  /** Register a message listener. Returns an unsubscribe function. */
+  addMessageListener(
+    listener: (conversationId: string, payload: MessageBroadcastPayload) => void,
+  ): () => void
   /** Register a typing listener. Returns an unsubscribe function. */
   addTypingListener(
     listener: (conversationId: string, userId: string, userName: string) => void,
@@ -66,6 +78,10 @@ export function createRealtimeManager(
   /** Most recent `created_at` per conversation, used for catch-up on foreground. */
   const lastKnownTimestamps = new Map<string, string>()
 
+  /** Message listeners registered via addMessageListener. */
+  type MessageListener = (conversationId: string, payload: MessageBroadcastPayload) => void
+  const messageListeners = new Set<MessageListener>()
+
   /** Typing listeners registered via addTypingListener. */
   type TypingListener = (conversationId: string, userId: string, userName: string) => void
   const typingListeners = new Set<TypingListener>()
@@ -83,15 +99,23 @@ export function createRealtimeManager(
   }
 
   function clearAllTyping(): void {
-    for (const conversationId of typingState.keys()) {
-      clearTypingForConversation(conversationId)
+    for (const users of typingState.values()) {
+      for (const entry of users.values()) {
+        clearTimeout(entry.timeout)
+      }
     }
+    typingState.clear()
   }
 
   // -- The manager object ---------------------------------------------------
 
   const manager: RealtimeManager = {
-    onMessage: null,
+    addMessageListener(listener) {
+      messageListeners.add(listener)
+      return () => {
+        messageListeners.delete(listener)
+      }
+    },
 
     addTypingListener(listener) {
       typingListeners.add(listener)
@@ -128,7 +152,9 @@ export function createRealtimeManager(
           lastKnownTimestamps.set(conversationId, payload.created_at)
         }
 
-        manager.onMessage?.(conversationId, payload)
+        for (const listener of messageListeners) {
+          listener(conversationId, payload)
+        }
       })
 
       // Listen for typing broadcasts
@@ -156,7 +182,7 @@ export function createRealtimeManager(
           if (current?.size === 0) {
             typingState.delete(conversationId)
           }
-        }, 3_000)
+        }, TYPING_EXPIRY_MS)
 
         users.set(userId, { userName, timeout })
 
@@ -167,13 +193,15 @@ export function createRealtimeManager(
 
       // Subscribe to the channel
       channel.subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          // Subscription successful -- nothing else to do
-        } else if (err) {
+        if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
           console.warn(
-            `[realtime-manager] Channel chat:${conversationId} status: ${status}`,
+            `[realtime-manager] Channel chat:${conversationId} terminal status: ${status}`,
             err,
           )
+          // Remove the dead channel so future subscribe() calls can retry
+          channels.delete(conversationId)
+          client.removeChannel(channel)
+          clearTypingForConversation(conversationId)
         }
       })
 
@@ -190,7 +218,9 @@ export function createRealtimeManager(
     },
 
     unsubscribeAll(): void {
-      client.removeAllChannels()
+      for (const channel of channels.values()) {
+        client.removeChannel(channel)
+      }
       channels.clear()
       clearAllTyping()
       lastTypingSent.clear()
@@ -216,7 +246,7 @@ export function createRealtimeManager(
     broadcastTyping(conversationId: string, userId: string, userName: string): void {
       const now = Date.now()
       const last = lastTypingSent.get(conversationId) ?? 0
-      if (now - last < 2_000) return
+      if (now - last < TYPING_DEBOUNCE_MS) return
 
       const channel = channels.get(conversationId)
       if (!channel) return
@@ -225,7 +255,7 @@ export function createRealtimeManager(
         type: 'broadcast',
         event: 'typing',
         payload: { user_id: userId, user_name: userName },
-      })
+      }).catch(() => {})
 
       lastTypingSent.set(conversationId, now)
     },
@@ -257,12 +287,14 @@ export function createRealtimeManager(
         try {
           const messages = await adapter.getMessagesSince(conversationId, since)
           for (const msg of messages) {
+            // Catch-up messages carry full content (not truncated preview)
+            // since they are internal, not wire-format broadcasts.
             const payload: MessageBroadcastPayload = {
               message_id: msg.id,
               conversation_id: msg.conversationId,
               sender_id: msg.senderId ?? '',
               message_type: msg.messageType,
-              preview: (msg.content ?? '').slice(0, 100),
+              preview: msg.content ?? '',
               created_at: msg.createdAt,
             }
 
@@ -272,7 +304,9 @@ export function createRealtimeManager(
               lastKnownTimestamps.set(conversationId, payload.created_at)
             }
 
-            manager.onMessage?.(conversationId, payload)
+            for (const listener of messageListeners) {
+              listener(conversationId, payload)
+            }
           }
         } catch (err) {
           console.warn(

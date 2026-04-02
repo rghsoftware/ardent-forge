@@ -606,6 +606,98 @@ Validate against all 14 testable assertions from Spec:
 
 ---
 
+## Wave 5: Polish (from PR #34 review suggestions)
+
+### S009: Extract magic numbers to named constants
+**Agent:** `domain-engineer`
+**Files:** `src/lib/realtime-manager.ts`
+**Depends on:** none
+
+Extract `TYPING_EXPIRY_MS = 3_000` and `TYPING_DEBOUNCE_MS = 2_000` constants (pattern: `UNDO_WINDOW_MS` in workout-utils).
+
+---
+
+### S010: Extract `toMessageFromBroadcast()` mapper
+**Agent:** `domain-engineer`
+**Files:** `src/lib/realtime-schemas.ts`, consumers
+**Depends on:** none
+
+Extract a shared `toMessageFromBroadcast(payload): Message` mapper to eliminate the same conversion duplicated in 3 files (`chat-realtime-listener.tsx`, `realtime-manager.ts` catch-up, `use-chat.ts`).
+
+---
+
+### S011: Remove empty SUBSCRIBED branch in subscribe
+**Agent:** `domain-engineer`
+**Files:** `src/lib/realtime-manager.ts`
+**Depends on:** none
+
+Remove the empty `if (status === 'SUBSCRIBED')` branch in `subscribe()` -- only handle the error case.
+
+---
+
+### S012: Simplify `clearAllTyping` iteration
+**Agent:** `domain-engineer`
+**Files:** `src/lib/realtime-manager.ts`
+**Depends on:** none
+
+Simplify `clearAllTyping` to iterate values directly and call `typingState.clear()` to avoid iteration-during-deletion.
+
+---
+
+### S013: Log actual error before foreground-detector fallback
+**Agent:** `frontend-specialist`
+**Files:** `src/lib/foreground-detector.ts`
+**Depends on:** none
+
+Log the actual error in the `.catch()` before falling back to `visibilitychange`.
+
+---
+
+### S014: Add `.catch()` to `broadcastTyping` channel.send
+**Agent:** `domain-engineer`
+**Files:** `src/lib/realtime-manager.ts`
+**Depends on:** none
+
+Add `.catch(() => {})` to `channel.send()` in `broadcastTyping` to prevent unhandled promise rejection.
+
+---
+
+### S015: Extract `MessagePaginationOptions` interface
+**Agent:** `domain-engineer`
+**Files:** `src/lib/data-adapter.ts`
+**Depends on:** none
+
+Extract `MessagePaginationOptions` interface for consistency with existing `ActivityFeedOptions`.
+
+---
+
+### S016: Flatten nested `.then()` chain in foreground-detector
+**Agent:** `frontend-specialist`
+**Files:** `src/lib/foreground-detector.ts`
+**Depends on:** none
+
+Flatten nested `.then()` chain to `async/await` for readability while preserving race-condition guards.
+
+---
+
+### S017: Add `z.string().max(200)` to typing payload `user_name`
+**Agent:** `domain-engineer`
+**Files:** `src/lib/realtime-schemas.ts`
+**Depends on:** none
+
+Add `z.string().max(200)` to `user_name` in typing payload for consistency with preview's `max(100)`.
+
+---
+
+### S018: Fix inaccurate `getSession()` comment
+**Agent:** `frontend-specialist`
+**Files:** `src/components/chat-realtime-listener.tsx`
+**Depends on:** none
+
+The comment "no network call" for `getSession()` was inaccurate -- it may refresh the token. This was resolved by replacing the `getSession()` pattern with `useAuth()` in I5 fix. Mark as complete.
+
+---
+
 ## Dependency Graph
 
 ```

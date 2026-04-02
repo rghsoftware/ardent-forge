@@ -94,6 +94,13 @@ export interface ConnectionActivityFeedEntry extends ActivityFeedWorkoutSummary 
   connectionId: string
 }
 
+export interface MessagePaginationOptions {
+  /** ISO 8601 datetime cursor -- returns messages before this timestamp */
+  before?: string
+  /** Maximum messages to return */
+  limit: number
+}
+
 export interface ExerciseFilters {
   category?: ExerciseCategory
   movementPattern?: MovementPattern
@@ -322,7 +329,7 @@ export interface DataAdapter {
   getConversation(id: string): Promise<Conversation | null>
   findDirectConversation(otherUserId: string): Promise<Conversation | null>
   sendMessage(conversationId: string, messageType: MessageType, content?: string): Promise<Message>
-  getMessages(conversationId: string, options: { before?: string; limit: number }): Promise<Message[]>
+  getMessages(conversationId: string, options: MessagePaginationOptions): Promise<Message[]>
   getMessagesSince(conversationId: string, since: string): Promise<Message[]>
   updateLastRead(conversationId: string): Promise<void>
   getUnreadCounts(): Promise<Map<string, number>>

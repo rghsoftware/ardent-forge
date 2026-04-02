@@ -84,16 +84,22 @@ export function useSendMessage() {
         vars.content,
       )
 
+      // Broadcast is best-effort: failure means degraded delivery to other
+      // participants, not a send failure. It must not trigger optimistic rollback.
       const manager = getRealtimeManager()
       if (manager) {
-        await manager.broadcastMessage(vars.conversationId, {
-          message_id: message.id,
-          conversation_id: vars.conversationId,
-          sender_id: message.senderId ?? '',
-          message_type: message.messageType,
-          preview: (vars.content ?? '').slice(0, 100),
-          created_at: message.createdAt,
-        })
+        try {
+          await manager.broadcastMessage(vars.conversationId, {
+            message_id: message.id,
+            conversation_id: vars.conversationId,
+            sender_id: message.senderId ?? '',
+            message_type: message.messageType,
+            preview: (vars.content ?? '').slice(0, 100),
+            created_at: message.createdAt,
+          })
+        } catch (err) {
+          console.warn('[chat] Broadcast failed (message persisted):', err)
+        }
       }
 
       return message
@@ -238,7 +244,9 @@ export function useRealtimeMessages(conversationId: string) {
 
     return () => {
       removeTypingListener()
-      manager.unsubscribe(conversationId)
+      // Channel lifecycle is owned by ChatRealtimeListener, not individual
+      // hook consumers. Calling unsubscribe here would tear down the global
+      // channel for all consumers (no reference counting).
     }
   }, [conversationId, refreshTyping])
 

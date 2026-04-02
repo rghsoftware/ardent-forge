@@ -88,36 +88,40 @@ function createTauriDetector(
 
       // Dynamic import so the Tauri window module is never bundled for
       // pure-browser builds (it would fail to resolve at build time).
-      import('@tauri-apps/api/window')
-        .then(({ getCurrentWindow }) => {
+      void (async () => {
+        try {
+          const { getCurrentWindow } = await import('@tauri-apps/api/window')
+
           // Guard: stop() may have been called before the dynamic import
-          // resolved.  Bail out so we don't leak a listener.
+          // resolved. Bail out so we don't leak a listener.
           if (!listening) return
 
-          return getCurrentWindow()
-            .onFocusChanged(({ payload: focused }) => {
+          const unlistenFn = await getCurrentWindow().onFocusChanged(
+            ({ payload: focused }) => {
               if (focused) {
                 onForeground()
               } else {
                 onBackground()
               }
-            })
-            .then((unlistenFn) => {
-              // Another guard -- stop() could have raced the promise.
-              if (!listening) {
-                unlistenFn()
-                return
-              }
-              unlisten = unlistenFn
-            })
-        })
-        .catch(() => {
-          // If the Tauri window API is unavailable (e.g. older Tauri
-          // version or stripped plugin), fall back to visibilitychange.
+            },
+          )
+
+          // Another guard -- stop() could have raced the promise.
+          if (!listening) {
+            unlistenFn()
+            return
+          }
+          unlisten = unlistenFn
+        } catch (err: unknown) {
+          console.warn(
+            '[foreground-detector] Tauri window API unavailable, falling back to visibilitychange:',
+            err,
+          )
           if (!listening) return
           fallback = createBrowserDetector(onForeground, onBackground)
           fallback.start()
-        })
+        }
+      })()
     },
 
     stop() {

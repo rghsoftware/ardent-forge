@@ -40,8 +40,8 @@ function InnerApp() {
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
         <SyncListener />
-        <ChatRealtimeListener />
         <AuthProvider>
+          <ChatRealtimeListener />
           <InnerApp />
         </AuthProvider>
       </QueryClientProvider>
