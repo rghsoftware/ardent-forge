@@ -1,4 +1,5 @@
 pub mod app_config;
+pub mod chat;
 pub mod exercises;
 pub mod guest;
 pub mod notification;

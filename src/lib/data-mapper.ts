@@ -17,6 +17,10 @@ import type {
   ProgramActivation,
   ShareLink,
   EventItem,
+  Conversation,
+  ConversationParticipant,
+  Message,
+  MediaAttachment,
 } from '@/domain/types'
 import {
   entityId,
@@ -42,6 +46,12 @@ import {
   shareableEntityTypeSchema,
   shareTokenSchema,
   eventMetadataSchema,
+  conversationTypeSchema,
+  messageTypeSchema,
+  syncStatusSchema,
+  mediaProviderSchema,
+  mediaTypeSchema,
+  mediaStatusSchema,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -61,6 +71,10 @@ import type {
   ProgramActivationRow,
   ShareLinkRow,
   EventItemRow,
+  ConversationRow,
+  ConversationParticipantRow,
+  MessageRow,
+  MediaAttachmentRow,
 } from './database.types'
 
 /**
@@ -663,5 +677,154 @@ export function fromEventItem(
     is_packed: item.isPacked,
     sort_order: item.sortOrder,
     notes: item.notes ?? null,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Conversation
+// ---------------------------------------------------------------------------
+
+export function toConversation(row: ConversationRow): Conversation {
+  try {
+    return {
+      id: row.id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      type: conversationTypeSchema.parse(row.type),
+      title: row.title ?? undefined,
+      groupId: row.group_id ?? undefined,
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map conversation (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+}
+
+export function fromConversation(
+  conversation: Omit<Conversation, 'id' | 'createdAt' | 'updatedAt'>,
+): Partial<ConversationRow> {
+  return {
+    type: conversation.type,
+    title: conversation.title ?? null,
+    group_id: conversation.groupId ?? null,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ConversationParticipant
+// ---------------------------------------------------------------------------
+
+export function toConversationParticipant(
+  row: ConversationParticipantRow,
+): ConversationParticipant {
+  try {
+    return {
+      id: row.id,
+      createdAt: row.joined_at,
+      updatedAt: row.joined_at,
+      conversationId: row.conversation_id,
+      userId: row.user_id,
+      lastReadAt: row.last_read_at ?? undefined,
+      isArchived: row.is_archived,
+      joinedAt: row.joined_at,
+      leftAt: row.left_at ?? undefined,
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map conversation participant (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+}
+
+export function fromConversationParticipant(
+  participant: Omit<ConversationParticipant, 'id' | 'createdAt' | 'updatedAt'>,
+): Partial<ConversationParticipantRow> {
+  return {
+    conversation_id: participant.conversationId,
+    user_id: participant.userId,
+    last_read_at: participant.lastReadAt ?? null,
+    is_archived: participant.isArchived,
+    joined_at: participant.joinedAt,
+    left_at: participant.leftAt ?? null,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Message
+// ---------------------------------------------------------------------------
+
+export function toMessage(row: MessageRow): Message {
+  try {
+    return {
+      id: row.id,
+      createdAt: row.created_at,
+      conversationId: row.conversation_id,
+      senderId: row.sender_id ?? undefined,
+      messageType: messageTypeSchema.parse(row.message_type),
+      content: row.content ?? undefined,
+      syncStatus: row.sync_status != null ? syncStatusSchema.parse(row.sync_status) : undefined,
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map message (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+}
+
+export function fromMessage(message: Omit<Message, 'id' | 'createdAt'>): Partial<MessageRow> {
+  return {
+    conversation_id: message.conversationId,
+    sender_id: message.senderId ?? null,
+    message_type: message.messageType,
+    content: message.content ?? null,
+    sync_status: message.syncStatus ?? undefined,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// MediaAttachment
+// ---------------------------------------------------------------------------
+
+export function toMediaAttachment(row: MediaAttachmentRow): MediaAttachment {
+  try {
+    return {
+      id: row.id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      messageId: row.message_id,
+      provider: mediaProviderSchema.parse(row.provider),
+      providerAssetId: row.provider_asset_id ?? undefined,
+      mediaType: mediaTypeSchema.parse(row.media_type),
+      originalFilename: row.original_filename ?? undefined,
+      mimeType: row.mime_type ?? undefined,
+      thumbnailUrl: row.thumbnail_url ?? undefined,
+      playbackUrl: row.playback_url ?? undefined,
+      durationSeconds: row.duration_seconds ?? undefined,
+      fileSizeBytes: row.file_size_bytes ?? undefined,
+      status: mediaStatusSchema.parse(row.status),
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map media attachment (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+}
+
+export function fromMediaAttachment(
+  attachment: Omit<MediaAttachment, 'id' | 'createdAt' | 'updatedAt'>,
+): Partial<MediaAttachmentRow> {
+  return {
+    message_id: attachment.messageId,
+    provider: attachment.provider,
+    provider_asset_id: attachment.providerAssetId ?? null,
+    media_type: attachment.mediaType,
+    original_filename: attachment.originalFilename ?? null,
+    mime_type: attachment.mimeType ?? null,
+    thumbnail_url: attachment.thumbnailUrl ?? null,
+    playback_url: attachment.playbackUrl ?? null,
+    duration_seconds: attachment.durationSeconds ?? null,
+    file_size_bytes: attachment.fileSizeBytes ?? null,
+    status: attachment.status,
   }
 }

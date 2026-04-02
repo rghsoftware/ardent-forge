@@ -35,6 +35,12 @@ import type {
   DirectConnection,
   GroupRole,
   EventItem,
+  Conversation,
+  ConversationType,
+  ConversationParticipant,
+  Message,
+  MessageType,
+  MediaAttachment,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -54,6 +60,10 @@ import type {
   ProgramActivationRow,
   ShareLinkRow,
   EventItemRow,
+  ConversationRow,
+  ConversationParticipantRow,
+  MessageRow,
+  MediaAttachmentRow,
 } from './database.types'
 import {
   toExercise,
@@ -89,6 +99,13 @@ import {
   fromShareLink,
   toEventItem,
   fromEventItem,
+  toConversation,
+  fromConversation,
+  toConversationParticipant,
+  toMessage,
+  fromMessage,
+  toMediaAttachment,
+  fromMediaAttachment,
 } from './data-mapper'
 import {
   toAccountabilityGroup,
@@ -1846,6 +1863,267 @@ export class SupabaseAdapter implements DataAdapter {
           connectionId: connectionMap[log.user_id],
         }
       })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Chat operations
+  // ---------------------------------------------------------------------------
+
+  async createConversation(
+    type: ConversationType,
+    participantIds: string[],
+    title?: string,
+    groupId?: string,
+  ): Promise<Conversation> {
+    const userId = await this.getCurrentUserId()
+
+    // 1. Insert the conversation row
+    const conversationRow = fromConversation({
+      type,
+      title,
+      groupId,
+    })
+    const { data: convData, error: convError } = await this.client
+      .from('conversations')
+      .insert(conversationRow)
+      .select()
+      .single()
+    if (convError) throw convError
+    const conversation = toConversation(convData as ConversationRow)
+
+    // 2. Insert participant rows -- include the current user plus all provided IDs
+    const allParticipantIds = new Set([userId, ...participantIds])
+    for (const pid of allParticipantIds) {
+      const { error: pError } = await this.client.from('conversation_participants').insert({
+        conversation_id: conversation.id,
+        user_id: pid,
+      })
+      if (pError) throw pError
+    }
+
+    return conversation
+  }
+
+  async getConversations(): Promise<Conversation[]> {
+    const userId = await this.getCurrentUserId()
+
+    // Select conversations where the current user is an active participant
+    const { data: participantRows, error: pError } = await this.client
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', userId)
+      .is('left_at', null)
+    if (pError) throw pError
+
+    const conversationIds = (participantRows ?? []).map((r) => r.conversation_id)
+    if (conversationIds.length === 0) return []
+
+    const { data, error } = await this.client
+      .from('conversations')
+      .select('*')
+      .in('id', conversationIds)
+      .order('updated_at', { ascending: false })
+    if (error) throw error
+    return (data as ConversationRow[]).map(toConversation)
+  }
+
+  async getConversation(id: string): Promise<Conversation | null> {
+    const { data, error } = await this.client
+      .from('conversations')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    if (error) throw error
+    return data ? toConversation(data as ConversationRow) : null
+  }
+
+  async findDirectConversation(otherUserId: string): Promise<Conversation | null> {
+    const userId = await this.getCurrentUserId()
+
+    // Find direct conversations where both the current user and the other user
+    // are active participants. We query the current user's active direct
+    // conversations first, then check for the other user's membership.
+    const { data: myParticipations, error: myError } = await this.client
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', userId)
+      .is('left_at', null)
+    if (myError) throw myError
+
+    const myConversationIds = (myParticipations ?? []).map((r) => r.conversation_id)
+    if (myConversationIds.length === 0) return null
+
+    // Filter to direct conversations only
+    const { data: directConvs, error: convError } = await this.client
+      .from('conversations')
+      .select('id')
+      .in('id', myConversationIds)
+      .eq('type', 'direct')
+    if (convError) throw convError
+
+    const directIds = (directConvs ?? []).map((r) => r.id)
+    if (directIds.length === 0) return null
+
+    // Find one where the other user is also an active participant
+    const { data: otherParticipation, error: otherError } = await this.client
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', otherUserId)
+      .in('conversation_id', directIds)
+      .is('left_at', null)
+      .limit(1)
+      .maybeSingle()
+    if (otherError) throw otherError
+    if (!otherParticipation) return null
+
+    return this.getConversation(otherParticipation.conversation_id)
+  }
+
+  async sendMessage(
+    conversationId: string,
+    messageType: MessageType,
+    content?: string,
+  ): Promise<Message> {
+    const userId = await this.getCurrentUserId()
+
+    const row = fromMessage({
+      conversationId,
+      senderId: userId,
+      messageType,
+      content,
+    })
+    // Remove sync_status -- it is SQLite-only and not a column in the Supabase table
+    delete row.sync_status
+
+    const { data, error } = await this.client.from('messages').insert(row).select().single()
+    if (error) throw error
+    return toMessage(data as MessageRow)
+  }
+
+  async getMessages(conversationId: string, limit: number, offset: number): Promise<Message[]> {
+    const { data, error } = await this.client
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true })
+      .range(offset, offset + limit - 1)
+    if (error) throw error
+    return (data as MessageRow[]).map(toMessage)
+  }
+
+  async getMessagesSince(conversationId: string, since: string): Promise<Message[]> {
+    const { data, error } = await this.client
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .gt('created_at', since)
+      .order('created_at', { ascending: true })
+    if (error) throw error
+    return (data as MessageRow[]).map(toMessage)
+  }
+
+  async updateLastRead(conversationId: string): Promise<void> {
+    const userId = await this.getCurrentUserId()
+
+    const { error } = await this.client
+      .from('conversation_participants')
+      .update({ last_read_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+    if (error) throw error
+  }
+
+  async getUnreadCounts(): Promise<Map<string, number>> {
+    const userId = await this.getCurrentUserId()
+
+    // Get all active participations with their last_read_at
+    const { data: participations, error: pError } = await this.client
+      .from('conversation_participants')
+      .select('conversation_id, last_read_at')
+      .eq('user_id', userId)
+      .is('left_at', null)
+    if (pError) throw pError
+
+    const counts = new Map<string, number>()
+    if (!participations?.length) return counts
+
+    // For each participation, count messages created after last_read_at
+    for (const p of participations) {
+      let query = this.client
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('conversation_id', p.conversation_id)
+
+      if (p.last_read_at) {
+        query = query.gt('created_at', p.last_read_at)
+      }
+      // If last_read_at is null, all messages are unread -- no filter needed
+
+      const { count, error } = await query
+      if (error) throw error
+      counts.set(p.conversation_id, count ?? 0)
+    }
+
+    return counts
+  }
+
+  async addParticipant(conversationId: string, userId: string): Promise<ConversationParticipant> {
+    const { data, error } = await this.client
+      .from('conversation_participants')
+      .insert({
+        conversation_id: conversationId,
+        user_id: userId,
+      })
+      .select()
+      .single()
+    if (error) throw error
+    return toConversationParticipant(data as ConversationParticipantRow)
+  }
+
+  async leaveConversation(conversationId: string): Promise<void> {
+    const userId = await this.getCurrentUserId()
+
+    const { error } = await this.client
+      .from('conversation_participants')
+      .update({ left_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+    if (error) throw error
+  }
+
+  async toggleArchive(conversationId: string): Promise<void> {
+    const userId = await this.getCurrentUserId()
+
+    // Read current is_archived value
+    const { data: current, error: fetchError } = await this.client
+      .from('conversation_participants')
+      .select('is_archived')
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+      .single()
+    if (fetchError) throw fetchError
+
+    // Toggle to the opposite
+    const { error } = await this.client
+      .from('conversation_participants')
+      .update({ is_archived: !current.is_archived })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+    if (error) throw error
+  }
+
+  async saveMediaAttachment(
+    messageId: string,
+    attachment: Omit<MediaAttachment, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<MediaAttachment> {
+    const row = fromMediaAttachment({ ...attachment, messageId })
+    const { data, error } = await this.client
+      .from('media_attachments')
+      .insert(row)
+      .select()
+      .single()
+    if (error) throw error
+    return toMediaAttachment(data as MediaAttachmentRow)
   }
 }
 

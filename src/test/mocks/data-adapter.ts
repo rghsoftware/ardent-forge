@@ -118,6 +118,21 @@ export function createMockAdapter(
     // Activity Feed operations
     getGroupActivityFeed: vi.fn().mockResolvedValue([]),
     getConnectionActivityFeed: vi.fn().mockResolvedValue([]),
+
+    // Chat operations
+    createConversation: vi.fn().mockResolvedValue({}),
+    getConversations: vi.fn().mockResolvedValue([]),
+    getConversation: vi.fn().mockResolvedValue(null),
+    findDirectConversation: vi.fn().mockResolvedValue(null),
+    sendMessage: vi.fn().mockResolvedValue({}),
+    getMessages: vi.fn().mockResolvedValue([]),
+    getMessagesSince: vi.fn().mockResolvedValue([]),
+    updateLastRead: vi.fn().mockResolvedValue(undefined),
+    getUnreadCounts: vi.fn().mockResolvedValue(new Map()),
+    addParticipant: vi.fn().mockResolvedValue({}),
+    leaveConversation: vi.fn().mockResolvedValue(undefined),
+    toggleArchive: vi.fn().mockResolvedValue(undefined),
+    saveMediaAttachment: vi.fn().mockResolvedValue({}),
   }
 
   return { ...base, ...overrides }

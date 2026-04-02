@@ -397,3 +397,69 @@ pub struct ConnectionActivityFeedEntry {
     pub exercise_count: i64,
     pub connection_id: String,
 }
+
+// ============================================================
+// Chat row structs -- mirror SQLite tables 1:1
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct ConversationRow {
+    pub id: String,
+    #[sqlx(rename = "type")]
+    #[serde(rename = "type")]
+    pub type_: String,
+    pub title: Option<String>,
+    pub group_id: Option<String>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_required")]
+    pub created_at: i64,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_required")]
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct ConversationParticipantRow {
+    pub id: String,
+    pub conversation_id: String,
+    pub user_id: String,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub last_read_at: Option<i64>,
+    pub is_archived: i64, // boolean 0/1
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_required")]
+    pub joined_at: i64,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub left_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct MessageRow {
+    pub id: String,
+    pub conversation_id: String,
+    pub sender_id: Option<String>,
+    pub message_type: String,
+    pub content: Option<String>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_required")]
+    pub created_at: i64,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_required")]
+    pub updated_at: i64,
+    pub sync_status: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct MediaAttachmentRow {
+    pub id: String,
+    pub message_id: String,
+    pub provider: String,
+    pub provider_asset_id: Option<String>,
+    pub media_type: String,
+    pub original_filename: Option<String>,
+    pub mime_type: Option<String>,
+    pub thumbnail_url: Option<String>,
+    pub playback_url: Option<String>,
+    pub duration_seconds: Option<i64>,
+    pub file_size_bytes: Option<i64>,
+    pub status: String,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_required")]
+    pub created_at: i64,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_required")]
+    pub updated_at: i64,
+}
