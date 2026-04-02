@@ -2048,11 +2048,13 @@ export class SupabaseAdapter implements DataAdapter {
     if (!participations?.length) return counts
 
     // For each participation, count messages created after last_read_at
+    // Exclude the user's own messages (consistent with Tauri adapter behavior)
     for (const p of participations) {
       let query = this.client
         .from('messages')
         .select('*', { count: 'exact', head: true })
         .eq('conversation_id', p.conversation_id)
+        .neq('sender_id', userId)
 
       if (p.last_read_at) {
         query = query.gt('created_at', p.last_read_at)

@@ -339,7 +339,9 @@ async fn upsert_row(pool: &SqlitePool, table: &str, record: &Value) -> Result<()
     #[cfg(not(test))]
     if !crate::sync::SYNCABLE_TABLES.contains(&table) {
         log::error!("[pull] upsert_row called with non-allowlisted table: {table}");
-        return Ok(());
+        return Err(sqlx::Error::Protocol(format!(
+            "Table '{table}' is not in SYNCABLE_TABLES allowlist"
+        )));
     }
 
     use crate::sync::conflict::resolve_conflict;
@@ -441,7 +443,9 @@ async fn delete_row(pool: &SqlitePool, table: &str, row_id: &str) -> Result<(), 
     #[cfg(not(test))]
     if !crate::sync::SYNCABLE_TABLES.contains(&table) {
         log::error!("[pull] delete_row called with non-allowlisted table: {table}");
-        return Ok(());
+        return Err(sqlx::Error::Protocol(format!(
+            "Table '{table}' is not in SYNCABLE_TABLES allowlist"
+        )));
     }
 
     sqlx::query(&format!("DELETE FROM {} WHERE id = ?", table))

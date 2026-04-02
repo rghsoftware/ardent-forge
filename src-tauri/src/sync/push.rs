@@ -35,7 +35,7 @@ async fn push_table(
     #[cfg(not(test))]
     if !crate::sync::SYNCABLE_TABLES.contains(&table) {
         log::error!("[push] push_table called with non-allowlisted table: {table}");
-        return Ok(());
+        return Err(format!("Table '{table}' is not in SYNCABLE_TABLES allowlist").into());
     }
 
     let last_push_at: Option<(i64,)> =

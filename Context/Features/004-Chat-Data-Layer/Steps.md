@@ -462,6 +462,92 @@ Validate against all 12 testable assertions from Spec:
 
 ---
 
+## Wave 5: Review Remediation (post-PR review)
+
+### S013: Data Mapper Unit Tests
+**Agent:** `domain-engineer`
+**Files:** `src/lib/__tests__/data-mapper.test.ts`
+**Depends on:** S007
+**Blocked by:** none
+**Source:** PR #33 review I-1
+
+Add unit tests for the 8 new chat data mapper functions following existing patterns in
+`data-mapper.test.ts`. Test round-trips (`fromXxx(toXxx(row))`) and invalid input rejection.
+Minimum ~150 lines covering: `toConversation`, `toConversationParticipant`, `toMessage`,
+`toMediaAttachment`, and their `from*` counterparts.
+
+**Acceptance:**
+- All mapper tests pass
+- Invalid payloads rejected with Zod errors
+
+---
+
+### S014: Dedicated `get_messages_since` Rust Command
+**Agent:** `rust-engineer`
+**Files:**
+- `src-tauri/src/commands/chat.rs`
+- `src-tauri/src/lib.rs` (register command)
+- `src/lib/tauri-adapter.ts` (use new command)
+**Depends on:** S005
+**Blocked by:** none
+**Source:** PR #33 review I-4
+
+Current `getMessagesSince` in TauriAdapter fetches 1000 messages client-side then filters.
+Add a dedicated `get_messages_since` Rust command with `WHERE created_at > ?` at the SQL
+level. Update the TauriAdapter to invoke it directly.
+
+**Acceptance:**
+- No client-side filtering for `getMessagesSince`
+- SQL-level timestamp filter
+
+---
+
+### S015: Fix `toConversationParticipant` `updatedAt` Mapping
+**Agent:** `domain-engineer`
+**Files:** `src/lib/data-mapper.ts`
+**Depends on:** S007
+**Blocked by:** none
+**Source:** PR #33 review I-5
+
+`toConversationParticipant` maps `joined_at` to both `createdAt` and `updatedAt`.
+Use `last_read_at ?? joined_at` as a better approximation for `updatedAt`, or add
+proper `created_at`/`updated_at` columns to both schemas.
+
+**Acceptance:**
+- `updatedAt` reflects actual state changes
+
+---
+
+### S016: Improve `getUnreadCounts` Error Resilience in Supabase Adapter
+**Agent:** `domain-engineer`
+**Files:** `src/lib/supabase-adapter.ts`
+**Depends on:** S009
+**Blocked by:** none
+**Source:** PR #33 review I-6
+
+One query failure per conversation aborts all unread counts. Collect errors with
+`continue` and return partial results, or batch into a single Supabase RPC.
+
+**Acceptance:**
+- Single conversation error does not zero out all badges
+
+---
+
+### S017: Remove `#[cfg(not(test))]` from Sync Allowlist Guards
+**Agent:** `rust-engineer`
+**Files:** `src-tauri/src/sync/pull.rs`, `src-tauri/src/sync/push.rs`
+**Depends on:** S006
+**Blocked by:** none
+**Source:** PR #33 review I-7
+
+Guards are compiled out during tests, causing test/production behavioral divergence.
+Remove `#[cfg(not(test))]` and adjust tests to use allowlisted table names.
+
+**Acceptance:**
+- Tests exercise the same allowlist path as production
+
+---
+
 ## Dependency Graph
 
 ```

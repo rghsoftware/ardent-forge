@@ -96,6 +96,13 @@ pub async fn create_conversation(
         ));
     }
 
+    if input.conversation_type == "direct" && input.participant_user_ids.len() != 2 {
+        return Err(AppError::validation(
+            "participant_user_ids",
+            "Direct conversations require exactly 2 participants",
+        ));
+    }
+
     let conversation_id = Uuid::new_v4().to_string();
     let now = now_unix();
 
@@ -284,6 +291,25 @@ pub async fn send_message(
                 input.message_type, valid_types
             ),
         ));
+    }
+
+    // Verify sender is an active participant in the conversation
+    if let Some(ref sender) = input.sender_id {
+        let participant: Option<(String,)> = sqlx::query_as(
+            "SELECT id FROM conversation_participants \
+             WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL",
+        )
+        .bind(&input.conversation_id)
+        .bind(sender)
+        .fetch_optional(pool.inner())
+        .await?;
+
+        if participant.is_none() {
+            return Err(AppError::validation(
+                "sender_id",
+                "Sender is not an active participant in this conversation",
+            ));
+        }
     }
 
     let id = Uuid::new_v4().to_string();

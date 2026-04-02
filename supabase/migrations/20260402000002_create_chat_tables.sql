@@ -238,6 +238,10 @@ create policy "conversations_select_participant"
         )
     );
 
+create policy "conversations_insert_authenticated"
+    on conversations for insert
+    with check (auth.uid() is not null);
+
 -- conversation_participants: visible to fellow active participants
 alter table conversation_participants enable row level security;
 
@@ -326,6 +330,19 @@ create policy "media_select_via_message"
 create policy "media_insert_via_message"
     on media_attachments for insert
     with check (
+        exists (
+            select 1 from messages m
+            join conversation_participants cp
+                on cp.conversation_id = m.conversation_id
+            where m.id = media_attachments.message_id
+              and cp.user_id = auth.uid()
+              and cp.left_at is null
+        )
+    );
+
+create policy "media_update_via_message"
+    on media_attachments for update
+    using (
         exists (
             select 1 from messages m
             join conversation_participants cp
