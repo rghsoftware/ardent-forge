@@ -6,6 +6,7 @@ import { routeTree } from './routeTree.gen'
 import { AuthProvider, useAuth, type RouterContext } from '@/lib/auth'
 import { queryClient } from '@/lib/query-client'
 import { SyncListener } from '@/components/sync-listener'
+import { ChatRealtimeListener } from '@/components/chat-realtime-listener'
 import { resolveConfig } from '@/lib/config-store'
 import { initSupabaseFromConfig } from '@/lib/supabase'
 import './index.css'
@@ -40,6 +41,7 @@ function InnerApp() {
       <QueryClientProvider client={queryClient}>
         <SyncListener />
         <AuthProvider>
+          <ChatRealtimeListener />
           <InnerApp />
         </AuthProvider>
       </QueryClientProvider>

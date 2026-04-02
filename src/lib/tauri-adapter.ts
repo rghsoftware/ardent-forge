@@ -2148,11 +2148,17 @@ export class TauriAdapter implements DataAdapter {
     return toMessage(toMessageRowFromTauri(row))
   }
 
-  async getMessages(conversationId: string, limit: number, offset: number): Promise<Message[]> {
+  async getMessages(
+    conversationId: string,
+    options: { before?: string; limit: number },
+  ): Promise<Message[]> {
+    const before = options.before
+      ? Math.floor(new Date(options.before).getTime() / 1000)
+      : undefined
     const rows = await invokeCommand<TauriMessageResponse[]>('get_messages', {
       conversation_id: conversationId,
-      limit,
-      offset,
+      before,
+      limit: options.limit,
     })
     return rows.map((r) => toMessage(toMessageRowFromTauri(r)))
   }

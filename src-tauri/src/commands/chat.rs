@@ -378,38 +378,52 @@ pub async fn get_messages_since(
     Ok(rows)
 }
 
-/// Fetches paginated messages for a conversation.
+/// Fetches messages for a conversation using cursor-based pagination.
 ///
 /// # Parameters
 /// - `pool`: SQLite connection pool (injected by Tauri state).
 /// - `conversation_id`: The conversation to fetch messages for.
+/// - `before`: Optional epoch-seconds cursor; only messages with `created_at < before` are returned.
 /// - `limit`: Maximum number of messages to return (default 50).
-/// - `offset`: Number of messages to skip (default 0).
 ///
 /// # Returns
-/// A vector of `MessageRow` ordered by `created_at` ascending.
+/// A vector of `MessageRow` ordered by `created_at` ascending (newest page last).
 #[tauri::command]
 pub async fn get_messages(
     pool: State<'_, SqlitePool>,
     conversation_id: String,
+    before: Option<i64>,
     limit: Option<i64>,
-    offset: Option<i64>,
 ) -> Result<Vec<MessageRow>, AppError> {
     let lim = limit.unwrap_or(50);
-    let off = offset.unwrap_or(0);
 
-    let rows = sqlx::query_as::<_, MessageRow>(
-        "SELECT * FROM messages \
-         WHERE conversation_id = ? \
-         ORDER BY created_at ASC \
-         LIMIT ? OFFSET ?",
-    )
-    .bind(&conversation_id)
-    .bind(lim)
-    .bind(off)
-    .fetch_all(pool.inner())
-    .await?;
+    let mut rows = if let Some(before_ts) = before {
+        sqlx::query_as::<_, MessageRow>(
+            "SELECT * FROM messages \
+             WHERE conversation_id = ? AND created_at < ? \
+             ORDER BY created_at DESC \
+             LIMIT ?",
+        )
+        .bind(&conversation_id)
+        .bind(before_ts)
+        .bind(lim)
+        .fetch_all(pool.inner())
+        .await?
+    } else {
+        sqlx::query_as::<_, MessageRow>(
+            "SELECT * FROM messages \
+             WHERE conversation_id = ? \
+             ORDER BY created_at DESC \
+             LIMIT ?",
+        )
+        .bind(&conversation_id)
+        .bind(lim)
+        .fetch_all(pool.inner())
+        .await?
+    };
 
+    // Reverse to ascending order for the client
+    rows.reverse();
     Ok(rows)
 }
 

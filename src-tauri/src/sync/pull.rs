@@ -584,7 +584,7 @@ mod tests {
 
     #[test]
     fn coerce_real_passthrough() {
-        assert_eq!(coerce_value("REAL", &json!(3.14)), json!(3.14));
+        assert_eq!(coerce_value("REAL", &json!(1.5)), json!(1.5));
     }
 
     #[test]

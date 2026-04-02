@@ -14,7 +14,8 @@ describe('cn', () => {
   })
 
   it('strips falsy values from conditional classes', () => {
-    expect(cn('a', false && 'b', 'c')).toBe('a c')
+    const condition = false
+    expect(cn('a', condition && 'b', 'c')).toBe('a c')
   })
 
   it('strips undefined and null values', () => {
