@@ -38,9 +38,7 @@ pub async fn sync_force_push(state: State<'_, SyncEngine>) -> Result<(), AppErro
             )
             .await
             .map_err(|e| AppError::sync(&e.to_string()))?;
-            state
-                .transition_state(crate::sync::SyncState::Idle)
-                .await;
+            state.transition_state(crate::sync::SyncState::Idle).await;
         }
         None => return Err(AppError::sync("Not authenticated")),
     }
@@ -68,9 +66,7 @@ pub async fn sync_force_pull(
             .await
             {
                 Ok(()) => {
-                    state
-                        .transition_state(crate::sync::SyncState::Idle)
-                        .await;
+                    state.transition_state(crate::sync::SyncState::Idle).await;
                     Ok(())
                 }
                 Err(e) => {

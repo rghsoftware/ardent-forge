@@ -90,12 +90,7 @@ impl SyncEngine {
 
     // ---- auth lifecycle ----
 
-    pub async fn set_auth(
-        &self,
-        access_token: String,
-        supabase_url: String,
-        supabase_key: String,
-    ) {
+    pub async fn set_auth(&self, access_token: String, supabase_url: String, supabase_key: String) {
         *self.credentials.write().await = Some(SyncCredentials {
             supabase_url,
             supabase_key,
@@ -231,11 +226,10 @@ impl SyncEngine {
 /// Returns `true` when all `last_pull_at` values are 0 (or the table is empty),
 /// meaning the device has never pulled remote data.
 async fn needs_initial_pull(pool: &SqlitePool) -> bool {
-    let result: Option<(i64,)> =
-        sqlx::query_as("SELECT MAX(last_pull_at) FROM sync_metadata")
-            .fetch_optional(pool)
-            .await
-            .unwrap_or(None);
+    let result: Option<(i64,)> = sqlx::query_as("SELECT MAX(last_pull_at) FROM sync_metadata")
+        .fetch_optional(pool)
+        .await
+        .unwrap_or(None);
 
     match result {
         Some((max_pull,)) => max_pull == 0,

@@ -114,12 +114,11 @@ pub async fn save_one_rep_max(
     .execute(&mut *tx)
     .await?;
 
-    let row = sqlx::query_as::<_, OneRepMaxHistoryRow>(
-        "SELECT * FROM one_rep_max_history WHERE id = ?",
-    )
-    .bind(&id)
-    .fetch_one(&mut *tx)
-    .await?;
+    let row =
+        sqlx::query_as::<_, OneRepMaxHistoryRow>("SELECT * FROM one_rep_max_history WHERE id = ?")
+            .bind(&id)
+            .fetch_one(&mut *tx)
+            .await?;
 
     tx.commit().await?;
 

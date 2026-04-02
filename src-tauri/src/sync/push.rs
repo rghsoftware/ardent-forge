@@ -11,7 +11,15 @@ pub async fn push_all(
     let client = Client::new();
 
     for table in super::SYNCABLE_TABLES {
-        push_table(pool, &client, table, supabase_url, supabase_key, access_token).await?;
+        push_table(
+            pool,
+            &client,
+            table,
+            supabase_url,
+            supabase_key,
+            access_token,
+        )
+        .await?;
     }
     Ok(())
 }
@@ -66,7 +74,9 @@ async fn push_table(
         }
     }
     if parse_errors > 0 {
-        log::warn!("[push] Skipping last_push_at update for {table} due to {parse_errors} parse errors");
+        log::warn!(
+            "[push] Skipping last_push_at update for {table} due to {parse_errors} parse errors"
+        );
         return Ok(());
     }
 

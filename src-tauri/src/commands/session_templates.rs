@@ -4,9 +4,7 @@ use tauri::State;
 use uuid::Uuid;
 
 use crate::error::AppError;
-use crate::models::{
-    ActivityGroupRow, ActivityRow, SessionTemplateFull, SessionTemplateRow,
-};
+use crate::models::{ActivityGroupRow, ActivityRow, SessionTemplateFull, SessionTemplateRow};
 use crate::utils::now_unix;
 
 // ---------------------------------------------------------------------------
@@ -90,12 +88,11 @@ pub async fn get_session_template(
     pool: State<'_, SqlitePool>,
     id: String,
 ) -> Result<Option<SessionTemplateRow>, AppError> {
-    let row = sqlx::query_as::<_, SessionTemplateRow>(
-        "SELECT * FROM session_templates WHERE id = ?",
-    )
-    .bind(&id)
-    .fetch_optional(pool.inner())
-    .await?;
+    let row =
+        sqlx::query_as::<_, SessionTemplateRow>("SELECT * FROM session_templates WHERE id = ?")
+            .bind(&id)
+            .fetch_optional(pool.inner())
+            .await?;
 
     Ok(row)
 }
@@ -115,12 +112,11 @@ pub async fn get_session_template_full(
     id: String,
 ) -> Result<Option<SessionTemplateFull>, AppError> {
     // Fetch the template
-    let template = sqlx::query_as::<_, SessionTemplateRow>(
-        "SELECT * FROM session_templates WHERE id = ?",
-    )
-    .bind(&id)
-    .fetch_optional(pool.inner())
-    .await?;
+    let template =
+        sqlx::query_as::<_, SessionTemplateRow>("SELECT * FROM session_templates WHERE id = ?")
+            .bind(&id)
+            .fetch_optional(pool.inner())
+            .await?;
 
     let template = match template {
         Some(t) => t,
@@ -188,7 +184,8 @@ pub async fn create_session_template_full(
         }
     }
 
-    let template_id = template.id
+    let template_id = template
+        .id
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| Uuid::new_v4().to_string());
     let now = now_unix();
@@ -219,7 +216,9 @@ pub async fn create_session_template_full(
     let mut all_activities: Vec<ActivityRow> = Vec::new();
 
     for group_input in &groups {
-        let group_id = group_input.group.id
+        let group_id = group_input
+            .group
+            .id
             .as_ref()
             .filter(|s| !s.is_empty())
             .cloned()
@@ -243,16 +242,16 @@ pub async fn create_session_template_full(
         .execute(&mut *tx)
         .await?;
 
-        let group_row = sqlx::query_as::<_, ActivityGroupRow>(
-            "SELECT * FROM activity_groups WHERE id = ?",
-        )
-        .bind(&group_id)
-        .fetch_one(&mut *tx)
-        .await?;
+        let group_row =
+            sqlx::query_as::<_, ActivityGroupRow>("SELECT * FROM activity_groups WHERE id = ?")
+                .bind(&group_id)
+                .fetch_one(&mut *tx)
+                .await?;
         all_groups.push(group_row);
 
         for act_input in &group_input.activities {
-            let act_id = act_input.id
+            let act_id = act_input
+                .id
                 .as_ref()
                 .filter(|s| !s.is_empty())
                 .cloned()
@@ -275,22 +274,19 @@ pub async fn create_session_template_full(
             .execute(&mut *tx)
             .await?;
 
-            let act_row = sqlx::query_as::<_, ActivityRow>(
-                "SELECT * FROM activities WHERE id = ?",
-            )
-            .bind(&act_id)
-            .fetch_one(&mut *tx)
-            .await?;
+            let act_row = sqlx::query_as::<_, ActivityRow>("SELECT * FROM activities WHERE id = ?")
+                .bind(&act_id)
+                .fetch_one(&mut *tx)
+                .await?;
             all_activities.push(act_row);
         }
     }
 
-    let template_row = sqlx::query_as::<_, SessionTemplateRow>(
-        "SELECT * FROM session_templates WHERE id = ?",
-    )
-    .bind(&template_id)
-    .fetch_one(&mut *tx)
-    .await?;
+    let template_row =
+        sqlx::query_as::<_, SessionTemplateRow>("SELECT * FROM session_templates WHERE id = ?")
+            .bind(&template_id)
+            .fetch_one(&mut *tx)
+            .await?;
 
     tx.commit().await?;
 
@@ -328,7 +324,8 @@ pub async fn update_session_template_full(
         }
     }
 
-    let template_id = template.id
+    let template_id = template
+        .id
         .filter(|s| !s.is_empty())
         .ok_or_else(|| AppError::validation("id", "Template id is required for update"))?;
     let now = now_unix();
@@ -369,7 +366,9 @@ pub async fn update_session_template_full(
     let mut all_activities: Vec<ActivityRow> = Vec::new();
 
     for group_input in &groups {
-        let group_id = group_input.group.id
+        let group_id = group_input
+            .group
+            .id
             .as_ref()
             .filter(|s| !s.is_empty())
             .cloned()
@@ -393,16 +392,16 @@ pub async fn update_session_template_full(
         .execute(&mut *tx)
         .await?;
 
-        let group_row = sqlx::query_as::<_, ActivityGroupRow>(
-            "SELECT * FROM activity_groups WHERE id = ?",
-        )
-        .bind(&group_id)
-        .fetch_one(&mut *tx)
-        .await?;
+        let group_row =
+            sqlx::query_as::<_, ActivityGroupRow>("SELECT * FROM activity_groups WHERE id = ?")
+                .bind(&group_id)
+                .fetch_one(&mut *tx)
+                .await?;
         all_groups.push(group_row);
 
         for act_input in &group_input.activities {
-            let act_id = act_input.id
+            let act_id = act_input
+                .id
                 .as_ref()
                 .filter(|s| !s.is_empty())
                 .cloned()
@@ -425,22 +424,19 @@ pub async fn update_session_template_full(
             .execute(&mut *tx)
             .await?;
 
-            let act_row = sqlx::query_as::<_, ActivityRow>(
-                "SELECT * FROM activities WHERE id = ?",
-            )
-            .bind(&act_id)
-            .fetch_one(&mut *tx)
-            .await?;
+            let act_row = sqlx::query_as::<_, ActivityRow>("SELECT * FROM activities WHERE id = ?")
+                .bind(&act_id)
+                .fetch_one(&mut *tx)
+                .await?;
             all_activities.push(act_row);
         }
     }
 
-    let template_row = sqlx::query_as::<_, SessionTemplateRow>(
-        "SELECT * FROM session_templates WHERE id = ?",
-    )
-    .bind(&template_id)
-    .fetch_one(&mut *tx)
-    .await?;
+    let template_row =
+        sqlx::query_as::<_, SessionTemplateRow>("SELECT * FROM session_templates WHERE id = ?")
+            .bind(&template_id)
+            .fetch_one(&mut *tx)
+            .await?;
 
     tx.commit().await?;
 
