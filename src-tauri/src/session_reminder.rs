@@ -136,7 +136,7 @@ async fn tick(
     // 5. Check time window (only fire between 06:00 and 20:59)
     let now = Local::now();
     let current_hour = now.hour();
-    if current_hour < REMINDER_WINDOW_START_HOUR || current_hour > REMINDER_WINDOW_END_HOUR {
+    if !(REMINDER_WINDOW_START_HOUR..=REMINDER_WINDOW_END_HOUR).contains(&current_hour) {
         return Ok(());
     }
 
@@ -224,12 +224,11 @@ async fn tick(
 /// Reads notification preferences from the `app_config` table. Returns the
 /// default preferences JSON if no row exists.
 async fn read_prefs(pool: &SqlitePool) -> Result<String, String> {
-    let row: Option<(String,)> =
-        sqlx::query_as("SELECT value FROM app_config WHERE key = ?")
-            .bind(PREFS_KEY)
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| format!("Failed to read notification prefs: {e}"))?;
+    let row: Option<(String,)> = sqlx::query_as("SELECT value FROM app_config WHERE key = ?")
+        .bind(PREFS_KEY)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| format!("Failed to read notification prefs: {e}"))?;
 
     Ok(row
         .map(|(v,)| v)
@@ -303,10 +302,7 @@ async fn find_todays_session(
 
 /// Returns `true` if at least one workout log exists with a `started_at`
 /// timestamp falling on the given date (local time).
-async fn was_workout_logged_today(
-    pool: &SqlitePool,
-    today: &NaiveDate,
-) -> Result<bool, String> {
+async fn was_workout_logged_today(pool: &SqlitePool, today: &NaiveDate) -> Result<bool, String> {
     // Calculate Unix epoch range for today in local time
     let local_tz = Local::now().timezone();
     let start_of_day = today
@@ -374,7 +370,11 @@ mod tests {
                 chrono::Weekday::Fri => 5,
                 chrono::Weekday::Sat => 6,
             };
-            assert_eq!(result, expected, "Weekday {:?} should map to {}", weekday, expected);
+            assert_eq!(
+                result, expected,
+                "Weekday {:?} should map to {}",
+                weekday, expected
+            );
         }
     }
 }

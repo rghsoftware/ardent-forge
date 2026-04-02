@@ -18,6 +18,10 @@ pub const DEFAULT_PREFS_JSON: &str = r#"{
     "enabled": false,
     "advanceMinutes": 30
   },
+  "eventReminders": {
+    "enabled": true,
+    "intervals": [7, 3, 1]
+  },
   "prCelebrations": {
     "enabled": true
   },
@@ -51,6 +55,10 @@ pub fn register_channels<R: Runtime>(app: &AppHandle<R>) {
                 .description("Scheduled session reminders")
                 .importance(Importance::Default)
                 .build(),
+            Channel::builder("event_reminders", "Event Reminders")
+                .description("Countdown reminders for upcoming events")
+                .importance(Importance::Default)
+                .build(),
             Channel::builder("personal_records", "Personal Records")
                 .description("PR celebration notifications")
                 .importance(Importance::Default)
@@ -61,7 +69,10 @@ pub fn register_channels<R: Runtime>(app: &AppHandle<R>) {
                 .build(),
         ];
 
-        log::info!("[notification] Registering {} Android notification channels", channels.len());
+        log::info!(
+            "[notification] Registering {} Android notification channels",
+            channels.len()
+        );
 
         let notification = app.notification();
         for channel in channels {
@@ -109,22 +120,34 @@ pub fn is_in_quiet_hours(prefs_json: &str) -> bool {
         return false;
     }
 
-    let start_hour = quiet.get("startHour").and_then(|v| v.as_u64()).unwrap_or_else(|| {
-        log::debug!("[notification] Missing or invalid startHour, defaulting to 22");
-        22
-    }) as u32;
-    let start_minute = quiet.get("startMinute").and_then(|v| v.as_u64()).unwrap_or_else(|| {
-        log::debug!("[notification] Missing or invalid startMinute, defaulting to 0");
-        0
-    }) as u32;
-    let end_hour = quiet.get("endHour").and_then(|v| v.as_u64()).unwrap_or_else(|| {
-        log::debug!("[notification] Missing or invalid endHour, defaulting to 6");
-        6
-    }) as u32;
-    let end_minute = quiet.get("endMinute").and_then(|v| v.as_u64()).unwrap_or_else(|| {
-        log::debug!("[notification] Missing or invalid endMinute, defaulting to 0");
-        0
-    }) as u32;
+    let start_hour = quiet
+        .get("startHour")
+        .and_then(|v| v.as_u64())
+        .unwrap_or_else(|| {
+            log::debug!("[notification] Missing or invalid startHour, defaulting to 22");
+            22
+        }) as u32;
+    let start_minute = quiet
+        .get("startMinute")
+        .and_then(|v| v.as_u64())
+        .unwrap_or_else(|| {
+            log::debug!("[notification] Missing or invalid startMinute, defaulting to 0");
+            0
+        }) as u32;
+    let end_hour = quiet
+        .get("endHour")
+        .and_then(|v| v.as_u64())
+        .unwrap_or_else(|| {
+            log::debug!("[notification] Missing or invalid endHour, defaulting to 6");
+            6
+        }) as u32;
+    let end_minute = quiet
+        .get("endMinute")
+        .and_then(|v| v.as_u64())
+        .unwrap_or_else(|| {
+            log::debug!("[notification] Missing or invalid endMinute, defaulting to 0");
+            0
+        }) as u32;
 
     let start_mins = start_hour * 60 + start_minute;
     let end_mins = end_hour * 60 + end_minute;
@@ -217,10 +240,16 @@ mod tests {
         assert!(val.get("quietHours").is_some());
         assert!(val.get("restTimer").is_some());
         assert!(val.get("sessionReminders").is_some());
+        assert!(val.get("eventReminders").is_some());
         assert!(val.get("prCelebrations").is_some());
         // Verify integer fields match TypeScript shape
         let qh = val.get("quietHours").unwrap();
         assert_eq!(qh.get("startHour").and_then(|v| v.as_u64()), Some(22));
         assert_eq!(qh.get("endHour").and_then(|v| v.as_u64()), Some(6));
+        // Verify event reminder defaults
+        let er = val.get("eventReminders").unwrap();
+        assert_eq!(er.get("enabled").and_then(|v| v.as_bool()), Some(true));
+        let intervals = er.get("intervals").and_then(|v| v.as_array()).unwrap();
+        assert_eq!(intervals.len(), 3);
     }
 }

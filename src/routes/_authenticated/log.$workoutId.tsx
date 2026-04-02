@@ -15,6 +15,7 @@ import { CardioPanel } from '@/components/workout/cardio-panel'
 import { RuckPanel } from '@/components/workout/ruck-panel'
 import { CircuitPanel } from '@/components/workout/circuit-panel'
 import { WorkoutSummary } from '@/components/workout/workout-summary'
+import { EventDetail } from '@/components/event-builder/event-detail'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -278,6 +279,77 @@ function ActiveWorkoutPage() {
   // -----------------------------------------------------------------------
 
   if (!workoutLog) return null
+
+  // -----------------------------------------------------------------------
+  // Event log: render EventDetail instead of exercise/set UI
+  // -----------------------------------------------------------------------
+
+  if (workoutLog.eventMetadata) {
+    return (
+      <div className="flex min-h-screen flex-col bg-surface-anvil pb-20">
+        {/* Dismissible error banner */}
+        {pageError && (
+          <div
+            role="alert"
+            className="fixed top-0 inset-x-0 z-50 bg-red-600 px-4 py-2 text-sm text-white flex justify-between items-center"
+          >
+            <span>{pageError}</span>
+            <button onClick={() => setPageError(null)} className="text-white font-bold ml-4">
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Sticky header with timer and FINISH */}
+        <WorkoutHeader
+          elapsedSeconds={elapsedSeconds}
+          onFinish={handleFinish}
+          isFinishing={isFinishing}
+          canFinish={true}
+        />
+
+        <EventDetail
+          workoutLogId={workoutLog.id}
+          eventMetadata={workoutLog.eventMetadata}
+          interactive={true}
+        />
+
+        {/* Discard button */}
+        <div className="px-4 pb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDiscardDialog(true)}
+            className="w-full text-xs text-warning-flare"
+          >
+            Discard workout
+          </Button>
+        </div>
+
+        {/* Discard confirmation dialog */}
+        <Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+          <DialogContent showCloseButton={false}>
+            <DialogHeader>
+              <DialogTitle className="text-xs text-warning-flare">
+                Discard Workout
+              </DialogTitle>
+              <DialogDescription>
+                All logged sets will be permanently deleted. This cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setShowDiscardDialog(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDiscard} disabled={isDiscarding}>
+                {isDiscarding ? 'Discarding...' : 'Discard'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-anvil pb-20">

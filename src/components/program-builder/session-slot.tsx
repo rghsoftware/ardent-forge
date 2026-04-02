@@ -52,9 +52,15 @@ export function SessionSlot({
     )
   }
 
+  const isEvent = session.sessionType === 'EVENT'
+
   return (
     <div
-      className="relative flex min-h-[80px] cursor-pointer flex-col justify-center bg-surface-charcoal p-2 transition-colors hover:bg-surface-iron"
+      className={`relative flex min-h-[80px] cursor-pointer flex-col justify-center p-2 transition-colors ${
+        isEvent
+          ? 'border-l-2 border-ember bg-surface-iron hover:bg-surface-steel'
+          : 'bg-surface-charcoal hover:bg-surface-iron'
+      }`}
       onClick={handleClick}
       role="button"
       tabIndex={0}
@@ -72,11 +78,24 @@ export function SessionSlot({
         <Icon name="close" size={14} />
       </button>
 
-      <span className="line-clamp-2 pr-4 font-body text-xs text-bone-white">
-        {session.templateName ?? 'Unnamed'}
-      </span>
+      <div className="flex items-start gap-1 pr-4">
+        {isEvent && <Icon name="flag" size={12} fill className="mt-0.5 shrink-0 text-ember" />}
+        <span
+          className={`line-clamp-2 text-xs ${
+            isEvent
+              ? 'font-display uppercase tracking-wider text-bone-white'
+              : 'font-body text-bone-white'
+          }`}
+        >
+          {session.templateName ?? 'Unnamed'}
+        </span>
+      </div>
 
-      <span className="mt-1 inline-block self-start bg-surface-steel px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-warm-ash">
+      <span
+        className={`mt-1 inline-block self-start px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ${
+          isEvent ? 'bg-ember/15 text-ember' : 'bg-surface-steel text-warm-ash'
+        }`}
+      >
         {session.sessionType}
       </span>
     </div>

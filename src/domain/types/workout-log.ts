@@ -11,6 +11,7 @@ import {
 } from './units'
 import { groupTypeSchema } from './session'
 import { loadSpecSchema } from './set-scheme'
+import { eventMetadataSchema } from './event'
 
 // ---------------------------------------------------------------------------
 // SetType -- classification of an individual logged set
@@ -64,6 +65,7 @@ export const workoutLogSchema = syncableEntitySchema
     overallNotes: z.string().optional(),
     perceivedDifficulty: z.number().int().min(1).max(10).optional(), // L-6
     bodyweightAtSession: weightSchema.optional(),
+    eventMetadata: eventMetadataSchema.optional(),
   })
   .refine(
     (data) => {

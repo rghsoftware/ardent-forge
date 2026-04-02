@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { entityId, syncableEntitySchema, durationSchema } from './units'
 import { setSchemeSchema } from './set-scheme'
+import { eventMetadataSchema } from './event'
 
 // ---------------------------------------------------------------------------
 // GroupType -- how activities within a group are structured
@@ -39,7 +40,7 @@ export type ScoringType = z.infer<typeof scoringTypeSchema>
 // Also consumed by program.ts (re-exported from there)
 // ---------------------------------------------------------------------------
 
-export const sessionTypeSchema = z.enum(['STRENGTH', 'CONDITIONING', 'SE', 'MIXED'])
+export const sessionTypeSchema = z.enum(['STRENGTH', 'CONDITIONING', 'SE', 'MIXED', 'EVENT'])
 export type SessionType = z.infer<typeof sessionTypeSchema>
 
 // ---------------------------------------------------------------------------
@@ -54,6 +55,8 @@ export const sessionTemplateSchema = syncableEntitySchema.extend({
   restBetweenGroups: durationSchema.optional(),
   timeCap: durationSchema.optional(),
   scoring: scoringTypeSchema,
+  // EV-1: only populated when category = 'EVENT'; mutual exclusivity with activity groups enforced at composite level
+  eventMetadata: eventMetadataSchema.optional(),
 })
 export type SessionTemplate = z.infer<typeof sessionTemplateSchema>
 

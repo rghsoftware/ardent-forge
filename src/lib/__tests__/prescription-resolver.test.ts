@@ -53,6 +53,7 @@ function makeFull(
     template: makeTemplate(templateOverrides),
     groups,
     activities,
+    eventItems: [],
   }
 }
 
