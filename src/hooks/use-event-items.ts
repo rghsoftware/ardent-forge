@@ -131,12 +131,18 @@ export function useNextUpcomingEvent(userId: string | undefined) {
       // all templates and filter client-side. A future optimization could add
       // a category parameter to getSessionTemplates or a dedicated query.
       const templates = await adapter.getSessionTemplates(userId!)
-      const now = new Date()
+      const today = new Date()
+      // Use date-only comparison to avoid DST edge cases (23/25-hour days)
+      const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
       const events = templates
         .filter((t) => t.category === 'EVENT' && t.eventMetadata?.eventDate)
         .map((t) => {
-          const diff = new Date(t.eventMetadata!.eventDate!).getTime() - now.getTime()
-          const daysUntil = Math.ceil(diff / (1000 * 60 * 60 * 24))
+          const dateStr = t.eventMetadata!.eventDate!
+          // Parse YYYY-MM-DD portion only (handles both plain dates and ISO strings)
+          const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number)
+          const eventDate = new Date(y, m - 1, d)
+          const diffMs = eventDate.getTime() - todayDate.getTime()
+          const daysUntil = Math.round(diffMs / (1000 * 60 * 60 * 24))
           return { template: t, daysUntil }
         })
         // Include events happening today (daysUntil = 0) and up to 30 days out

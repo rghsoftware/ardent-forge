@@ -1383,7 +1383,7 @@ export class TauriAdapter implements DataAdapter {
   // ---------------------------------------------------------------------------
 
   async getEventItems(_parentId: string, _parentType: 'template' | 'log'): Promise<EventItem[]> {
-    return []
+    throw new Error('Not implemented in offline mode')
   }
 
   async saveEventItem(

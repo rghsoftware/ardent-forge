@@ -47,25 +47,27 @@ function hydrateDraftItems(initial?: SessionTemplateFull): DraftEventItem[] {
   }))
 }
 
-function splitDateTime(isoDate?: string): { date: string; time: string } {
-  if (!isoDate) return { date: '', time: '' }
-  try {
-    const d = new Date(isoDate)
-    const yyyy = d.getFullYear()
-    const mm = String(d.getMonth() + 1).padStart(2, '0')
-    const dd = String(d.getDate()).padStart(2, '0')
-    const hh = String(d.getHours()).padStart(2, '0')
-    const min = String(d.getMinutes()).padStart(2, '0')
-    return { date: `${yyyy}-${mm}-${dd}`, time: `${hh}:${min}` }
-  } catch {
-    return { date: '', time: '' }
+export function splitDateTime(dateStr?: string): { date: string; time: string } {
+  if (!dateStr) return { date: '', time: '' }
+  // Plain YYYY-MM-DD (no time component)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return { date: dateStr, time: '' }
   }
+  // YYYY-MM-DDTHH:MM:SS (local time, no timezone) or full ISO-8601
+  const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/)
+  if (match) {
+    return { date: match[1], time: `${match[2]}:${match[3]}` }
+  }
+  return { date: '', time: '' }
 }
 
-function combineDateTime(date: string, time: string): string | undefined {
+export function combineDateTime(date: string, time: string): string | undefined {
   if (!date) return undefined
-  if (!time) return new Date(`${date}T00:00:00`).toISOString()
-  return new Date(`${date}T${time}:00`).toISOString()
+  // Store as local date/time string to avoid UTC conversion shifting the calendar day.
+  // Downstream consumers (Rust event_reminder, useNextUpcomingEvent) parse only the
+  // YYYY-MM-DD portion, so omitting timezone info is safe and intentional.
+  if (!time) return date // plain YYYY-MM-DD
+  return `${date}T${time}:00`
 }
 
 // ---------------------------------------------------------------------------
@@ -99,20 +101,18 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
     initial?.template.eventMetadata?.longitude?.toString() ?? '',
   )
   const [eventUrl, setEventUrl] = useState(initial?.template.eventMetadata?.eventUrl ?? '')
-  const [requirements, setRequirements] = useState<RequirementData[]>(
-    hydrateRequirements(initial?.template.eventMetadata),
-  )
-  const [draftItems, setDraftItems] = useState<DraftEventItem[]>(hydrateDraftItems(initial))
+  const initialRequirements = hydrateRequirements(initial?.template.eventMetadata)
+  const initialDraftItems = hydrateDraftItems(initial)
+  const [requirements, setRequirements] = useState<RequirementData[]>(initialRequirements)
+  const [draftItems, setDraftItems] = useState<DraftEventItem[]>(initialDraftItems)
   const [errors, setErrors] = useState<string[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
 
   // -- Expandable sections -------------------------------------------------
   const [requirementsExpanded, setRequirementsExpanded] = useState(
-    () => hydrateRequirements(initial?.template.eventMetadata).length > 0,
+    () => initialRequirements.length > 0,
   )
-  const [packingExpanded, setPackingExpanded] = useState(
-    () => hydrateDraftItems(initial).length > 0,
-  )
+  const [packingExpanded, setPackingExpanded] = useState(() => initialDraftItems.length > 0)
 
   const isSaving = createMutation.isPending || updateMutation.isPending
 
@@ -165,6 +165,18 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
 
     if (!name.trim()) errs.push('Event name is required')
 
+    // Validate URL format if provided
+    if (eventUrl.trim()) {
+      try {
+        const parsed = new URL(eventUrl.trim())
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          errs.push('Event URL must use http or https protocol')
+        }
+      } catch {
+        errs.push('Event URL is not a valid URL')
+      }
+    }
+
     // EV-8: soft warning if coordinates but no location
     if ((latitude.trim() || longitude.trim()) && !location.trim()) {
       warns.push('Coordinates provided without a location name. Consider adding a location.')
@@ -173,35 +185,42 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
     setErrors(errs)
     setWarnings(warns)
     return errs.length === 0
-  }, [name, latitude, longitude, location])
+  }, [name, eventUrl, latitude, longitude, location])
 
   // -- Event item persistence helpers --------------------------------------
 
   const createDraftItems = useCallback(
     async (templateId: string) => {
-      // TODO: useCreateEventItem is a hook and cannot be called in a loop here.
-      // For now, use the adapter directly. When a batch-create hook is available,
-      // switch to that.
       const { getAdapter } = await import('@/lib/adapter')
       const adapter = getAdapter()
-      for (let i = 0; i < draftItems.length; i++) {
-        const item = draftItems[i]
-        if (!item.name.trim()) continue
-        await adapter.saveEventItem(
-          {
-            sessionTemplateId: templateId,
-            workoutLogId: undefined,
-            userId,
-            name: item.name.trim(),
-            category: item.category.trim() || undefined,
-            quantity: item.quantity,
-            isPacked: false,
-            sortOrder: i,
-            notes: item.notes.trim() || undefined,
-          },
-          templateId,
-          'template',
-        )
+      const validItems = draftItems
+        .map((item, i) => ({ item, index: i }))
+        .filter(({ item }) => item.name.trim())
+
+      const results = await Promise.allSettled(
+        validItems.map(({ item, index }) =>
+          adapter.saveEventItem(
+            {
+              sessionTemplateId: templateId,
+              workoutLogId: undefined,
+              userId,
+              name: item.name.trim(),
+              category: item.category.trim() || undefined,
+              quantity: item.quantity,
+              isPacked: false,
+              sortOrder: index,
+              notes: item.notes.trim() || undefined,
+            },
+            templateId,
+            'template',
+          ),
+        ),
+      )
+
+      const failures = results.filter((r) => r.status === 'rejected')
+      if (failures.length > 0) {
+        console.error(`[event-template-form] ${failures.length} item(s) failed to create`)
+        throw new Error(`${failures.length} of ${validItems.length} items failed to save`)
       }
     },
     [draftItems, userId],
@@ -216,48 +235,59 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
       const existingIds = new Set(existingItems.map((item) => item.id))
       const draftIds = new Set(draftItems.filter((d) => d.id).map((d) => d.id!))
 
-      // Delete removed items (existing items no longer in draft)
+      // Phase 1: Delete removed items
       const toDelete = existingItems.filter((item) => !draftIds.has(item.id))
-      for (const item of toDelete) {
-        await adapter.deleteEventItem(item.id)
-      }
+      const deleteResults = await Promise.allSettled(
+        toDelete.map((item) => adapter.deleteEventItem(item.id)),
+      )
 
-      // Update existing items (draft items that have a known ID)
+      // Phase 2: Update existing + create new (parallel)
+      const upsertOps: Promise<unknown>[] = []
       for (let i = 0; i < draftItems.length; i++) {
         const draft = draftItems[i]
-        if (!draft.id || !existingIds.has(draft.id)) continue
         if (!draft.name.trim()) continue
-        const existing = existingItems.find((e) => e.id === draft.id)!
-        await adapter.updateEventItem({
-          ...existing,
-          name: draft.name.trim(),
-          category: draft.category.trim() || undefined,
-          quantity: draft.quantity,
-          sortOrder: i,
-          notes: draft.notes.trim() || undefined,
-        })
-      }
 
-      // Create new items (draft items without an ID)
-      for (let i = 0; i < draftItems.length; i++) {
-        const draft = draftItems[i]
-        if (draft.id) continue
-        if (!draft.name.trim()) continue
-        await adapter.saveEventItem(
-          {
-            sessionTemplateId: templateId,
-            workoutLogId: undefined,
-            userId,
-            name: draft.name.trim(),
-            category: draft.category.trim() || undefined,
-            quantity: draft.quantity,
-            isPacked: false,
-            sortOrder: i,
-            notes: draft.notes.trim() || undefined,
-          },
-          templateId,
-          'template',
-        )
+        if (draft.id && existingIds.has(draft.id)) {
+          const existing = existingItems.find((e) => e.id === draft.id)!
+          upsertOps.push(
+            adapter.updateEventItem({
+              ...existing,
+              name: draft.name.trim(),
+              category: draft.category.trim() || undefined,
+              quantity: draft.quantity,
+              sortOrder: i,
+              notes: draft.notes.trim() || undefined,
+            }),
+          )
+        } else if (!draft.id) {
+          upsertOps.push(
+            adapter.saveEventItem(
+              {
+                sessionTemplateId: templateId,
+                workoutLogId: undefined,
+                userId,
+                name: draft.name.trim(),
+                category: draft.category.trim() || undefined,
+                quantity: draft.quantity,
+                isPacked: false,
+                sortOrder: i,
+                notes: draft.notes.trim() || undefined,
+              },
+              templateId,
+              'template',
+            ),
+          )
+        }
+      }
+      const upsertResults = await Promise.allSettled(upsertOps)
+
+      const allFailures = [
+        ...deleteResults.filter((r) => r.status === 'rejected'),
+        ...upsertResults.filter((r) => r.status === 'rejected'),
+      ]
+      if (allFailures.length > 0) {
+        console.error(`[event-template-form] ${allFailures.length} item operation(s) failed`)
+        throw new Error(`${allFailures.length} item operation(s) failed to save`)
       }
     },
     [draftItems, userId],

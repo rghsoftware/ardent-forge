@@ -185,12 +185,16 @@ async fn tick(
             }
 
             // Build notification content
-            let title = format!(
-                "{} in {} day{}",
-                event.name,
-                days_until,
-                if days_until == 1 { "" } else { "s" }
-            );
+            let title = if days_until == 0 {
+                format!("{} is TODAY", event.name)
+            } else {
+                format!(
+                    "{} in {} day{}",
+                    event.name,
+                    days_until,
+                    if days_until == 1 { "" } else { "s" }
+                )
+            };
             let body = if event.total_items > 0 {
                 format!(
                     "{} of {} items packed",
