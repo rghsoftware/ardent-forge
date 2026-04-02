@@ -64,6 +64,7 @@ export function createMockAdapter(
     createProgramFull: vi.fn().mockResolvedValue({}),
     updateProgramFull: vi.fn().mockResolvedValue({}),
     deleteProgram: vi.fn().mockResolvedValue(undefined),
+    assignProgramToMember: vi.fn().mockResolvedValue({}),
 
     // Program activation operations
     getActiveProgram: vi.fn().mockResolvedValue(null),

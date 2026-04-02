@@ -1088,6 +1088,20 @@ export class SupabaseAdapter implements DataAdapter {
     if (error) throw error
   }
 
+  async assignProgramToMember(
+    programId: string,
+    memberId: string,
+    groupId: string,
+  ): Promise<Program> {
+    const { data, error } = await this.client.rpc('assign_program_to_member', {
+      p_program_id: programId,
+      p_target_user_id: memberId,
+      p_group_id: groupId,
+    })
+    if (error) throw error
+    return toProgram(data)
+  }
+
   // ---------------------------------------------------------------------------
   // Program activation operations
   // ---------------------------------------------------------------------------

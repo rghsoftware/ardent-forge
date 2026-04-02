@@ -1552,6 +1552,20 @@ export class TauriAdapter implements DataAdapter {
     await invokeCommand<void>('delete_program', { id })
   }
 
+  async assignProgramToMember(
+    programId: string,
+    memberId: string,
+    groupId: string,
+  ): Promise<Program> {
+    const row = await invokeCommand<TauriProgramResponse>('assign_program_to_member', {
+      caller_id: this.userId,
+      program_id: programId,
+      member_id: memberId,
+      group_id: groupId,
+    })
+    return toProgram(toProgramRowFromTauri(row))
+  }
+
   // ---------------------------------------------------------------------------
   // Program activation operations
   // ---------------------------------------------------------------------------

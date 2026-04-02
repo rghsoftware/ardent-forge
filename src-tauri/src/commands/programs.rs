@@ -530,6 +530,118 @@ pub async fn delete_program(pool: State<'_, SqlitePool>, id: String) -> Result<(
     Ok(())
 }
 
+/// Assigns a program owned by the caller (a coach) to a group member.
+///
+/// This transfers ownership of the program and its linked session templates
+/// from the caller to the target member. The caller must be a COACH in the
+/// specified group, the target must be a MEMBER, and the program must be
+/// owned by the caller.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `caller_id`: The coach's user ID.
+/// - `program_id`: The program to assign.
+/// - `member_id`: The target member's user ID.
+/// - `group_id`: The accountability group ID for role validation.
+///
+/// # Returns
+/// The updated `ProgramRow` with ownership transferred to the member.
+#[tauri::command]
+pub async fn assign_program_to_member(
+    pool: State<'_, SqlitePool>,
+    caller_id: String,
+    program_id: String,
+    member_id: String,
+    group_id: String,
+) -> Result<ProgramRow, AppError> {
+    // Validate caller is COACH in the group
+    let caller_role = sqlx::query_scalar::<_, String>(
+        "SELECT role FROM group_members WHERE group_id = ? AND user_id = ?",
+    )
+    .bind(&group_id)
+    .bind(&caller_id)
+    .fetch_optional(pool.inner())
+    .await?;
+
+    match caller_role.as_deref() {
+        Some("COACH") => {}
+        _ => {
+            return Err(AppError::unauthorized(
+                "caller is not a coach in this group",
+            ))
+        }
+    }
+
+    // Validate target is MEMBER in the group
+    let member_role = sqlx::query_scalar::<_, String>(
+        "SELECT role FROM group_members WHERE group_id = ? AND user_id = ?",
+    )
+    .bind(&group_id)
+    .bind(&member_id)
+    .fetch_optional(pool.inner())
+    .await?;
+
+    match member_role.as_deref() {
+        Some("MEMBER") => {}
+        _ => {
+            return Err(AppError::unauthorized(
+                "target user is not a member of this group",
+            ))
+        }
+    }
+
+    // Validate program is owned by caller
+    let owned =
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM programs WHERE id = ? AND user_id = ?")
+            .bind(&program_id)
+            .bind(&caller_id)
+            .fetch_one(pool.inner())
+            .await?;
+
+    if owned == 0 {
+        return Err(AppError::not_found("Program", &program_id));
+    }
+
+    let mut tx = pool.begin().await?;
+
+    // Transfer session template ownership to the member
+    sqlx::query(
+        "UPDATE session_templates SET user_id = ? \
+         WHERE id IN ( \
+             SELECT ss.session_template_id \
+             FROM scheduled_sessions ss \
+             JOIN block_weeks bw ON ss.block_week_id = bw.id \
+             JOIN blocks b ON bw.block_id = b.id \
+             WHERE b.program_id = ? \
+               AND ss.session_template_id IS NOT NULL \
+         )",
+    )
+    .bind(&member_id)
+    .bind(&program_id)
+    .execute(&mut *tx)
+    .await?;
+
+    // Transfer program ownership to the member and tag as coach-assigned
+    let program = sqlx::query_as::<_, ProgramRow>(
+        "UPDATE programs SET user_id = ?, source = 'COACH_ASSIGNED', created_by = ? WHERE id = ? RETURNING *",
+    )
+    .bind(&member_id)
+    .bind(&caller_id)
+    .bind(&program_id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    // Clear coach's active program if it was the assigned program
+    sqlx::query("DELETE FROM program_activations WHERE user_id = ? AND program_id = ?")
+        .bind(&caller_id)
+        .bind(&program_id)
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+    Ok(program)
+}
+
 /// Fetches the active program activation for a user.
 ///
 /// # Parameters

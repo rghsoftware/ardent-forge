@@ -222,6 +222,7 @@ export interface DataAdapter {
     }>,
   ): Promise<ProgramFull>
   deleteProgram(id: string): Promise<void>
+  assignProgramToMember(programId: string, memberId: string, groupId: string): Promise<Program>
 
   // Program activation operations
   getActiveProgram(userId: string): Promise<ProgramActivation | null>

@@ -2,6 +2,7 @@ import { useUpdateMemberRole, useRemoveMember } from '@/hooks/use-groups'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
+import { AssignProgramDialog } from './assign-program-dialog'
 import type { GroupMember } from '@/domain/types'
 
 interface MemberCardProps {
@@ -37,50 +38,68 @@ export function MemberCard({ member, isCoach, currentUserId, groupId }: MemberCa
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3 min-h-12 bg-surface-iron">
-      {/* Avatar + info */}
-      <div className="flex items-center gap-3 min-w-0">
-        <span className="flex items-center justify-center w-8 h-8 rounded-full bg-ember/20 text-ember text-xs font-semibold uppercase shrink-0">
-          {initial}
-        </span>
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <span className="text-sm text-bone-white truncate">{displayId}</span>
-          <span className="text-xs text-warm-ash/50">Joined {formatDate(member.joinedAt)}</span>
+    <div className="bg-surface-iron">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 min-h-12">
+        {/* Avatar + info */}
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-ember/20 text-ember text-xs font-semibold uppercase shrink-0">
+            {initial}
+          </span>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-sm text-bone-white truncate">{displayId}</span>
+            <span className="text-xs text-warm-ash/50">Joined {formatDate(member.joinedAt)}</span>
+          </div>
+        </div>
+
+        {/* Role + actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge variant={member.role === 'COACH' ? 'complete' : 'default'}>{member.role}</Badge>
+
+          {isCoach && !isCurrentUser && (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={handleToggleRole}
+                disabled={updateRole.isPending}
+                aria-label={`Change role to ${member.role === 'COACH' ? 'member' : 'coach'}`}
+              >
+                <Icon name="swap_horiz" size={16} />
+              </Button>
+              <AssignProgramDialog
+                member={member}
+                groupId={groupId}
+                coachUserId={currentUserId}
+                trigger={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Assign Program"
+                    title="Assign Program"
+                  >
+                    <Icon name="assignment" size={16} />
+                  </Button>
+                }
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={handleRemove}
+                disabled={removeMember.isPending}
+                aria-label="Remove member"
+              >
+                <Icon name="person_remove" size={16} className="text-warning-flare" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Role + actions */}
-      <div className="flex items-center gap-2 shrink-0">
-        <Badge variant={member.role === 'COACH' ? 'complete' : 'default'}>{member.role}</Badge>
-
-        {isCoach && !isCurrentUser && (
-          <>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={handleToggleRole}
-              disabled={updateRole.isPending}
-              aria-label={`Change role to ${member.role === 'COACH' ? 'member' : 'coach'}`}
-            >
-              <Icon name="swap_horiz" size={16} />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={handleRemove}
-              disabled={removeMember.isPending}
-              aria-label="Remove member"
-            >
-              <Icon name="person_remove" size={16} className="text-warning-flare" />
-            </Button>
-          </>
-        )}
-      </div>
-
       {(updateRole.isError || removeMember.isError) && (
-        <p className="text-xs text-warning-flare mt-1 px-4 pb-2">
+        <p className="text-xs text-warning-flare px-4 pb-2">
           {updateRole.isError
             ? updateRole.error?.message || 'Failed to update role'
             : removeMember.error?.message || 'Failed to remove member'}

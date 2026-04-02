@@ -80,6 +80,7 @@ pub fn run() {
             commands::programs::create_program_full,
             commands::programs::update_program_full,
             commands::programs::delete_program,
+            commands::programs::assign_program_to_member,
             commands::programs::get_active_program,
             commands::programs::set_active_program,
             commands::programs::clear_active_program,
