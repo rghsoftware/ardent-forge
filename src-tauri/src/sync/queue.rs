@@ -38,7 +38,7 @@ pub async fn enqueue(
 ) -> Result<(), sqlx::Error> {
     let id = Uuid::new_v4().to_string();
     let payload_str = payload.map(|p| p.to_string());
-    let now = chrono::Utc::now().timestamp_millis();
+    let now = chrono::Utc::now().timestamp();
 
     sqlx::query(
         "INSERT INTO sync_queue (id, table_name, row_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)",

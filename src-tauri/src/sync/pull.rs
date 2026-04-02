@@ -336,6 +336,12 @@ async fn handle_realtime_message(pool: &SqlitePool, payload: &Value, app_handle:
 }
 
 async fn upsert_row(pool: &SqlitePool, table: &str, record: &Value) -> Result<(), sqlx::Error> {
+    #[cfg(not(test))]
+    if !crate::sync::SYNCABLE_TABLES.contains(&table) {
+        log::error!("[pull] upsert_row called with non-allowlisted table: {table}");
+        return Ok(());
+    }
+
     use crate::sync::conflict::resolve_conflict;
     use crate::sync::conflict::Winner;
 
@@ -432,6 +438,12 @@ async fn upsert_row(pool: &SqlitePool, table: &str, record: &Value) -> Result<()
 }
 
 async fn delete_row(pool: &SqlitePool, table: &str, row_id: &str) -> Result<(), sqlx::Error> {
+    #[cfg(not(test))]
+    if !crate::sync::SYNCABLE_TABLES.contains(&table) {
+        log::error!("[pull] delete_row called with non-allowlisted table: {table}");
+        return Ok(());
+    }
+
     sqlx::query(&format!("DELETE FROM {} WHERE id = ?", table))
         .bind(row_id)
         .execute(pool)

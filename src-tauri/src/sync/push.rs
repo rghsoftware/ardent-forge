@@ -32,6 +32,12 @@ async fn push_table(
     supabase_key: &str,
     access_token: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    #[cfg(not(test))]
+    if !crate::sync::SYNCABLE_TABLES.contains(&table) {
+        log::error!("[push] push_table called with non-allowlisted table: {table}");
+        return Ok(());
+    }
+
     let last_push_at: Option<(i64,)> =
         sqlx::query_as("SELECT last_push_at FROM sync_metadata WHERE table_name = ?")
             .bind(table)

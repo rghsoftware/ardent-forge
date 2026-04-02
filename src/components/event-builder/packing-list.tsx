@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -50,22 +50,12 @@ export function PackingList({ parentId, parentType, interactive }: PackingListPr
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
-  // Error feedback for mutations
-  const [mutationError, setMutationError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (toggleMutation.isError) {
-      setMutationError('Failed to toggle item. Please try again.')
-    } else if (reorderMutation.isError) {
-      setMutationError('Failed to reorder items. Please try again.')
-    }
+  // Error feedback for mutations (derived, no cascading setState)
+  const mutationError = useMemo(() => {
+    if (toggleMutation.isError) return 'Failed to toggle item. Please try again.'
+    if (reorderMutation.isError) return 'Failed to reorder items. Please try again.'
+    return null
   }, [toggleMutation.isError, reorderMutation.isError])
-
-  useEffect(() => {
-    if (!mutationError) return
-    const timer = setTimeout(() => setMutationError(null), 4000)
-    return () => clearTimeout(timer)
-  }, [mutationError])
 
   // Track collapsed categories
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
