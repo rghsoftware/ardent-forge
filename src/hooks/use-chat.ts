@@ -230,21 +230,15 @@ export function useRealtimeMessages(conversationId: string) {
 
     manager.subscribe(conversationId)
 
-    // Capture the previous onTyping callback so we can restore it on cleanup
-    const previousOnTyping = manager.onTyping
-
-    manager.onTyping = (typingConversationId, _userId, _userName) => {
+    const removeTypingListener = manager.addTypingListener((typingConversationId) => {
       if (typingConversationId === conversationId) {
         refreshTyping()
       }
-      // Forward to previous handler if present
-      previousOnTyping?.(typingConversationId, _userId, _userName)
-    }
+    })
 
     return () => {
+      removeTypingListener()
       manager.unsubscribe(conversationId)
-      // Restore previous handler
-      manager.onTyping = previousOnTyping
     }
   }, [conversationId, refreshTyping])
 

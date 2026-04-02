@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { RealtimeChannel } from '@supabase/realtime-js'
 import type { DataAdapter } from './data-adapter'
 import type { MessageBroadcastPayload } from './realtime-schemas'
-import { messageBroadcastPayloadSchema } from './realtime-schemas'
+import { messageBroadcastPayloadSchema, typingBroadcastPayloadSchema } from './realtime-schemas'
 import { createForegroundDetector, type ForegroundDetector } from './foreground-detector'
 
 // ---------------------------------------------------------------------------
@@ -24,8 +24,10 @@ export interface RealtimeManager {
 
   /** Callback fired when a validated message broadcast arrives. */
   onMessage: ((conversationId: string, payload: MessageBroadcastPayload) => void) | null
-  /** Callback fired when a typing indicator arrives. */
-  onTyping: ((conversationId: string, userId: string, userName: string) => void) | null
+  /** Register a typing listener. Returns an unsubscribe function. */
+  addTypingListener(
+    listener: (conversationId: string, userId: string, userName: string) => void,
+  ): () => void
 
   /** Returns the list of users currently typing in a conversation. */
   getTypingUsers(conversationId: string): Array<{ userId: string; userName: string }>
@@ -64,6 +66,10 @@ export function createRealtimeManager(
   /** Most recent `created_at` per conversation, used for catch-up on foreground. */
   const lastKnownTimestamps = new Map<string, string>()
 
+  /** Typing listeners registered via addTypingListener. */
+  type TypingListener = (conversationId: string, userId: string, userName: string) => void
+  const typingListeners = new Set<TypingListener>()
+
   // -- Helpers --------------------------------------------------------------
 
   function clearTypingForConversation(conversationId: string): void {
@@ -86,7 +92,13 @@ export function createRealtimeManager(
 
   const manager: RealtimeManager = {
     onMessage: null,
-    onTyping: null,
+
+    addTypingListener(listener) {
+      typingListeners.add(listener)
+      return () => {
+        typingListeners.delete(listener)
+      }
+    },
 
     // -- Channel lifecycle --------------------------------------------------
 
@@ -121,10 +133,9 @@ export function createRealtimeManager(
 
       // Listen for typing broadcasts
       channel.on('broadcast', { event: 'typing' }, (incoming) => {
-        const userId = incoming.payload?.user_id as string | undefined
-        const userName = incoming.payload?.user_name as string | undefined
-
-        if (!userId || !userName) return
+        const parsed = typingBroadcastPayloadSchema.safeParse(incoming.payload)
+        if (!parsed.success) return
+        const { user_id: userId, user_name: userName } = parsed.data
 
         // Update typing state with a 3-second expiry
         let users = typingState.get(conversationId)
@@ -149,7 +160,9 @@ export function createRealtimeManager(
 
         users.set(userId, { userName, timeout })
 
-        manager.onTyping?.(conversationId, userId, userName)
+        for (const listener of typingListeners) {
+          listener(conversationId, userId, userName)
+        }
       })
 
       // Subscribe to the channel
@@ -303,7 +316,7 @@ export function createRealtimeManager(
 
   const foregroundDetector: ForegroundDetector = createForegroundDetector(
     () => {
-      manager.handleForeground()
+      void manager.handleForeground()
     },
     () => {
       manager.handleBackground()
