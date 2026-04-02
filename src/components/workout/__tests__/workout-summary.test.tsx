@@ -103,31 +103,28 @@ describe('WorkoutSummary', () => {
     vi.clearAllMocks()
   })
 
-  it('renders WORKOUT COMPLETE header', () => {
+  it('renders session complete header', () => {
     render(<WorkoutSummary {...defaultProps} />)
-    expect(screen.getByText('WORKOUT COMPLETE')).toBeInTheDocument()
+    expect(screen.getByText('Session complete.')).toBeInTheDocument()
   })
 
   it('renders workout duration', () => {
     // 65 minutes = 01:05:00
     render(<WorkoutSummary {...defaultProps} />)
     expect(screen.getByText('01:05:00')).toBeInTheDocument()
-    expect(screen.getByText('DURATION')).toBeInTheDocument()
+    expect(screen.getByText('Duration')).toBeInTheDocument()
   })
 
-  it('displays correct exercise count', () => {
+  it('displays exercises section', () => {
     render(<WorkoutSummary {...defaultProps} />)
-    // 2 exercises -- use getAllByText since "2" also appears in per-exercise breakdown set counts
-    const exerciseLabels = screen.getAllByText('EXERCISES')
-    expect(exerciseLabels.length).toBeGreaterThanOrEqual(1)
-    // The stats grid shows exercise count as "2"
-    expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(1)
+    // The breakdown section header shows "Exercises"
+    expect(screen.getByText('Exercises')).toBeInTheDocument()
   })
 
   it('displays correct total set count', () => {
     render(<WorkoutSummary {...defaultProps} />)
-    // 3 confirmed sets -- "SETS" appears in stats grid AND exercise breakdown column header
-    const setsLabels = screen.getAllByText('SETS')
+    // 3 confirmed sets
+    const setsLabels = screen.getAllByText('Sets')
     expect(setsLabels.length).toBeGreaterThanOrEqual(1)
     // Stats grid shows total sets as "3"
     expect(screen.getAllByText('3').length).toBeGreaterThanOrEqual(1)
@@ -137,24 +134,25 @@ describe('WorkoutSummary', () => {
     // (225*5 + 225*5 + 135*10) = 1125 + 1125 + 1350 = 3,600
     render(<WorkoutSummary {...defaultProps} />)
     expect(screen.getByText('3,600')).toBeInTheDocument()
-    expect(screen.getByText('VOLUME')).toBeInTheDocument()
+    expect(screen.getByText('Volume')).toBeInTheDocument()
   })
 
   it('displays per-exercise breakdown with exercise names', () => {
     render(<WorkoutSummary {...defaultProps} />)
-    expect(screen.getByText('Back Squat')).toBeInTheDocument()
-    expect(screen.getByText('Bench Press')).toBeInTheDocument()
-    expect(screen.getByText('EXERCISE BREAKDOWN')).toBeInTheDocument()
+    // Exercise names may appear in both the top set hero and the breakdown
+    expect(screen.getAllByText('Back Squat').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Bench Press').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Exercises')).toBeInTheDocument()
   })
 
-  it('DONE button calls onDone', async () => {
+  it('Done button calls onDone', async () => {
     const user = userEvent.setup()
     render(<WorkoutSummary {...defaultProps} />)
-    await user.click(screen.getByText('DONE'))
+    await user.click(screen.getByText('Done'))
     expect(onDone).toHaveBeenCalledOnce()
   })
 
-  it('shows program progress section when programContext is present', () => {
+  it('shows program context when programContext is present', () => {
     const workoutWithProgram: WorkoutLog = {
       ...baseWorkoutLog,
       programContext: {
@@ -172,9 +170,10 @@ describe('WorkoutSummary', () => {
         blockName="Base Building"
       />,
     )
-    expect(screen.getByText('PROGRAM PROGRESS')).toBeInTheDocument()
-    expect(screen.getByText('Tactical Barbell')).toBeInTheDocument()
-    expect(screen.getByText('Base Building')).toBeInTheDocument()
-    expect(screen.getByText('Week 2 / Day 3')).toBeInTheDocument()
+    const contextLine = screen.getByText(/Tactical Barbell/)
+    expect(contextLine).toBeInTheDocument()
+    expect(contextLine).toHaveTextContent(/Base Building/)
+    expect(contextLine).toHaveTextContent(/Week 2/)
+    expect(contextLine).toHaveTextContent(/Day 3/)
   })
 })

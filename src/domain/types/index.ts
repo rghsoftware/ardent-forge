@@ -37,6 +37,9 @@ export * from './user'
 export * from './notification'
 export * from './sharing'
 export * from './analytics'
+export * from './conversation'
+export * from './message'
+export * from './media'
 
 // program.ts re-exports sessionTypeSchema and SessionType from session.ts.
 // Exclude those names here to prevent ambiguous re-export errors.

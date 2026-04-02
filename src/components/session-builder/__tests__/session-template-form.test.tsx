@@ -65,21 +65,21 @@ describe('SessionTemplateForm', () => {
     expect(screen.getByText('SCORING')).toBeInTheDocument()
   })
 
-  it('renders SAVE TEMPLATE button', () => {
+  it('renders Save template button', () => {
     renderWithProviders(<SessionTemplateForm />)
-    expect(screen.getByText('SAVE TEMPLATE')).toBeInTheDocument()
+    expect(screen.getByText('Save template')).toBeInTheDocument()
   })
 
-  it('renders ADD GROUP button', () => {
+  it('renders Add group button', () => {
     renderWithProviders(<SessionTemplateForm />)
-    expect(screen.getByText('ADD GROUP')).toBeInTheDocument()
+    expect(screen.getByText('Add group')).toBeInTheDocument()
   })
 
   it('shows validation error when saving with empty name', async () => {
     const user = userEvent.setup()
     renderWithProviders(<SessionTemplateForm />)
 
-    await user.click(screen.getByText('SAVE TEMPLATE'))
+    await user.click(screen.getByText('Save template'))
 
     expect(screen.getByText('Template name is required')).toBeInTheDocument()
   })
@@ -90,18 +90,18 @@ describe('SessionTemplateForm', () => {
 
     // Fill in name but don't add groups
     await user.type(screen.getByLabelText('Template name'), 'My Session')
-    await user.click(screen.getByText('SAVE TEMPLATE'))
+    await user.click(screen.getByText('Save template'))
 
     expect(screen.getByText('At least one activity group is required')).toBeInTheDocument()
   })
 
-  it('renders CANCEL button when onCancel prop is provided', () => {
+  it('renders Cancel button when onCancel prop is provided', () => {
     renderWithProviders(<SessionTemplateForm onCancel={() => {}} />)
-    expect(screen.getByText('CANCEL')).toBeInTheDocument()
+    expect(screen.getByText('Cancel')).toBeInTheDocument()
   })
 
-  it('does not render CANCEL button when onCancel prop is absent', () => {
+  it('does not render Cancel button when onCancel prop is absent', () => {
     renderWithProviders(<SessionTemplateForm />)
-    expect(screen.queryByText('CANCEL')).not.toBeInTheDocument()
+    expect(screen.queryByText('Cancel')).not.toBeInTheDocument()
   })
 })

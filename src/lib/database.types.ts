@@ -262,3 +262,50 @@ export interface ShareLinkRow {
   created_at: string
   updated_at: string
 }
+
+export interface ConversationRow {
+  id: string
+  type: string
+  title: string | null
+  group_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ConversationParticipantRow {
+  id: string
+  conversation_id: string
+  user_id: string
+  last_read_at: string | null
+  is_archived: boolean
+  joined_at: string
+  left_at: string | null
+}
+
+export interface MessageRow {
+  id: string
+  conversation_id: string
+  sender_id: string | null
+  message_type: string
+  content: string | null
+  created_at: string
+  updated_at: string
+  sync_status?: string
+}
+
+export interface MediaAttachmentRow {
+  id: string
+  message_id: string
+  provider: string
+  provider_asset_id: string | null
+  media_type: string
+  original_filename: string | null
+  mime_type: string | null
+  thumbnail_url: string | null
+  playback_url: string | null
+  duration_seconds: number | null
+  file_size_bytes: number | null
+  status: string
+  created_at: string
+  updated_at: string
+}

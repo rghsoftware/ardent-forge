@@ -128,6 +128,18 @@ pub fn run() {
             commands::sharing::update_connection_write_access,
             commands::sharing::get_group_activity_feed,
             commands::sharing::get_connection_activity_feed,
+            // Chat
+            commands::chat::create_conversation,
+            commands::chat::get_conversations,
+            commands::chat::get_conversation,
+            commands::chat::send_message,
+            commands::chat::get_messages,
+            commands::chat::get_messages_since,
+            commands::chat::update_last_read,
+            commands::chat::get_unread_counts,
+            commands::chat::leave_conversation,
+            commands::chat::save_media_attachment,
+            commands::chat::toggle_archive,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|e| panic!("Tauri application error: {e}"));

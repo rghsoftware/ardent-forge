@@ -36,6 +36,12 @@ import type {
   DirectConnection,
   GroupRole,
   EventItem,
+  Conversation,
+  ConversationType,
+  ConversationParticipant,
+  Message,
+  MessageType,
+  MediaAttachment,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -57,6 +63,9 @@ import type {
   GroupMemberRow,
   GroupInviteRow,
   DirectConnectionRow,
+  ConversationRow,
+  MessageRow,
+  MediaAttachmentRow,
 } from './database.types'
 import {
   toExercise,
@@ -84,6 +93,9 @@ import {
   toBlockWeek,
   toScheduledSession,
   toProgramActivation,
+  toConversation,
+  toMessage,
+  toMediaAttachment,
 } from './data-mapper'
 import {
   toAccountabilityGroup,
@@ -390,6 +402,69 @@ interface TauriConnectionActivityFeedEntry {
   duration_seconds: number | null
   exercise_count: number
   connection_id: string
+}
+
+// ---------------------------------------------------------------------------
+// Chat response types -- mirrors chat model structs in Rust.
+// Timestamps serialized via serde_unix (required = ISO string, optional = ISO string | null).
+// Booleans arrive as 0/1 integers.
+// ---------------------------------------------------------------------------
+
+interface TauriConversationResponse {
+  id: string
+  type: string
+  title: string | null
+  group_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+interface TauriConversationParticipantResponse {
+  id: string
+  conversation_id: string
+  user_id: string
+  last_read_at: string | null
+  is_archived: number // 0/1
+  joined_at: string
+  left_at: string | null
+}
+
+interface TauriConversationWithParticipants {
+  conversation: TauriConversationResponse
+  participants: TauriConversationParticipantResponse[]
+}
+
+interface TauriMessageResponse {
+  id: string
+  conversation_id: string
+  sender_id: string | null
+  message_type: string
+  content: string | null
+  created_at: string
+  updated_at: string
+  sync_status: string | null
+}
+
+interface TauriUnreadCount {
+  conversation_id: string
+  count: number
+}
+
+interface TauriMediaAttachmentResponse {
+  id: string
+  message_id: string
+  provider: string
+  provider_asset_id: string | null
+  media_type: string
+  original_filename: string | null
+  mime_type: string | null
+  thumbnail_url: string | null
+  playback_url: string | null
+  duration_seconds: number | null
+  file_size_bytes: number | null
+  status: string
+  created_at: string
+  updated_at: string
 }
 
 // ---------------------------------------------------------------------------
@@ -789,6 +864,53 @@ function toDirectConnectionRowFromTauri(r: TauriDirectConnectionResponse): Direc
     accepted_at: r.accepted_at,
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Chat row converters: Tauri Response -> TS Row types
+// ---------------------------------------------------------------------------
+
+function toConversationRowFromTauri(r: TauriConversationResponse): ConversationRow {
+  return {
+    id: r.id,
+    type: r.type,
+    title: r.title,
+    group_id: r.group_id,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+  }
+}
+
+function toMessageRowFromTauri(r: TauriMessageResponse): MessageRow {
+  return {
+    id: r.id,
+    conversation_id: r.conversation_id,
+    sender_id: r.sender_id,
+    message_type: r.message_type,
+    content: r.content,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    sync_status: r.sync_status ?? undefined,
+  }
+}
+
+function toMediaAttachmentRowFromTauri(r: TauriMediaAttachmentResponse): MediaAttachmentRow {
+  return {
+    id: r.id,
+    message_id: r.message_id,
+    provider: r.provider,
+    provider_asset_id: r.provider_asset_id,
+    media_type: r.media_type,
+    original_filename: r.original_filename,
+    mime_type: r.mime_type,
+    thumbnail_url: r.thumbnail_url,
+    playback_url: r.playback_url,
+    duration_seconds: r.duration_seconds,
+    file_size_bytes: r.file_size_bytes,
+    status: r.status,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
   }
 }
 
@@ -1951,6 +2073,162 @@ export class TauriAdapter implements DataAdapter {
       exerciseCount: e.exercise_count,
       connectionId: e.connection_id,
     }))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Chat operations
+  // ---------------------------------------------------------------------------
+
+  async createConversation(
+    type: ConversationType,
+    participantIds: string[],
+    title?: string,
+    groupId?: string,
+  ): Promise<Conversation> {
+    const result = await invokeCommand<TauriConversationWithParticipants>('create_conversation', {
+      input: {
+        conversation_type: type,
+        title: title ?? null,
+        group_id: groupId ?? null,
+        participant_user_ids: participantIds,
+      },
+    })
+    return toConversation(toConversationRowFromTauri(result.conversation))
+  }
+
+  async getConversations(): Promise<Conversation[]> {
+    const results = await invokeCommand<TauriConversationWithParticipants[]>('get_conversations', {
+      user_id: this.userId,
+    })
+    return results.map((r) => toConversation(toConversationRowFromTauri(r.conversation)))
+  }
+
+  async getConversation(id: string): Promise<Conversation | null> {
+    const result = await invokeCommand<TauriConversationWithParticipants | null>(
+      'get_conversation',
+      { id },
+    )
+    return result ? toConversation(toConversationRowFromTauri(result.conversation)) : null
+  }
+
+  async findDirectConversation(otherUserId: string): Promise<Conversation | null> {
+    // No dedicated Rust command -- filter client-side from user's conversations
+    const conversations = await this.getConversations()
+    // For direct conversations, fetch participants to check membership
+    for (const conv of conversations) {
+      if (conv.type !== 'direct') continue
+      const full = await invokeCommand<TauriConversationWithParticipants | null>(
+        'get_conversation',
+        { id: conv.id },
+      )
+      if (!full) continue
+      const participantUserIds = full.participants
+        .filter((p) => p.left_at == null)
+        .map((p) => p.user_id)
+      if (participantUserIds.includes(this.userId) && participantUserIds.includes(otherUserId)) {
+        return conv
+      }
+    }
+    return null
+  }
+
+  async sendMessage(
+    conversationId: string,
+    messageType: MessageType,
+    content?: string,
+  ): Promise<Message> {
+    const row = await invokeCommand<TauriMessageResponse>('send_message', {
+      input: {
+        conversation_id: conversationId,
+        sender_id: this.userId,
+        message_type: messageType,
+        content: content ?? null,
+      },
+    })
+    return toMessage(toMessageRowFromTauri(row))
+  }
+
+  async getMessages(conversationId: string, limit: number, offset: number): Promise<Message[]> {
+    const rows = await invokeCommand<TauriMessageResponse[]>('get_messages', {
+      conversation_id: conversationId,
+      limit,
+      offset,
+    })
+    return rows.map((r) => toMessage(toMessageRowFromTauri(r)))
+  }
+
+  async getMessagesSince(conversationId: string, since: string): Promise<Message[]> {
+    const sinceEpoch = Math.floor(new Date(since).getTime() / 1000)
+    const rows = await invokeCommand<TauriMessageResponse[]>('get_messages_since', {
+      conversation_id: conversationId,
+      since: sinceEpoch,
+    })
+    return rows.map((r) => toMessage(toMessageRowFromTauri(r)))
+  }
+
+  async updateLastRead(conversationId: string): Promise<void> {
+    await invokeCommand<TauriConversationParticipantResponse>('update_last_read', {
+      conversation_id: conversationId,
+      user_id: this.userId,
+    })
+  }
+
+  async getUnreadCounts(): Promise<Map<string, number>> {
+    const counts = await invokeCommand<TauriUnreadCount[]>('get_unread_counts', {
+      user_id: this.userId,
+    })
+    const map = new Map<string, number>()
+    for (const c of counts) {
+      map.set(c.conversation_id, c.count)
+    }
+    return map
+  }
+
+  async addParticipant(conversationId: string, userId: string): Promise<ConversationParticipant> {
+    // No dedicated Rust command -- create a new conversation with the added
+    // participant is the intended flow. For now, throw as unsupported in
+    // offline mode; the UI should use createConversation to add members.
+    throw new Error(
+      `addParticipant is not supported in offline mode. ` +
+        `Re-create the conversation to add user ${userId} to ${conversationId}.`,
+    )
+  }
+
+  async leaveConversation(conversationId: string): Promise<void> {
+    await invokeCommand<TauriConversationParticipantResponse>('leave_conversation', {
+      conversation_id: conversationId,
+      user_id: this.userId,
+    })
+  }
+
+  async toggleArchive(conversationId: string): Promise<void> {
+    await invokeCommand<TauriConversationParticipantResponse>('toggle_archive', {
+      conversation_id: conversationId,
+      user_id: this.userId,
+    })
+  }
+
+  async saveMediaAttachment(
+    messageId: string,
+    attachment: Omit<MediaAttachment, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<MediaAttachment> {
+    const row = await invokeCommand<TauriMediaAttachmentResponse>('save_media_attachment', {
+      input: {
+        id: null,
+        message_id: messageId,
+        provider: attachment.provider,
+        provider_asset_id: attachment.providerAssetId ?? null,
+        media_type: attachment.mediaType,
+        original_filename: attachment.originalFilename ?? null,
+        mime_type: attachment.mimeType ?? null,
+        thumbnail_url: attachment.thumbnailUrl ?? null,
+        playback_url: attachment.playbackUrl ?? null,
+        duration_seconds: attachment.durationSeconds ?? null,
+        file_size_bytes: attachment.fileSizeBytes ?? null,
+        status: attachment.status,
+      },
+    })
+    return toMediaAttachment(toMediaAttachmentRowFromTauri(row))
   }
 }
 

@@ -22,6 +22,12 @@ import type {
   ShareLink,
   ShareableEntityType,
   EventItem,
+  Conversation,
+  ConversationType,
+  ConversationParticipant,
+  Message,
+  MessageType,
+  MediaAttachment,
 } from '@/domain/types'
 import type { ExerciseCategory, MovementPattern, MuscleGroup } from '@/domain/types'
 import type { WeeklyVolumeEntry } from '@/domain/types'
@@ -302,4 +308,29 @@ export interface DataAdapter {
     options?: ActivityFeedOptions,
   ): Promise<GroupActivityFeedEntry[]>
   getConnectionActivityFeed(options?: ActivityFeedOptions): Promise<ConnectionActivityFeedEntry[]>
+
+  // ============================================================
+  // Chat
+  // ============================================================
+  createConversation(
+    type: ConversationType,
+    participantIds: string[],
+    title?: string,
+    groupId?: string,
+  ): Promise<Conversation>
+  getConversations(): Promise<Conversation[]>
+  getConversation(id: string): Promise<Conversation | null>
+  findDirectConversation(otherUserId: string): Promise<Conversation | null>
+  sendMessage(conversationId: string, messageType: MessageType, content?: string): Promise<Message>
+  getMessages(conversationId: string, limit: number, offset: number): Promise<Message[]>
+  getMessagesSince(conversationId: string, since: string): Promise<Message[]>
+  updateLastRead(conversationId: string): Promise<void>
+  getUnreadCounts(): Promise<Map<string, number>>
+  addParticipant(conversationId: string, userId: string): Promise<ConversationParticipant>
+  leaveConversation(conversationId: string): Promise<void>
+  toggleArchive(conversationId: string): Promise<void>
+  saveMediaAttachment(
+    messageId: string,
+    attachment: Omit<MediaAttachment, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<MediaAttachment>
 }

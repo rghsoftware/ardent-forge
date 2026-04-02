@@ -25,6 +25,10 @@ pub const SYNCABLE_TABLES: &[&str] = &[
     "block_weeks",
     "scheduled_sessions",
     "program_activations",
+    "conversations",
+    "conversation_participants",
+    "messages",
+    "media_attachments",
 ];
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -163,7 +167,14 @@ impl SyncEngine {
                         .await
                         {
                             log::error!("[sync] Initial pull failed: {e}");
-                            // Continue with push -- don't abort the loop
+                            transition_state(
+                                &state,
+                                &app_handle,
+                                SyncState::Error {
+                                    message: format!("Initial pull failed: {e}"),
+                                },
+                            )
+                            .await;
                         }
                     }
                 }
@@ -211,7 +222,7 @@ impl SyncEngine {
                         },
                     )
                     .await;
-                    return;
+                    // Continue the loop -- don't kill sync permanently
                 }
 
                 // Wait 30 seconds before next cycle

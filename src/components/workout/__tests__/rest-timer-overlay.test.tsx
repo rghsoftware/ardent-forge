@@ -58,11 +58,11 @@ describe('RestTimerOverlay', () => {
         onAdjust={onAdjust}
       />,
     )
-    await user.click(screen.getByText('SKIP'))
+    await user.click(screen.getByText('Skip'))
     expect(onSkip).toHaveBeenCalledOnce()
   })
 
-  it('-30S button calls onAdjust with -30', async () => {
+  it('-30s button calls onAdjust with -30', async () => {
     const user = userEvent.setup()
     render(
       <RestTimerOverlay
@@ -71,11 +71,11 @@ describe('RestTimerOverlay', () => {
         onAdjust={onAdjust}
       />,
     )
-    await user.click(screen.getByText('-30S'))
+    await user.click(screen.getByText('-30s'))
     expect(onAdjust).toHaveBeenCalledWith(-30)
   })
 
-  it('+30S button calls onAdjust with 30', async () => {
+  it('+30s button calls onAdjust with 30', async () => {
     const user = userEvent.setup()
     render(
       <RestTimerOverlay
@@ -84,7 +84,7 @@ describe('RestTimerOverlay', () => {
         onAdjust={onAdjust}
       />,
     )
-    await user.click(screen.getByText('+30S'))
+    await user.click(screen.getByText('+30s'))
     expect(onAdjust).toHaveBeenCalledWith(30)
   })
 })

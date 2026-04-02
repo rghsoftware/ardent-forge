@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { splitDateTime, combineDateTime } from '../event-template-form'
+import { splitDateTime, combineDateTime } from '../date-time-utils'
 
 // ===========================================================================
 // splitDateTime

@@ -21,7 +21,7 @@ describe('CreateExerciseSheet', () => {
 
   it('renders sheet title', () => {
     renderWithProviders(<CreateExerciseSheet {...defaultProps} />)
-    expect(screen.getByText('CREATE CUSTOM EXERCISE')).toBeInTheDocument()
+    expect(screen.getByText('Create Custom Exercise')).toBeInTheDocument()
   })
 
   it('renders sheet description', () => {
@@ -31,45 +31,45 @@ describe('CreateExerciseSheet', () => {
 
   it('renders name input field', () => {
     renderWithProviders(<CreateExerciseSheet {...defaultProps} />)
-    expect(screen.getByLabelText('NAME')).toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toBeInTheDocument()
   })
 
-  it('renders CATEGORY label', () => {
+  it('renders Category label', () => {
     renderWithProviders(<CreateExerciseSheet {...defaultProps} />)
-    expect(screen.getByText('CATEGORY')).toBeInTheDocument()
+    expect(screen.getByText('Category')).toBeInTheDocument()
   })
 
-  it('renders MOVEMENT PATTERN label', () => {
+  it('renders Movement pattern label', () => {
     renderWithProviders(<CreateExerciseSheet {...defaultProps} />)
-    expect(screen.getByText('MOVEMENT PATTERN')).toBeInTheDocument()
+    expect(screen.getByText('Movement pattern')).toBeInTheDocument()
   })
 
-  it('renders PRIMARY MUSCLES label', () => {
+  it('renders Primary muscles label', () => {
     renderWithProviders(<CreateExerciseSheet {...defaultProps} />)
-    expect(screen.getByText('PRIMARY MUSCLES')).toBeInTheDocument()
+    expect(screen.getByText('Primary muscles')).toBeInTheDocument()
   })
 
-  it('renders EQUIPMENT label', () => {
+  it('renders Equipment label', () => {
     renderWithProviders(<CreateExerciseSheet {...defaultProps} />)
-    expect(screen.getByText('EQUIPMENT')).toBeInTheDocument()
+    expect(screen.getByText('Equipment')).toBeInTheDocument()
   })
 
-  it('renders SUPPORTS 1RM and BILATERAL toggle labels', () => {
+  it('renders Supports 1RM and Bilateral toggle labels', () => {
     renderWithProviders(<CreateExerciseSheet {...defaultProps} />)
-    expect(screen.getByText('SUPPORTS 1RM')).toBeInTheDocument()
-    expect(screen.getByText('BILATERAL')).toBeInTheDocument()
+    expect(screen.getByText('Supports 1RM')).toBeInTheDocument()
+    expect(screen.getByText('Bilateral')).toBeInTheDocument()
   })
 
-  it('renders CREATE EXERCISE submit button', () => {
+  it('renders Create exercise submit button', () => {
     renderWithProviders(<CreateExerciseSheet {...defaultProps} />)
-    expect(screen.getByText('CREATE EXERCISE')).toBeInTheDocument()
+    expect(screen.getByText('Create exercise')).toBeInTheDocument()
   })
 
   it('shows validation error when submitting with empty name', async () => {
     const user = userEvent.setup()
     renderWithProviders(<CreateExerciseSheet {...defaultProps} />)
 
-    await user.click(screen.getByText('CREATE EXERCISE'))
+    await user.click(screen.getByText('Create exercise'))
 
     // React Hook Form + Zod: name is required
     expect(screen.getByText('Name is required')).toBeInTheDocument()
@@ -81,13 +81,13 @@ describe('CreateExerciseSheet', () => {
 
     // Fill in name but leave muscles empty
     await user.type(screen.getByPlaceholderText('e.g. Barbell Hip Thrust'), 'Test Exercise')
-    await user.click(screen.getByText('CREATE EXERCISE'))
+    await user.click(screen.getByText('Create exercise'))
 
     expect(screen.getByText('Select at least one primary muscle group')).toBeInTheDocument()
   })
 
   it('does not render when open is false', () => {
     renderWithProviders(<CreateExerciseSheet open={false} onOpenChange={vi.fn()} />)
-    expect(screen.queryByText('CREATE CUSTOM EXERCISE')).not.toBeInTheDocument()
+    expect(screen.queryByText('Create Custom Exercise')).not.toBeInTheDocument()
   })
 })
