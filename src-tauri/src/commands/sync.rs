@@ -30,15 +30,26 @@ pub async fn sync_force_push(state: State<'_, SyncEngine>) -> Result<(), AppErro
             state
                 .transition_state(crate::sync::SyncState::Pushing)
                 .await;
-            crate::sync::push::push_all(
+            match crate::sync::push::push_all(
                 state.pool(),
                 &creds.supabase_url,
                 &creds.supabase_key,
                 &creds.access_token,
             )
             .await
-            .map_err(|e| AppError::sync(&e.to_string()))?;
-            state.transition_state(crate::sync::SyncState::Idle).await;
+            {
+                Ok(()) => {
+                    state.transition_state(crate::sync::SyncState::Idle).await;
+                }
+                Err(e) => {
+                    state
+                        .transition_state(crate::sync::SyncState::Error {
+                            message: e.to_string(),
+                        })
+                        .await;
+                    return Err(AppError::sync(&e.to_string()));
+                }
+            }
         }
         None => return Err(AppError::sync("Not authenticated")),
     }

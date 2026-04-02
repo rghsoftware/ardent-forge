@@ -97,7 +97,7 @@ async fn push_table(
         .await?;
 
     if response.status().is_success() {
-        let now = chrono::Utc::now().timestamp_millis();
+        let now = chrono::Utc::now().timestamp();
         sqlx::query("UPDATE sync_metadata SET last_push_at = ? WHERE table_name = ?")
             .bind(now)
             .bind(table)
