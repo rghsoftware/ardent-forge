@@ -2093,14 +2093,18 @@ export class TauriAdapter implements DataAdapter {
         participant_user_ids: participantIds,
       },
     })
-    return toConversation(toConversationRowFromTauri(result.conversation))
+    const createUserIds = result.participants.filter((p) => p.left_at == null).map((p) => p.user_id)
+    return toConversation(toConversationRowFromTauri(result.conversation), createUserIds)
   }
 
   async getConversations(): Promise<Conversation[]> {
     const results = await invokeCommand<TauriConversationWithParticipants[]>('get_conversations', {
       user_id: this.userId,
     })
-    return results.map((r) => toConversation(toConversationRowFromTauri(r.conversation)))
+    return results.map((r) => {
+      const userIds = r.participants.filter((p) => p.left_at == null).map((p) => p.user_id)
+      return toConversation(toConversationRowFromTauri(r.conversation), userIds)
+    })
   }
 
   async getConversation(id: string): Promise<Conversation | null> {
@@ -2108,7 +2112,9 @@ export class TauriAdapter implements DataAdapter {
       'get_conversation',
       { id },
     )
-    return result ? toConversation(toConversationRowFromTauri(result.conversation)) : null
+    if (!result) return null
+    const userIds = result.participants.filter((p) => p.left_at == null).map((p) => p.user_id)
+    return toConversation(toConversationRowFromTauri(result.conversation), userIds)
   }
 
   async findDirectConversation(otherUserId: string): Promise<Conversation | null> {

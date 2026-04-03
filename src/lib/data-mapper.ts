@@ -684,7 +684,10 @@ export function fromEventItem(
 // Conversation
 // ---------------------------------------------------------------------------
 
-export function toConversation(row: ConversationRow): Conversation {
+export function toConversation(
+  row: ConversationRow,
+  participantUserIds: string[] = [],
+): Conversation {
   try {
     return {
       id: row.id,
@@ -693,6 +696,7 @@ export function toConversation(row: ConversationRow): Conversation {
       type: conversationTypeSchema.parse(row.type),
       title: row.title ?? undefined,
       groupId: row.group_id ?? undefined,
+      participantUserIds,
     }
   } catch (err) {
     throw new Error(
@@ -702,7 +706,7 @@ export function toConversation(row: ConversationRow): Conversation {
 }
 
 export function fromConversation(
-  conversation: Omit<Conversation, 'id' | 'createdAt' | 'updatedAt'>,
+  conversation: Omit<Conversation, 'id' | 'createdAt' | 'updatedAt' | 'participantUserIds'>,
 ): Partial<ConversationRow> {
   return {
     type: conversation.type,

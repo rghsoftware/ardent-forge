@@ -1,13 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  useInfiniteQuery,
-} from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import type { InfiniteData } from '@tanstack/react-query'
 import { getAdapter } from '@/lib/adapter'
 import { getRealtimeManager } from '@/lib/realtime-manager'
+import { useAuth } from '@/lib/auth'
 import type { Message, MessageType, ConversationType } from '@/domain/types'
 
 const MESSAGE_PAGE_SIZE = 50
@@ -71,6 +67,7 @@ export function useUnreadCounts() {
 
 export function useSendMessage() {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   return useMutation({
     mutationFn: async (vars: {
@@ -120,7 +117,7 @@ export function useSendMessage() {
           const optimisticMessage: Message = {
             id: 'optimistic-' + crypto.randomUUID(),
             conversationId: vars.conversationId,
-            senderId: undefined,
+            senderId: user?.id,
             messageType: vars.messageType,
             content: vars.content,
             syncStatus: 'pending',
