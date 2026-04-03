@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { useSendMessage } from '@/hooks/use-chat'
 import { getRealtimeManager } from '@/lib/realtime-manager'
 import { useAuth } from '@/lib/auth'
+import { useUserProfile } from '@/hooks/use-user-profile'
 import { AttachmentPicker } from './attachment-picker'
 
 interface ComposeBarProps {
@@ -15,9 +16,11 @@ interface ComposeBarProps {
 export function ComposeBar({ conversationId, onSend, disabled }: ComposeBarProps) {
   const [content, setContent] = useState('')
   const [attachmentOpen, setAttachmentOpen] = useState(false)
+  const [sendError, setSendError] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const sendMessage = useSendMessage()
   const { user } = useAuth()
+  const { data: currentUserProfile } = useUserProfile(user?.id ?? '')
 
   const hasContent = content.trim().length > 0
 
@@ -32,6 +35,7 @@ export function ComposeBar({ conversationId, onSend, disabled }: ComposeBarProps
     if (!trimmed || disabled) return
 
     setContent('')
+    setSendError(false)
     resetTextarea()
 
     try {
@@ -42,8 +46,8 @@ export function ComposeBar({ conversationId, onSend, disabled }: ComposeBarProps
       })
       onSend()
     } catch {
-      // Mutation error is handled by useSendMessage's onError; restore content
       setContent(trimmed)
+      setSendError(true)
     }
   }, [content, conversationId, disabled, onSend, resetTextarea, sendMessage])
 
@@ -68,14 +72,23 @@ export function ComposeBar({ conversationId, onSend, disabled }: ComposeBarProps
 
       // Broadcast typing indicator
       if (user?.id) {
-        getRealtimeManager()?.broadcastTyping(conversationId, user.id, user.email ?? 'Unknown')
+        getRealtimeManager()?.broadcastTyping(
+          conversationId,
+          user.id,
+          currentUserProfile?.displayName ?? user.email ?? 'Unknown',
+        )
       }
     },
-    [conversationId, user],
+    [conversationId, user, currentUserProfile?.displayName],
   )
 
   return (
     <>
+      {sendError && (
+        <div className="bg-surface-anvil px-4 py-1.5 border-t border-ghost-line/15">
+          <p className="text-xs text-red-400">Failed to send. Try again.</p>
+        </div>
+      )}
       <div
         className={cn(
           'sticky bottom-0 flex flex-row items-end gap-2 border-t border-ghost-line/15 bg-surface-anvil px-4 py-3',

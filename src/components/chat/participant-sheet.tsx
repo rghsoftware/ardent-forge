@@ -51,6 +51,7 @@ function ContactPicker({
   const { user } = useAuth()
   const { data: connections } = useConnections()
   const [adding, setAdding] = useState<string | null>(null)
+  const [addError, setAddError] = useState<string | null>(null)
 
   const participantSet = new Set(participantUserIds)
 
@@ -63,11 +64,14 @@ function ContactPicker({
 
   const handleAdd = async (userId: string) => {
     setAdding(userId)
+    setAddError(null)
     try {
       await getAdapter().addParticipant(conversationId, userId)
       onAdded()
     } catch (err) {
       console.error('[chat] Failed to add participant:', err)
+      const message = err instanceof Error ? err.message : 'Failed to add participant'
+      setAddError(message)
     } finally {
       setAdding(null)
     }
@@ -79,6 +83,11 @@ function ContactPicker({
 
   return (
     <div className="flex flex-col">
+      {addError && (
+        <div className="px-4 py-2">
+          <p className="text-xs text-red-400">{addError}</p>
+        </div>
+      )}
       {available.map((conn) => {
         const otherId = conn.requesterId === user?.id ? conn.recipientId : conn.requesterId
         return (

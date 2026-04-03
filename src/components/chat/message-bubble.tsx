@@ -1,6 +1,7 @@
 import type { Message } from '@/domain/types'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
+import { useUserProfile } from '@/hooks/use-user-profile'
 
 // ---------------------------------------------------------------------------
 // MessageBubble -- renders a single chat message with own/other styling
@@ -14,12 +15,13 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message, isOwn, showSender, isPending }: MessageBubbleProps) {
+  const { data: senderProfile } = useUserProfile(showSender ? (message.senderId ?? '') : '')
+  const senderName = senderProfile?.displayName ?? 'Unknown'
+
   return (
     <div className={cn('flex w-full', isOwn ? 'justify-end' : 'justify-start')}>
       <div className="max-w-[75%] flex flex-col">
-        {showSender && !isOwn && (
-          <span className="text-xs text-ember mb-1 px-3">{message.senderId ?? 'Unknown'}</span>
-        )}
+        {showSender && !isOwn && <span className="text-xs text-ember mb-1 px-3">{senderName}</span>}
 
         <div className="flex items-end gap-1.5">
           {isOwn && isPending && (

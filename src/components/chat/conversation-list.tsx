@@ -63,7 +63,7 @@ export function ConversationListSkeleton() {
           )}
         >
           {/* Avatar skeleton */}
-          <Skeleton className="h-10 w-10 shrink-0 rounded-full bg-surface-steel" />
+          <Skeleton className="h-10 w-10 shrink-0 bg-surface-steel" />
           {/* Text skeleton */}
           <div className="flex flex-col gap-1.5 flex-1">
             <Skeleton className="h-4 w-32 rounded-none bg-surface-steel" />
@@ -134,7 +134,7 @@ function ConversationRow({ conversation, index, unreadCount, onClick }: Conversa
       )}
     >
       {/* Avatar */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-steel">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-surface-steel">
         <span className="font-heading text-sm text-ember">{initials}</span>
       </div>
 
@@ -153,7 +153,7 @@ function ConversationRow({ conversation, index, unreadCount, onClick }: Conversa
       {/* Right side: timestamp + unread dot */}
       <div className="flex flex-col items-end gap-1.5 shrink-0">
         <span className="text-xs text-warm-ash/60">{relativeTime(conversation.updatedAt)}</span>
-        {hasUnread && <span className="block h-2 w-2 rounded-full bg-ember" />}
+        {hasUnread && <span className="block h-2 w-2 bg-ember" />}
       </div>
     </button>
   )
@@ -193,7 +193,7 @@ export function ConversationList() {
         <div className="flex flex-col items-center justify-center px-4 py-16">
           <Icon name="cloud_off" size={36} className="mb-3 text-warm-ash/60" />
           <p className="font-heading text-sm text-bone-white">Failed to load conversations</p>
-          <p className="mt-2 text-xs text-warm-ash/50">Check your connection and pull to retry.</p>
+          <p className="mt-2 text-xs text-warm-ash/50">Check your connection and try again.</p>
         </div>
       ) : !conversations || conversations.length === 0 ? (
         <ConversationEmptyState onStartConversation={handleNewConversation} />
@@ -216,7 +216,7 @@ export function ConversationList() {
         </div>
       )}
 
-      {/* NewConversationSheet -- created by another agent (S009) */}
+      {/* NewConversationSheet */}
       <NewConversationSheet
         open={sheetOpen}
         onOpenChange={setSheetOpen}

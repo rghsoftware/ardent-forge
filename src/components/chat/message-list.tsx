@@ -159,7 +159,7 @@ export function MessageList({
   currentUserId,
   onNewMessageAtBottom,
 }: MessageListProps) {
-  const { data, fetchPreviousPage, hasPreviousPage, isFetchingPreviousPage } =
+  const { data, fetchPreviousPage, hasPreviousPage, isFetchingPreviousPage, isLoading, isError } =
     useMessages(conversationId)
 
   const allMessages = useMemo(() => data?.allMessages ?? [], [data])
@@ -244,6 +244,23 @@ export function MessageList({
     el.addEventListener('scroll', handleScroll, { passive: true })
     return () => el.removeEventListener('scroll', handleScroll)
   }, [hasPreviousPage, isFetchingPreviousPage, fetchPreviousPage, isNearBottom])
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Icon name="progress_activity" size={24} className="animate-spin text-warm-ash/40" />
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2">
+        <Icon name="cloud_off" size={32} className="text-warm-ash/30" />
+        <p className="text-sm text-warm-ash/60">Failed to load messages</p>
+      </div>
+    )
+  }
 
   return (
     <div className="relative flex-1 overflow-hidden">

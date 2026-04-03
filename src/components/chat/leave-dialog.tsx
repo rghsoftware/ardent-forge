@@ -20,15 +20,18 @@ interface LeaveDialogProps {
 export function LeaveDialog({ open, onOpenChange, conversationId, onLeft }: LeaveDialogProps) {
   const leaveConversation = useLeaveConversation()
   const [leaving, setLeaving] = useState(false)
+  const [error, setError] = useState(false)
 
   const handleLeave = async () => {
     setLeaving(true)
+    setError(false)
     try {
       await leaveConversation.mutateAsync(conversationId)
       onOpenChange(false)
       onLeft()
     } catch (err) {
       console.error('[chat] Failed to leave conversation:', err)
+      setError(true)
     } finally {
       setLeaving(false)
     }
@@ -41,6 +44,7 @@ export function LeaveDialog({ open, onOpenChange, conversationId, onLeft }: Leav
           <DialogTitle>Leave this conversation?</DialogTitle>
           <DialogDescription>You won't receive new messages.</DialogDescription>
         </DialogHeader>
+        {error && <p className="px-6 text-xs text-red-400">Failed to leave. Please try again.</p>}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={leaving}>
             CANCEL

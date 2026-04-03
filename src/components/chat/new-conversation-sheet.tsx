@@ -22,13 +22,20 @@ function ContactRow({
   userId,
   selected,
   onToggle,
+  search,
 }: {
   userId: string
   selected: boolean
   onToggle: (userId: string) => void
+  search: string
 }) {
   const { data: profile } = useUserProfile(userId)
   const displayName = profile?.displayName ?? 'Unknown'
+
+  // Filter by search term -- render nothing when no match
+  if (search.trim() && !displayName.toLowerCase().includes(search.trim().toLowerCase())) {
+    return null
+  }
   const initials = displayName
     .split(' ')
     .map((w) => w[0])
@@ -110,6 +117,7 @@ export function NewConversationSheet({ open, onOpenChange, onCreated }: NewConve
   const [search, setSearch] = useState('')
   const [groupTitle, setGroupTitle] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Derive the "other user" id from each active connection
   const activeContacts = useMemo(() => {
@@ -123,6 +131,7 @@ export function NewConversationSheet({ open, onOpenChange, onCreated }: NewConve
   const singleSelectedId = selectedIds.length === 1 ? selectedIds[0] : ''
   const { data: existingDirect } = useFindDirectConversation(singleSelectedId)
 
+  // 2+ selected = group mode (current user added server-side, so 2 selected = 3 total participants)
   const isGroupMode = selectedIds.length >= 2
 
   const toggleContact = useCallback((userId: string) => {
@@ -138,6 +147,7 @@ export function NewConversationSheet({ open, onOpenChange, onCreated }: NewConve
   const handleStart = useCallback(async () => {
     if (selectedIds.length === 0) return
     setIsCreating(true)
+    setError(null)
 
     try {
       if (selectedIds.length === 1) {
@@ -167,7 +177,7 @@ export function NewConversationSheet({ open, onOpenChange, onCreated }: NewConve
       setGroupTitle('')
       onOpenChange(false)
     } catch {
-      // createConversation.onError logs already
+      setError('Failed to create conversation. Please try again.')
     } finally {
       setIsCreating(false)
     }
@@ -180,6 +190,7 @@ export function NewConversationSheet({ open, onOpenChange, onCreated }: NewConve
         setSelectedIds([])
         setSearch('')
         setGroupTitle('')
+        setError(null)
       }
       onOpenChange(nextOpen)
     },
@@ -246,20 +257,23 @@ export function NewConversationSheet({ open, onOpenChange, onCreated }: NewConve
 
           {!connectionsLoading &&
             activeContacts.length > 0 &&
-            activeContacts
-              .filter(() => {
-                if (!search.trim()) return true
-                return true
-              })
-              .map((userId) => (
-                <ContactRow
-                  key={userId}
-                  userId={userId}
-                  selected={selectedIds.includes(userId)}
-                  onToggle={toggleContact}
-                />
-              ))}
+            activeContacts.map((userId) => (
+              <ContactRow
+                key={userId}
+                userId={userId}
+                selected={selectedIds.includes(userId)}
+                onToggle={toggleContact}
+                search={search}
+              />
+            ))}
         </div>
+
+        {/* Error message */}
+        {error && (
+          <div className="px-4 py-2">
+            <p className="text-xs text-red-400">{error}</p>
+          </div>
+        )}
 
         {/* CTA */}
         <div className="border-t border-ghost-line/15 p-4">
