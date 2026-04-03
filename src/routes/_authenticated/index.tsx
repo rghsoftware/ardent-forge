@@ -6,9 +6,11 @@ import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useActiveProgram, useProgramFull } from '@/hooks/use-programs'
 import { CrashRecoveryDialog } from '@/components/workout/crash-recovery-dialog'
 import { ProgramSessionCard } from '@/components/today/program-session-card'
+import { EventCountdownBadge } from '@/components/event-builder/event-countdown-badge'
 import { GhostSessionPreview } from '@/components/shared/ghost-session-preview'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useNextUpcomingEvent } from '@/hooks/use-event-items'
 import { formatDuration } from '@/lib/format-duration'
 import type { WorkoutLog } from '@/domain/types'
 import type { ProgramFull } from '@/lib/data-adapter'
@@ -79,6 +81,8 @@ function TodayPage() {
   // Active program context
   const { data: activation, isLoading: isLoadingActivation } = useActiveProgram(userId || undefined)
   const { data: programFull, isLoading: isLoadingProgram } = useProgramFull(activation?.programId)
+
+  const { data: nextEvent } = useNextUpcomingEvent(userId || undefined)
 
   const isProgramLoading = isLoadingActivation || (!!activation && isLoadingProgram)
   const hasActiveProgram = !!activation && !!programFull
@@ -180,6 +184,17 @@ function TodayPage() {
             onStartSession={handleStartProgrammedSession}
             isLoading={isProgramLoading}
             isRestDay={hasActiveProgram && !todayContext?.session && !todayContext?.error}
+          />
+        </div>
+      )}
+
+      {/* Upcoming event countdown badge */}
+      {nextEvent && (
+        <div className="pt-4">
+          <EventCountdownBadge
+            eventName={nextEvent.template.name}
+            daysUntil={nextEvent.daysUntil}
+            templateId={nextEvent.template.id}
           />
         </div>
       )}

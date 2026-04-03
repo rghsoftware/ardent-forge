@@ -22,6 +22,7 @@ import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedLibraryRouteImport } from './routes/_authenticated/library'
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedConnectionsRouteImport } from './routes/_authenticated/connections'
+import { Route as AuthenticatedCommsRouteImport } from './routes/_authenticated/comms'
 import { Route as AuthenticatedBuilderRouteImport } from './routes/_authenticated/builder'
 import { Route as AuthenticatedHistoryIndexRouteImport } from './routes/_authenticated/history/index'
 import { Route as AuthenticatedExercisesIndexRouteImport } from './routes/_authenticated/exercises/index'
@@ -29,6 +30,7 @@ import { Route as AuthenticatedLogWorkoutIdRouteImport } from './routes/_authent
 import { Route as AuthenticatedHistoryWorkoutIdRouteImport } from './routes/_authenticated/history/$workoutId'
 import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authenticated/groups.$groupId'
 import { Route as AuthenticatedExercisesExerciseIdRouteImport } from './routes/_authenticated/exercises/$exerciseId'
+import { Route as AuthenticatedCommsConversationIdRouteImport } from './routes/_authenticated/comms.$conversationId'
 
 const SignUpRoute = SignUpRouteImport.update({
   id: '/sign-up',
@@ -95,6 +97,11 @@ const AuthenticatedConnectionsRoute =
     path: '/connections',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedCommsRoute = AuthenticatedCommsRouteImport.update({
+  id: '/comms',
+  path: '/comms',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedBuilderRoute = AuthenticatedBuilderRouteImport.update({
   id: '/builder',
   path: '/builder',
@@ -136,6 +143,12 @@ const AuthenticatedExercisesExerciseIdRoute =
     path: '/exercises/$exerciseId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedCommsConversationIdRoute =
+  AuthenticatedCommsConversationIdRouteImport.update({
+    id: '/$conversationId',
+    path: '/$conversationId',
+    getParentRoute: () => AuthenticatedCommsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
@@ -144,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/builder': typeof AuthenticatedBuilderRoute
+  '/comms': typeof AuthenticatedCommsRouteWithChildren
   '/connections': typeof AuthenticatedConnectionsRoute
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/library': typeof AuthenticatedLibraryRoute
@@ -151,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/vault': typeof AuthenticatedVaultRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/s/$token': typeof STokenRoute
+  '/comms/$conversationId': typeof AuthenticatedCommsConversationIdRoute
   '/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
@@ -164,6 +179,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/builder': typeof AuthenticatedBuilderRoute
+  '/comms': typeof AuthenticatedCommsRouteWithChildren
   '/connections': typeof AuthenticatedConnectionsRoute
   '/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/library': typeof AuthenticatedLibraryRoute
@@ -172,6 +188,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/s/$token': typeof STokenRoute
   '/': typeof AuthenticatedIndexRoute
+  '/comms/$conversationId': typeof AuthenticatedCommsConversationIdRoute
   '/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
@@ -187,6 +204,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/_authenticated/builder': typeof AuthenticatedBuilderRoute
+  '/_authenticated/comms': typeof AuthenticatedCommsRouteWithChildren
   '/_authenticated/connections': typeof AuthenticatedConnectionsRoute
   '/_authenticated/groups': typeof AuthenticatedGroupsRouteWithChildren
   '/_authenticated/library': typeof AuthenticatedLibraryRoute
@@ -195,6 +213,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/s/$token': typeof STokenRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/comms/$conversationId': typeof AuthenticatedCommsConversationIdRoute
   '/_authenticated/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
   '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/_authenticated/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
@@ -211,6 +230,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/builder'
+    | '/comms'
     | '/connections'
     | '/groups'
     | '/library'
@@ -218,6 +238,7 @@ export interface FileRouteTypes {
     | '/vault'
     | '/auth/callback'
     | '/s/$token'
+    | '/comms/$conversationId'
     | '/exercises/$exerciseId'
     | '/groups/$groupId'
     | '/history/$workoutId'
@@ -231,6 +252,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/builder'
+    | '/comms'
     | '/connections'
     | '/groups'
     | '/library'
@@ -239,6 +261,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/s/$token'
     | '/'
+    | '/comms/$conversationId'
     | '/exercises/$exerciseId'
     | '/groups/$groupId'
     | '/history/$workoutId'
@@ -253,6 +276,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/_authenticated/builder'
+    | '/_authenticated/comms'
     | '/_authenticated/connections'
     | '/_authenticated/groups'
     | '/_authenticated/library'
@@ -261,6 +285,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/s/$token'
     | '/_authenticated/'
+    | '/_authenticated/comms/$conversationId'
     | '/_authenticated/exercises/$exerciseId'
     | '/_authenticated/groups/$groupId'
     | '/_authenticated/history/$workoutId'
@@ -372,6 +397,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedConnectionsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/comms': {
+      id: '/_authenticated/comms'
+      path: '/comms'
+      fullPath: '/comms'
+      preLoaderRoute: typeof AuthenticatedCommsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/builder': {
       id: '/_authenticated/builder'
       path: '/builder'
@@ -421,8 +453,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExercisesExerciseIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/comms/$conversationId': {
+      id: '/_authenticated/comms/$conversationId'
+      path: '/$conversationId'
+      fullPath: '/comms/$conversationId'
+      preLoaderRoute: typeof AuthenticatedCommsConversationIdRouteImport
+      parentRoute: typeof AuthenticatedCommsRoute
+    }
   }
 }
+
+interface AuthenticatedCommsRouteChildren {
+  AuthenticatedCommsConversationIdRoute: typeof AuthenticatedCommsConversationIdRoute
+}
+
+const AuthenticatedCommsRouteChildren: AuthenticatedCommsRouteChildren = {
+  AuthenticatedCommsConversationIdRoute: AuthenticatedCommsConversationIdRoute,
+}
+
+const AuthenticatedCommsRouteWithChildren =
+  AuthenticatedCommsRoute._addFileChildren(AuthenticatedCommsRouteChildren)
 
 interface AuthenticatedGroupsRouteChildren {
   AuthenticatedGroupsGroupIdRoute: typeof AuthenticatedGroupsGroupIdRoute
@@ -437,6 +487,7 @@ const AuthenticatedGroupsRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedBuilderRoute: typeof AuthenticatedBuilderRoute
+  AuthenticatedCommsRoute: typeof AuthenticatedCommsRouteWithChildren
   AuthenticatedConnectionsRoute: typeof AuthenticatedConnectionsRoute
   AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRouteWithChildren
   AuthenticatedLibraryRoute: typeof AuthenticatedLibraryRoute
@@ -452,6 +503,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBuilderRoute: AuthenticatedBuilderRoute,
+  AuthenticatedCommsRoute: AuthenticatedCommsRouteWithChildren,
   AuthenticatedConnectionsRoute: AuthenticatedConnectionsRoute,
   AuthenticatedGroupsRoute: AuthenticatedGroupsRouteWithChildren,
   AuthenticatedLibraryRoute: AuthenticatedLibraryRoute,

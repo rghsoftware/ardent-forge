@@ -22,14 +22,15 @@ import { Icon } from '@/components/icon'
 import { ShareDialog } from '@/components/sharing/share-dialog'
 import { SOURCE_LABELS } from '@/components/program-builder/constants'
 import { SessionTemplateCard } from '@/components/session-builder/session-template-card'
-import {
-  SessionTemplateForm,
-  type SessionTemplateFull,
-} from '@/components/session-builder/session-template-form'
+import { EventCard } from '@/components/event-builder/event-card'
+import { SessionTemplateForm } from '@/components/session-builder/session-template-form'
+import type { SessionTemplateFull } from '@/lib/data-adapter'
+import { EventTemplateForm } from '@/components/event-builder/event-template-form'
 import {
   useSessionTemplates,
   useSessionTemplateFull,
   useDeleteSessionTemplate,
+  useCloneSessionTemplate,
 } from '@/hooks/use-session-templates'
 import {
   usePrograms,
@@ -57,17 +58,33 @@ function LibraryPage() {
   // Template state
   const { data: templates = [], isLoading, error } = useSessionTemplates(userId || undefined)
   const deleteMutation = useDeleteSessionTemplate()
+  const cloneMutation = useCloneSessionTemplate()
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [sheetMode, setSheetMode] = useState<'session' | 'event'>('session')
 
   const handleCreate = () => {
     setEditingId(null)
+    setSheetMode('session')
+    setSheetOpen(true)
+  }
+
+  const handleCreateEvent = () => {
+    setEditingId(null)
+    setSheetMode('event')
     setSheetOpen(true)
   }
 
   const handleEdit = (id: string) => {
     setEditingId(id)
+    setSheetMode('session')
+    setSheetOpen(true)
+  }
+
+  const handleEditEvent = (id: string) => {
+    setEditingId(id)
+    setSheetMode('event')
     setSheetOpen(true)
   }
 
@@ -95,10 +112,20 @@ function LibraryPage() {
       <div className="flex items-center justify-between px-4 pt-6 pb-4">
         <h1 className="font-display text-2xl font-medium text-bone-white">Library</h1>
         {activeTab === 'templates' && (
-          <Button variant="default" onClick={handleCreate} className="min-h-12 text-xs">
-            <Icon name="add" size={16} />
-            Create template
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="default" onClick={handleCreate} className="min-h-12 text-xs">
+              <Icon name="add" size={16} />
+              NEW SESSION
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleCreateEvent}
+              className="min-h-12 border-l-2 border-ember bg-surface-iron text-xs text-bone-white hover:bg-surface-gunmetal"
+            >
+              <Icon name="flag" size={16} className="text-ember" />
+              NEW EVENT
+            </Button>
+          </div>
         )}
         {activeTab === 'programs' && (
           <Button
@@ -206,14 +233,27 @@ function LibraryPage() {
                 </div>
               </div>
             ) : (
-              templates.map((template) => (
-                <SessionTemplateCard
-                  key={template.id}
-                  template={template}
-                  onEdit={() => handleEdit(template.id)}
-                  onDelete={() => handleDelete(template.id)}
-                />
-              ))
+              templates.map((template) =>
+                template.category === 'EVENT' ? (
+                  <EventCard
+                    key={template.id}
+                    template={template}
+                    onEdit={() => handleEditEvent(template.id)}
+                    onDelete={() => handleDelete(template.id)}
+                    onClone={() => cloneMutation.mutate({ id: template.id, userId })}
+                    isCloning={
+                      cloneMutation.isPending && cloneMutation.variables?.id === template.id
+                    }
+                  />
+                ) : (
+                  <SessionTemplateCard
+                    key={template.id}
+                    template={template}
+                    onEdit={() => handleEdit(template.id)}
+                    onDelete={() => handleDelete(template.id)}
+                  />
+                ),
+              )
             )}
           </div>
         </div>
@@ -232,15 +272,37 @@ function LibraryPage() {
         >
           <SheetHeader className="px-4 pt-4 pb-0">
             <SheetTitle className="text-xs text-ember">
-              {editingId ? 'Edit template' : 'New template'}
+              {sheetMode === 'event'
+                ? editingId
+                  ? 'EDIT EVENT'
+                  : 'NEW EVENT'
+                : editingId
+                  ? 'Edit template'
+                  : 'New template'}
             </SheetTitle>
             <SheetDescription className="sr-only">
-              {editingId ? 'Edit an existing session template' : 'Create a new session template'}
+              {sheetMode === 'event'
+                ? editingId
+                  ? 'Edit an existing event template'
+                  : 'Create a new event template'
+                : editingId
+                  ? 'Edit an existing session template'
+                  : 'Create a new session template'}
             </SheetDescription>
           </SheetHeader>
 
           <div className="pt-2">
-            {editingId ? (
+            {sheetMode === 'event' ? (
+              editingId ? (
+                <EditEventFormLoader
+                  templateId={editingId}
+                  onSave={handleSaved}
+                  onCancel={handleCancel}
+                />
+              ) : (
+                <EventTemplateForm onSave={handleSaved} onCancel={handleCancel} />
+              )
+            ) : editingId ? (
               <EditTemplateFormLoader
                 templateId={editingId}
                 onSave={handleSaved}
@@ -581,5 +643,50 @@ function EditTemplateFormLoader({
       onSave={onSave}
       onCancel={onCancel}
     />
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Loader for event edit mode -- fetches the full template data for events
+// ---------------------------------------------------------------------------
+
+function EditEventFormLoader({
+  templateId,
+  onSave,
+  onCancel,
+}: {
+  templateId: string
+  onSave: () => void
+  onCancel: () => void
+}) {
+  const { data, isLoading, error } = useSessionTemplateFull(templateId)
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-4 p-4">
+        <Skeleton className="h-10 w-full bg-surface-iron" />
+        <Skeleton className="h-8 w-48 bg-surface-iron" />
+        <Skeleton className="h-32 w-full bg-surface-iron" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-2 p-4">
+        <p className="text-center text-xs text-destructive">Failed to load event</p>
+        <p className="text-center text-xs text-warm-ash/40">
+          {error instanceof Error ? error.message : 'An unexpected error occurred.'}
+        </p>
+      </div>
+    )
+  }
+
+  if (!data) {
+    return <div className="p-4 text-center text-xs text-warm-ash/60">Event not found</div>
+  }
+
+  return (
+    <EventTemplateForm initial={data as SessionTemplateFull} onSave={onSave} onCancel={onCancel} />
   )
 }

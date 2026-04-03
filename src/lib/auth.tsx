@@ -4,6 +4,7 @@ import { isTauri } from '@tauri-apps/api/core'
 import { getSupabaseClient } from './supabase'
 import { getConfigStore } from './config-store'
 import { resetAdapter } from './adapter'
+import { resetRealtimeManager } from './realtime-manager'
 import { initSync, stopSync } from './sync-bridge'
 import { useSyncStore } from '@/stores/sync-store'
 
@@ -137,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (event === 'SIGNED_OUT') {
         resetAdapter()
+        resetRealtimeManager()
 
         if (isTauri()) {
           stopSync().catch((err) => {

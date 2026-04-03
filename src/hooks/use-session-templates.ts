@@ -75,6 +75,21 @@ export function useUpdateSessionTemplate() {
   })
 }
 
+export function useCloneSessionTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, userId }: { id: string; userId: string }) =>
+      getAdapter().cloneSessionTemplate(id, userId),
+    onError: (err) => {
+      console.error('[session-templates] Failed to clone:', err)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['session-templates'] })
+    },
+  })
+}
+
 export function useDeleteSessionTemplate() {
   const queryClient = useQueryClient()
 

@@ -6,8 +6,7 @@ use uuid::Uuid;
 
 use crate::error::AppError;
 use crate::models::{
-    LoggedActivityGroupRow, LoggedActivityRow,
-    LoggedSetRow, WorkoutLogFull, WorkoutLogRow,
+    LoggedActivityGroupRow, LoggedActivityRow, LoggedSetRow, WorkoutLogFull, WorkoutLogRow,
     WorkoutLogSummary, WorkoutWithSets,
 };
 use crate::utils::now_unix;
@@ -103,9 +102,7 @@ pub struct CreateLoggedActivityFullInput {
     pub sets: Vec<CreateLoggedSetInput>,
 }
 
-const VALID_SET_TYPES: &[&str] = &[
-    "WORKING", "WARMUP", "DROPSET", "BACKOFF", "FAILURE", "MAX",
-];
+const VALID_SET_TYPES: &[&str] = &["WORKING", "WARMUP", "DROPSET", "BACKOFF", "FAILURE", "MAX"];
 
 // ---------------------------------------------------------------------------
 // Commands
@@ -192,7 +189,9 @@ pub async fn get_workout_logs_summary(
     // Build a map: workout_log_id -> (exercise_names, set_count)
     let mut agg_map: HashMap<String, (Vec<String>, i64)> = HashMap::new();
     for row in agg_rows {
-        let entry = agg_map.entry(row.workout_log_id.clone()).or_insert_with(|| (Vec::new(), 0));
+        let entry = agg_map
+            .entry(row.workout_log_id.clone())
+            .or_insert_with(|| (Vec::new(), 0));
         entry.0.push(row.exercise_name);
         entry.1 += row.completed_sets;
     }
@@ -200,9 +199,8 @@ pub async fn get_workout_logs_summary(
     let summaries = logs
         .into_iter()
         .map(|log| {
-            let (exercise_names, set_count) = agg_map
-                .remove(&log.id)
-                .unwrap_or_else(|| (Vec::new(), 0));
+            let (exercise_names, set_count) =
+                agg_map.remove(&log.id).unwrap_or_else(|| (Vec::new(), 0));
             let exercise_count = exercise_names.len() as i64;
             WorkoutLogSummary {
                 log,
@@ -287,7 +285,11 @@ pub async fn get_workout_log_full(
     }
 
     // Fetch sets for all activities
-    let set_placeholders = activity_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let set_placeholders = activity_ids
+        .iter()
+        .map(|_| "?")
+        .collect::<Vec<_>>()
+        .join(",");
     let set_sql = format!(
         "SELECT * FROM logged_sets WHERE logged_activity_id IN ({set_placeholders}) ORDER BY set_number"
     );
@@ -312,7 +314,10 @@ pub async fn create_workout_log(
 ) -> Result<WorkoutLogRow, AppError> {
     // Validation
     if log.started_at <= 0 {
-        return Err(AppError::validation("started_at", "started_at must be a positive Unix timestamp"));
+        return Err(AppError::validation(
+            "started_at",
+            "started_at must be a positive Unix timestamp",
+        ));
     }
     if let Some(pd) = log.perceived_difficulty {
         if !(1..=10).contains(&pd) {
@@ -399,10 +404,7 @@ pub async fn update_workout_log(
 }
 
 #[tauri::command]
-pub async fn delete_workout_log(
-    pool: State<'_, SqlitePool>,
-    id: String,
-) -> Result<(), AppError> {
+pub async fn delete_workout_log(pool: State<'_, SqlitePool>, id: String) -> Result<(), AppError> {
     let result = sqlx::query("DELETE FROM workout_logs WHERE id = ?")
         .bind(&id)
         .execute(pool.inner())
@@ -511,7 +513,10 @@ pub async fn create_logged_set(
     if !VALID_SET_TYPES.contains(&set.set_type.as_str()) {
         return Err(AppError::validation(
             "set_type",
-            &format!("Invalid set_type: {}. Valid values: {:?}", set.set_type, VALID_SET_TYPES),
+            &format!(
+                "Invalid set_type: {}. Valid values: {:?}",
+                set.set_type, VALID_SET_TYPES
+            ),
         ));
     }
 
@@ -680,9 +685,8 @@ pub async fn get_exercise_workout_history(
 
     // Step 2: Fetch all workout logs in one query
     let placeholders = log_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-    let logs_sql = format!(
-        "SELECT * FROM workout_logs WHERE id IN ({placeholders}) ORDER BY started_at DESC"
-    );
+    let logs_sql =
+        format!("SELECT * FROM workout_logs WHERE id IN ({placeholders}) ORDER BY started_at DESC");
     let mut logs_query = sqlx::query_as::<_, WorkoutLogRow>(&logs_sql);
     for id in &log_ids {
         logs_query = logs_query.bind(id);
@@ -898,23 +902,20 @@ pub async fn create_workout_log_full(
                 .execute(&mut *tx)
                 .await?;
 
-                let set_row = sqlx::query_as::<_, LoggedSetRow>(
-                    "SELECT * FROM logged_sets WHERE id = ?",
-                )
-                .bind(&set_id)
-                .fetch_one(&mut *tx)
-                .await?;
+                let set_row =
+                    sqlx::query_as::<_, LoggedSetRow>("SELECT * FROM logged_sets WHERE id = ?")
+                        .bind(&set_id)
+                        .fetch_one(&mut *tx)
+                        .await?;
                 all_sets.push(set_row);
             }
         }
     }
 
-    let log_row = sqlx::query_as::<_, WorkoutLogRow>(
-        "SELECT * FROM workout_logs WHERE id = ?",
-    )
-    .bind(&log_id)
-    .fetch_one(&mut *tx)
-    .await?;
+    let log_row = sqlx::query_as::<_, WorkoutLogRow>("SELECT * FROM workout_logs WHERE id = ?")
+        .bind(&log_id)
+        .fetch_one(&mut *tx)
+        .await?;
 
     tx.commit().await?;
 

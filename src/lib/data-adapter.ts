@@ -21,6 +21,13 @@ import type {
   GroupRole,
   ShareLink,
   ShareableEntityType,
+  EventItem,
+  Conversation,
+  ConversationType,
+  ConversationParticipant,
+  Message,
+  MessageType,
+  MediaAttachment,
 } from '@/domain/types'
 import type { ExerciseCategory, MovementPattern, MuscleGroup } from '@/domain/types'
 import type { WeeklyVolumeEntry } from '@/domain/types'
@@ -38,6 +45,7 @@ export type SessionTemplateFull = {
   template: SessionTemplate
   groups: Array<Omit<ActivityGroup, 'activities'>>
   activities: Activity[]
+  eventItems: EventItem[]
 }
 
 export type ProgramFull = {
@@ -84,6 +92,13 @@ export interface GroupActivityFeedEntry extends ActivityFeedWorkoutSummary {
 
 export interface ConnectionActivityFeedEntry extends ActivityFeedWorkoutSummary {
   connectionId: string
+}
+
+export interface MessagePaginationOptions {
+  /** ISO 8601 datetime cursor -- returns messages before this timestamp */
+  before?: string
+  /** Maximum messages to return */
+  limit: number
 }
 
 export interface ExerciseFilters {
@@ -177,7 +192,20 @@ export interface DataAdapter {
       activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
     }>,
   ): Promise<SessionTemplateFull>
+  cloneSessionTemplate(id: string, userId: string): Promise<SessionTemplateFull>
   deleteSessionTemplate(id: string): Promise<void>
+
+  // Event item operations
+  getEventItems(parentId: string, parentType: 'template' | 'log'): Promise<EventItem[]>
+  saveEventItem(
+    item: Omit<EventItem, 'id' | 'createdAt' | 'updatedAt'>,
+    parentId: string,
+    parentType: 'template' | 'log',
+  ): Promise<EventItem>
+  updateEventItem(item: EventItem): Promise<EventItem>
+  deleteEventItem(itemId: string): Promise<void>
+  toggleEventItemPacked(itemId: string, isPacked: boolean): Promise<EventItem>
+  reorderEventItems(items: Array<{ id: string; sortOrder: number }>): Promise<void>
 
   // Program operations
   getPrograms(userId: string): Promise<Program[]>
@@ -207,6 +235,7 @@ export interface DataAdapter {
     }>,
   ): Promise<ProgramFull>
   deleteProgram(id: string): Promise<void>
+  assignProgramToMember(programId: string, memberId: string, groupId: string): Promise<Program>
 
   // Program activation operations
   getActiveProgram(userId: string): Promise<ProgramActivation | null>
@@ -286,4 +315,29 @@ export interface DataAdapter {
     options?: ActivityFeedOptions,
   ): Promise<GroupActivityFeedEntry[]>
   getConnectionActivityFeed(options?: ActivityFeedOptions): Promise<ConnectionActivityFeedEntry[]>
+
+  // ============================================================
+  // Chat
+  // ============================================================
+  createConversation(
+    type: ConversationType,
+    participantIds: string[],
+    title?: string,
+    groupId?: string,
+  ): Promise<Conversation>
+  getConversations(): Promise<Conversation[]>
+  getConversation(id: string): Promise<Conversation | null>
+  findDirectConversation(otherUserId: string): Promise<Conversation | null>
+  sendMessage(conversationId: string, messageType: MessageType, content?: string): Promise<Message>
+  getMessages(conversationId: string, options: MessagePaginationOptions): Promise<Message[]>
+  getMessagesSince(conversationId: string, since: string): Promise<Message[]>
+  updateLastRead(conversationId: string): Promise<void>
+  getUnreadCounts(): Promise<Map<string, number>>
+  addParticipant(conversationId: string, userId: string): Promise<ConversationParticipant>
+  leaveConversation(conversationId: string): Promise<void>
+  toggleArchive(conversationId: string): Promise<void>
+  saveMediaAttachment(
+    messageId: string,
+    attachment: Omit<MediaAttachment, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<MediaAttachment>
 }

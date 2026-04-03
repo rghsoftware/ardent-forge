@@ -27,13 +27,28 @@ pub struct CreateExerciseInput {
 }
 
 const VALID_CATEGORIES: &[&str] = &[
-    "BARBELL", "DUMBBELL", "KETTLEBELL", "BODYWEIGHT", "MACHINE",
-    "CABLE", "CARDIO", "PLYOMETRIC", "LOADED_CARRY",
+    "BARBELL",
+    "DUMBBELL",
+    "KETTLEBELL",
+    "BODYWEIGHT",
+    "MACHINE",
+    "CABLE",
+    "CARDIO",
+    "PLYOMETRIC",
+    "LOADED_CARRY",
 ];
 
 const VALID_MOVEMENT_PATTERNS: &[&str] = &[
-    "SQUAT", "HINGE", "LUNGE", "PUSH", "PULL",
-    "CARRY", "ROTATION", "FLEXION", "EXTENSION", "ISOMETRIC",
+    "SQUAT",
+    "HINGE",
+    "LUNGE",
+    "PUSH",
+    "PULL",
+    "CARRY",
+    "ROTATION",
+    "FLEXION",
+    "EXTENSION",
+    "ISOMETRIC",
 ];
 
 #[tauri::command]
@@ -96,7 +111,10 @@ pub async fn create_exercise(
 ) -> Result<ExerciseRow, AppError> {
     // Input validation
     if exercise.name.trim().is_empty() || exercise.name.len() > 100 {
-        return Err(AppError::validation("name", "Exercise name must be 1-100 characters"));
+        return Err(AppError::validation(
+            "name",
+            "Exercise name must be 1-100 characters",
+        ));
     }
     if !VALID_CATEGORIES.contains(&exercise.category.as_str()) {
         return Err(AppError::validation(

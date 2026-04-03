@@ -23,6 +23,7 @@ const SESSION_FILTERS: Array<{ value: SessionType | 'ALL'; label: string }> = [
   { value: 'CONDITIONING', label: 'CONDITIONING' },
   { value: 'SE', label: 'SE' },
   { value: 'MIXED', label: 'MIXED' },
+  { value: 'EVENT', label: 'EVENT' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -155,24 +156,42 @@ export function SessionPickerSheet({
                 </div>
               ) : (
                 <div className="flex flex-col gap-1">
-                  {filtered.map((template) => (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => handleSelect(template)}
-                      className="flex w-full items-center gap-3 bg-surface-iron px-3 py-3 text-left transition-colors hover:bg-surface-gunmetal"
-                    >
-                      <div className="flex flex-1 flex-col gap-1">
-                        <span className="font-display text-sm font-medium text-bone-white">
-                          {template.name}
-                        </span>
-                        <span className="inline-block self-start bg-surface-steel px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-warm-ash">
-                          {template.category}
-                        </span>
-                      </div>
-                      <Icon name="chevron_right" size={18} className="text-warm-ash/40" />
-                    </button>
-                  ))}
+                  {filtered.map((template) => {
+                    const isEvent = template.category === 'EVENT'
+                    return (
+                      <button
+                        key={template.id}
+                        type="button"
+                        onClick={() => handleSelect(template)}
+                        className={`flex w-full items-center gap-3 px-3 py-3 text-left transition-colors ${
+                          isEvent
+                            ? 'border-l-2 border-ember bg-surface-iron hover:bg-surface-gunmetal'
+                            : 'bg-surface-iron hover:bg-surface-gunmetal'
+                        }`}
+                      >
+                        {isEvent && (
+                          <Icon name="flag" size={16} fill className="shrink-0 text-ember" />
+                        )}
+                        <div className="flex flex-1 flex-col gap-1">
+                          <span
+                            className={`text-sm font-medium text-bone-white ${
+                              isEvent ? 'font-display uppercase tracking-wider' : 'font-display'
+                            }`}
+                          >
+                            {template.name}
+                          </span>
+                          <span
+                            className={`inline-block self-start px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ${
+                              isEvent ? 'bg-ember/15 text-ember' : 'bg-surface-steel text-warm-ash'
+                            }`}
+                          >
+                            {template.category}
+                          </span>
+                        </div>
+                        <Icon name="chevron_right" size={18} className="text-warm-ash/40" />
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>

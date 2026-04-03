@@ -34,6 +34,13 @@ import type {
   GroupInvite,
   DirectConnection,
   GroupRole,
+  EventItem,
+  Conversation,
+  ConversationType,
+  ConversationParticipant,
+  Message,
+  MessageType,
+  MediaAttachment,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -52,6 +59,11 @@ import type {
   ScheduledSessionRow,
   ProgramActivationRow,
   ShareLinkRow,
+  EventItemRow,
+  ConversationRow,
+  ConversationParticipantRow,
+  MessageRow,
+  MediaAttachmentRow,
 } from './database.types'
 import {
   toExercise,
@@ -85,6 +97,15 @@ import {
   toProgramActivation,
   toShareLink,
   fromShareLink,
+  toEventItem,
+  fromEventItem,
+  toConversation,
+  fromConversation,
+  toConversationParticipant,
+  toMessage,
+  fromMessage,
+  toMediaAttachment,
+  fromMediaAttachment,
 } from './data-mapper'
 import {
   toAccountabilityGroup,
@@ -603,11 +624,16 @@ export class SupabaseAdapter implements DataAdapter {
     const groups = (groupData as ActivityGroupRow[]).map(toActivityGroupFlat)
     const groupIds = groups.map((g) => g.id)
 
+    const template = toSessionTemplate(templateData as SessionTemplateRow)
+
     if (groupIds.length === 0) {
+      const eventItems =
+        template.category === 'EVENT' ? await this.getEventItems(id, 'template') : []
       return {
-        template: toSessionTemplate(templateData as SessionTemplateRow),
+        template,
         groups,
         activities: [],
+        eventItems,
       }
     }
 
@@ -619,10 +645,13 @@ export class SupabaseAdapter implements DataAdapter {
     if (actError) throw actError
     const activities = (actData as ActivityRow[]).map(toActivity)
 
+    const eventItems = template.category === 'EVENT' ? await this.getEventItems(id, 'template') : []
+
     return {
-      template: toSessionTemplate(templateData as SessionTemplateRow),
+      template,
       groups,
       activities,
+      eventItems,
     }
   }
 
@@ -672,7 +701,12 @@ export class SupabaseAdapter implements DataAdapter {
       }
     }
 
-    return { template: createdTemplate, groups: allGroups, activities: allActivities }
+    return {
+      template: createdTemplate,
+      groups: allGroups,
+      activities: allActivities,
+      eventItems: [],
+    }
   }
 
   // TODO: These writes are non-atomic. Migrate to a Supabase RPC stored procedure to ensure consistency. See PR #11.
@@ -729,12 +763,125 @@ export class SupabaseAdapter implements DataAdapter {
       }
     }
 
-    return { template: updatedTemplate, groups: allGroups, activities: allActivities }
+    const eventItems =
+      updatedTemplate.category === 'EVENT' ? await this.getEventItems(template.id, 'template') : []
+
+    return { template: updatedTemplate, groups: allGroups, activities: allActivities, eventItems }
+  }
+
+  async cloneSessionTemplate(id: string, _userId: string): Promise<SessionTemplateFull> {
+    // 1. Fetch the full template
+    const original = await this.getSessionTemplateFull(id)
+    if (!original) throw new Error('Template not found')
+
+    // 2. Clone template with activity groups
+    const { id: _id, createdAt: _ca, updatedAt: _ua, ...templateData } = original.template
+    const clonedFull = await this.createSessionTemplateFull(
+      { ...templateData, name: `${templateData.name} (Copy)` },
+      original.groups.map((g) => ({
+        group: { ...g, sessionTemplateId: '' },
+        activities: original.activities
+          .filter((a) => a.activityGroupId === g.id)
+          .map(({ id: _aid, activityGroupId: _agid, ...actData }) => actData),
+      })),
+    )
+
+    // 3. Clone event items with isPacked = false (EV-5 invariant)
+    const clonedItems: EventItem[] = []
+    for (const item of original.eventItems) {
+      const clonedItem = await this.saveEventItem(
+        {
+          userId: item.userId,
+          name: item.name,
+          category: item.category,
+          quantity: item.quantity,
+          isPacked: false, // EV-5: always reset
+          sortOrder: item.sortOrder,
+          notes: item.notes,
+        },
+        clonedFull.template.id,
+        'template',
+      )
+      clonedItems.push(clonedItem)
+    }
+
+    return { ...clonedFull, eventItems: clonedItems }
   }
 
   async deleteSessionTemplate(id: string): Promise<void> {
     const { error } = await this.client.from('session_templates').delete().eq('id', id)
     if (error) throw error
+  }
+
+  // ---------------------------------------------------------------------------
+  // Event item operations
+  // ---------------------------------------------------------------------------
+
+  async getEventItems(parentId: string, parentType: 'template' | 'log'): Promise<EventItem[]> {
+    const column = parentType === 'template' ? 'session_template_id' : 'workout_log_id'
+    const { data, error } = await this.client
+      .from('event_items')
+      .select('*')
+      .eq(column, parentId)
+      .order('category')
+      .order('sort_order')
+    if (error) throw error
+    return (data as EventItemRow[]).map(toEventItem)
+  }
+
+  async saveEventItem(
+    item: Omit<EventItem, 'id' | 'createdAt' | 'updatedAt'>,
+    parentId: string,
+    parentType: 'template' | 'log',
+  ): Promise<EventItem> {
+    const row = fromEventItem(item, parentId, parentType)
+    const { data, error } = await this.client.from('event_items').insert(row).select().single()
+    if (error) throw error
+    return toEventItem(data as EventItemRow)
+  }
+
+  async updateEventItem(item: EventItem): Promise<EventItem> {
+    const { data, error } = await this.client
+      .from('event_items')
+      .update({
+        name: item.name,
+        category: item.category ?? null,
+        quantity: item.quantity,
+        is_packed: item.isPacked,
+        sort_order: item.sortOrder,
+        notes: item.notes ?? null,
+      })
+      .eq('id', item.id)
+      .select()
+      .single()
+    if (error) throw error
+    return toEventItem(data as EventItemRow)
+  }
+
+  async deleteEventItem(itemId: string): Promise<void> {
+    const { error } = await this.client.from('event_items').delete().eq('id', itemId)
+    if (error) throw error
+  }
+
+  async toggleEventItemPacked(itemId: string, isPacked: boolean): Promise<EventItem> {
+    const { data, error } = await this.client
+      .from('event_items')
+      .update({ is_packed: isPacked })
+      .eq('id', itemId)
+      .select()
+      .single()
+    if (error) throw error
+    return toEventItem(data as EventItemRow)
+  }
+
+  async reorderEventItems(items: Array<{ id: string; sortOrder: number }>): Promise<void> {
+    const results = await Promise.all(
+      items.map(({ id, sortOrder }) =>
+        this.client.from('event_items').update({ sort_order: sortOrder }).eq('id', id),
+      ),
+    )
+    const firstError = results.find((r) => r.error)?.error
+    if (firstError) throw firstError
   }
 
   // ---------------------------------------------------------------------------
@@ -956,6 +1103,20 @@ export class SupabaseAdapter implements DataAdapter {
   async deleteProgram(id: string): Promise<void> {
     const { error } = await this.client.from('programs').delete().eq('id', id)
     if (error) throw error
+  }
+
+  async assignProgramToMember(
+    programId: string,
+    memberId: string,
+    groupId: string,
+  ): Promise<Program> {
+    const { data, error } = await this.client.rpc('assign_program_to_member', {
+      p_program_id: programId,
+      p_target_user_id: memberId,
+      p_group_id: groupId,
+    })
+    if (error) throw error
+    return toProgram(data)
   }
 
   // ---------------------------------------------------------------------------
@@ -1702,6 +1863,313 @@ export class SupabaseAdapter implements DataAdapter {
           connectionId: connectionMap[log.user_id],
         }
       })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Chat operations
+  // ---------------------------------------------------------------------------
+
+  async createConversation(
+    type: ConversationType,
+    participantIds: string[],
+    title?: string,
+    groupId?: string,
+  ): Promise<Conversation> {
+    const userId = await this.getCurrentUserId()
+
+    // 1. Insert the conversation row
+    const conversationRow = fromConversation({
+      type,
+      title,
+      groupId,
+    })
+    const { data: convData, error: convError } = await this.client
+      .from('conversations')
+      .insert(conversationRow)
+      .select()
+      .single()
+    if (convError) throw convError
+
+    // 2. Insert participant rows -- include the current user plus all provided IDs
+    const allParticipantIds = [...new Set([userId, ...participantIds])]
+    for (const pid of allParticipantIds) {
+      const { error: pError } = await this.client.from('conversation_participants').insert({
+        conversation_id: (convData as ConversationRow).id,
+        user_id: pid,
+      })
+      if (pError) throw pError
+    }
+
+    return toConversation(convData as ConversationRow, allParticipantIds)
+  }
+
+  async getConversations(): Promise<Conversation[]> {
+    const userId = await this.getCurrentUserId()
+
+    // Select conversations where the current user is an active participant
+    const { data: participantRows, error: pError } = await this.client
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', userId)
+      .is('left_at', null)
+    if (pError) throw pError
+
+    const conversationIds = (participantRows ?? []).map((r) => r.conversation_id)
+    if (conversationIds.length === 0) return []
+
+    const { data, error } = await this.client
+      .from('conversations')
+      .select('*')
+      .in('id', conversationIds)
+      .order('updated_at', { ascending: false })
+    if (error) throw error
+
+    // Fetch all active participants for these conversations
+    const { data: allParticipants, error: apError } = await this.client
+      .from('conversation_participants')
+      .select('conversation_id, user_id')
+      .in('conversation_id', conversationIds)
+      .is('left_at', null)
+    if (apError) throw apError
+
+    const participantsByConv = new Map<string, string[]>()
+    for (const p of allParticipants ?? []) {
+      const list = participantsByConv.get(p.conversation_id) ?? []
+      list.push(p.user_id)
+      participantsByConv.set(p.conversation_id, list)
+    }
+
+    return (data as ConversationRow[]).map((row) =>
+      toConversation(row, participantsByConv.get(row.id) ?? []),
+    )
+  }
+
+  async getConversation(id: string): Promise<Conversation | null> {
+    const { data, error } = await this.client
+      .from('conversations')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    if (error) throw error
+    if (!data) return null
+
+    const { data: participants, error: pError } = await this.client
+      .from('conversation_participants')
+      .select('user_id')
+      .eq('conversation_id', id)
+      .is('left_at', null)
+    if (pError) throw pError
+
+    return toConversation(
+      data as ConversationRow,
+      (participants ?? []).map((p) => p.user_id),
+    )
+  }
+
+  async findDirectConversation(otherUserId: string): Promise<Conversation | null> {
+    const userId = await this.getCurrentUserId()
+
+    // Find direct conversations where both the current user and the other user
+    // are active participants. We query the current user's active direct
+    // conversations first, then check for the other user's membership.
+    const { data: myParticipations, error: myError } = await this.client
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', userId)
+      .is('left_at', null)
+    if (myError) throw myError
+
+    const myConversationIds = (myParticipations ?? []).map((r) => r.conversation_id)
+    if (myConversationIds.length === 0) return null
+
+    // Filter to direct conversations only
+    const { data: directConvs, error: convError } = await this.client
+      .from('conversations')
+      .select('id')
+      .in('id', myConversationIds)
+      .eq('type', 'direct')
+    if (convError) throw convError
+
+    const directIds = (directConvs ?? []).map((r) => r.id)
+    if (directIds.length === 0) return null
+
+    // Find one where the other user is also an active participant
+    const { data: otherParticipation, error: otherError } = await this.client
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', otherUserId)
+      .in('conversation_id', directIds)
+      .is('left_at', null)
+      .limit(1)
+      .maybeSingle()
+    if (otherError) throw otherError
+    if (!otherParticipation) return null
+
+    return this.getConversation(otherParticipation.conversation_id)
+  }
+
+  async sendMessage(
+    conversationId: string,
+    messageType: MessageType,
+    content?: string,
+  ): Promise<Message> {
+    const userId = await this.getCurrentUserId()
+
+    const row = fromMessage({
+      conversationId,
+      senderId: userId,
+      messageType,
+      content,
+    })
+    // Remove sync_status -- it is SQLite-only and not a column in the Supabase table
+    delete row.sync_status
+
+    const { data, error } = await this.client.from('messages').insert(row).select().single()
+    if (error) throw error
+    return toMessage(data as MessageRow)
+  }
+
+  async getMessages(
+    conversationId: string,
+    options: { before?: string; limit: number },
+  ): Promise<Message[]> {
+    let query = this.client
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: false })
+      .limit(options.limit)
+
+    if (options.before) {
+      query = query.lt('created_at', options.before)
+    }
+
+    const { data, error } = await query
+    if (error) throw error
+    return (data as MessageRow[]).map(toMessage).reverse()
+  }
+
+  async getMessagesSince(conversationId: string, since: string): Promise<Message[]> {
+    const { data, error } = await this.client
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .gt('created_at', since)
+      .order('created_at', { ascending: true })
+    if (error) throw error
+    return (data as MessageRow[]).map(toMessage)
+  }
+
+  async updateLastRead(conversationId: string): Promise<void> {
+    const userId = await this.getCurrentUserId()
+
+    const { error } = await this.client
+      .from('conversation_participants')
+      .update({ last_read_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+    if (error) throw error
+  }
+
+  async getUnreadCounts(): Promise<Map<string, number>> {
+    const userId = await this.getCurrentUserId()
+
+    // Get all active participations with their last_read_at
+    const { data: participations, error: pError } = await this.client
+      .from('conversation_participants')
+      .select('conversation_id, last_read_at')
+      .eq('user_id', userId)
+      .is('left_at', null)
+    if (pError) throw pError
+
+    const counts = new Map<string, number>()
+    if (!participations?.length) return counts
+
+    // For each participation, count messages created after last_read_at
+    // Exclude the user's own messages (consistent with Tauri adapter behavior)
+    for (const p of participations) {
+      let query = this.client
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('conversation_id', p.conversation_id)
+        .neq('sender_id', userId)
+
+      if (p.last_read_at) {
+        query = query.gt('created_at', p.last_read_at)
+      }
+      // If last_read_at is null, all messages are unread -- no filter needed
+
+      const { count, error } = await query
+      if (error) {
+        console.warn(
+          `[getUnreadCounts] Failed for conversation ${p.conversation_id}:`,
+          error.message,
+        )
+        continue
+      }
+      counts.set(p.conversation_id, count ?? 0)
+    }
+
+    return counts
+  }
+
+  async addParticipant(conversationId: string, userId: string): Promise<ConversationParticipant> {
+    const { data, error } = await this.client
+      .from('conversation_participants')
+      .insert({
+        conversation_id: conversationId,
+        user_id: userId,
+      })
+      .select()
+      .single()
+    if (error) throw error
+    return toConversationParticipant(data as ConversationParticipantRow)
+  }
+
+  async leaveConversation(conversationId: string): Promise<void> {
+    const userId = await this.getCurrentUserId()
+
+    const { error } = await this.client
+      .from('conversation_participants')
+      .update({ left_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+    if (error) throw error
+  }
+
+  async toggleArchive(conversationId: string): Promise<void> {
+    const userId = await this.getCurrentUserId()
+
+    // Read current is_archived value
+    const { data: current, error: fetchError } = await this.client
+      .from('conversation_participants')
+      .select('is_archived')
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+      .single()
+    if (fetchError) throw fetchError
+
+    // Toggle to the opposite
+    const { error } = await this.client
+      .from('conversation_participants')
+      .update({ is_archived: !current.is_archived })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+    if (error) throw error
+  }
+
+  async saveMediaAttachment(
+    messageId: string,
+    attachment: Omit<MediaAttachment, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Promise<MediaAttachment> {
+    const row = fromMediaAttachment({ ...attachment, messageId })
+    const { data, error } = await this.client
+      .from('media_attachments')
+      .insert(row)
+      .select()
+      .single()
+    if (error) throw error
+    return toMediaAttachment(data as MediaAttachmentRow)
   }
 }
 

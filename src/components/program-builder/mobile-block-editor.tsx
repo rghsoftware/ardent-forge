@@ -386,20 +386,35 @@ function MobileDayRow({
     )
   }
 
+  const isEvent = session.sessionType === 'EVENT'
+
   return (
     <button
       type="button"
       onClick={handleTap}
-      className="flex min-h-12 items-center gap-3 bg-surface-charcoal px-3 py-2 text-left transition-colors hover:bg-surface-steel"
+      className={`flex min-h-12 items-center gap-3 px-3 py-2 text-left transition-colors ${
+        isEvent
+          ? 'border-l-2 border-ember bg-surface-iron hover:bg-surface-steel'
+          : 'bg-surface-charcoal hover:bg-surface-steel'
+      }`}
       aria-label={`Session: ${session.templateName ?? 'Unnamed'} on ${DAY_ABBREVIATIONS[dayOfWeek]}`}
     >
       <span className="w-8 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
         {DAY_ABBREVIATIONS[dayOfWeek]}
       </span>
-      <span className="min-w-0 flex-1 truncate text-xs text-bone-white">
+      {isEvent && <Icon name="flag" size={14} fill className="shrink-0 text-ember" />}
+      <span
+        className={`min-w-0 flex-1 truncate text-xs ${
+          isEvent ? 'font-display uppercase tracking-wider text-bone-white' : 'text-bone-white'
+        }`}
+      >
         {session.templateName ?? 'Unnamed'}
       </span>
-      <span className="bg-surface-steel px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-warm-ash">
+      <span
+        className={`px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ${
+          isEvent ? 'bg-ember/15 text-ember' : 'bg-surface-steel text-warm-ash'
+        }`}
+      >
         {session.sessionType}
       </span>
       <div

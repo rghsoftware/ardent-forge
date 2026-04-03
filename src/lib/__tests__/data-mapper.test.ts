@@ -31,6 +31,16 @@ import {
   fromScheduledSession,
   toProgramActivation,
   fromProgramActivation,
+  toEventItem,
+  fromEventItem,
+  toConversation,
+  fromConversation,
+  toConversationParticipant,
+  fromConversationParticipant,
+  toMessage,
+  fromMessage,
+  toMediaAttachment,
+  fromMediaAttachment,
 } from '../data-mapper'
 import type {
   ExerciseRow,
@@ -48,6 +58,11 @@ import type {
   BlockWeekRow,
   ScheduledSessionRow,
   ProgramActivationRow,
+  EventItemRow,
+  ConversationRow,
+  ConversationParticipantRow,
+  MessageRow,
+  MediaAttachmentRow,
 } from '../database.types'
 
 // ===========================================================================
@@ -113,6 +128,7 @@ const workoutLogRowFull: WorkoutLogRow = {
   perceived_difficulty: 7,
   bodyweight_at_session: { value: 185, unit: 'lb' },
   overall_notes: 'Felt strong today',
+  event_metadata: null,
   created_at: now,
   updated_at: later,
 }
@@ -128,6 +144,7 @@ const workoutLogRowNulls: WorkoutLogRow = {
   perceived_difficulty: null,
   bodyweight_at_session: null,
   overall_notes: null,
+  event_metadata: null,
   created_at: now,
   updated_at: now,
 }
@@ -1499,6 +1516,7 @@ const sessionTemplateRowFull: SessionTemplateRow = {
   rest_between_groups: JSON.stringify({ seconds: 120 }),
   time_cap: JSON.stringify({ seconds: 3600 }),
   scoring: 'NONE',
+  event_metadata: null,
   created_at: now,
   updated_at: now,
 }
@@ -1512,6 +1530,7 @@ const sessionTemplateRowNulls: SessionTemplateRow = {
   rest_between_groups: null,
   time_cap: null,
   scoring: 'FOR_TIME',
+  event_metadata: null,
   created_at: now,
   updated_at: now,
 }
@@ -2039,5 +2058,541 @@ describe('toProgramActivation / fromProgramActivation', () => {
     expect(row.current_block_ordinal).toBe(1)
     expect(row.current_week_number).toBe(2)
     expect(row.start_date).toBe('2025-06-15')
+  })
+})
+
+// ===========================================================================
+// EventItem
+// ===========================================================================
+
+const eventItemRow: EventItemRow = {
+  id: 'ei-001',
+  session_template_id: 'st-001',
+  workout_log_id: null,
+  user_id: userId,
+  name: 'Ruck plate',
+  category: 'Gear',
+  quantity: 2,
+  is_packed: true,
+  sort_order: 3,
+  notes: 'The heavy one',
+  created_at: now,
+  updated_at: later,
+}
+
+describe('EventItem mappers', () => {
+  it('toEventItem maps all fields from snake_case to camelCase', () => {
+    const result = toEventItem(eventItemRow)
+    expect(result.id).toBe('ei-001')
+    expect(result.sessionTemplateId).toBe('st-001')
+    expect(result.workoutLogId).toBeUndefined()
+    expect(result.userId).toBe(userId)
+    expect(result.name).toBe('Ruck plate')
+    expect(result.category).toBe('Gear')
+    expect(result.quantity).toBe(2)
+    expect(result.isPacked).toBe(true)
+    expect(result.sortOrder).toBe(3)
+    expect(result.notes).toBe('The heavy one')
+    expect(result.createdAt).toBe(now)
+    expect(result.updatedAt).toBe(later)
+  })
+
+  it('toEventItem converts null optional fields to undefined', () => {
+    const row: EventItemRow = {
+      ...eventItemRow,
+      session_template_id: null,
+      workout_log_id: 'wl-001',
+      category: null,
+      notes: null,
+    }
+    const result = toEventItem(row)
+    expect(result.sessionTemplateId).toBeUndefined()
+    expect(result.workoutLogId).toBe('wl-001')
+    expect(result.category).toBeUndefined()
+    expect(result.notes).toBeUndefined()
+  })
+
+  it('fromEventItem maps camelCase to snake_case for template parent', () => {
+    const domain = toEventItem(eventItemRow)
+    const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+    const row = fromEventItem(body, 'st-001', 'template')
+    expect(row.session_template_id).toBe('st-001')
+    expect(row.workout_log_id).toBeNull()
+    expect(row.user_id).toBe(userId)
+    expect(row.name).toBe('Ruck plate')
+    expect(row.category).toBe('Gear')
+    expect(row.quantity).toBe(2)
+    expect(row.is_packed).toBe(true)
+    expect(row.sort_order).toBe(3)
+    expect(row.notes).toBe('The heavy one')
+  })
+
+  it('fromEventItem maps camelCase to snake_case for log parent', () => {
+    const domain = toEventItem(eventItemRow)
+    const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+    const row = fromEventItem(body, 'wl-001', 'log')
+    expect(row.session_template_id).toBeNull()
+    expect(row.workout_log_id).toBe('wl-001')
+  })
+
+  it('fromEventItem converts undefined optional fields to null', () => {
+    const row = fromEventItem(
+      {
+        sessionTemplateId: undefined,
+        workoutLogId: undefined,
+        userId,
+        name: 'Water bottle',
+        category: undefined,
+        quantity: 1,
+        isPacked: false,
+        sortOrder: 0,
+        notes: undefined,
+      },
+      'st-001',
+      'template',
+    )
+    expect(row.category).toBeNull()
+    expect(row.notes).toBeNull()
+  })
+})
+
+// ===========================================================================
+// Chat Mappers
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Chat fixtures
+// ---------------------------------------------------------------------------
+
+const conversationRowDirect: ConversationRow = {
+  id: 'conv-001',
+  type: 'direct',
+  title: null,
+  group_id: null,
+  created_at: now,
+  updated_at: now,
+}
+
+const conversationRowGroup: ConversationRow = {
+  id: 'conv-002',
+  type: 'group',
+  title: 'Team Chat',
+  group_id: 'group-001',
+  created_at: now,
+  updated_at: later,
+}
+
+const participantRowFull: ConversationParticipantRow = {
+  id: 'cp-001',
+  conversation_id: 'conv-001',
+  user_id: 'user-001',
+  last_read_at: later,
+  is_archived: false,
+  joined_at: now,
+  left_at: null,
+}
+
+const participantRowNulls: ConversationParticipantRow = {
+  id: 'cp-002',
+  conversation_id: 'conv-001',
+  user_id: 'user-002',
+  last_read_at: null,
+  is_archived: true,
+  joined_at: now,
+  left_at: later,
+}
+
+const messageRowFull: MessageRow = {
+  id: 'msg-001',
+  conversation_id: 'conv-001',
+  sender_id: 'user-001',
+  message_type: 'text',
+  content: 'Hey, great workout today!',
+  created_at: now,
+  updated_at: now,
+  sync_status: 'synced',
+}
+
+const messageRowNulls: MessageRow = {
+  id: 'msg-002',
+  conversation_id: 'conv-001',
+  sender_id: null,
+  message_type: 'system',
+  content: null,
+  created_at: now,
+  updated_at: now,
+}
+
+const mediaAttachmentRowFull: MediaAttachmentRow = {
+  id: 'media-001',
+  message_id: 'msg-001',
+  provider: 'cloudflare_stream',
+  provider_asset_id: 'cf-asset-abc123',
+  media_type: 'video',
+  original_filename: 'squat-form-check.mp4',
+  mime_type: 'video/mp4',
+  thumbnail_url: 'https://cdn.example.com/thumb/abc123.jpg',
+  playback_url: 'https://stream.example.com/abc123/manifest.m3u8',
+  duration_seconds: 45,
+  file_size_bytes: 15728640,
+  status: 'ready',
+  created_at: now,
+  updated_at: now,
+}
+
+const mediaAttachmentRowNulls: MediaAttachmentRow = {
+  id: 'media-002',
+  message_id: 'msg-001',
+  provider: 'supabase_storage',
+  provider_asset_id: null,
+  media_type: 'image',
+  original_filename: null,
+  mime_type: null,
+  thumbnail_url: null,
+  playback_url: null,
+  duration_seconds: null,
+  file_size_bytes: null,
+  status: 'processing',
+  created_at: now,
+  updated_at: now,
+}
+
+// ---------------------------------------------------------------------------
+// toConversation / fromConversation
+// ---------------------------------------------------------------------------
+
+describe('Chat Mappers', () => {
+  describe('Conversation', () => {
+    it('maps a direct conversation row to domain type', () => {
+      const result = toConversation(conversationRowDirect)
+      expect(result.id).toBe('conv-001')
+      expect(result.type).toBe('direct')
+      expect(result.title).toBeUndefined()
+      expect(result.groupId).toBeUndefined()
+      expect(result.createdAt).toBe(now)
+      expect(result.updatedAt).toBe(now)
+    })
+
+    it('maps a group conversation row with all optional fields', () => {
+      const result = toConversation(conversationRowGroup)
+      expect(result.id).toBe('conv-002')
+      expect(result.type).toBe('group')
+      expect(result.title).toBe('Team Chat')
+      expect(result.groupId).toBe('group-001')
+      expect(result.updatedAt).toBe(later)
+    })
+
+    it('throws on invalid conversation type enum', () => {
+      const bad = { ...conversationRowDirect, type: 'channel' }
+      expect(() => toConversation(bad)).toThrow(Error)
+    })
+
+    it('throws on empty string conversation type', () => {
+      const bad = { ...conversationRowDirect, type: '' }
+      expect(() => toConversation(bad)).toThrow(Error)
+    })
+
+    it('fromConversation maps domain to DB row shape', () => {
+      const domain = toConversation(conversationRowGroup)
+      const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+      const row = fromConversation(body)
+      expect(row.type).toBe('group')
+      expect(row.title).toBe('Team Chat')
+      expect(row.group_id).toBe('group-001')
+    })
+
+    it('fromConversation maps undefined optional fields to null', () => {
+      const domain = toConversation(conversationRowDirect)
+      const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+      const row = fromConversation(body)
+      expect(row.title).toBeNull()
+      expect(row.group_id).toBeNull()
+    })
+
+    it('fromConversation omits id, created_at, updated_at', () => {
+      const domain = toConversation(conversationRowGroup)
+      const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+      const row = fromConversation(body)
+      expect(row).not.toHaveProperty('id')
+      expect(row).not.toHaveProperty('created_at')
+      expect(row).not.toHaveProperty('updated_at')
+    })
+
+    it('round-trip: preserves key fields', () => {
+      const domain = toConversation(conversationRowGroup)
+      const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+      const roundTripped = fromConversation(body)
+      expect(roundTripped.type).toBe(conversationRowGroup.type)
+      expect(roundTripped.title).toBe(conversationRowGroup.title)
+      expect(roundTripped.group_id).toBe(conversationRowGroup.group_id)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // ConversationParticipant
+  // -------------------------------------------------------------------------
+
+  describe('ConversationParticipant', () => {
+    it('maps a fully populated participant row to domain type', () => {
+      const result = toConversationParticipant(participantRowFull)
+      expect(result.id).toBe('cp-001')
+      expect(result.conversationId).toBe('conv-001')
+      expect(result.userId).toBe('user-001')
+      expect(result.lastReadAt).toBe(later)
+      expect(result.isArchived).toBe(false)
+      expect(result.joinedAt).toBe(now)
+      expect(result.leftAt).toBeUndefined()
+    })
+
+    it('maps null optional fields to undefined, non-null to values', () => {
+      const result = toConversationParticipant(participantRowNulls)
+      expect(result.lastReadAt).toBeUndefined()
+      expect(result.isArchived).toBe(true)
+      expect(result.leftAt).toBe(later)
+    })
+
+    it('uses joined_at for createdAt', () => {
+      const result = toConversationParticipant(participantRowFull)
+      expect(result.createdAt).toBe(participantRowFull.joined_at)
+    })
+
+    it('fromConversationParticipant maps domain to DB row shape', () => {
+      const domain = toConversationParticipant(participantRowFull)
+      const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+      const row = fromConversationParticipant(body)
+      expect(row.conversation_id).toBe('conv-001')
+      expect(row.user_id).toBe('user-001')
+      expect(row.last_read_at).toBe(later)
+      expect(row.is_archived).toBe(false)
+      expect(row.joined_at).toBe(now)
+      expect(row.left_at).toBeNull()
+    })
+
+    it('fromConversationParticipant maps undefined optional fields to null', () => {
+      const domain = toConversationParticipant(participantRowFull)
+      const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+      const row = fromConversationParticipant(body)
+      expect(row.left_at).toBeNull()
+    })
+
+    it('fromConversationParticipant omits id', () => {
+      const domain = toConversationParticipant(participantRowFull)
+      const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+      const row = fromConversationParticipant(body)
+      expect(row).not.toHaveProperty('id')
+    })
+
+    it('round-trip: preserves key fields', () => {
+      const domain = toConversationParticipant(participantRowFull)
+      const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+      const roundTripped = fromConversationParticipant(body)
+      expect(roundTripped.conversation_id).toBe(participantRowFull.conversation_id)
+      expect(roundTripped.user_id).toBe(participantRowFull.user_id)
+      expect(roundTripped.is_archived).toBe(participantRowFull.is_archived)
+      expect(roundTripped.joined_at).toBe(participantRowFull.joined_at)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Message
+  // -------------------------------------------------------------------------
+
+  describe('Message', () => {
+    it('maps a fully populated message row to domain type', () => {
+      const result = toMessage(messageRowFull)
+      expect(result.id).toBe('msg-001')
+      expect(result.conversationId).toBe('conv-001')
+      expect(result.senderId).toBe('user-001')
+      expect(result.messageType).toBe('text')
+      expect(result.content).toBe('Hey, great workout today!')
+      expect(result.createdAt).toBe(now)
+      expect(result.syncStatus).toBe('synced')
+    })
+
+    it('maps null optional fields to undefined', () => {
+      const result = toMessage(messageRowNulls)
+      expect(result.senderId).toBeUndefined()
+      expect(result.content).toBeUndefined()
+      expect(result.syncStatus).toBeUndefined()
+    })
+
+    it('throws on invalid message_type enum', () => {
+      const bad = { ...messageRowFull, message_type: 'emoji' }
+      expect(() => toMessage(bad)).toThrow(Error)
+    })
+
+    it('throws on invalid sync_status enum', () => {
+      const bad = { ...messageRowFull, sync_status: 'queued' }
+      expect(() => toMessage(bad)).toThrow(Error)
+    })
+
+    it('accepts all valid message types', () => {
+      const validTypes = ['text', 'workout', 'media', 'file', 'system']
+      for (const msgType of validTypes) {
+        const result = toMessage({ ...messageRowFull, message_type: msgType })
+        expect(result.messageType).toBe(msgType)
+      }
+    })
+
+    it('fromMessage maps domain to DB row shape', () => {
+      const domain = toMessage(messageRowFull)
+      const { id: _, createdAt: _c, ...body } = domain
+      const row = fromMessage(body)
+      expect(row.conversation_id).toBe('conv-001')
+      expect(row.sender_id).toBe('user-001')
+      expect(row.message_type).toBe('text')
+      expect(row.content).toBe('Hey, great workout today!')
+      expect(row.sync_status).toBe('synced')
+    })
+
+    it('fromMessage maps undefined optional fields to null', () => {
+      const domain = toMessage(messageRowNulls)
+      const { id: _, createdAt: _c, ...body } = domain
+      const row = fromMessage(body)
+      expect(row.sender_id).toBeNull()
+      expect(row.content).toBeNull()
+    })
+
+    it('fromMessage omits id, created_at', () => {
+      const domain = toMessage(messageRowFull)
+      const { id: _, createdAt: _c, ...body } = domain
+      const row = fromMessage(body)
+      expect(row).not.toHaveProperty('id')
+      expect(row).not.toHaveProperty('created_at')
+    })
+
+    it('round-trip: preserves key fields', () => {
+      const domain = toMessage(messageRowFull)
+      const { id: _, createdAt: _c, ...body } = domain
+      const roundTripped = fromMessage(body)
+      expect(roundTripped.conversation_id).toBe(messageRowFull.conversation_id)
+      expect(roundTripped.sender_id).toBe(messageRowFull.sender_id)
+      expect(roundTripped.message_type).toBe(messageRowFull.message_type)
+      expect(roundTripped.content).toBe(messageRowFull.content)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // MediaAttachment
+  // -------------------------------------------------------------------------
+
+  describe('MediaAttachment', () => {
+    it('maps a fully populated media attachment row to domain type', () => {
+      const result = toMediaAttachment(mediaAttachmentRowFull)
+      expect(result.id).toBe('media-001')
+      expect(result.messageId).toBe('msg-001')
+      expect(result.provider).toBe('cloudflare_stream')
+      expect(result.providerAssetId).toBe('cf-asset-abc123')
+      expect(result.mediaType).toBe('video')
+      expect(result.originalFilename).toBe('squat-form-check.mp4')
+      expect(result.mimeType).toBe('video/mp4')
+      expect(result.thumbnailUrl).toBe('https://cdn.example.com/thumb/abc123.jpg')
+      expect(result.playbackUrl).toBe('https://stream.example.com/abc123/manifest.m3u8')
+      expect(result.durationSeconds).toBe(45)
+      expect(result.fileSizeBytes).toBe(15728640)
+      expect(result.status).toBe('ready')
+      expect(result.createdAt).toBe(now)
+      expect(result.updatedAt).toBe(now)
+    })
+
+    it('maps null optional fields to undefined', () => {
+      const result = toMediaAttachment(mediaAttachmentRowNulls)
+      expect(result.providerAssetId).toBeUndefined()
+      expect(result.originalFilename).toBeUndefined()
+      expect(result.mimeType).toBeUndefined()
+      expect(result.thumbnailUrl).toBeUndefined()
+      expect(result.playbackUrl).toBeUndefined()
+      expect(result.durationSeconds).toBeUndefined()
+      expect(result.fileSizeBytes).toBeUndefined()
+    })
+
+    it('throws on invalid provider enum', () => {
+      const bad = { ...mediaAttachmentRowFull, provider: 'aws_s3' }
+      expect(() => toMediaAttachment(bad)).toThrow(Error)
+    })
+
+    it('throws on invalid media_type enum', () => {
+      const bad = { ...mediaAttachmentRowFull, media_type: 'audio' }
+      expect(() => toMediaAttachment(bad)).toThrow(Error)
+    })
+
+    it('throws on invalid status enum', () => {
+      const bad = { ...mediaAttachmentRowFull, status: 'uploading' }
+      expect(() => toMediaAttachment(bad)).toThrow(Error)
+    })
+
+    it('accepts all valid provider values', () => {
+      for (const provider of ['cloudflare_stream', 'supabase_storage']) {
+        const result = toMediaAttachment({ ...mediaAttachmentRowFull, provider })
+        expect(result.provider).toBe(provider)
+      }
+    })
+
+    it('accepts all valid media_type values', () => {
+      for (const mediaType of ['video', 'image', 'file']) {
+        const result = toMediaAttachment({ ...mediaAttachmentRowFull, media_type: mediaType })
+        expect(result.mediaType).toBe(mediaType)
+      }
+    })
+
+    it('accepts all valid status values', () => {
+      for (const status of ['processing', 'ready', 'failed']) {
+        const result = toMediaAttachment({ ...mediaAttachmentRowFull, status })
+        expect(result.status).toBe(status)
+      }
+    })
+
+    it('fromMediaAttachment maps domain to DB row shape', () => {
+      const domain = toMediaAttachment(mediaAttachmentRowFull)
+      const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+      const row = fromMediaAttachment(body)
+      expect(row.message_id).toBe('msg-001')
+      expect(row.provider).toBe('cloudflare_stream')
+      expect(row.provider_asset_id).toBe('cf-asset-abc123')
+      expect(row.media_type).toBe('video')
+      expect(row.original_filename).toBe('squat-form-check.mp4')
+      expect(row.mime_type).toBe('video/mp4')
+      expect(row.thumbnail_url).toBe('https://cdn.example.com/thumb/abc123.jpg')
+      expect(row.playback_url).toBe('https://stream.example.com/abc123/manifest.m3u8')
+      expect(row.duration_seconds).toBe(45)
+      expect(row.file_size_bytes).toBe(15728640)
+      expect(row.status).toBe('ready')
+    })
+
+    it('fromMediaAttachment maps undefined optional fields to null', () => {
+      const domain = toMediaAttachment(mediaAttachmentRowNulls)
+      const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+      const row = fromMediaAttachment(body)
+      expect(row.provider_asset_id).toBeNull()
+      expect(row.original_filename).toBeNull()
+      expect(row.mime_type).toBeNull()
+      expect(row.thumbnail_url).toBeNull()
+      expect(row.playback_url).toBeNull()
+      expect(row.duration_seconds).toBeNull()
+      expect(row.file_size_bytes).toBeNull()
+    })
+
+    it('fromMediaAttachment omits id, created_at, updated_at', () => {
+      const domain = toMediaAttachment(mediaAttachmentRowFull)
+      const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+      const row = fromMediaAttachment(body)
+      expect(row).not.toHaveProperty('id')
+      expect(row).not.toHaveProperty('created_at')
+      expect(row).not.toHaveProperty('updated_at')
+    })
+
+    it('round-trip: preserves key fields', () => {
+      const domain = toMediaAttachment(mediaAttachmentRowFull)
+      const { id: _, createdAt: _c, updatedAt: _u, ...body } = domain
+      const roundTripped = fromMediaAttachment(body)
+      expect(roundTripped.message_id).toBe(mediaAttachmentRowFull.message_id)
+      expect(roundTripped.provider).toBe(mediaAttachmentRowFull.provider)
+      expect(roundTripped.media_type).toBe(mediaAttachmentRowFull.media_type)
+      expect(roundTripped.status).toBe(mediaAttachmentRowFull.status)
+      expect(roundTripped.provider_asset_id).toBe(mediaAttachmentRowFull.provider_asset_id)
+      expect(roundTripped.original_filename).toBe(mediaAttachmentRowFull.original_filename)
+      expect(roundTripped.duration_seconds).toBe(mediaAttachmentRowFull.duration_seconds)
+      expect(roundTripped.file_size_bytes).toBe(mediaAttachmentRowFull.file_size_bytes)
+    })
   })
 })

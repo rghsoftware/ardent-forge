@@ -11,7 +11,15 @@ pub async fn push_all(
     let client = Client::new();
 
     for table in super::SYNCABLE_TABLES {
-        push_table(pool, &client, table, supabase_url, supabase_key, access_token).await?;
+        push_table(
+            pool,
+            &client,
+            table,
+            supabase_url,
+            supabase_key,
+            access_token,
+        )
+        .await?;
     }
     Ok(())
 }
@@ -24,6 +32,11 @@ async fn push_table(
     supabase_key: &str,
     access_token: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if !crate::sync::SYNCABLE_TABLES.contains(&table) {
+        log::error!("[push] push_table called with non-allowlisted table: {table}");
+        return Err(format!("Table '{table}' is not in SYNCABLE_TABLES allowlist").into());
+    }
+
     let last_push_at: Option<(i64,)> =
         sqlx::query_as("SELECT last_push_at FROM sync_metadata WHERE table_name = ?")
             .bind(table)
@@ -66,7 +79,9 @@ async fn push_table(
         }
     }
     if parse_errors > 0 {
-        log::warn!("[push] Skipping last_push_at update for {table} due to {parse_errors} parse errors");
+        log::warn!(
+            "[push] Skipping last_push_at update for {table} due to {parse_errors} parse errors"
+        );
         return Ok(());
     }
 
@@ -87,7 +102,7 @@ async fn push_table(
         .await?;
 
     if response.status().is_success() {
-        let now = chrono::Utc::now().timestamp_millis();
+        let now = chrono::Utc::now().timestamp();
         sqlx::query("UPDATE sync_metadata SET last_push_at = ? WHERE table_name = ?")
             .bind(now)
             .bind(table)
@@ -108,13 +123,13 @@ mod tests {
     use sqlx::sqlite::SqlitePoolOptions;
 
     #[tokio::test]
-    async fn push_table_propagates_query_error_for_nonexistent_table() {
+    async fn push_table_rejects_non_allowlisted_table() {
         let pool = SqlitePoolOptions::new()
             .connect(":memory:")
             .await
             .expect("pool");
 
-        // Create the sync_metadata table so the first query succeeds
+        // Create the sync_metadata table so setup is valid
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS sync_metadata (
                 table_name TEXT PRIMARY KEY,
@@ -128,11 +143,8 @@ mod tests {
 
         let client = Client::new();
 
-        // "nonexistent_table" has no rows in sync_metadata and no real table,
-        // so pragma_table_info returns empty columns, producing an empty
-        // json_object() expression. The SELECT query itself will fail.
-        // The function should either succeed with 0 rows or fail gracefully
-        // (not panic).
+        // "nonexistent_table" is not in SYNCABLE_TABLES, so the allowlist
+        // guard should reject it with an error.
         let result = push_table(
             &pool,
             &client,
@@ -143,12 +155,60 @@ mod tests {
         )
         .await;
 
-        // It should either succeed (empty pragma = empty columns = early return)
-        // or fail with a proper error, but must never panic.
-        assert!(result.is_ok() || result.is_err());
-        if let Err(e) = result {
-            let msg = e.to_string();
-            assert!(!msg.is_empty());
-        }
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(
+            msg.contains("not in SYNCABLE_TABLES allowlist"),
+            "Expected allowlist error, got: {msg}"
+        );
+    }
+
+    #[tokio::test]
+    async fn push_table_returns_ok_for_empty_allowlisted_table() {
+        let pool = SqlitePoolOptions::new()
+            .connect(":memory:")
+            .await
+            .expect("pool");
+
+        // Create sync_metadata and the exercises table (a real allowlisted table)
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS sync_metadata (
+                table_name TEXT PRIMARY KEY,
+                last_push_at INTEGER NOT NULL DEFAULT 0,
+                last_pull_at INTEGER NOT NULL DEFAULT 0
+            )",
+        )
+        .execute(&pool)
+        .await
+        .expect("create sync_metadata");
+
+        sqlx::query(
+            "CREATE TABLE exercises (
+                id TEXT PRIMARY KEY,
+                name TEXT,
+                is_custom INTEGER,
+                updated_at INTEGER,
+                aliases TEXT
+            )",
+        )
+        .execute(&pool)
+        .await
+        .expect("create exercises table");
+
+        let client = Client::new();
+
+        // "exercises" is in SYNCABLE_TABLES and the table exists but is empty,
+        // so push_table should return Ok (no rows to push).
+        let result = push_table(
+            &pool,
+            &client,
+            "exercises",
+            "http://example.com",
+            "key",
+            "token",
+        )
+        .await;
+
+        assert!(result.is_ok());
     }
 }

@@ -48,6 +48,15 @@ export function createMockAdapter(
     createSessionTemplateFull: vi.fn().mockResolvedValue({}),
     updateSessionTemplateFull: vi.fn().mockResolvedValue({}),
     deleteSessionTemplate: vi.fn().mockResolvedValue(undefined),
+    cloneSessionTemplate: vi.fn().mockResolvedValue({}),
+
+    // Event item operations
+    getEventItems: vi.fn().mockResolvedValue([]),
+    saveEventItem: vi.fn().mockResolvedValue({}),
+    updateEventItem: vi.fn().mockResolvedValue({}),
+    deleteEventItem: vi.fn().mockResolvedValue(undefined),
+    toggleEventItemPacked: vi.fn().mockResolvedValue({}),
+    reorderEventItems: vi.fn().mockResolvedValue(undefined),
 
     // Program operations
     getPrograms: vi.fn().mockResolvedValue([]),
@@ -55,6 +64,7 @@ export function createMockAdapter(
     createProgramFull: vi.fn().mockResolvedValue({}),
     updateProgramFull: vi.fn().mockResolvedValue({}),
     deleteProgram: vi.fn().mockResolvedValue(undefined),
+    assignProgramToMember: vi.fn().mockResolvedValue({}),
 
     // Program activation operations
     getActiveProgram: vi.fn().mockResolvedValue(null),
@@ -108,6 +118,21 @@ export function createMockAdapter(
     // Activity Feed operations
     getGroupActivityFeed: vi.fn().mockResolvedValue([]),
     getConnectionActivityFeed: vi.fn().mockResolvedValue([]),
+
+    // Chat operations
+    createConversation: vi.fn().mockResolvedValue({}),
+    getConversations: vi.fn().mockResolvedValue([]),
+    getConversation: vi.fn().mockResolvedValue(null),
+    findDirectConversation: vi.fn().mockResolvedValue(null),
+    sendMessage: vi.fn().mockResolvedValue({}),
+    getMessages: vi.fn().mockResolvedValue([]),
+    getMessagesSince: vi.fn().mockResolvedValue([]),
+    updateLastRead: vi.fn().mockResolvedValue(undefined),
+    getUnreadCounts: vi.fn().mockResolvedValue(new Map()),
+    addParticipant: vi.fn().mockResolvedValue({}),
+    leaveConversation: vi.fn().mockResolvedValue(undefined),
+    toggleArchive: vi.fn().mockResolvedValue(undefined),
+    saveMediaAttachment: vi.fn().mockResolvedValue({}),
   }
 
   return { ...base, ...overrides }

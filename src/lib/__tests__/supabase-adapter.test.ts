@@ -68,6 +68,7 @@ const workoutLogRow: WorkoutLogRow = {
   perceived_difficulty: 7,
   bodyweight_at_session: { value: 185, unit: 'lb' },
   overall_notes: 'Felt strong today',
+  event_metadata: null,
   created_at: now,
   updated_at: later,
 }
@@ -154,6 +155,7 @@ const sessionTemplateRow: SessionTemplateRow = {
   rest_between_groups: JSON.stringify({ seconds: 120 }),
   time_cap: null,
   scoring: 'NONE',
+  event_metadata: null,
   created_at: now,
   updated_at: now,
 }

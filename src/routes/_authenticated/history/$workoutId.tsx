@@ -5,6 +5,7 @@ import { useExercises } from '@/hooks/use-exercises'
 import { WorkoutDetailHeader } from '@/components/history/workout-detail-header'
 import { WorkoutDetailExercises } from '@/components/history/workout-detail-exercises'
 import { DeleteWorkoutDialog } from '@/components/history/delete-workout-dialog'
+import { EventDetail } from '@/components/event-builder/event-detail'
 import { ShareDialog } from '@/components/sharing/share-dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -112,6 +113,52 @@ function WorkoutDetailPage() {
   }
 
   const { log, groups, activities, sets } = workoutData
+
+  // -------------------------------------------------------------------------
+  // Event log: render EventDetail instead of exercise breakdown
+  // -------------------------------------------------------------------------
+
+  if (log.eventMetadata) {
+    return (
+      <div className="min-h-[100dvh] bg-surface-anvil">
+        <WorkoutDetailHeader
+          log={log}
+          allSets={sets}
+          onDelete={() => setShowDeleteDialog(true)}
+          shareAction={
+            <ShareDialog
+              entityType="WORKOUT_LOG"
+              entityId={workoutId}
+              trigger={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="flex-1 min-h-10 text-xs uppercase tracking-wider"
+                >
+                  <Icon name="share" size={16} />
+                  Share
+                </Button>
+              }
+            />
+          }
+        />
+
+        <EventDetail
+          workoutLogId={workoutId}
+          eventMetadata={log.eventMetadata}
+          interactive={false}
+        />
+
+        {/* Delete dialog */}
+        <DeleteWorkoutDialog
+          workoutId={workoutId}
+          open={showDeleteDialog}
+          onClose={() => setShowDeleteDialog(false)}
+          onSuccess={handleDeleteSuccess}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-[100dvh] bg-surface-anvil">

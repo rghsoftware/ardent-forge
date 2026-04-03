@@ -40,6 +40,7 @@ export interface WorkoutLogRow {
   perceived_difficulty: number | null
   bodyweight_at_session: unknown
   overall_notes: string | null
+  event_metadata: unknown
   created_at: string
   updated_at: string
 }
@@ -108,6 +109,22 @@ export interface SessionTemplateRow {
   rest_between_groups: string | null
   time_cap: string | null
   scoring: string
+  event_metadata: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface EventItemRow {
+  id: string
+  session_template_id: string | null
+  workout_log_id: string | null
+  user_id: string
+  name: string
+  category: string | null
+  quantity: number
+  is_packed: boolean
+  sort_order: number
+  notes: string | null
   created_at: string
   updated_at: string
 }
@@ -242,6 +259,53 @@ export interface ShareLinkRow {
   entity_id: string
   created_by: string
   is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ConversationRow {
+  id: string
+  type: string
+  title: string | null
+  group_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ConversationParticipantRow {
+  id: string
+  conversation_id: string
+  user_id: string
+  last_read_at: string | null
+  is_archived: boolean
+  joined_at: string
+  left_at: string | null
+}
+
+export interface MessageRow {
+  id: string
+  conversation_id: string
+  sender_id: string | null
+  message_type: string
+  content: string | null
+  created_at: string
+  updated_at: string
+  sync_status?: string
+}
+
+export interface MediaAttachmentRow {
+  id: string
+  message_id: string
+  provider: string
+  provider_asset_id: string | null
+  media_type: string
+  original_filename: string | null
+  mime_type: string | null
+  thumbnail_url: string | null
+  playback_url: string | null
+  duration_seconds: number | null
+  file_size_bytes: number | null
+  status: string
   created_at: string
   updated_at: string
 }

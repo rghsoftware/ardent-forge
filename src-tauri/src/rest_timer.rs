@@ -78,10 +78,13 @@ impl RestTimerState {
                 let total = guard.total;
                 drop(guard);
 
-                if let Err(e) = app_clone.emit("timer_tick", serde_json::json!({
-                    "remaining": remaining,
-                    "total": total
-                })) {
+                if let Err(e) = app_clone.emit(
+                    "timer_tick",
+                    serde_json::json!({
+                        "remaining": remaining,
+                        "total": total
+                    }),
+                ) {
                     log::debug!("[rest-timer] Failed to emit timer_tick: {e}");
                 }
 

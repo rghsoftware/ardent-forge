@@ -38,7 +38,7 @@ pub async fn enqueue(
 ) -> Result<(), sqlx::Error> {
     let id = Uuid::new_v4().to_string();
     let payload_str = payload.map(|p| p.to_string());
-    let now = chrono::Utc::now().timestamp_millis();
+    let now = chrono::Utc::now().timestamp();
 
     sqlx::query(
         "INSERT INTO sync_queue (id, table_name, row_id, operation, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -79,12 +79,11 @@ pub async fn mark_failed(pool: &SqlitePool, id: &str) -> Result<DeadLetterResult
         .await?;
 
     // Fetch table_name and row_id before potentially deleting
-    let row: Option<(String, String, i64)> = sqlx::query_as(
-        "SELECT table_name, row_id, attempts FROM sync_queue WHERE id = ?",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await?;
+    let row: Option<(String, String, i64)> =
+        sqlx::query_as("SELECT table_name, row_id, attempts FROM sync_queue WHERE id = ?")
+            .bind(id)
+            .fetch_optional(pool)
+            .await?;
 
     if let Some((table_name, row_id, attempts)) = row {
         if attempts >= MAX_RETRY_ATTEMPTS {
@@ -113,7 +112,9 @@ pub async fn flush(
         let url = format!("{}/rest/v1/{}", supabase_url, item.table_name);
         let result = if item.operation == "DELETE" {
             let mut delete_url = Url::parse(&url)?;
-            delete_url.query_pairs_mut().append_pair("id", &format!("eq.{}", item.row_id));
+            delete_url
+                .query_pairs_mut()
+                .append_pair("id", &format!("eq.{}", item.row_id));
             client
                 .delete(delete_url.as_str())
                 .header("apikey", supabase_key)
@@ -223,15 +224,9 @@ mod tests {
     async fn dequeue_returns_fifo_order() {
         let pool = setup_pool().await;
         for i in 1..=3 {
-            enqueue(
-                &pool,
-                "workout_logs",
-                &format!("row-{i}"),
-                "INSERT",
-                None,
-            )
-            .await
-            .expect("enqueue");
+            enqueue(&pool, "workout_logs", &format!("row-{i}"), "INSERT", None)
+                .await
+                .expect("enqueue");
             // Small delay to ensure distinct created_at timestamps
             tokio::time::sleep(tokio::time::Duration::from_millis(2)).await;
         }
@@ -263,9 +258,7 @@ mod tests {
             .await
             .expect("enqueue");
         let items = dequeue_batch(&pool, 10).await.expect("dequeue");
-        let result = mark_failed(&pool, &items[0].id)
-            .await
-            .expect("mark_failed");
+        let result = mark_failed(&pool, &items[0].id).await.expect("mark_failed");
         assert!(matches!(result, DeadLetterResult::Retrying));
         let row: (i64,) = sqlx::query_as("SELECT attempts FROM sync_queue WHERE id = ?")
             .bind(&items[0].id)
@@ -293,12 +286,11 @@ mod tests {
         let result = mark_failed(&pool, &id).await.expect("mark_failed");
         assert!(matches!(result, DeadLetterResult::Retrying));
         // Item must still exist
-        let count: (i64,) =
-            sqlx::query_as("SELECT COUNT(*) FROM sync_queue WHERE id = ?")
-                .bind(&id)
-                .fetch_one(&pool)
-                .await
-                .expect("count");
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM sync_queue WHERE id = ?")
+            .bind(&id)
+            .fetch_one(&pool)
+            .await
+            .expect("count");
         assert_eq!(count.0, 1);
     }
 
@@ -320,12 +312,11 @@ mod tests {
         let result = mark_failed(&pool, &id).await.expect("mark_failed");
         assert!(matches!(result, DeadLetterResult::DeadLettered { .. }));
         // Item must be deleted
-        let count: (i64,) =
-            sqlx::query_as("SELECT COUNT(*) FROM sync_queue WHERE id = ?")
-                .bind(&id)
-                .fetch_one(&pool)
-                .await
-                .expect("count");
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM sync_queue WHERE id = ?")
+            .bind(&id)
+            .fetch_one(&pool)
+            .await
+            .expect("count");
         assert_eq!(count.0, 0);
     }
 }

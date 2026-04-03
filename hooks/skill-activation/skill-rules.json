@@ -1,0 +1,81 @@
+﻿{
+  "skills": {
+    "plan-spec": {
+      "promptTriggers": {
+        "keywords": ["spec", "feature spec", "requirement", "plan this feature"],
+        "intentPatterns": ["plan.*feature", "spec.*out", "write.*spec", "what.*build"]
+      },
+      "priority": "critical"
+    },
+    "plan-steps": {
+      "promptTriggers": {
+        "keywords": ["break down", "create tasks", "plan the steps", "implementation steps"],
+        "intentPatterns": ["break.*down", "create.*tasks", "step.*plan"]
+      },
+      "priority": "critical"
+    },
+    "plan-quick": {
+      "promptTriggers": {
+        "keywords": ["quick fix", "quick plan", "small task", "quick task"],
+        "intentPatterns": ["quick.*plan", "small.*fix", "just.*do.*this"]
+      },
+      "priority": "high"
+    },
+    "impl-start": {
+      "promptTriggers": {
+        "keywords": ["implement", "start working", "continue", "resume", "build this"],
+        "intentPatterns": ["implement.*feature", "start.*impl", "continue.*work", "resume.*impl"]
+      },
+      "priority": "critical"
+    },
+    "review-capture": {
+      "promptTriggers": {
+        "keywords": ["review", "capture review", "code review", "review findings"],
+        "intentPatterns": ["review.*code", "capture.*findings", "save.*review"]
+      },
+      "priority": "high"
+    },
+    "review-resolve": {
+      "promptTriggers": {
+        "keywords": ["resolve review", "fix review", "work through review"],
+        "intentPatterns": ["resolve.*review", "fix.*findings", "address.*review"]
+      },
+      "priority": "high"
+    },
+    "adr-create": {
+      "promptTriggers": {
+        "keywords": ["adr", "decision record", "architectural decision"],
+        "intentPatterns": ["create.*adr", "record.*decision", "document.*decision"]
+      },
+      "priority": "high"
+    },
+    "sub-agent-invocation": {
+      "promptTriggers": {
+        "keywords": ["delegate", "sub-agent", "specialist", "team build"],
+        "intentPatterns": ["delegate.*to", "invoke.*agent", "spawn.*agent"]
+      },
+      "priority": "medium"
+    },
+    "session-management": {
+      "promptTriggers": {
+        "keywords": ["session", "debug session", "migration session"],
+        "intentPatterns": ["start.*session", "create.*session"]
+      },
+      "priority": "medium"
+    },
+    "git-commits": {
+      "promptTriggers": {
+        "keywords": ["commit", "git commit", "push", "git push"],
+        "intentPatterns": ["commit.*code", "push.*changes", "git.*commit"]
+      },
+      "priority": "high"
+    },
+    "codebase-navigation": {
+      "promptTriggers": {
+        "keywords": ["explore codebase", "find in code", "where is", "codebase"],
+        "intentPatterns": ["explore.*code", "navigate.*code", "find.*in.*code"]
+      },
+      "priority": "medium"
+    }
+  }
+}

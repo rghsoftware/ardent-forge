@@ -12,11 +12,10 @@ pub async fn get_app_config(
     pool: State<'_, SqlitePool>,
     key: String,
 ) -> Result<Option<String>, AppError> {
-    let row: Option<(String,)> =
-        sqlx::query_as("SELECT value FROM app_config WHERE key = ?")
-            .bind(&key)
-            .fetch_optional(pool.inner())
-            .await?;
+    let row: Option<(String,)> = sqlx::query_as("SELECT value FROM app_config WHERE key = ?")
+        .bind(&key)
+        .fetch_optional(pool.inner())
+        .await?;
 
     Ok(row.map(|(v,)| v))
 }
@@ -39,10 +38,7 @@ pub async fn set_app_config(
 
 /// Deletes the entry for `key` from the `app_config` table. No-op if the key does not exist.
 #[tauri::command]
-pub async fn clear_app_config(
-    pool: State<'_, SqlitePool>,
-    key: String,
-) -> Result<(), AppError> {
+pub async fn clear_app_config(pool: State<'_, SqlitePool>, key: String) -> Result<(), AppError> {
     sqlx::query("DELETE FROM app_config WHERE key = ?")
         .bind(&key)
         .execute(pool.inner())

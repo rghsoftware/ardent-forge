@@ -25,6 +25,10 @@ pub const SYNCABLE_TABLES: &[&str] = &[
     "block_weeks",
     "scheduled_sessions",
     "program_activations",
+    "conversations",
+    "conversation_participants",
+    "messages",
+    "media_attachments",
 ];
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -90,12 +94,7 @@ impl SyncEngine {
 
     // ---- auth lifecycle ----
 
-    pub async fn set_auth(
-        &self,
-        access_token: String,
-        supabase_url: String,
-        supabase_key: String,
-    ) {
+    pub async fn set_auth(&self, access_token: String, supabase_url: String, supabase_key: String) {
         *self.credentials.write().await = Some(SyncCredentials {
             supabase_url,
             supabase_key,
@@ -144,12 +143,41 @@ impl SyncEngine {
         let app_handle = self.app_handle.clone();
 
         tokio::spawn(async move {
+            let mut first_run = true;
+
             loop {
                 let creds = credentials.read().await.clone();
                 let creds = match creds {
                     Some(c) => c,
                     None => break,
                 };
+
+                // Initial pull on first sign-in
+                if first_run {
+                    first_run = false;
+                    if needs_initial_pull(&pool).await {
+                        transition_state(&state, &app_handle, SyncState::Pulling).await;
+                        if let Err(e) = pull::pull_all(
+                            &pool,
+                            &creds.supabase_url,
+                            &creds.supabase_key,
+                            &creds.access_token,
+                            &app_handle,
+                        )
+                        .await
+                        {
+                            log::error!("[sync] Initial pull failed: {e}");
+                            transition_state(
+                                &state,
+                                &app_handle,
+                                SyncState::Error {
+                                    message: format!("Initial pull failed: {e}"),
+                                },
+                            )
+                            .await;
+                        }
+                    }
+                }
 
                 // Push phase
                 transition_state(&state, &app_handle, SyncState::Pushing).await;
@@ -194,12 +222,75 @@ impl SyncEngine {
                         },
                     )
                     .await;
-                    return;
+                    // Continue the loop -- don't kill sync permanently
                 }
 
                 // Wait 30 seconds before next cycle
                 tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
             }
         })
+    }
+}
+
+/// Check whether this device has ever completed a pull.
+///
+/// Returns `true` when all `last_pull_at` values are 0 (or the table is empty),
+/// meaning the device has never pulled remote data.
+async fn needs_initial_pull(pool: &SqlitePool) -> bool {
+    let result: Option<(i64,)> = sqlx::query_as("SELECT MAX(last_pull_at) FROM sync_metadata")
+        .fetch_optional(pool)
+        .await
+        .unwrap_or(None);
+
+    match result {
+        Some((max_pull,)) => max_pull == 0,
+        None => true, // Empty table means we never pulled
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::SqlitePool;
+
+    async fn test_pool() -> SqlitePool {
+        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS sync_metadata (
+                table_name TEXT PRIMARY KEY,
+                last_push_at INTEGER NOT NULL DEFAULT 0,
+                last_pull_at INTEGER NOT NULL DEFAULT 0
+            )",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        pool
+    }
+
+    #[tokio::test]
+    async fn needs_initial_pull_empty_table() {
+        let pool = test_pool().await;
+        assert!(needs_initial_pull(&pool).await);
+    }
+
+    #[tokio::test]
+    async fn needs_initial_pull_all_zero() {
+        let pool = test_pool().await;
+        sqlx::query("INSERT INTO sync_metadata (table_name, last_pull_at) VALUES ('exercises', 0), ('workout_logs', 0)")
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert!(needs_initial_pull(&pool).await);
+    }
+
+    #[tokio::test]
+    async fn needs_initial_pull_one_nonzero() {
+        let pool = test_pool().await;
+        sqlx::query("INSERT INTO sync_metadata (table_name, last_pull_at) VALUES ('exercises', 0), ('workout_logs', 1700000000)")
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert!(!needs_initial_pull(&pool).await);
     }
 }

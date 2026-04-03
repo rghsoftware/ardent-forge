@@ -104,6 +104,30 @@ export function useDeleteProgram() {
   })
 }
 
+export function useAssignProgram() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      programId,
+      memberId,
+      groupId,
+    }: {
+      programId: string
+      memberId: string
+      groupId: string
+    }) => getAdapter().assignProgramToMember(programId, memberId, groupId),
+    onError: (err) => {
+      console.error('[programs] Failed to assign program:', err)
+    },
+    onSettled: (_, _err, { programId }) => {
+      queryClient.invalidateQueries({ queryKey: ['programs'] })
+      queryClient.invalidateQueries({ queryKey: ['program-full', programId] })
+      queryClient.invalidateQueries({ queryKey: ['active-program'] })
+    },
+  })
+}
+
 export function useSetActiveProgram() {
   const queryClient = useQueryClient()
 
