@@ -355,6 +355,89 @@
 
 ---
 
+## Wave 7: Test Coverage & Polish (from PR #35 review)
+
+### S015-T: Unit tests for deriveItems (message-list.tsx)
+**Agent:** quality-engineer
+**Files:** `src/components/chat/__tests__/message-list.test.ts`
+**Depends on:** S006
+
+- [ ] Test date separator insertion at day boundaries
+- [ ] Test timestamp cluster insertion at 5-minute gaps
+- [ ] Test blocked user filtering
+- [ ] Test `showSender` logic for group conversations
+- [ ] Test empty input array
+
+**Acceptance:**
+- All branches of `deriveItems` covered
+- Pure function tests (no React rendering needed)
+
+### S016-T: Unit tests for useBlockedUsers
+**Agent:** quality-engineer
+**Files:** `src/hooks/__tests__/use-blocked-users.test.ts`
+**Depends on:** S012
+
+- [ ] Test block/unblock operations
+- [ ] Test localStorage persistence (scoped to user ID)
+- [ ] Test Set operations (add, delete, has)
+- [ ] Test corruption handling (non-array JSON, invalid localStorage)
+
+**Acceptance:**
+- renderHook + localStorage mock
+- All happy paths and error paths covered
+
+### S017-T: Unit tests for formatTypingText (typing-indicator.tsx)
+**Agent:** quality-engineer
+**Files:** `src/components/chat/__tests__/typing-indicator.test.ts`
+**Depends on:** S008
+
+- [ ] Test 0 users (empty string)
+- [ ] Test 1 user (singular)
+- [ ] Test 2 users (conjunction)
+- [ ] Test 3+ users (count)
+
+**Acceptance:**
+- All 4 grammar branches covered
+
+### S018-T: Unit tests for relativeTime and getInitials (conversation-list.tsx)
+**Agent:** quality-engineer
+**Files:** `src/components/chat/__tests__/conversation-list.test.ts`
+**Depends on:** S003
+
+- [ ] Test relativeTime: now, minutes, hours, days, beyond a week
+- [ ] Test getInitials: single word, two words, empty string
+
+**Acceptance:**
+- All branches covered
+
+### S019: Migrate useBlockedUsers to Zustand store
+**Agent:** frontend-specialist-4
+**Files:** `src/hooks/use-blocked-users.ts`
+**Depends on:** S012
+
+- [ ] Convert useState/useCallback hook to Zustand store per project conventions
+- [ ] Maintain localStorage persistence (scoped to user ID)
+- [ ] Update all consumers
+
+**Acceptance:**
+- Follows project Zustand store patterns
+- All existing behavior preserved
+
+### S020: Wire archive action in conversation header
+**Agent:** frontend-specialist-2
+**Files:** `src/components/chat/conversation-header.tsx`, `src/components/chat/conversation-detail.tsx`
+**Depends on:** S004
+
+- [ ] Wire "Archive" menu button to `useToggleArchive` mutation
+- [ ] Add loading state and error feedback
+- [ ] Navigate back to `/comms` on success
+
+**Acceptance:**
+- Archive button triggers mutation
+- User sees feedback on success/failure
+
+---
+
 ## Milestone Summary
 
 | Wave | Tasks | Parallel | Description |
