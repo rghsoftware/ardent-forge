@@ -30,6 +30,11 @@ vi.mock('@/lib/auth', () => ({
   useAuth: () => ({ user: { id: 'user-1', email: 'test@example.com' }, isGuest: false }),
 }))
 
+// Mock useUnreadCounts to avoid QueryClient dependency
+vi.mock('@/hooks/use-chat', () => ({
+  useUnreadCounts: () => ({ data: undefined }),
+}))
+
 describe('MobileNav', () => {
   it('renders all five nav items plus profile', () => {
     render(<MobileNav />)
@@ -37,7 +42,7 @@ describe('MobileNav', () => {
     expect(screen.getByText('Tracker')).toBeInTheDocument()
     expect(screen.getByText('Library')).toBeInTheDocument()
     expect(screen.getByText('Vault')).toBeInTheDocument()
-    expect(screen.getByText('Social')).toBeInTheDocument()
+    expect(screen.getByText('Comms')).toBeInTheDocument()
     expect(screen.getByText('Me')).toBeInTheDocument()
   })
 
@@ -47,7 +52,7 @@ describe('MobileNav', () => {
     expect(screen.getByTestId('icon-history')).toBeInTheDocument()
     expect(screen.getByTestId('icon-library_books')).toBeInTheDocument()
     expect(screen.getByTestId('icon-monitoring')).toBeInTheDocument()
-    expect(screen.getByTestId('icon-group')).toBeInTheDocument()
+    expect(screen.getByTestId('icon-chat')).toBeInTheDocument()
   })
 
   it('renders correct links for each nav item', () => {
@@ -56,7 +61,7 @@ describe('MobileNav', () => {
     expect(screen.getByTestId('nav-link-/history')).toBeInTheDocument()
     expect(screen.getByTestId('nav-link-/library')).toBeInTheDocument()
     expect(screen.getByTestId('nav-link-/vault')).toBeInTheDocument()
-    expect(screen.getByTestId('nav-link-/groups')).toBeInTheDocument()
+    expect(screen.getByTestId('nav-link-/comms')).toBeInTheDocument()
     expect(screen.getByTestId('nav-link-/profile')).toBeInTheDocument()
   })
 

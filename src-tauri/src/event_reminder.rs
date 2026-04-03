@@ -427,7 +427,10 @@ mod tests {
     #[test]
     fn deterministic_id_in_expected_range() {
         let id = deterministic_id("some-uuid", 3);
-        assert!((3000..4000).contains(&id), "ID {id} should be in 3000..3999");
+        assert!(
+            (3000..4000).contains(&id),
+            "ID {id} should be in 3000..3999"
+        );
     }
 
     #[test]
