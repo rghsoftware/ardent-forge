@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useResolveShareLink, useSharedProgram, useSharedWorkout } from '@/hooks/use-share-links'
+import { useMetadata } from '@/hooks/use-metadata'
 import { SharedProgramView } from '@/components/sharing/shared-program-view'
 import { SharedWorkoutView } from '@/components/sharing/shared-workout-view'
 import { CloneProgramButton } from '@/components/sharing/clone-program-button'
@@ -124,6 +125,19 @@ function SharedTokenPage() {
   const { data: workoutData, isLoading: isWorkoutLoading, isError: isWorkoutError } = useSharedWorkout(
     isWorkoutLink ? token : '',
   )
+
+  // Dynamic link preview metadata
+  const metadataTitle = isProgramLink && programData
+    ? programData.name
+    : isWorkoutLink && workoutData
+      ? 'Shared Workout'
+      : 'Shared Link'
+  const metadataDescription = isProgramLink && programData
+    ? `Check out "${programData.name}" on Ardent Forge`
+    : isWorkoutLink && workoutData
+      ? 'View this workout shared via Ardent Forge'
+      : 'View content shared via Ardent Forge'
+  useMetadata({ title: metadataTitle, description: metadataDescription })
 
   // Loading state
   if (isResolvingLink) {
