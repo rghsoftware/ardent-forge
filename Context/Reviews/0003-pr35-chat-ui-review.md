@@ -190,3 +190,4 @@ No tests for any of the 12 new components or the new hook. Minimum recommended b
 - [x] Build passes (`bun run build`)
 - [x] Lint passes (no new errors)
 - [x] Tests pass (1219/1219)
+- [x] Review verified (2026-04-03) -- all 15 fixes confirmed in code, follow-up tracked as GitHub issues #43-#51

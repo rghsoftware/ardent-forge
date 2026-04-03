@@ -10,7 +10,7 @@ import type { ConversationType, Message } from '@/domain/types'
 // Types
 // ---------------------------------------------------------------------------
 
-type MessageListItem =
+export type MessageListItem =
   | { type: 'date-separator'; key: string; date: string }
   | { type: 'timestamp'; key: string; time: string }
   | { type: 'message'; key: string; message: Message; showSender: boolean }
@@ -65,7 +65,8 @@ function formatTime(date: Date): string {
 // Derive the heterogeneous item list from flat messages
 // ---------------------------------------------------------------------------
 
-function deriveItems(
+// eslint-disable-next-line react-refresh/only-export-components
+export function deriveItems(
   messages: Message[],
   blockedUserIds: Set<string>,
   conversationType: ConversationType,

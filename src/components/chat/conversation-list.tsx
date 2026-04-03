@@ -7,45 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { NewConversationSheet } from '@/components/chat/new-conversation-sheet'
 import type { Conversation } from '@/domain/types'
-
-// ---------------------------------------------------------------------------
-// Relative timestamp helper
-// ---------------------------------------------------------------------------
-
-function relativeTime(isoDate: string): string {
-  const now = Date.now()
-  const then = new Date(isoDate).getTime()
-  const diffMs = now - then
-
-  if (diffMs < 0) return 'now'
-
-  const seconds = Math.floor(diffMs / 1000)
-  if (seconds < 60) return 'now'
-
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m`
-
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h`
-
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d`
-
-  // Beyond a week, show short date (e.g. "Apr 1")
-  const date = new Date(isoDate)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-// ---------------------------------------------------------------------------
-// Initials helper
-// ---------------------------------------------------------------------------
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  if (parts.length === 0 || !parts[0]) return '?'
-  if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? '?'
-  return (parts[0][0]?.toUpperCase() ?? '') + (parts[parts.length - 1][0]?.toUpperCase() ?? '')
-}
+import { getInitials, relativeTime } from './chat-utils'
 
 // ---------------------------------------------------------------------------
 // ConversationListSkeleton

@@ -8,6 +8,7 @@ interface ConversationHeaderProps {
   displayName: string
   participantCount?: number
   onBack: () => void
+  onArchive: () => void
   onBlock: () => void
   onLeave: () => void
   onViewParticipants: () => void
@@ -18,6 +19,7 @@ export function ConversationHeader({
   displayName,
   participantCount,
   onBack,
+  onArchive,
   onBlock,
   onLeave,
   onViewParticipants,
@@ -114,7 +116,13 @@ export function ConversationHeader({
                     closeMenu()
                   }}
                 />
-                <MenuButton label="Archive" onClick={closeMenu} />
+                <MenuButton
+                  label="Archive"
+                  onClick={() => {
+                    onArchive()
+                    closeMenu()
+                  }}
+                />
               </>
             ) : (
               <>
@@ -125,7 +133,13 @@ export function ConversationHeader({
                     closeMenu()
                   }}
                 />
-                <MenuButton label="Archive" onClick={closeMenu} />
+                <MenuButton
+                  label="Archive"
+                  onClick={() => {
+                    onArchive()
+                    closeMenu()
+                  }}
+                />
               </>
             )}
           </div>

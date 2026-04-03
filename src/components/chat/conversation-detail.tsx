@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useConversation, useRealtimeMessages, useUpdateLastRead } from '@/hooks/use-chat'
+import { useConversation, useRealtimeMessages, useToggleArchive, useUpdateLastRead } from '@/hooks/use-chat'
 import { useAuth } from '@/lib/auth'
 import { useBlockedUsers } from '@/hooks/use-blocked-users'
 import { useUserProfile } from '@/hooks/use-user-profile'
@@ -35,6 +35,7 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
   const { data: conversation, isLoading, isError } = useConversation(conversationId)
   const { typingUsers } = useRealtimeMessages(conversationId)
   const updateLastRead = useUpdateLastRead()
+  const toggleArchive = useToggleArchive()
   const { blockedIds, blockUser, unblockUser, isBlocked } = useBlockedUsers()
 
   // Dialog/sheet state
@@ -94,6 +95,14 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
     }
   }, [otherUserId, unblockUser])
 
+  const handleArchive = useCallback(() => {
+    toggleArchive.mutateAsync(conversationId).then(() => {
+      navigate({ to: '/comms' })
+    }).catch((err) => {
+      console.error('[chat] Archive failed:', err)
+    })
+  }, [conversationId, navigate, toggleArchive])
+
   const handleLeave = useCallback(() => {
     setLeaveDialogOpen(true)
   }, [])
@@ -146,6 +155,7 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
         displayName={displayName}
         participantCount={isGroup ? conversation.participantUserIds.length : undefined}
         onBack={handleBack}
+        onArchive={handleArchive}
         onBlock={handleBlock}
         onLeave={handleLeave}
         onViewParticipants={handleViewParticipants}

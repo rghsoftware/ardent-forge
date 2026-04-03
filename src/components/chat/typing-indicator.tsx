@@ -1,14 +1,8 @@
 import { cn } from '@/lib/utils'
+import { formatTypingText } from './chat-utils'
 
 interface TypingIndicatorProps {
   typingUsers: Array<{ userId: string; userName: string }>
-}
-
-function formatTypingText(users: TypingIndicatorProps['typingUsers']): string {
-  if (users.length === 0) return ''
-  if (users.length === 1) return `${users[0].userName} is typing`
-  if (users.length === 2) return `${users[0].userName} and ${users[1].userName} are typing`
-  return `${users.length} people are typing`
 }
 
 export function TypingIndicator({ typingUsers }: TypingIndicatorProps) {
