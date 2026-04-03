@@ -16,6 +16,7 @@ export const conversationSchema = syncableEntitySchema.extend({
   type: conversationTypeSchema,
   title: z.string().optional(),
   groupId: entityId.optional(),
+  participantUserIds: z.array(entityId).default([]),
 })
 export type Conversation = z.infer<typeof conversationSchema>
 

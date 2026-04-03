@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
+import { useUnreadCounts } from '@/hooks/use-chat'
 
 // Desktop sidebar shows all destinations including Builder (not suitable for mobile)
 const navItems = [
@@ -10,6 +11,7 @@ const navItems = [
   { label: 'Tracker', icon: 'history', to: '/history' },
   { label: 'Builder', icon: 'construction', to: '/builder' },
   { label: 'Vault', icon: 'monitoring', to: '/vault' },
+  { label: 'Comms', icon: 'chat', to: '/comms' },
   { label: 'Library', icon: 'library_books', to: '/library' },
   { label: 'Groups', icon: 'group', to: '/groups' },
   { label: 'Connections', icon: 'person_add', to: '/connections' },
@@ -37,6 +39,8 @@ export function SidebarNav() {
   const [signOutError, setSignOutError] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const { user, isGuest, signOut } = useAuth()
+  const { data: unreadMap } = useUnreadCounts()
+  const totalUnread = unreadMap ? Array.from(unreadMap.values()).reduce((sum, n) => sum + n, 0) : 0
 
   useEffect(() => {
     if (!menuOpen) return
@@ -111,7 +115,16 @@ export function SidebarNav() {
             activeProps={{ className: 'active' }}
             activeOptions={item.to === '/' ? { exact: true } : undefined}
           >
-            <Icon name={item.icon} size={20} className="shrink-0" />
+            {item.to === '/comms' ? (
+              <span className="relative shrink-0">
+                <Icon name={item.icon} size={20} />
+                {totalUnread > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-ember rounded-full" />
+                )}
+              </span>
+            ) : (
+              <Icon name={item.icon} size={20} className="shrink-0" />
+            )}
             {!collapsed && (
               <span className="text-xs uppercase tracking-wider truncate">{item.label}</span>
             )}

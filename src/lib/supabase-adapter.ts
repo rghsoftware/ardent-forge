@@ -1889,19 +1889,18 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (convError) throw convError
-    const conversation = toConversation(convData as ConversationRow)
 
     // 2. Insert participant rows -- include the current user plus all provided IDs
-    const allParticipantIds = new Set([userId, ...participantIds])
+    const allParticipantIds = [...new Set([userId, ...participantIds])]
     for (const pid of allParticipantIds) {
       const { error: pError } = await this.client.from('conversation_participants').insert({
-        conversation_id: conversation.id,
+        conversation_id: (convData as ConversationRow).id,
         user_id: pid,
       })
       if (pError) throw pError
     }
 
-    return conversation
+    return toConversation(convData as ConversationRow, allParticipantIds)
   }
 
   async getConversations(): Promise<Conversation[]> {
@@ -1924,7 +1923,25 @@ export class SupabaseAdapter implements DataAdapter {
       .in('id', conversationIds)
       .order('updated_at', { ascending: false })
     if (error) throw error
-    return (data as ConversationRow[]).map(toConversation)
+
+    // Fetch all active participants for these conversations
+    const { data: allParticipants, error: apError } = await this.client
+      .from('conversation_participants')
+      .select('conversation_id, user_id')
+      .in('conversation_id', conversationIds)
+      .is('left_at', null)
+    if (apError) throw apError
+
+    const participantsByConv = new Map<string, string[]>()
+    for (const p of allParticipants ?? []) {
+      const list = participantsByConv.get(p.conversation_id) ?? []
+      list.push(p.user_id)
+      participantsByConv.set(p.conversation_id, list)
+    }
+
+    return (data as ConversationRow[]).map((row) =>
+      toConversation(row, participantsByConv.get(row.id) ?? []),
+    )
   }
 
   async getConversation(id: string): Promise<Conversation | null> {
@@ -1934,7 +1951,19 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('id', id)
       .maybeSingle()
     if (error) throw error
-    return data ? toConversation(data as ConversationRow) : null
+    if (!data) return null
+
+    const { data: participants, error: pError } = await this.client
+      .from('conversation_participants')
+      .select('user_id')
+      .eq('conversation_id', id)
+      .is('left_at', null)
+    if (pError) throw pError
+
+    return toConversation(
+      data as ConversationRow,
+      (participants ?? []).map((p) => p.user_id),
+    )
   }
 
   async findDirectConversation(otherUserId: string): Promise<Conversation | null> {
@@ -2072,7 +2101,10 @@ export class SupabaseAdapter implements DataAdapter {
 
       const { count, error } = await query
       if (error) {
-        console.warn(`[getUnreadCounts] Failed for conversation ${p.conversation_id}:`, error.message)
+        console.warn(
+          `[getUnreadCounts] Failed for conversation ${p.conversation_id}:`,
+          error.message,
+        )
         continue
       }
       counts.set(p.conversation_id, count ?? 0)
