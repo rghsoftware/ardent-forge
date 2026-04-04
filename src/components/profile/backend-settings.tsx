@@ -54,11 +54,12 @@ export function BackendSettings() {
     if (!currentUrl) return
     try {
       await navigator.clipboard.writeText(currentUrl)
-    } catch {
-      // Copy is non-critical, swallow silently
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('[backend-settings] Failed to copy URL:', err)
+      toast('Failed to copy URL')
     }
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   const applyBackendChange = async (skipValidation = false) => {
@@ -290,6 +291,7 @@ export function BackendSettings() {
                 toast('Invite link copied')
               } catch (err) {
                 console.error('[backend-settings] Failed to copy invite link:', err)
+                toast('Failed to copy invite link')
               }
             }}
           >

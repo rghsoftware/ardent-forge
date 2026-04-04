@@ -125,7 +125,17 @@ function SetupPage() {
     setKey(parsed.key)
     setAdvancedOpen(true)
     setShowPasteField(false)
-    await validateAndSave(parsed.url, parsed.key)
+    try {
+      await validateAndSave(parsed.url, parsed.key)
+    } catch (err) {
+      console.error('[setup] Unexpected error in processInviteLink:', err)
+      setState({
+        phase: 'validation-failed',
+        supabaseUrl: parsed.url,
+        supabaseKey: parsed.key,
+        error: 'An unexpected error occurred. Please try again.',
+      })
+    }
   }
 
   const cancelRef = useRef<(() => Promise<void>) | null>(null)
@@ -154,7 +164,7 @@ function SetupPage() {
     } catch (err) {
       console.error('[setup] QR scan failed:', err)
       setScanning(false)
-      toast('QR scan failed')
+      toast('QR scan failed. Try pasting the invite link instead.')
     }
   }
 
@@ -238,7 +248,10 @@ function SetupPage() {
               aria-label={isTauri() ? 'Scan QR code' : 'Paste invite link'}
               onClick={() => {
                 if (isTauri()) {
-                  handleScan()
+                  handleScan().catch((err) => {
+                    console.error('[setup] QR scan failed:', err)
+                    toast('QR scan failed. Try pasting the invite link instead.')
+                  })
                 } else {
                   setShowPasteField(!showPasteField)
                 }
@@ -253,11 +266,13 @@ function SetupPage() {
             <ForgeInput
               type="text"
               placeholder="Paste invite link"
+              aria-label="Paste invite link"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   processInviteLink(e.currentTarget.value).catch((err) => {
                     console.error('[setup] Failed to process invite link:', err)
+                    toast('Something went wrong. Please try again.')
                   })
                 }
               }}
@@ -267,6 +282,7 @@ function SetupPage() {
                   e.preventDefault()
                   processInviteLink(pasted).catch((err) => {
                     console.error('[setup] Failed to process invite link:', err)
+                    toast('Something went wrong. Please try again.')
                   })
                 }
               }}

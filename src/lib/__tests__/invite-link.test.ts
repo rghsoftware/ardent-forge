@@ -65,6 +65,16 @@ describe('parseInviteLink', () => {
     expect(parsed).toEqual({ url: 'https://abc.supabase.co', key: 'key123' })
   })
 
+  it('returns null for empty-valued url param', () => {
+    expect(parseInviteLink('ardentforge://connect?url=&key=abc')).toBeNull()
+  })
+
+  it('returns null for empty-valued key param', () => {
+    expect(
+      parseInviteLink('ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key='),
+    ).toBeNull()
+  })
+
   it('returns null for wrong host/path', () => {
     expect(
       parseInviteLink('ardentforge://auth?url=https%3A%2F%2Fabc.supabase.co&key=abc'),
