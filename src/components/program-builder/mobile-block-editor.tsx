@@ -207,11 +207,12 @@ function MobileBlockCard({
   }, [newWeekId])
 
   return (
-    <Collapsible open={expanded} onOpenChange={setExpanded} asChild>
-      <div
-        className="border-l-2 border-forge bg-surface-iron milled-edge"
-        style={isNew ? { animation: 'block-enter 0.3s ease-out both' } : undefined}
-      >
+    <>
+      <Collapsible open={expanded} onOpenChange={setExpanded} asChild>
+        <div
+          className="border-l-2 border-forge bg-surface-iron milled-edge"
+          style={isNew ? { animation: 'block-enter 0.3s ease-out both' } : undefined}
+        >
         <div className="flex min-h-12 items-center gap-2 px-3 py-2">
           <CollapsibleTrigger asChild>
             <button
@@ -332,7 +333,8 @@ function MobileBlockCard({
             </Button>
           </div>
         </CollapsibleContent>
-      </div>
+        </div>
+      </Collapsible>
 
       <ConfirmDeleteDialog
         open={showDeleteConfirm}
@@ -341,7 +343,7 @@ function MobileBlockCard({
         description={deleteDescription}
         onConfirm={handleDelete}
       />
-    </Collapsible>
+    </>
   )
 }
 

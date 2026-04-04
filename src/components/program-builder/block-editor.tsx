@@ -148,13 +148,14 @@ export function BlockEditor({
   }, [])
 
   return (
-    <Collapsible open={expanded} onOpenChange={setExpanded} asChild>
-      <div
-        ref={setNodeRef}
-        style={style}
-        {...attributes}
-        className="border-l-2 border-forge bg-surface-iron milled-edge"
-      >
+    <>
+      <Collapsible open={expanded} onOpenChange={setExpanded} asChild>
+        <div
+          ref={setNodeRef}
+          style={style}
+          {...attributes}
+          className="border-l-2 border-forge bg-surface-iron milled-edge"
+        >
         <div
           className="flex min-h-12 cursor-pointer items-center gap-2 px-3 py-2"
           onClick={handleHeaderClick}
@@ -280,7 +281,8 @@ export function BlockEditor({
             </Button>
           </div>
         </CollapsibleContent>
-      </div>
+        </div>
+      </Collapsible>
 
       <ConfirmDeleteDialog
         open={showDeleteConfirm}
@@ -289,6 +291,6 @@ export function BlockEditor({
         description={deleteDescription}
         onConfirm={handleDelete}
       />
-    </Collapsible>
+    </>
   )
 }

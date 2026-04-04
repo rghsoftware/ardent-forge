@@ -10,7 +10,6 @@ import { BlockList } from '@/components/program-builder/block-list'
 import { MobileBlockEditor } from '@/components/program-builder/mobile-block-editor'
 import { SessionPickerSheet } from '@/components/program-builder/session-picker-sheet'
 import { CopyWeekDialog } from '@/components/program-builder/copy-week-dialog'
-import { ProgramPreview } from '@/components/program-builder/program-preview'
 import {
   createEmptyDraft,
   hydrateDraft,
@@ -60,7 +59,6 @@ function BuilderPage() {
 
   // Error, preview, and view state
   const [error, setError] = useState<string | null>(null)
-  const [previewMode, setPreviewMode] = useState(false)
   const [showWeekends, setShowWeekends] = useState(false)
 
   // Mutations
@@ -219,6 +217,18 @@ function BuilderPage() {
         </Button>
 
         <div className="flex-1" />
+
+        {error && <p className="text-xs text-warning-flare">{error}</p>}
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="bg-forge text-on-forge text-xs hover:brightness-110"
+        >
+          {isSaving ? 'Saving...' : 'Save program'}
+        </Button>
       </div>
 
       <div className="flex-shrink-0 px-4 pb-6">
@@ -274,32 +284,8 @@ function BuilderPage() {
             />
           </div>
         </div>
-
-        {/* Sticky save footer */}
-        <div className="sticky bottom-0 z-20 mt-6 border-t border-warm-ash/10 px-4 py-3 heat-blur lg:col-span-2">
-          <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setPreviewMode(true)}
-              className="min-h-12 text-xs text-warm-ash hover:text-bone-white"
-            >
-              <Icon name="visibility" size={16} />
-              Preview
-            </Button>
-            <Button
-              type="button"
-              variant="default"
-              onClick={handleSave}
-              disabled={isSaving}
-              className="min-h-12 flex-1 bg-forge text-on-forge text-xs hover:brightness-110"
-            >
-              {isSaving ? 'Saving...' : 'Save program'}
-            </Button>
-          </div>
-          {error && <p className="mt-2 text-xs text-warning-flare">{error}</p>}
-        </div>
       </div>
+
 
       {/* Session picker sheet */}
       <SessionPickerSheet
@@ -324,8 +310,6 @@ function BuilderPage() {
         />
       )}
 
-      {/* Program preview overlay */}
-      <ProgramPreview draft={draft} open={previewMode} onClose={() => setPreviewMode(false)} />
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Icon } from '@/components/icon'
 import { SessionSlot } from './session-slot'
+import { WeekInlinePreview } from './session-detail'
 import { ConfirmDeleteDialog } from './confirm-delete-dialog'
 import { removeWeekFromBlock } from './builder-state'
 import type { WeekDraft, ProgramDraft } from './builder-state'
@@ -35,6 +36,7 @@ export function WeekGrid({
   isNew,
 }: WeekGridProps) {
   const [showWeekDeleteConfirm, setShowWeekDeleteConfirm] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
 
   // Map sessions by dayOfWeek for quick lookup
   const sessionsByDay = new Map(
@@ -73,6 +75,20 @@ export function WeekGrid({
         <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
           WEEK {weekIndex + 1}
         </span>
+        <button
+          type="button"
+          onClick={() => setShowPreview((prev) => !prev)}
+          className={`p-1 transition-colors ${
+            showPreview ? 'text-forge' : 'text-warm-ash/40 hover:text-bone-white'
+          }`}
+          aria-label={
+            showPreview
+              ? `Hide week ${weekIndex + 1} details`
+              : `Show week ${weekIndex + 1} details`
+          }
+        >
+          <Icon name={showPreview ? 'visibility' : 'visibility_off'} size={14} />
+        </button>
         <button
           type="button"
           onClick={handleCopy}
@@ -121,6 +137,8 @@ export function WeekGrid({
           +{weekendSessionCount} weekend {weekendSessionCount === 1 ? 'session' : 'sessions'}
         </p>
       )}
+
+      {showPreview && <WeekInlinePreview sessions={week.sessions} />}
 
       <ConfirmDeleteDialog
         open={showWeekDeleteConfirm}
