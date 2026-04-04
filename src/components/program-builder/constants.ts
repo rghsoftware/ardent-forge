@@ -23,13 +23,25 @@ export const BLOCK_TYPES: Array<{ value: BlockType; label: string }> = [
 // ---------------------------------------------------------------------------
 
 export const DAY_COLUMNS: Array<{ dayOfWeek: DayOfWeek; label: string }> = [
-  { dayOfWeek: 1, label: 'M' },
-  { dayOfWeek: 2, label: 'T' },
-  { dayOfWeek: 3, label: 'W' },
-  { dayOfWeek: 4, label: 'T' },
-  { dayOfWeek: 5, label: 'F' },
-  { dayOfWeek: 6, label: 'S' },
-  { dayOfWeek: 0, label: 'S' },
+  { dayOfWeek: 1, label: 'Mo' },
+  { dayOfWeek: 2, label: 'Tu' },
+  { dayOfWeek: 3, label: 'We' },
+  { dayOfWeek: 4, label: 'Th' },
+  { dayOfWeek: 5, label: 'Fr' },
+  { dayOfWeek: 6, label: 'Sa' },
+  { dayOfWeek: 0, label: 'Su' },
+]
+
+// ---------------------------------------------------------------------------
+// Weekday-only columns (Mon through Fri) -- default view for readability
+// ---------------------------------------------------------------------------
+
+export const WEEKDAY_COLUMNS: Array<{ dayOfWeek: DayOfWeek; label: string }> = [
+  { dayOfWeek: 1, label: 'Mo' },
+  { dayOfWeek: 2, label: 'Tu' },
+  { dayOfWeek: 3, label: 'We' },
+  { dayOfWeek: 4, label: 'Th' },
+  { dayOfWeek: 5, label: 'Fr' },
 ]
 
 // ---------------------------------------------------------------------------

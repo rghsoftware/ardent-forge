@@ -1,8 +1,32 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '@/components/icon'
 import { removeSession } from './builder-state'
 import type { SessionDraft, ProgramDraft } from './builder-state'
 import type { DayOfWeek } from './constants'
+
+const SESSION_TINT: Record<string, string> = {
+  STRENGTH: 'session-tint-strength',
+  CONDITIONING: 'session-tint-conditioning',
+  SE: 'session-tint-se',
+  MIXED: 'session-tint-mixed',
+  EVENT: 'session-tint-event',
+}
+
+const SESSION_TYPE_BADGE: Record<string, string> = {
+  STRENGTH: 'bg-ember/10 text-ember',
+  CONDITIONING: 'bg-quenched/10 text-quenched',
+  SE: 'bg-arc/10 text-arc',
+  MIXED: 'bg-bone-white/10 text-bone-white',
+  EVENT: 'bg-ember/15 text-ember',
+}
+
+const SESSION_BORDER: Record<string, string> = {
+  STRENGTH: 'border-l-2 border-ember',
+  CONDITIONING: 'border-l-2 border-quenched',
+  SE: 'border-l-2 border-arc',
+  MIXED: 'border-l-2 border-bone-white/40',
+  EVENT: 'border-l-2 border-ember',
+}
 
 // ---------------------------------------------------------------------------
 // SessionSlot
@@ -25,6 +49,21 @@ export function SessionSlot({
   onUpdate,
   onPickSession,
 }: SessionSlotProps) {
+  const [animating, setAnimating] = useState(false)
+  const [prevSessionId, setPrevSessionId] = useState(session?.clientId)
+
+  if (session?.clientId !== prevSessionId) {
+    setPrevSessionId(session?.clientId)
+    if (session && !prevSessionId) setAnimating(true)
+  }
+
+  useEffect(() => {
+    if (animating) {
+      const t = setTimeout(() => setAnimating(false), 250)
+      return () => clearTimeout(t)
+    }
+  }, [animating])
+
   const handleRemove = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -44,10 +83,10 @@ export function SessionSlot({
       <button
         type="button"
         onClick={handleClick}
-        className="flex min-h-[80px] w-full cursor-pointer items-center justify-center border border-dashed border-warm-ash/20 bg-surface-gunmetal transition-colors hover:border-warm-ash/40 hover:bg-surface-steel"
+        className="flex min-h-[56px] w-full cursor-pointer items-center justify-center border border-dashed border-warm-ash/20 bg-surface-gunmetal transition-colors hover:border-warm-ash/40 hover:bg-surface-steel"
         aria-label={`Assign session to day ${dayOfWeek}`}
       >
-        <Icon name="add" size={20} className="text-warm-ash/40" />
+        <Icon name="add" size={18} className="text-warm-ash/40" />
       </button>
     )
   }
@@ -56,11 +95,14 @@ export function SessionSlot({
 
   return (
     <div
-      className={`relative flex min-h-[80px] cursor-pointer flex-col justify-center p-2 transition-colors ${
+      className={`relative flex min-h-[56px] cursor-pointer flex-col justify-center p-1.5 transition-colors ${
+        SESSION_BORDER[session.sessionType] ?? ''
+      } ${
         isEvent
-          ? 'border-l-2 border-ember bg-surface-iron hover:bg-surface-steel'
+          ? 'bg-surface-iron hover:bg-surface-steel'
           : 'bg-surface-charcoal hover:bg-surface-iron'
-      }`}
+      } ${SESSION_TINT[session.sessionType] ?? ''}`}
+      style={animating ? { animation: 'slot-fill 0.2s ease-out both' } : undefined}
       onClick={handleClick}
       role="button"
       tabIndex={0}
@@ -68,20 +110,21 @@ export function SessionSlot({
         if (e.key === 'Enter' || e.key === ' ') handleClick()
       }}
       aria-label={`Session: ${session.templateName ?? 'Unnamed'}`}
+      title={session.templateName ?? 'Unnamed'}
     >
       <button
         type="button"
         onClick={handleRemove}
-        className="absolute right-1 top-1 p-0.5 text-warm-ash/40 hover:text-warning-flare"
+        className="absolute right-0.5 top-0.5 p-0.5 text-warm-ash/40 hover:text-warning-flare"
         aria-label="Remove session"
       >
-        <Icon name="close" size={14} />
+        <Icon name="close" size={12} />
       </button>
 
       <div className="flex items-start gap-1 pr-4">
-        {isEvent && <Icon name="flag" size={12} fill className="mt-0.5 shrink-0 text-ember" />}
+        {isEvent && <Icon name="flag" size={10} fill className="mt-0.5 shrink-0 text-ember" />}
         <span
-          className={`line-clamp-2 text-xs ${
+          className={`line-clamp-2 text-[11px] leading-tight ${
             isEvent
               ? 'font-display uppercase tracking-wider text-bone-white'
               : 'font-body text-bone-white'
@@ -92,8 +135,8 @@ export function SessionSlot({
       </div>
 
       <span
-        className={`mt-1 inline-block self-start px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ${
-          isEvent ? 'bg-ember/15 text-ember' : 'bg-surface-steel text-warm-ash'
+        className={`mt-0.5 inline-block self-start px-1 py-px text-[9px] font-medium uppercase tracking-wider ${
+          SESSION_TYPE_BADGE[session.sessionType] ?? 'bg-surface-steel text-warm-ash'
         }`}
       >
         {session.sessionType}

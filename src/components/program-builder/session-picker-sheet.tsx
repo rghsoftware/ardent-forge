@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import {
   Sheet,
   SheetContent,
@@ -6,6 +7,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -43,10 +45,12 @@ export function SessionPickerSheet({
   onSelect,
   userId,
 }: SessionPickerSheetProps) {
+  const navigate = useNavigate()
   const { data: templates = [], isLoading } = useSessionTemplates(userId)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<SessionType | 'ALL'>('ALL')
   const [showCreate, setShowCreate] = useState(false)
+  const [showCreateCallout, setShowCreateCallout] = useState(false)
 
   // Filter templates by type and search query
   const filtered = useMemo(() => {
@@ -73,6 +77,7 @@ export function SessionPickerSheet({
       setSearch('')
       setFilter('ALL')
       setShowCreate(false)
+      setShowCreateCallout(false)
     },
     [onSelect, onOpenChange],
   )
@@ -85,12 +90,14 @@ export function SessionPickerSheet({
       setSearch('')
       setFilter('ALL')
       setShowCreate(false)
+      setShowCreateCallout(false)
     },
     [onSelect, onOpenChange],
   )
 
   const handleCancelCreate = useCallback(() => {
     setShowCreate(false)
+    setShowCreateCallout(false)
   }, [])
 
   return (
@@ -119,27 +126,29 @@ export function SessionPickerSheet({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="SEARCH TEMPLATES"
+                placeholder="Search templates"
                 className="w-full border-0 border-b border-warm-ash/30 bg-transparent py-2 font-body text-sm text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
                 aria-label="Search templates"
               />
             </div>
 
-            <div className="flex flex-wrap gap-1 px-4 pt-3">
-              {SESSION_FILTERS.map((f) => (
-                <button
-                  key={f.value}
-                  type="button"
-                  onClick={() => setFilter(f.value)}
-                  className={`min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
-                    filter === f.value
-                      ? 'bg-forge text-on-forge'
-                      : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+            <div className="px-4 pt-3">
+              <ToggleGroup
+                type="single"
+                value={filter}
+                onValueChange={(v) => { if (v) setFilter(v as SessionType | 'ALL') }}
+                className="flex flex-wrap gap-1"
+              >
+                {SESSION_FILTERS.map((f) => (
+                  <ToggleGroupItem
+                    key={f.value}
+                    value={f.value}
+                    className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
+                  >
+                    {f.label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4">
@@ -196,18 +205,50 @@ export function SessionPickerSheet({
               )}
             </div>
 
+            {/* Create callout -- shown after tapping "Create new template" */}
+            {showCreateCallout && !showCreate && (
+              <div className="flex flex-col gap-3 border-t border-warm-ash/10 px-4 py-3">
+                <p className="text-xs text-warm-ash/60">
+                  For the best experience, create templates from the Library first.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      onOpenChange(false)
+                      navigate({ to: '/library' })
+                    }}
+                    className="min-h-10 flex-1 text-xs"
+                  >
+                    Go to Library
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => { setShowCreate(true); setShowCreateCallout(false) }}
+                    className="min-h-10 flex-1 text-xs"
+                  >
+                    Quick create
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Create new template button */}
-            <div className="border-t border-warm-ash/10 px-4 py-3">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setShowCreate(true)}
-                className="min-h-12 w-full text-xs"
-              >
-                <Icon name="add" size={16} />
-                Create new template
-              </Button>
-            </div>
+            {!showCreateCallout && (
+              <div className="border-t border-warm-ash/10 px-4 py-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowCreateCallout(true)}
+                  className="min-h-12 w-full text-xs"
+                >
+                  <Icon name="add" size={16} />
+                  Create new template
+                </Button>
+              </div>
+            )}
           </>
         )}
       </SheetContent>

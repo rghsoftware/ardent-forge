@@ -1,6 +1,8 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { WeekGrid } from './week-grid'
@@ -9,6 +11,14 @@ import type { BlockDraft, ProgramDraft } from './builder-state'
 import type { BlockType } from '@/domain/types'
 import { BLOCK_TYPES } from './constants'
 import type { DayOfWeek } from './constants'
+
+const BLOCK_TYPE_STYLES: Record<string, string> = {
+  ACCUMULATION: 'bg-quenched/15 text-quenched',
+  INTENSIFICATION: 'bg-ember/15 text-ember',
+  REALIZATION: 'bg-forge/15 text-forge',
+  DELOAD: 'bg-arc/15 text-arc',
+  TEST: 'bg-warm-ash/15 text-warm-ash',
+}
 
 // ---------------------------------------------------------------------------
 // BlockEditor
@@ -20,6 +30,8 @@ interface BlockEditorProps {
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek?: (sourceWeekClientId: string) => void
+  showWeekends: boolean
+  isNew?: boolean
 }
 
 export function BlockEditor({
@@ -28,9 +40,12 @@ export function BlockEditor({
   onUpdate,
   onPickSession,
   onCopyWeek,
+  showWeekends,
+  isNew,
 }: BlockEditorProps) {
   const [expanded, setExpanded] = useState(true)
   const [isEditingName, setIsEditingName] = useState(false)
+  const [newWeekId, setNewWeekId] = useState<string | null>(null)
 
   const {
     attributes,
@@ -42,10 +57,11 @@ export function BlockEditor({
     isDragging,
   } = useSortable({ id: block.clientId })
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    ...(isNew ? { animation: 'block-enter 0.3s ease-out both' } : {}),
   }
 
   const handleNameChange = useCallback(
@@ -75,8 +91,19 @@ export function BlockEditor({
   }, [draft, block.clientId, onUpdate])
 
   const handleAddWeek = useCallback(() => {
-    onUpdate(addWeekToBlock(draft, block.clientId))
+    const updated = addWeekToBlock(draft, block.clientId)
+    const updatedBlock = updated.blocks.find((b) => b.clientId === block.clientId)
+    const newWeek = updatedBlock?.weeks[updatedBlock.weeks.length - 1]
+    if (newWeek) setNewWeekId(newWeek.clientId)
+    onUpdate(updated)
   }, [draft, block.clientId, onUpdate])
+
+  useEffect(() => {
+    if (newWeekId) {
+      const t = setTimeout(() => setNewWeekId(null), 350)
+      return () => clearTimeout(t)
+    }
+  }, [newWeekId])
 
   const handleCopyWeek = useCallback(
     (sourceWeekClientId: string) => {
@@ -99,119 +126,132 @@ export function BlockEditor({
   }, [])
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} className="bg-surface-iron">
+    <Collapsible open={expanded} onOpenChange={setExpanded} asChild>
       <div
-        className="flex min-h-12 cursor-pointer items-center gap-2 px-3 py-2"
-        onClick={handleHeaderClick}
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        className="border-l-2 border-forge bg-surface-iron milled-edge"
       >
-        <button
-          ref={setActivatorNodeRef}
-          {...listeners}
-          type="button"
-          data-drag-handle
-          className="cursor-grab touch-none text-warm-ash/60 hover:text-bone-white"
-          aria-label="Drag to reorder block"
+        <div
+          className="flex min-h-12 cursor-pointer items-center gap-2 px-3 py-2"
+          onClick={handleHeaderClick}
         >
-          <Icon name="drag_indicator" size={20} />
-        </button>
+          <button
+            ref={setActivatorNodeRef}
+            {...listeners}
+            type="button"
+            data-drag-handle
+            className="cursor-grab touch-none text-warm-ash/60 hover:text-bone-white"
+            aria-label="Drag to reorder block"
+          >
+            <Icon name="drag_indicator" size={20} />
+          </button>
 
-        {isEditingName ? (
-          <input
-            type="text"
-            value={block.name}
-            onChange={(e) => handleNameChange(e.target.value)}
-            onBlur={() => setIsEditingName(false)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') setIsEditingName(false)
-            }}
-            autoFocus
-            className="flex-1 border-0 border-b border-warm-ash/30 bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:border-ember focus:outline-none"
-            aria-label="Block name"
-          />
-        ) : (
+          {isEditingName ? (
+            <input
+              type="text"
+              value={block.name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              onBlur={() => setIsEditingName(false)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') setIsEditingName(false)
+              }}
+              autoFocus
+              className="flex-1 border-0 border-b border-warm-ash/30 bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:border-ember focus:outline-none"
+              aria-label="Block name"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsEditingName(true)
+              }}
+              className="flex-1 text-left font-display text-sm font-medium text-bone-white hover:text-ember"
+            >
+              {block.name || 'Untitled block'}
+            </button>
+          )}
+
+          <span
+            className={`px-2 py-1 text-[11px] font-medium uppercase tracking-wider ${BLOCK_TYPE_STYLES[block.blockType] ?? 'bg-surface-steel text-bone-white'}`}
+          >
+            {block.blockType}
+          </span>
+
+          <span className="text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
+            {block.weeks.length} {block.weeks.length === 1 ? 'WEEK' : 'WEEKS'}
+          </span>
+
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              setIsEditingName(true)
+              handleDelete()
             }}
-            className="flex-1 text-left font-display text-sm font-medium text-bone-white hover:text-ember"
+            className="min-h-8 min-w-8 p-1 text-warm-ash/60 hover:text-warning-flare"
+            aria-label="Delete block"
           >
-            {block.name || 'Untitled block'}
+            <Icon name="delete" size={18} />
           </button>
-        )}
 
-        <span className="bg-surface-steel px-2 py-1 text-[11px] font-medium uppercase tracking-wider text-bone-white">
-          {block.blockType}
-        </span>
-
-        <span className="text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
-          {block.weeks.length} {block.weeks.length === 1 ? 'WEEK' : 'WEEKS'}
-        </span>
-
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            handleDelete()
-          }}
-          className="min-h-8 min-w-8 p-1 text-warm-ash/60 hover:text-warning-flare"
-          aria-label="Delete block"
-        >
-          <Icon name="delete" size={18} />
-        </button>
-
-        <Icon
-          name={expanded ? 'expand_less' : 'expand_more'}
-          size={18}
-          className="text-warm-ash/40"
-        />
-      </div>
-
-      {/* Expanded content */}
-      {expanded && (
-        <div className="flex flex-col gap-4 px-3 pb-4">
-          <div className="flex flex-wrap gap-1">
-            {BLOCK_TYPES.map((bt) => (
-              <button
-                key={bt.value}
-                type="button"
-                onClick={() => handleBlockTypeChange(bt.value)}
-                className={`min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
-                  block.blockType === bt.value
-                    ? 'bg-forge text-on-forge'
-                    : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
-                }`}
-              >
-                {bt.label}
-              </button>
-            ))}
-          </div>
-
-          {block.weeks.map((week, weekIndex) => (
-            <WeekGrid
-              key={week.clientId}
-              week={week}
-              weekIndex={weekIndex}
-              draft={draft}
-              blockClientId={block.clientId}
-              onUpdate={onUpdate}
-              onPickSession={onPickSession}
-              onCopyWeek={handleCopyWeek}
-            />
-          ))}
-
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleAddWeek}
-            className="min-h-10 text-xs"
-          >
-            <Icon name="add" size={16} />
-            Add week
-          </Button>
+          <Icon
+            name={expanded ? 'expand_less' : 'expand_more'}
+            size={18}
+            className="text-warm-ash/40"
+          />
         </div>
-      )}
-    </div>
+
+        {/* Expanded content */}
+        <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-200">
+          <div className="flex flex-col gap-4 px-3 pb-4">
+            <ToggleGroup
+              type="single"
+              value={block.blockType}
+              onValueChange={(v) => {
+                if (v) handleBlockTypeChange(v as BlockType)
+              }}
+              className="flex flex-wrap gap-1"
+            >
+              {BLOCK_TYPES.map((bt) => (
+                <ToggleGroupItem
+                  key={bt.value}
+                  value={bt.value}
+                  className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
+                >
+                  {bt.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+
+            {block.weeks.map((week, weekIndex) => (
+              <WeekGrid
+                key={week.clientId}
+                week={week}
+                weekIndex={weekIndex}
+                draft={draft}
+                blockClientId={block.clientId}
+                onUpdate={onUpdate}
+                onPickSession={onPickSession}
+                onCopyWeek={handleCopyWeek}
+                showWeekends={showWeekends}
+                isNew={week.clientId === newWeekId}
+              />
+            ))}
+
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleAddWeek}
+              className="min-h-10 text-xs"
+            >
+              <Icon name="add" size={16} />
+              Add week
+            </Button>
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
   )
 }

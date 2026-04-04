@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -34,9 +34,18 @@ interface BlockListProps {
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek?: (sourceWeekClientId: string) => void
+  showWeekends: boolean
 }
 
-export function BlockList({ draft, onUpdate, onPickSession, onCopyWeek }: BlockListProps) {
+export function BlockList({
+  draft,
+  onUpdate,
+  onPickSession,
+  onCopyWeek,
+  showWeekends,
+}: BlockListProps) {
+  const [newBlockId, setNewBlockId] = useState<string | null>(null)
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -59,8 +68,18 @@ export function BlockList({ draft, onUpdate, onPickSession, onCopyWeek }: BlockL
   )
 
   const handleAddBlock = useCallback(() => {
-    onUpdate(addBlock(draft, 'ACCUMULATION'))
+    const updated = addBlock(draft, 'ACCUMULATION')
+    const newBlock = updated.blocks[updated.blocks.length - 1]
+    setNewBlockId(newBlock.clientId)
+    onUpdate(updated)
   }, [draft, onUpdate])
+
+  useEffect(() => {
+    if (newBlockId) {
+      const t = setTimeout(() => setNewBlockId(null), 350)
+      return () => clearTimeout(t)
+    }
+  }, [newBlockId])
 
   const blockIds = draft.blocks.map((b) => b.clientId)
 
@@ -81,6 +100,8 @@ export function BlockList({ draft, onUpdate, onPickSession, onCopyWeek }: BlockL
               onUpdate={onUpdate}
               onPickSession={onPickSession}
               onCopyWeek={onCopyWeek}
+              showWeekends={showWeekends}
+              isNew={block.clientId === newBlockId}
             />
           ))}
         </SortableContext>

@@ -1,4 +1,6 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import {
@@ -13,6 +15,30 @@ import type { ProgramDraft, BlockDraft, SessionDraft } from './builder-state'
 import type { BlockType } from '@/domain/types'
 import { BLOCK_TYPES, DAY_ABBREVIATIONS, DAY_ORDER } from './constants'
 import type { DayOfWeek } from './constants'
+
+const BLOCK_TYPE_STYLES: Record<string, string> = {
+  ACCUMULATION: 'bg-quenched/15 text-quenched',
+  INTENSIFICATION: 'bg-ember/15 text-ember',
+  REALIZATION: 'bg-forge/15 text-forge',
+  DELOAD: 'bg-arc/15 text-arc',
+  TEST: 'bg-warm-ash/15 text-warm-ash',
+}
+
+const SESSION_TINT: Record<string, string> = {
+  STRENGTH: 'session-tint-strength',
+  CONDITIONING: 'session-tint-conditioning',
+  SE: 'session-tint-se',
+  MIXED: 'session-tint-mixed',
+  EVENT: 'session-tint-event',
+}
+
+const SESSION_TYPE_BADGE: Record<string, string> = {
+  STRENGTH: 'bg-ember/10 text-ember',
+  CONDITIONING: 'bg-quenched/10 text-quenched',
+  SE: 'bg-arc/10 text-arc',
+  MIXED: 'bg-bone-white/10 text-bone-white',
+  EVENT: 'bg-ember/15 text-ember',
+}
 
 // ---------------------------------------------------------------------------
 // MobileBlockEditor
@@ -31,9 +57,21 @@ export function MobileBlockEditor({
   onPickSession,
   onCopyWeek,
 }: MobileBlockEditorProps) {
+  const [newBlockId, setNewBlockId] = useState<string | null>(null)
+
   const handleAddBlock = useCallback(() => {
-    onUpdate(addBlock(draft, 'ACCUMULATION'))
+    const updated = addBlock(draft, 'ACCUMULATION')
+    const newBlock = updated.blocks[updated.blocks.length - 1]
+    setNewBlockId(newBlock.clientId)
+    onUpdate(updated)
   }, [draft, onUpdate])
+
+  useEffect(() => {
+    if (newBlockId) {
+      const t = setTimeout(() => setNewBlockId(null), 350)
+      return () => clearTimeout(t)
+    }
+  }, [newBlockId])
 
   return (
     <div className="flex flex-col gap-3">
@@ -46,6 +84,7 @@ export function MobileBlockEditor({
           onUpdate={onUpdate}
           onPickSession={onPickSession}
           onCopyWeek={onCopyWeek}
+          isNew={block.clientId === newBlockId}
         />
       ))}
 
@@ -73,6 +112,7 @@ interface MobileBlockCardProps {
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek: (sourceWeekClientId: string) => void
+  isNew?: boolean
 }
 
 function MobileBlockCard({
@@ -82,9 +122,11 @@ function MobileBlockCard({
   onUpdate,
   onPickSession,
   onCopyWeek,
+  isNew,
 }: MobileBlockCardProps) {
   const [expanded, setExpanded] = useState(blockIndex === 0)
   const [isEditingName, setIsEditingName] = useState(false)
+  const [newWeekId, setNewWeekId] = useState<string | null>(null)
 
   const isFirst = blockIndex === 0
   const isLast = blockIndex === draft.blocks.length - 1
@@ -126,11 +168,26 @@ function MobileBlockCard({
   )
 
   const handleAddWeek = useCallback(() => {
-    onUpdate(addWeekToBlock(draft, block.clientId))
+    const updated = addWeekToBlock(draft, block.clientId)
+    const updatedBlock = updated.blocks.find((b) => b.clientId === block.clientId)
+    const newWeek = updatedBlock?.weeks[updatedBlock.weeks.length - 1]
+    if (newWeek) setNewWeekId(newWeek.clientId)
+    onUpdate(updated)
   }, [draft, block.clientId, onUpdate])
 
+  useEffect(() => {
+    if (newWeekId) {
+      const t = setTimeout(() => setNewWeekId(null), 350)
+      return () => clearTimeout(t)
+    }
+  }, [newWeekId])
+
   return (
-    <div className="bg-surface-iron">
+    <Collapsible open={expanded} onOpenChange={setExpanded} asChild>
+    <div
+      className="border-l-2 border-forge bg-surface-iron milled-edge"
+      style={isNew ? { animation: 'block-enter 0.3s ease-out both' } : undefined}
+    >
       <div className="flex min-h-12 items-center gap-2 px-3 py-2">
         {isEditingName ? (
           <input
@@ -155,7 +212,7 @@ function MobileBlockCard({
           </button>
         )}
 
-        <span className="bg-surface-steel px-2 py-1 text-[11px] font-medium uppercase tracking-wider text-bone-white">
+        <span className={`px-2 py-1 text-[11px] font-medium uppercase tracking-wider ${BLOCK_TYPE_STYLES[block.blockType] ?? 'bg-surface-steel text-bone-white'}`}>
           {block.blockType}
         </span>
 
@@ -203,24 +260,24 @@ function MobileBlockCard({
       </div>
 
       {/* Expanded content */}
-      {expanded && (
+      <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-200">
         <div className="flex flex-col gap-4 px-3 pb-4">
-          <div className="flex flex-wrap gap-1">
+          <ToggleGroup
+            type="single"
+            value={block.blockType}
+            onValueChange={(v) => { if (v) handleBlockTypeChange(v as BlockType) }}
+            className="flex flex-wrap gap-1"
+          >
             {BLOCK_TYPES.map((bt) => (
-              <button
+              <ToggleGroupItem
                 key={bt.value}
-                type="button"
-                onClick={() => handleBlockTypeChange(bt.value)}
-                className={`min-h-10 px-3 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
-                  block.blockType === bt.value
-                    ? 'bg-forge text-on-forge'
-                    : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
-                }`}
+                value={bt.value}
+                className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
               >
                 {bt.label}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
+          </ToggleGroup>
 
           {block.weeks.map((week, weekIndex) => (
             <MobileWeekSection
@@ -233,6 +290,7 @@ function MobileBlockCard({
               onUpdate={onUpdate}
               onPickSession={onPickSession}
               onCopyWeek={onCopyWeek}
+              isNew={week.clientId === newWeekId}
             />
           ))}
 
@@ -246,8 +304,9 @@ function MobileBlockCard({
             Add week
           </Button>
         </div>
-      )}
+      </CollapsibleContent>
     </div>
+    </Collapsible>
   )
 }
 
@@ -264,6 +323,7 @@ interface MobileWeekSectionProps {
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek: (sourceWeekClientId: string) => void
+  isNew?: boolean
 }
 
 function MobileWeekSection({
@@ -275,6 +335,7 @@ function MobileWeekSection({
   onUpdate,
   onPickSession,
   onCopyWeek,
+  isNew,
 }: MobileWeekSectionProps) {
   // Build session lookup by dayOfWeek
   const sessionsByDay = new Map(
@@ -290,7 +351,10 @@ function MobileWeekSection({
   }, [weekClientId, onCopyWeek])
 
   return (
-    <div className="flex flex-col gap-1">
+    <div
+      className="flex flex-col gap-1"
+      style={isNew ? { animation: 'block-enter 0.25s ease-out both' } : undefined}
+    >
       <div className="flex items-center gap-2">
         <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
           WEEK {weekIndex + 1}
@@ -380,7 +444,7 @@ function MobileDayRow({
         <span className="w-8 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
           {DAY_ABBREVIATIONS[dayOfWeek]}
         </span>
-        <span className="flex-1 text-xs text-warm-ash/40">TAP TO ASSIGN</span>
+        <span className="flex-1 text-xs text-warm-ash/40">Tap to assign</span>
         <Icon name="add" size={16} className="text-warm-ash/30" />
       </button>
     )
@@ -396,7 +460,7 @@ function MobileDayRow({
         isEvent
           ? 'border-l-2 border-ember bg-surface-iron hover:bg-surface-steel'
           : 'bg-surface-charcoal hover:bg-surface-steel'
-      }`}
+      } ${SESSION_TINT[session.sessionType] ?? ''}`}
       aria-label={`Session: ${session.templateName ?? 'Unnamed'} on ${DAY_ABBREVIATIONS[dayOfWeek]}`}
     >
       <span className="w-8 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
@@ -411,8 +475,8 @@ function MobileDayRow({
         {session.templateName ?? 'Unnamed'}
       </span>
       <span
-        className={`px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ${
-          isEvent ? 'bg-ember/15 text-ember' : 'bg-surface-steel text-warm-ash'
+        className={`px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+          SESSION_TYPE_BADGE[session.sessionType] ?? 'bg-surface-steel text-warm-ash'
         }`}
       >
         {session.sessionType}

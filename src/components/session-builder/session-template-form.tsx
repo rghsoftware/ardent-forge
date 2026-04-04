@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Select,
   SelectContent,
@@ -268,22 +269,22 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
         <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           CATEGORY
         </span>
-        <div className="flex flex-wrap gap-1">
+        <ToggleGroup
+          type="single"
+          value={category}
+          onValueChange={(v) => { if (v) setCategory(v as SessionType) }}
+          className="flex flex-wrap gap-1"
+        >
           {SESSION_CATEGORIES.map((c) => (
-            <button
+            <ToggleGroupItem
               key={c.value}
-              type="button"
-              onClick={() => setCategory(c.value)}
-              className={`min-h-10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-colors ${
-                category === c.value
-                  ? 'bg-forge text-on-forge'
-                  : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
-              }`}
+              value={c.value}
+              className="min-h-10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider"
             >
               {c.label}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
       </div>
 
       {/* Description */}

@@ -58,9 +58,10 @@ function BuilderPage() {
     allWeeks: WeekDraft[]
   } | null>(null)
 
-  // Error and preview state
+  // Error, preview, and view state
   const [error, setError] = useState<string | null>(null)
   const [previewMode, setPreviewMode] = useState(false)
+  const [showWeekends, setShowWeekends] = useState(false)
 
   // Mutations
   const createMutation = useCreateProgram()
@@ -218,16 +219,6 @@ function BuilderPage() {
         </Button>
 
         <div className="flex-1" />
-
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => setPreviewMode(true)}
-          className="min-h-10 text-xs text-warm-ash hover:text-bone-white"
-        >
-          <Icon name="visibility" size={16} />
-          Preview
-        </Button>
       </div>
 
       <div className="flex-shrink-0 px-4 pb-6">
@@ -246,6 +237,23 @@ function BuilderPage() {
 
         {/* Main content: Block list */}
         <div className="px-4 lg:px-0">
+          {/* Weekend toggle (desktop only) */}
+          <div className="mb-3 hidden items-center justify-end md:flex">
+            <button
+              type="button"
+              onClick={() => setShowWeekends((prev) => !prev)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
+                showWeekends
+                  ? 'bg-forge/15 text-forge'
+                  : 'bg-surface-steel text-warm-ash hover:text-bone-white'
+              }`}
+              aria-label={showWeekends ? 'Hide weekends' : 'Show weekends'}
+            >
+              <Icon name={showWeekends ? 'date_range' : 'calendar_view_week'} size={14} />
+              {showWeekends ? '7 days' : '5 days'}
+            </button>
+          </div>
+
           {/* Desktop DnD builder */}
           <div className="hidden md:block">
             <BlockList
@@ -253,6 +261,7 @@ function BuilderPage() {
               onUpdate={handleUpdateDraft}
               onPickSession={handlePickSession}
               onCopyWeek={handleCopyWeek}
+              showWeekends={showWeekends}
             />
           </div>
           {/* Mobile list editor */}
@@ -265,21 +274,31 @@ function BuilderPage() {
             />
           </div>
         </div>
-      </div>
 
-      {/* Save button */}
-      <div className="flex-shrink-0 px-4 pt-6 pb-8">
-        <Button
-          type="button"
-          variant="default"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="min-h-12 w-full bg-forge text-on-forge text-xs hover:brightness-110"
-        >
-          {isSaving ? 'Saving...' : 'Save program'}
-        </Button>
-
-        {error && <p className="mt-2 text-xs text-warning-flare">{error}</p>}
+        {/* Sticky save footer */}
+        <div className="sticky bottom-0 z-20 mt-6 border-t border-warm-ash/10 px-4 py-3 heat-blur lg:col-span-2">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setPreviewMode(true)}
+              className="min-h-12 text-xs text-warm-ash hover:text-bone-white"
+            >
+              <Icon name="visibility" size={16} />
+              Preview
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="min-h-12 flex-1 bg-forge text-on-forge text-xs hover:brightness-110"
+            >
+              {isSaving ? 'Saving...' : 'Save program'}
+            </Button>
+          </div>
+          {error && <p className="mt-2 text-xs text-warning-flare">{error}</p>}
+        </div>
       </div>
 
       {/* Session picker sheet */}

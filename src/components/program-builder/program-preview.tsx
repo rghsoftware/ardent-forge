@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,27 @@ import { getAdapter } from '@/lib/adapter'
 import type { ProgramDraft } from './builder-state'
 import type { SessionTemplateFull } from '@/lib/data-adapter'
 import type { SetScheme } from '@/domain/types'
-import { DAY_COLUMNS, SOURCE_LABELS } from './constants'
+import { DAY_COLUMNS, WEEKDAY_COLUMNS, SOURCE_LABELS } from './constants'
+
+// ---------------------------------------------------------------------------
+// Session type visual mappings
+// ---------------------------------------------------------------------------
+
+const SESSION_TINT: Record<string, string> = {
+  STRENGTH: 'session-tint-strength',
+  CONDITIONING: 'session-tint-conditioning',
+  SE: 'session-tint-se',
+  MIXED: 'session-tint-mixed',
+  EVENT: 'session-tint-event',
+}
+
+const SESSION_TYPE_BADGE: Record<string, string> = {
+  STRENGTH: 'bg-ember/10 text-ember',
+  CONDITIONING: 'bg-quenched/10 text-quenched',
+  SE: 'bg-arc/10 text-arc',
+  MIXED: 'bg-bone-white/10 text-bone-white',
+  EVENT: 'bg-ember/15 text-ember',
+}
 
 // ---------------------------------------------------------------------------
 // Set scheme summary helpers
@@ -184,6 +204,7 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
   const userId = user?.id ?? ''
   const { data: profile } = useUserProfile(userId)
   const { data: exercises = [] } = useExercises()
+  const [showWeekends, setShowWeekends] = useState(false)
 
   // Fetch full template data for all referenced templates
   const sessionTemplates = useSessionTemplatesFull(draft)
@@ -192,6 +213,8 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
   const exerciseMap = useMemo(() => new Map(exercises.map((e) => [e.id, e.name])), [exercises])
 
   const exerciseMaxes = profile?.exerciseMaxes ?? {}
+  const previewColumns = showWeekends ? DAY_COLUMNS : WEEKDAY_COLUMNS
+  const previewGridCols = showWeekends ? 'grid-cols-7' : 'grid-cols-5'
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -212,15 +235,30 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                 </span>
               </div>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onClose}
-              className="min-h-10 text-xs text-warm-ash hover:text-bone-white"
-            >
-              Close preview
-              <Icon name="close" size={16} />
-            </Button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowWeekends((prev) => !prev)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
+                  showWeekends
+                    ? 'bg-forge/15 text-forge'
+                    : 'bg-surface-steel text-warm-ash hover:text-bone-white'
+                }`}
+                aria-label={showWeekends ? 'Hide weekends' : 'Show weekends'}
+              >
+                <Icon name={showWeekends ? 'date_range' : 'calendar_view_week'} size={14} />
+                {showWeekends ? '7 days' : '5 days'}
+              </button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onClose}
+                className="min-h-10 text-xs text-warm-ash hover:text-bone-white"
+              >
+                Close preview
+                <Icon name="close" size={16} />
+              </Button>
+            </div>
           </div>
 
           {draft.description && (
@@ -258,9 +296,9 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                           WEEK {weekIdx + 1}
                         </span>
 
-                        {/* 7-column day grid */}
-                        <div className="grid grid-cols-7 gap-1">
-                          {DAY_COLUMNS.map((col) => (
+                        {/* Day grid (5 or 7 columns) */}
+                        <div className={`grid ${previewGridCols} gap-1`}>
+                          {previewColumns.map((col) => (
                             <div
                               key={`hdr-${col.dayOfWeek}`}
                               className="text-center text-[11px] font-medium uppercase tracking-widest text-warm-ash/60"
@@ -269,7 +307,7 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                             </div>
                           ))}
 
-                          {DAY_COLUMNS.map((col) => {
+                          {previewColumns.map((col) => {
                             const session = sessionsByDay.get(col.dayOfWeek)
 
                             if (!session) {
@@ -294,7 +332,7 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                                   isEventCell
                                     ? 'border-l-2 border-ember bg-surface-iron'
                                     : 'bg-surface-charcoal'
-                                }`}
+                                } ${SESSION_TINT[session.sessionType] ?? ''}`}
                               >
                                 <div className="flex items-start gap-0.5">
                                   {isEventCell && (
@@ -306,7 +344,7 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                                     />
                                   )}
                                   <span
-                                    className={`line-clamp-2 text-[9px] font-medium text-bone-white ${
+                                    className={`line-clamp-2 text-[10px] font-medium text-bone-white ${
                                       isEventCell ? 'uppercase tracking-wider' : ''
                                     }`}
                                   >
@@ -314,7 +352,7 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                                   </span>
                                 </div>
                                 {isEventCell && eventDate && (
-                                  <span className="text-[8px] tracking-wider text-ember/80">
+                                  <span className="text-[10px] tracking-wider text-ember/80">
                                     {new Date(eventDate).toLocaleDateString(undefined, {
                                       month: 'short',
                                       day: 'numeric',
@@ -322,10 +360,9 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                                   </span>
                                 )}
                                 <span
-                                  className={`mt-0.5 inline-block self-start px-1 py-0.5 text-[8px] font-medium uppercase tracking-wider ${
-                                    isEventCell
-                                      ? 'bg-ember/15 text-ember'
-                                      : 'bg-surface-steel text-warm-ash'
+                                  className={`mt-0.5 inline-block self-start px-1 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+                                    SESSION_TYPE_BADGE[session.sessionType] ??
+                                    'bg-surface-steel text-warm-ash'
                                   }`}
                                 >
                                   {session.sessionType}
@@ -334,6 +371,19 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                             )
                           })}
                         </div>
+
+                        {!showWeekends &&
+                          (() => {
+                            const weekendCount = week.sessions.filter(
+                              (s) => s.dayOfWeek === 0 || s.dayOfWeek === 6,
+                            ).length
+                            return weekendCount > 0 ? (
+                              <p className="text-[10px] text-warm-ash/50">
+                                +{weekendCount} weekend{' '}
+                                {weekendCount === 1 ? 'session' : 'sessions'}
+                              </p>
+                            ) : null
+                          })()}
 
                         {/* Session detail tables */}
                         {week.sessions

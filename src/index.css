@@ -266,6 +266,30 @@
     }
   }
 
+  /* Block/week entrance -- slides up from below with fade for newly added blocks and weeks */
+  @keyframes block-enter {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Session slot fill -- subtle scale-up with fade when a session is assigned to an empty slot */
+  @keyframes slot-fill {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   /* Rest timer glow overlay -- duration controlled dynamically in rest-timer-overlay.tsx */
   @keyframes ember-pulse {
     0%,
@@ -275,5 +299,46 @@
     50% {
       filter: brightness(1.8);
     }
+  }
+
+  /* Builder: new block/week entrance -- translateY fade-up */
+  @keyframes block-enter {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Builder: session slot assignment -- subtle scale-up */
+  @keyframes slot-fill {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Session type tints -- subtle background coding for week grid slots */
+  .session-tint-strength {
+    background-color: rgba(255, 181, 156, 0.06);
+  }
+  .session-tint-conditioning {
+    background-color: rgba(177, 202, 215, 0.06);
+  }
+  .session-tint-se {
+    background-color: rgba(134, 207, 255, 0.06);
+  }
+  .session-tint-mixed {
+    background-color: rgba(228, 226, 225, 0.04);
+  }
+  .session-tint-event {
+    background-color: rgba(251, 92, 28, 0.08);
   }
 }

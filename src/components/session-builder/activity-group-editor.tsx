@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Icon } from '@/components/icon'
 import { ActivityEditor, type ActivityData } from './activity-editor'
 import { DurationInputCompact } from './duration-input-compact'
@@ -84,22 +85,22 @@ export function ActivityGroupEditor({
         </span>
 
         {/* Group type selector */}
-        <div className="flex flex-1 flex-wrap gap-1">
+        <ToggleGroup
+          type="single"
+          value={group.groupType}
+          onValueChange={(v) => { if (v) onChange({ ...group, groupType: v as GroupType }) }}
+          className="flex flex-1 flex-wrap gap-1"
+        >
           {GROUP_TYPES.map((gt) => (
-            <button
+            <ToggleGroupItem
               key={gt.value}
-              type="button"
-              onClick={() => onChange({ ...group, groupType: gt.value })}
-              className={`min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
-                group.groupType === gt.value
-                  ? 'bg-forge text-on-forge'
-                  : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
-              }`}
+              value={gt.value}
+              className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
             >
               {gt.label}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
 
         <button
           type="button"

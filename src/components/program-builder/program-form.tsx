@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Icon } from '@/components/icon'
 import type { ProgramDraft } from './builder-state'
 import type { ProgramSource } from '@/domain/types'
 
@@ -25,8 +28,11 @@ interface ProgramFormProps {
 }
 
 export function ProgramForm({ draft, onChange }: ProgramFormProps) {
+  const [detailsOpen, setDetailsOpen] = useState(false)
+
   return (
     <div className="flex flex-col gap-6">
+      {/* Program name -- always visible */}
       <div>
         <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
           PROGRAM NAME
@@ -41,39 +47,53 @@ export function ProgramForm({ draft, onChange }: ProgramFormProps) {
         />
       </div>
 
-      <div>
-        <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
-          DESCRIPTION (OPTIONAL)
-        </span>
-        <textarea
-          value={draft.description}
-          onChange={(e) => onChange({ description: e.target.value })}
-          placeholder="Brief description of this program"
-          rows={2}
-          className="min-h-12 w-full resize-none border-0 border-b border-warm-ash/30 bg-transparent py-2 font-body text-sm text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
-          aria-label="Program description"
-        />
-      </div>
+      {/* Mobile details toggle (hidden on desktop) */}
+      <button
+        type="button"
+        onClick={() => setDetailsOpen((prev) => !prev)}
+        className="flex items-center gap-1 text-[11px] font-medium text-warm-ash/60 hover:text-warm-ash lg:hidden"
+      >
+        <Icon name="tune" size={14} />
+        {detailsOpen ? 'Hide details' : 'Show details'}
+        <Icon name={detailsOpen ? 'expand_less' : 'expand_more'} size={14} className="ml-auto" />
+      </button>
 
-      <div>
-        <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
-          SOURCE
-        </span>
-        <div className="flex flex-wrap gap-1">
-          {PROGRAM_SOURCES.map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              onClick={() => onChange({ source: s.value })}
-              className={`min-h-10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-colors ${
-                draft.source === s.value
-                  ? 'bg-forge text-on-forge'
-                  : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
+      {/* Details: always visible on lg+, toggled on mobile */}
+      <div className={`flex flex-col gap-6 ${detailsOpen ? '' : 'hidden lg:flex'}`}>
+        <div>
+          <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
+            DESCRIPTION (OPTIONAL)
+          </span>
+          <textarea
+            value={draft.description}
+            onChange={(e) => onChange({ description: e.target.value })}
+            placeholder="Brief description of this program"
+            rows={2}
+            className="min-h-12 w-full resize-none border-0 border-b border-warm-ash/30 bg-transparent py-2 font-body text-sm text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
+            aria-label="Program description"
+          />
+        </div>
+
+        <div>
+          <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
+            SOURCE
+          </span>
+          <ToggleGroup
+            type="single"
+            value={draft.source}
+            onValueChange={(v) => { if (v) onChange({ source: v as ProgramSource }) }}
+            className="flex flex-wrap gap-1"
+          >
+            {PROGRAM_SOURCES.map((s) => (
+              <ToggleGroupItem
+                key={s.value}
+                value={s.value}
+                className="min-h-10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider"
+              >
+                {s.label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         </div>
       </div>
     </div>
