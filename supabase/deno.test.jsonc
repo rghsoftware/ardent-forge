@@ -1,0 +1,14 @@
+// Test configuration for Supabase Edge Functions.
+// Run: deno test --config supabase/deno.test.jsonc
+//
+// The import map redirects the Supabase client to a local mock so that tests
+// can control auth, queries, and RPC calls without network access.
+{
+  "imports": {
+    "https://esm.sh/@supabase/supabase-js@2": "./functions/_test-utils/mock-supabase.ts",
+    "https://esm.sh/zod@3.24": "npm:zod@3.24"
+  },
+  "test": {
+    "include": ["functions/**/*_test.ts"]
+  }
+}

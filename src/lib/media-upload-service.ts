@@ -1,25 +1,38 @@
 import { Upload } from 'tus-js-client'
-import type { MediaProvider as MediaProviderType, MediaType, MediaStatus } from '@/domain/types'
+import type { MediaProvider as MediaProviderType } from '@/domain/types'
 import { getMediaProvider } from '@/lib/media-provider'
 import { getSupabaseClient } from '@/lib/supabase'
-import { MEDIA_CONSTRAINTS } from '@/lib/media-constraints'
+import { MEDIA_CONSTRAINTS, extractExtension } from '@/lib/media-constraints'
 
 // ---------------------------------------------------------------------------
-// UploadResult -- contract consumed by useMediaUpload (S010) and other hooks
+// UploadResult -- discriminated union on mediaType
+// Consumed by useMediaUpload (S010) and other hooks.
 // ---------------------------------------------------------------------------
 
-export interface UploadResult {
+interface UploadResultBase {
   provider: MediaProviderType
   providerAssetId: string
-  mediaType: MediaType
-  status: MediaStatus
-  thumbnailUrl?: string
-  playbackUrl?: string
-  fileSizeBytes?: number
-  durationSeconds?: number
-  originalFilename?: string
-  mimeType?: string
+  fileSizeBytes: number
+  originalFilename: string
+  mimeType: string
 }
+
+export interface VideoUploadResult extends UploadResultBase {
+  mediaType: 'video'
+  status: 'processing'
+}
+
+export interface ImageUploadResult extends UploadResultBase {
+  mediaType: 'image'
+  status: 'ready'
+}
+
+export interface FileUploadResult extends UploadResultBase {
+  mediaType: 'file'
+  status: 'ready'
+}
+
+export type UploadResult = VideoUploadResult | ImageUploadResult | FileUploadResult
 
 // ---------------------------------------------------------------------------
 // MediaUploadService
@@ -28,7 +41,6 @@ export interface UploadResult {
 export class MediaUploadService {
   private conversationId: string
   private activeUpload: Upload | null = null
-  private abortController: AbortController | null = null
 
   constructor(conversationId: string) {
     this.conversationId = conversationId
@@ -90,17 +102,14 @@ export class MediaUploadService {
     const ext = extractExtension(file.name)
     const path = `chat-images/${this.conversationId}/${crypto.randomUUID()}${ext}`
 
-    this.abortController = new AbortController()
-
-    // Supabase storage does not expose granular progress; report 0 -> 1 on completion.
+    // Supabase Storage does not support abort signals on upload(); cancellation
+    // resets UI state only. The in-flight request completes in the background.
     onProgress(0)
 
     const { error } = await client.storage.from('chat-images').upload(path, file, {
       contentType: file.type,
       upsert: false,
     })
-
-    this.abortController = null
 
     if (error) throw new Error(`Image upload failed: ${error.message}`)
 
@@ -128,16 +137,14 @@ export class MediaUploadService {
     const sanitized = sanitizeFilename(file.name)
     const path = `chat-files/${this.conversationId}/${crypto.randomUUID()}_${sanitized}`
 
-    this.abortController = new AbortController()
-
+    // Supabase Storage does not support abort signals on upload(); cancellation
+    // resets UI state only. The in-flight request completes in the background.
     onProgress(0)
 
     const { error } = await client.storage.from('chat-files').upload(path, file, {
       contentType: file.type,
       upsert: false,
     })
-
-    this.abortController = null
 
     if (error) throw new Error(`File upload failed: ${error.message}`)
 
@@ -159,13 +166,11 @@ export class MediaUploadService {
   // -------------------------------------------------------------------------
 
   cancelUpload(): void {
+    // Only TUS video uploads support true abort; Supabase Storage uploads
+    // cannot be cancelled mid-flight.
     if (this.activeUpload) {
       this.activeUpload.abort(true).catch(() => {})
       this.activeUpload = null
-    }
-    if (this.abortController) {
-      this.abortController.abort()
-      this.abortController = null
     }
   }
 }
@@ -173,12 +178,6 @@ export class MediaUploadService {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function extractExtension(filename: string): string {
-  const dotIndex = filename.lastIndexOf('.')
-  if (dotIndex === -1) return ''
-  return filename.slice(dotIndex).toLowerCase()
-}
 
 function sanitizeFilename(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9._-]/g, '_')

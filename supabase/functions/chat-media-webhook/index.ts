@@ -10,7 +10,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * We verify by computing HMAC-SHA256(secret, <timestamp>.<body>) and
  * comparing against the provided signature.
  */
-async function verifyWebhookSignature(
+export async function verifyWebhookSignature(
   body: string,
   signatureHeader: string | null,
   secret: string,
@@ -43,10 +43,18 @@ async function verifyWebhookSignature(
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-  return expectedHex === signature;
+  // Constant-time comparison to prevent timing attacks
+  if (expectedHex.length !== signature.length) return false;
+  const a = new TextEncoder().encode(expectedHex);
+  const b = new TextEncoder().encode(signature);
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a[i]! ^ b[i]!;
+  }
+  return mismatch === 0;
 }
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   // Webhooks are POST only -- no CORS needed (server-to-server)
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -137,8 +145,9 @@ Deno.serve(async (req: Request) => {
 
     if (isReady) {
       // Build URLs from the Cloudflare response
+      const accountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID") ?? "";
       const thumbnailUrl: string | null =
-        event.thumbnail || `https://customer-${event.uid}.cloudflarestream.com/${streamUid}/thumbnails/thumbnail.jpg`;
+        event.thumbnail || `https://customer-${accountId}.cloudflarestream.com/${streamUid}/thumbnails/thumbnail.jpg`;
       const playbackUrl: string | null =
         event.playback?.hls || event.preview || null;
 
@@ -157,17 +166,21 @@ Deno.serve(async (req: Request) => {
       }
 
       // Broadcast media_status event to the conversation channel
-      await supabaseAdmin.channel(`chat:${conversationId}`).send({
-        type: "broadcast",
-        event: "media_status",
-        payload: {
-          message_id: messageId,
-          attachment_id: attachmentId,
-          status: "ready",
-          thumbnail_url: thumbnailUrl,
-          playback_url: playbackUrl,
-        },
-      });
+      try {
+        await supabaseAdmin.channel(`chat:${conversationId}`).send({
+          type: "broadcast",
+          event: "media_status",
+          payload: {
+            message_id: messageId,
+            attachment_id: attachmentId,
+            status: "ready",
+            thumbnail_url: thumbnailUrl,
+            playback_url: playbackUrl,
+          },
+        });
+      } catch (broadcastErr) {
+        console.error("Broadcast failed for ready event:", broadcastErr);
+      }
     } else if (isFailed) {
       const { error: updateError } = await supabaseAdmin
         .from("media_attachments")
@@ -180,17 +193,21 @@ Deno.serve(async (req: Request) => {
       }
 
       // Broadcast failure status
-      await supabaseAdmin.channel(`chat:${conversationId}`).send({
-        type: "broadcast",
-        event: "media_status",
-        payload: {
-          message_id: messageId,
-          attachment_id: attachmentId,
-          status: "failed",
-          thumbnail_url: null,
-          playback_url: null,
-        },
-      });
+      try {
+        await supabaseAdmin.channel(`chat:${conversationId}`).send({
+          type: "broadcast",
+          event: "media_status",
+          payload: {
+            message_id: messageId,
+            attachment_id: attachmentId,
+            status: "failed",
+            thumbnail_url: null,
+            playback_url: null,
+          },
+        });
+      } catch (broadcastErr) {
+        console.error("Broadcast failed for failure event:", broadcastErr);
+      }
     }
 
     return new Response(JSON.stringify({ ok: true }), {
@@ -201,4 +218,6 @@ Deno.serve(async (req: Request) => {
     console.error("chat-media-webhook error:", err);
     return new Response("Internal server error", { status: 500 });
   }
-});
+}
+
+Deno.serve(handler);

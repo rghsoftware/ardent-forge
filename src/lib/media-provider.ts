@@ -1,7 +1,8 @@
+import { z } from 'zod'
 import { getSupabaseClient } from '@/lib/supabase'
 
 // ---------------------------------------------------------------------------
-// MediaProvider interface -- abstracts media hosting backends (CH-12)
+// MediaProvider interface -- abstracts media hosting backends (CH-6)
 // ---------------------------------------------------------------------------
 
 export interface MediaProvider {
@@ -23,6 +24,16 @@ interface CachedSignedUrl {
   url: string
   expiresAt: string
 }
+
+const uploadUrlResponseSchema = z.object({
+  tusUrl: z.string(),
+  assetId: z.string(),
+})
+
+const signedUrlResponseSchema = z.object({
+  signedUrl: z.string(),
+  expiresAt: z.string(),
+})
 
 class CloudflareStreamProvider implements MediaProvider {
   private signedUrlCache = new Map<string, CachedSignedUrl>()
@@ -47,8 +58,11 @@ class CloudflareStreamProvider implements MediaProvider {
       throw new Error(`Failed to get upload URL: ${response.error.message ?? 'Unknown error'}`)
     }
 
-    const data = response.data as { tusUrl: string; assetId: string }
-    return { tusUrl: data.tusUrl, assetId: data.assetId }
+    const parsed = uploadUrlResponseSchema.safeParse(response.data)
+    if (!parsed.success) {
+      throw new Error(`Invalid upload URL response: ${parsed.error.message}`)
+    }
+    return { tusUrl: parsed.data.tusUrl, assetId: parsed.data.assetId }
   }
 
   async getSignedPlaybackUrl(
@@ -77,9 +91,13 @@ class CloudflareStreamProvider implements MediaProvider {
       throw new Error(`Failed to get signed URL: ${response.error.message ?? 'Unknown error'}`)
     }
 
-    const data = response.data as { url: string; expiresAt: string }
-    this.signedUrlCache.set(assetId, data)
-    return data
+    const parsed = signedUrlResponseSchema.safeParse(response.data)
+    if (!parsed.success) {
+      throw new Error(`Invalid signed URL response: ${parsed.error.message}`)
+    }
+    const result: CachedSignedUrl = { url: parsed.data.signedUrl, expiresAt: parsed.data.expiresAt }
+    this.signedUrlCache.set(assetId, result)
+    return result
   }
 }
 
@@ -87,7 +105,7 @@ class CloudflareStreamProvider implements MediaProvider {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Returns true if the expiry timestamp is within 60 seconds of now. */
+/** Returns true if the expiry timestamp will expire within the next 60 seconds. */
 function isExpired(expiresAt: string): boolean {
   const expiryMs = new Date(expiresAt).getTime()
   const bufferMs = 60 * 1000

@@ -5,6 +5,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 // ---------------------------------------------------------------------------
 
 const mockTusAbort = vi.fn().mockResolvedValue(undefined)
+let mockTusShouldFail = false
 
 vi.mock('tus-js-client', () => {
   class MockUpload {
@@ -16,6 +17,11 @@ vi.mock('tus-js-client', () => {
     }
 
     start() {
+      if (mockTusShouldFail) {
+        const onError = this._options.onError as (err: Error) => void
+        onError(new Error('TUS upload failed: network error'))
+        return
+      }
       const onProgress = this._options.onProgress as (bytesSent: number, bytesTotal: number) => void
       const onSuccess = this._options.onSuccess as () => void
       onProgress(50, 100)
@@ -113,6 +119,13 @@ describe('MediaUploadService', () => {
       const result = await service.uploadVideo(file, vi.fn())
       expect(result.status).toBe('processing')
     })
+
+    it('rejects when TUS upload encounters an error (S7)', async () => {
+      mockTusShouldFail = true
+      const file = createFile('fail.mp4', 5 * 1024 * 1024, 'video/mp4')
+      await expect(service.uploadVideo(file, vi.fn())).rejects.toThrow('TUS upload failed')
+      mockTusShouldFail = false
+    })
   })
 
   // -------------------------------------------------------------------------
@@ -145,6 +158,15 @@ describe('MediaUploadService', () => {
       const uploadPath = uploadCall[0] as string
       expect(uploadPath).toContain(`chat-images/${conversationId}/`)
     })
+
+    it('throws when Storage upload returns an error (S6)', async () => {
+      mockStorageUpload.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Quota exceeded' },
+      })
+      const file = createFile('fail.jpg', 1024, 'image/jpeg')
+      await expect(service.uploadImage(file, vi.fn())).rejects.toThrow('Image upload failed: Quota exceeded')
+    })
   })
 
   // -------------------------------------------------------------------------
@@ -174,6 +196,15 @@ describe('MediaUploadService', () => {
       const uploadCall = mockStorageUpload.mock.calls[0]
       const uploadPath = uploadCall[0] as string
       expect(uploadPath).toContain(`chat-files/${conversationId}/`)
+    })
+
+    it('throws when Storage upload returns an error (S6)', async () => {
+      mockStorageUpload.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Bucket not found' },
+      })
+      const file = createFile('fail.pdf', 1024, 'application/pdf')
+      await expect(service.uploadFile(file, vi.fn())).rejects.toThrow('File upload failed: Bucket not found')
     })
   })
 

@@ -71,7 +71,6 @@ export function AttachmentPicker({
         </SheetHeader>
 
         <div className="grid grid-cols-2 gap-3 px-4">
-          {/* Video */}
           <OptionButton
             icon="videocam"
             label="Video"
@@ -80,7 +79,6 @@ export function AttachmentPicker({
             onClick={() => handleOptionClick('video')}
           />
 
-          {/* Photo */}
           <OptionButton
             icon="photo_camera"
             label="Photo"
@@ -89,14 +87,12 @@ export function AttachmentPicker({
             onClick={() => handleOptionClick('photo')}
           />
 
-          {/* Workout (unchanged, different feature scope) */}
           <OptionButton
             icon="fitness_center"
             label="Workout"
             onClick={() => handleOptionClick('workout')}
           />
 
-          {/* File */}
           <OptionButton
             icon="description"
             label="File"

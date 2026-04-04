@@ -76,20 +76,31 @@ export function useMediaUpload(conversationId: string): UseMediaUploadReturn {
           originalFilename: result.originalFilename,
           mimeType: result.mimeType,
           fileSizeBytes: result.fileSizeBytes,
-          durationSeconds: result.durationSeconds,
-          thumbnailUrl: result.thumbnailUrl,
-          playbackUrl: result.playbackUrl,
         })
 
         // 5. Invalidate messages query so UI refreshes
         queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
 
-        // 6. For video: set a transcoding timeout warning
-        if (type === 'video') {
-          setTimeout(() => {
-            console.warn(
-              `[media-upload] Video ${result.providerAssetId} transcoding may be stalled (5 min timeout)`,
-            )
+        // 6. For video: mark as failed if transcoding stalls past 5 min
+        if (type === 'video' && message.id) {
+          setTimeout(async () => {
+            try {
+              const adapter = getAdapter()
+              const currentAttachments = await adapter.getMediaAttachments([message.id])
+              const att = currentAttachments.find(
+                (a) => a.providerAssetId === result.providerAssetId,
+              )
+              if (att && att.status === 'processing') {
+                await adapter.updateMediaAttachment(att.id, { status: 'failed' })
+                queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
+                queryClient.invalidateQueries({ queryKey: ['media-attachments'] })
+                console.warn(
+                  `[media-upload] Video ${result.providerAssetId} transcoding timed out -- marked as failed`,
+                )
+              }
+            } catch (err) {
+              console.error('[media-upload] Failed to update timed-out transcoding status:', err)
+            }
           }, VIDEO_TRANSCODING_TIMEOUT_MS)
         }
 

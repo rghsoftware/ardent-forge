@@ -1,4 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.24";
+
+const signedUrlRequestSchema = z.object({
+  assetId: z.string().min(1),
+  conversationId: z.string().uuid(),
+});
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,7 +12,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -45,11 +51,14 @@ Deno.serve(async (req: Request) => {
     // 2. Validate request body
     // -----------------------------------------------------------------------
     const body = await req.json();
-    const { assetId, conversationId } = body;
+    const parsed = signedUrlRequestSchema.safeParse(body);
 
-    if (!assetId || typeof assetId !== "string") {
+    if (!parsed.success) {
       return new Response(
-        JSON.stringify({ error: "assetId is required (string)" }),
+        JSON.stringify({
+          error: "assetId (string) and conversationId (uuid) are required",
+          details: parsed.error.issues,
+        }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -57,15 +66,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!conversationId || typeof conversationId !== "string") {
-      return new Response(
-        JSON.stringify({ error: "conversationId is required (string)" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
+    const { assetId, conversationId } = parsed.data;
 
     // -----------------------------------------------------------------------
     // 3. Verify conversation participation
@@ -215,4 +216,6 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}
+
+Deno.serve(handler);

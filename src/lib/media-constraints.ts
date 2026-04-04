@@ -1,7 +1,7 @@
 import type { MediaType } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
-// Centralized media validation constraints (CH-12)
+// Centralized media validation constraints (CH-6)
 // ---------------------------------------------------------------------------
 
 export const MEDIA_CONSTRAINTS = {
@@ -18,6 +18,16 @@ export const MEDIA_CONSTRAINTS = {
   },
   file: {
     maxSizeBytes: 25 * 1024 * 1024, // 25 MB
+    allowedMimeTypes: [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'text/plain',
+      'application/zip',
+    ],
     allowedExtensions: ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.txt', '.zip'],
     blockedExtensions: [
       '.exe',
@@ -35,7 +45,7 @@ export const MEDIA_CONSTRAINTS = {
       '.wsf',
     ],
   },
-} as const
+} as const satisfies Record<MediaType, unknown>
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -145,7 +155,7 @@ function validateGenericFile(file: File, ext: string): Promise<ValidationResult>
 // Helpers
 // ---------------------------------------------------------------------------
 
-function extractExtension(filename: string): string {
+export function extractExtension(filename: string): string {
   const dotIndex = filename.lastIndexOf('.')
   if (dotIndex === -1) return ''
   return filename.slice(dotIndex).toLowerCase()

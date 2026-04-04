@@ -1,4 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.24";
+
+const uploadUrlRequestSchema = z.object({
+  maxDurationSeconds: z.number().int().min(1).max(60),
+});
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,7 +11,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req: Request) => {
+export async function handler(req: Request): Promise<Response> {
   // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -45,18 +50,13 @@ Deno.serve(async (req: Request) => {
     // 2. Validate request body
     // -----------------------------------------------------------------------
     const body = await req.json();
-    const maxDurationSeconds = body.maxDurationSeconds;
+    const parsed = uploadUrlRequestSchema.safeParse(body);
 
-    if (
-      typeof maxDurationSeconds !== "number" ||
-      !Number.isInteger(maxDurationSeconds) ||
-      maxDurationSeconds < 1 ||
-      maxDurationSeconds > 60
-    ) {
+    if (!parsed.success) {
       return new Response(
         JSON.stringify({
-          error:
-            "maxDurationSeconds is required and must be an integer between 1 and 60",
+          error: "maxDurationSeconds is required and must be an integer between 1 and 60",
+          details: parsed.error.issues,
         }),
         {
           status: 400,
@@ -64,6 +64,8 @@ Deno.serve(async (req: Request) => {
         },
       );
     }
+
+    const { maxDurationSeconds } = parsed.data;
 
     // -----------------------------------------------------------------------
     // 3. Read Cloudflare credentials
@@ -180,4 +182,6 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}
+
+Deno.serve(handler);

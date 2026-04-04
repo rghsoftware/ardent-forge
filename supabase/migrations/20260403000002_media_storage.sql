@@ -59,6 +59,7 @@ create policy "chat_images_select_participant"
               and cp.left_at is null
               and ma.provider = 'supabase_storage'
               and ma.media_type = 'image'
+              and ma.provider_asset_id = storage.objects.name
         )
     );
 
@@ -77,15 +78,12 @@ create policy "chat_files_select_participant"
               and cp.left_at is null
               and ma.provider = 'supabase_storage'
               and ma.media_type in ('file', 'image')
+              and ma.provider_asset_id = storage.objects.name
         )
     );
 
 -- ---------------------------------------------------------------------------
--- 3. Missing index on media_attachments(message_id)
---    Supports batch lookups: SELECT * FROM media_attachments WHERE message_id = ANY($1)
---    Note: idx_media_message was created in 20260402000002 on (message_id).
---    This creates a dedicated index for the batch lookup pattern.
+-- 3. Index note
+--    idx_media_message already exists from 20260402000002 on (message_id).
+--    No additional index needed for batch lookups.
 -- ---------------------------------------------------------------------------
-
-create index if not exists idx_media_attachments_message
-    on media_attachments(message_id);

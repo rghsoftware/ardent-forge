@@ -180,7 +180,11 @@ export function MessageList({
     () => allMessages.filter((m) => m.messageType === 'media').map((m) => m.id),
     [allMessages],
   )
-  const { attachments } = useMediaAttachments(mediaMessageIds)
+  const { attachments, error: mediaError } = useMediaAttachments(mediaMessageIds)
+
+  if (mediaError) {
+    console.error('[media] Failed to load media attachments:', mediaError)
+  }
 
   // ---- Media overlay state ----
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
@@ -192,8 +196,8 @@ export function MessageList({
       try {
         const { url } = await getMediaProvider().getSignedPlaybackUrl(assetId, conversationId)
         setVideoUrl(url)
-      } catch {
-        // Signed URL fetch failed -- silently ignore for now
+      } catch (err) {
+        console.error('[media] Failed to get video playback URL:', err)
       }
     },
     [conversationId],
@@ -208,13 +212,13 @@ export function MessageList({
       const client = getSupabaseClient()
       if (!client) return
       const { data: signedData } = await client.storage
-        .from('chat-images')
+        .from('chat-files')
         .createSignedUrl(providerAssetId, 3600)
       if (signedData?.signedUrl) {
         window.open(signedData.signedUrl, '_blank')
       }
-    } catch {
-      // Download URL generation failed -- silently ignore for now
+    } catch (err) {
+      console.error('[media] Failed to generate download URL:', err)
     }
   }, [])
 

@@ -7,6 +7,10 @@ import { validateFile, MEDIA_CONSTRAINTS } from '@/lib/media-constraints'
 // and URL.createObjectURL
 // ---------------------------------------------------------------------------
 
+// Configurable mock video behavior
+let mockVideoDuration = 30
+let mockVideoShouldError = false
+
 beforeAll(() => {
   // Mock URL.createObjectURL / revokeObjectURL
   if (!globalThis.URL.createObjectURL) {
@@ -24,7 +28,9 @@ beforeAll(() => {
       let onloadedmetadata: (() => void) | null = null
       const mockVideo = {
         preload: '',
-        duration: 30, // 30 seconds -- under the 60s limit
+        get duration() {
+          return mockVideoDuration
+        },
         onerror: null as (() => void) | null,
         removeAttribute: vi.fn(),
         load: vi.fn(),
@@ -35,7 +41,9 @@ beforeAll(() => {
         },
         set(val: string) {
           internalSrc = val
-          if (onloadedmetadata) {
+          if (mockVideoShouldError) {
+            setTimeout(() => mockVideo.onerror?.(), 0)
+          } else if (onloadedmetadata) {
             setTimeout(() => onloadedmetadata?.(), 0)
           }
         },
@@ -101,6 +109,40 @@ describe('validateFile - video', () => {
     if (!result.valid) {
       expect(result.error).toContain('Unsupported video extension')
     }
+  })
+
+  it('rejects a video exceeding 60s duration', async () => {
+    mockVideoDuration = 90
+    const file = createFile('long.mp4', 10 * 1024 * 1024, 'video/mp4')
+    const result = await validateFile(file, 'video')
+    expect(result.valid).toBe(false)
+    if (!result.valid) {
+      expect(result.error).toContain('60 second limit')
+      expect(result.error).toContain('90s')
+    }
+    mockVideoDuration = 30 // reset
+  })
+
+  it('rejects video when metadata cannot be read', async () => {
+    mockVideoShouldError = true
+    const file = createFile('corrupt.mp4', 5 * 1024 * 1024, 'video/mp4')
+    const result = await validateFile(file, 'video')
+    expect(result.valid).toBe(false)
+    if (!result.valid) {
+      expect(result.error).toContain('Could not read video metadata')
+    }
+    mockVideoShouldError = false // reset
+  })
+
+  it('rejects video with non-finite duration (e.g. live stream)', async () => {
+    mockVideoDuration = Infinity
+    const file = createFile('stream.mp4', 5 * 1024 * 1024, 'video/mp4')
+    const result = await validateFile(file, 'video')
+    expect(result.valid).toBe(false)
+    if (!result.valid) {
+      expect(result.error).toContain('Could not determine video duration')
+    }
+    mockVideoDuration = 30 // reset
   })
 
   it('exposes correct video constraints', () => {
