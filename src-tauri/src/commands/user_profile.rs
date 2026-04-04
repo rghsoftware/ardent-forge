@@ -19,6 +19,7 @@ pub struct UpdateUserProfileInput {
     pub training_age: Option<String>,
     pub exercise_maxes: Option<String>,
     pub max_reps: Option<String>,
+    pub display_visible: Option<bool>,
 }
 
 // ---------------------------------------------------------------------------
@@ -48,11 +49,13 @@ pub async fn update_user_profile(
     let mut tx = pool.begin().await?;
 
     // UPSERT: insert if not exists, update if exists
+    let display_visible_int = profile.display_visible.map(|b| if b { 1i64 } else { 0i64 });
+
     sqlx::query(
         "INSERT INTO user_profiles \
          (id, display_name, preferred_units, bodyweight, training_age, \
-          exercise_maxes, max_reps, created_at, updated_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
+          exercise_maxes, max_reps, display_visible, created_at, updated_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT(id) DO UPDATE SET \
          display_name = excluded.display_name, \
          preferred_units = excluded.preferred_units, \
@@ -60,6 +63,7 @@ pub async fn update_user_profile(
          training_age = excluded.training_age, \
          exercise_maxes = excluded.exercise_maxes, \
          max_reps = excluded.max_reps, \
+         display_visible = excluded.display_visible, \
          updated_at = excluded.updated_at",
     )
     .bind(&profile.id)
@@ -69,6 +73,7 @@ pub async fn update_user_profile(
     .bind(&profile.training_age)
     .bind(&profile.exercise_maxes)
     .bind(&profile.max_reps)
+    .bind(display_visible_int)
     .bind(now)
     .bind(now)
     .execute(&mut *tx)

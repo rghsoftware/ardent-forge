@@ -287,6 +287,7 @@ export function toUserProfile(row: UserProfileRow): UserProfile {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     displayName: row.display_name ?? undefined,
+    displayVisible: row.display_visible ?? undefined,
     preferredUnits: preferredUnitsSchema.parse(row.preferred_units),
     bodyweight: row.bodyweight != null ? weightSchema.parse(row.bodyweight) : undefined,
     trainingAge: row.training_age != null ? durationSchema.parse(row.training_age) : undefined,
@@ -307,6 +308,7 @@ export function fromUserProfile(
   const row: Partial<UserProfileRow> = { id: profile.id }
 
   if (profile.displayName !== undefined) row.display_name = profile.displayName ?? null
+  if (profile.displayVisible !== undefined) row.display_visible = profile.displayVisible ?? null
   if (profile.preferredUnits !== undefined) row.preferred_units = profile.preferredUnits
   if (profile.bodyweight !== undefined) row.bodyweight = profile.bodyweight ?? null
   if (profile.trainingAge !== undefined) row.training_age = profile.trainingAge ?? null

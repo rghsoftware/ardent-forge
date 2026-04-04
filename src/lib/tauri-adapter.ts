@@ -188,6 +188,7 @@ interface TauriLoggedSetResponse {
 interface TauriUserProfileResponse {
   id: string
   display_name: string | null
+  display_visible: number | null
   preferred_units: string | null
   bodyweight: string | null
   training_age: string | null
@@ -655,6 +656,7 @@ function toUserProfileRow(r: TauriUserProfileResponse): UserProfileRow {
   return {
     id: r.id,
     display_name: r.display_name,
+    display_visible: r.display_visible != null ? intToBool(r.display_visible) : null,
     preferred_units: r.preferred_units ?? 'IMPERIAL',
     bodyweight: parseJson(r.bodyweight, 'bodyweight'),
     training_age: parseJson(r.training_age, 'training_age'),
@@ -1205,6 +1207,7 @@ export class TauriAdapter implements DataAdapter {
     const input = {
       id: partial.id!,
       display_name: partial.display_name ?? null,
+      display_visible: partial.display_visible ?? null,
       preferred_units: partial.preferred_units ?? null,
       bodyweight: partial.bodyweight != null ? JSON.stringify(partial.bodyweight) : null,
       training_age: partial.training_age != null ? JSON.stringify(partial.training_age) : null,
@@ -2247,6 +2250,27 @@ export class TauriAdapter implements DataAdapter {
       },
     })
     return toMediaAttachment(toMediaAttachmentRowFromTauri(row))
+  }
+
+  async getMediaAttachments(messageIds: string[]): Promise<MediaAttachment[]> {
+    if (messageIds.length === 0) return []
+
+    const rows = await invokeCommand<TauriMediaAttachmentResponse[]>('get_media_attachments', {
+      message_ids: messageIds,
+    })
+    return rows.map((r) => toMediaAttachment(toMediaAttachmentRowFromTauri(r)))
+  }
+
+  async updateMediaAttachment(
+    _attachmentId: string,
+    _updates: Partial<
+      Pick<MediaAttachment, 'status' | 'thumbnailUrl' | 'playbackUrl' | 'providerAssetId'>
+    >,
+  ): Promise<MediaAttachment> {
+    // Media status updates come from the webhook edge function which uses
+    // SupabaseAdapter. The Tauri offline path uses save_media_attachment
+    // (INSERT OR REPLACE) for full upserts instead of partial updates.
+    throw new Error('updateMediaAttachment is not supported in offline mode')
   }
 }
 

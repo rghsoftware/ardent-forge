@@ -1,11 +1,14 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 import { useSendMessage } from '@/hooks/use-chat'
 import { getRealtimeManager } from '@/lib/realtime-manager'
 import { useAuth } from '@/lib/auth'
 import { useUserProfile } from '@/hooks/use-user-profile'
+import { useMediaUpload } from '@/hooks/use-media-upload'
 import { AttachmentPicker } from './attachment-picker'
+import { UploadProgress } from './upload-progress'
+import type { MediaType } from '@/domain/types'
 
 interface ComposeBarProps {
   conversationId: string
@@ -17,12 +20,52 @@ export function ComposeBar({ conversationId, onSend, disabled }: ComposeBarProps
   const [content, setContent] = useState('')
   const [attachmentOpen, setAttachmentOpen] = useState(false)
   const [sendError, setSendError] = useState(false)
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [uploadFilename, setUploadFilename] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const sendMessage = useSendMessage()
   const { user } = useAuth()
   const { data: currentUserProfile } = useUserProfile(user?.id ?? '')
+  const {
+    upload,
+    progress,
+    isUploading,
+    error: uploadError,
+    cancel,
+    retry,
+  } = useMediaUpload(conversationId)
 
   const hasContent = content.trim().length > 0
+  const isBusy = isUploading || disabled
+
+  // Track online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  const handleFileSelected = useCallback(
+    (file: File, type: MediaType) => {
+      setUploadFilename(file.name)
+      void upload(file, type)
+    },
+    [upload],
+  )
+
+  const handleCancel = useCallback(() => {
+    cancel()
+    setUploadFilename(null)
+  }, [cancel])
+
+  const handleRetry = useCallback(() => {
+    retry()
+  }, [retry])
 
   const resetTextarea = useCallback(() => {
     if (textareaRef.current) {
@@ -32,7 +75,7 @@ export function ComposeBar({ conversationId, onSend, disabled }: ComposeBarProps
 
   const handleSubmit = useCallback(async () => {
     const trimmed = content.trim()
-    if (!trimmed || disabled) return
+    if (!trimmed || isBusy) return
 
     setContent('')
     setSendError(false)
@@ -49,7 +92,7 @@ export function ComposeBar({ conversationId, onSend, disabled }: ComposeBarProps
       setContent(trimmed)
       setSendError(true)
     }
-  }, [content, conversationId, disabled, onSend, resetTextarea, sendMessage])
+  }, [content, conversationId, isBusy, onSend, resetTextarea, sendMessage])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -89,17 +132,38 @@ export function ComposeBar({ conversationId, onSend, disabled }: ComposeBarProps
           <p className="text-xs text-red-400">Failed to send. Try again.</p>
         </div>
       )}
+      {uploadError && !isUploading && (
+        <div className="bg-surface-anvil px-4 py-1.5 border-t border-ghost-line/15 flex items-center justify-between">
+          <p className="text-xs text-red-400">{uploadError}</p>
+          <button
+            type="button"
+            onClick={handleRetry}
+            className="text-xs text-ember hover:text-ember/80 transition-colors ml-2 shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+      {isUploading && uploadFilename && (
+        <div className="border-t border-ghost-line/15">
+          <UploadProgress
+            progress={progress * 100}
+            filename={uploadFilename}
+            onCancel={handleCancel}
+          />
+        </div>
+      )}
       <div
         className={cn(
           'sticky bottom-0 flex flex-row items-end gap-2 border-t border-ghost-line/15 bg-surface-anvil px-4 py-3',
-          disabled && 'pointer-events-none opacity-50',
+          isBusy && 'pointer-events-none opacity-50',
         )}
       >
         <button
           type="button"
           className="shrink-0 pb-0.5 text-warm-ash/50 transition-colors hover:text-warm-ash"
           onClick={() => setAttachmentOpen(true)}
-          disabled={disabled}
+          disabled={isBusy}
           aria-label="Attach file"
         >
           <Icon name="attach_file" size={22} />
@@ -112,7 +176,7 @@ export function ComposeBar({ conversationId, onSend, disabled }: ComposeBarProps
           onKeyDown={handleKeyDown}
           placeholder="Message..."
           rows={1}
-          disabled={disabled}
+          disabled={isBusy}
           className="min-h-[36px] max-h-[120px] flex-1 resize-none border-b-2 border-surface-steel bg-transparent py-1 font-body text-sm text-bone-white placeholder:text-warm-ash/50 focus:border-ember focus:outline-none"
         />
 
@@ -120,17 +184,22 @@ export function ComposeBar({ conversationId, onSend, disabled }: ComposeBarProps
           type="button"
           className={cn(
             'shrink-0 pb-0.5 transition-colors',
-            hasContent ? 'text-ember hover:text-ember/80' : 'text-warm-ash/30',
+            hasContent && !isBusy ? 'text-ember hover:text-ember/80' : 'text-warm-ash/30',
           )}
           onClick={() => void handleSubmit()}
-          disabled={disabled || !hasContent}
+          disabled={isBusy || !hasContent}
           aria-label="Send message"
         >
           <Icon name="send" size={22} />
         </button>
       </div>
 
-      <AttachmentPicker open={attachmentOpen} onOpenChange={setAttachmentOpen} />
+      <AttachmentPicker
+        open={attachmentOpen}
+        onOpenChange={setAttachmentOpen}
+        onFileSelected={handleFileSelected}
+        isOnline={isOnline}
+      />
     </>
   )
 }

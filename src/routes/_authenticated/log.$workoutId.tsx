@@ -5,7 +5,9 @@ import { useExercises } from '@/hooks/use-exercises'
 import { useUserProfile } from '@/hooks/use-user-profile'
 import { useProgramFull } from '@/hooks/use-programs'
 import { detectPersonalRecords } from '@/lib/pr-detection'
+import { useDisplayBroadcast } from '@/hooks/use-display-broadcast'
 import { WorkoutHeader } from '@/components/workout/workout-header'
+import { PushToDisplayButton } from '@/components/workout/push-to-display-button'
 import { ExerciseBlock, type SetRowData } from '@/components/workout/exercise-block'
 import { ProgramContextBanner } from '@/components/workout/program-context-banner'
 import { RestTimerOverlay } from '@/components/workout/rest-timer-overlay'
@@ -79,6 +81,11 @@ function ActiveWorkoutPage() {
       dayLabel: ctx.dayLabel,
     }
   }, [workoutLog?.programContext, programFull])
+
+  // Display broadcast (called unconditionally -- hook manages its own cleanup)
+  const { publishFocus, publishUnfocus, isBroadcasting } = useDisplayBroadcast(
+    workoutLog?.userId ?? '',
+  )
 
   // Exercise ID -> Exercise lookup
   const exerciseMap = useMemo(() => {
@@ -308,6 +315,16 @@ function ActiveWorkoutPage() {
           canFinish={true}
         />
 
+        {/* Push to remote display */}
+        <div className="flex justify-end px-4">
+          <PushToDisplayButton
+            userId={workoutLog.userId}
+            publishFocus={publishFocus}
+            publishUnfocus={publishUnfocus}
+            isBroadcasting={isBroadcasting}
+          />
+        </div>
+
         <EventDetail
           workoutLogId={workoutLog.id}
           eventMetadata={workoutLog.eventMetadata}
@@ -373,6 +390,16 @@ function ActiveWorkoutPage() {
         isFinishing={isFinishing}
         canFinish={confirmedSetCount > 0}
       />
+
+      {/* Push to remote display */}
+      <div className="flex justify-end px-4">
+        <PushToDisplayButton
+          userId={workoutLog.userId}
+          publishFocus={publishFocus}
+          publishUnfocus={publishUnfocus}
+          isBroadcasting={isBroadcasting}
+        />
+      </div>
 
       {/* Program context banner for programmed workouts */}
       {programBannerProps && (

@@ -140,6 +140,7 @@ pub fn run() {
             commands::chat::get_unread_counts,
             commands::chat::leave_conversation,
             commands::chat::save_media_attachment,
+            commands::chat::get_media_attachments,
             commands::chat::toggle_archive,
         ])
         .run(tauri::generate_context!())

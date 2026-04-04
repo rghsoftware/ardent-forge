@@ -1,8 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { RealtimeChannel } from '@supabase/realtime-js'
 import type { DataAdapter } from './data-adapter'
-import type { MessageBroadcastPayload } from './realtime-schemas'
-import { messageBroadcastPayloadSchema, typingBroadcastPayloadSchema } from './realtime-schemas'
+import type { MessageBroadcastPayload, MediaStatusBroadcastPayload } from './realtime-schemas'
+import {
+  messageBroadcastPayloadSchema,
+  typingBroadcastPayloadSchema,
+  mediaStatusBroadcastPayloadSchema,
+} from './realtime-schemas'
 import { createForegroundDetector, type ForegroundDetector } from './foreground-detector'
 
 // ---------------------------------------------------------------------------
@@ -39,6 +43,10 @@ export interface RealtimeManager {
   /** Register a typing listener. Returns an unsubscribe function. */
   addTypingListener(
     listener: (conversationId: string, userId: string, userName: string) => void,
+  ): () => void
+  /** Register a media status listener. Returns an unsubscribe function. */
+  addMediaStatusListener(
+    listener: (conversationId: string, payload: MediaStatusBroadcastPayload) => void,
   ): () => void
 
   /** Returns the list of users currently typing in a conversation. */
@@ -86,6 +94,10 @@ export function createRealtimeManager(
   type TypingListener = (conversationId: string, userId: string, userName: string) => void
   const typingListeners = new Set<TypingListener>()
 
+  /** Media status listeners registered via addMediaStatusListener. */
+  type MediaStatusListener = (conversationId: string, payload: MediaStatusBroadcastPayload) => void
+  const mediaStatusListeners = new Set<MediaStatusListener>()
+
   // -- Helpers --------------------------------------------------------------
 
   function clearTypingForConversation(conversationId: string): void {
@@ -121,6 +133,13 @@ export function createRealtimeManager(
       typingListeners.add(listener)
       return () => {
         typingListeners.delete(listener)
+      }
+    },
+
+    addMediaStatusListener(listener) {
+      mediaStatusListeners.add(listener)
+      return () => {
+        mediaStatusListeners.delete(listener)
       }
     },
 
@@ -191,6 +210,22 @@ export function createRealtimeManager(
         }
       })
 
+      // Listen for media status broadcasts
+      channel.on('broadcast', { event: 'media_status' }, (incoming) => {
+        const result = mediaStatusBroadcastPayloadSchema.safeParse(incoming.payload)
+        if (!result.success) {
+          console.warn(
+            `[realtime-manager] Invalid media_status broadcast on chat:${conversationId}`,
+            result.error.issues,
+          )
+          return
+        }
+
+        for (const listener of mediaStatusListeners) {
+          listener(conversationId, result.data)
+        }
+      })
+
       // Subscribe to the channel
       channel.subscribe((status, err) => {
         if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
@@ -251,11 +286,13 @@ export function createRealtimeManager(
       const channel = channels.get(conversationId)
       if (!channel) return
 
-      channel.send({
-        type: 'broadcast',
-        event: 'typing',
-        payload: { user_id: userId, user_name: userName },
-      }).catch(() => {})
+      channel
+        .send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { user_id: userId, user_name: userName },
+        })
+        .catch(() => {})
 
       lastTypingSent.set(conversationId, now)
     },
@@ -374,10 +411,7 @@ export function getRealtimeManager(): RealtimeManager | null {
 }
 
 /** Creates (or replaces) the singleton RealtimeManager. */
-export function initRealtimeManager(
-  client: SupabaseClient,
-  adapter: DataAdapter,
-): RealtimeManager {
+export function initRealtimeManager(client: SupabaseClient, adapter: DataAdapter): RealtimeManager {
   if (_manager) _manager.destroy()
   _manager = createRealtimeManager(client, adapter)
   return _manager
