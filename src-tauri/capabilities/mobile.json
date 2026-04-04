@@ -12,6 +12,7 @@
     "deep-link:allow-unregister",
     "opener:allow-open-url",
     "opener:allow-default-urls",
-    "log:allow-log"
+    "log:allow-log",
+    "barcode-scanner:default"
   ]
 }
