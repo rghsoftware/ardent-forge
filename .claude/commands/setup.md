@@ -92,7 +92,24 @@ Check that Cortex hooks are wired in `.claude/settings.json`:
 If hooks are missing, inform the user and suggest running `bun run deploy` to install them,
 or offer to add them via the merge-settings script.
 
-### Step 7: Summary
+### Step 7: Detect issue tracker
+
+Check for available issue tracker CLIs so `/review-resolve` can defer findings to external issues.
+
+1. **Check GitHub CLI**: Run `gh auth status` to see if `gh` is installed and authenticated
+2. **Check GitLab CLI**: Run `glab auth status` to see if `glab` is installed and authenticated
+3. **Resolve which tracker to use**:
+   - If both are found and authenticated, ask the user which they prefer
+   - If only one is found and authenticated, confirm it with the user
+   - If neither is found (or not authenticated), inform the user that deferred findings will use the local backlog instead
+4. **Store the result** in `.cortex/config.json`:
+   - GitHub: `{ "issueTracker": { "type": "github", "cli": "gh" } }`
+   - GitLab: `{ "issueTracker": { "type": "gitlab", "cli": "glab" } }`
+   - No tracker: `{ "issueTracker": { "type": "backlog" } }`
+
+If `.cortex/config.json` already exists, merge the `issueTracker` key into it without overwriting other settings.
+
+### Step 8: Summary
 
 Present what was created/verified:
 - Stacks detected
@@ -100,6 +117,7 @@ Present what was created/verified:
 - CLAUDE.md status (created or updated)
 - Stack rules created
 - Hooks status
+- Issue tracker configured (GitHub, GitLab, or local backlog)
 
 Suggest next steps:
 1. Review the generated CLAUDE.md

@@ -108,7 +108,7 @@ After all waves complete:
 4. Present completion report
 5. Suggest next steps:
    - Run `/qa` for parallel stack-specific quality checks
-   - Run `/review` to capture findings
+   - Run `/review-capture` to capture findings
    - Run `/commit` when ready
 
 ## Agent Prompt Template

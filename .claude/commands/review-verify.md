@@ -49,7 +49,15 @@ Briefly:
    - New issues found
 5. Mark review as verified in capture file
 
-### Step 3: Confirm review status
+### Step 3: Update review file on PASS
+If the agent's verdict is **PASS** (or **WARNING** with only deferred items):
+1. Open the review capture file
+2. Check the box: `- [x] Review verified by review-verify agent`
+3. This is the only edit -- do not modify any other content in the review file
+
+If the verdict is **FAIL**, do not check the box.
+
+### Step 4: Confirm review status
 Present results:
 - Which reviews were checked
 - Status of each review

@@ -1,11 +1,11 @@
 ---
-description: Work through captured review findings by category
+description: Work through captured review findings with interactive triage
 model: opus
 ---
 
 # Review Resolution
 
-Work through a captured review file, resolve each finding by category, generate appropriate planning artifacts, and update the review file with resolution status.
+Interactively triage and resolve review findings. Claude recommends actions, but the user makes every decision.
 
 ## When to use
 - At the start of a fresh session after a review was captured
@@ -14,53 +14,44 @@ Work through a captured review file, resolve each finding by category, generate 
 
 ## Workflow
 
-**CRITICAL:** This should run in a **fresh session** with full context budget, not in the same session that performed the review.
+**CRITICAL:** Run in a **fresh session** with full context budget -- not the session that performed the review.
 
 ### Step 1: Load the review file
-1. If user specified a file, load that one
-2. Otherwise, list files in `Context/Reviews/` and find the most recent unresolved
-3. If no unresolved reviews exist, inform the user
-4. Load the associated feature's Spec.md, Steps.md, and Tech.md for context
+Find the specified or most recent unresolved review in `Context/Reviews/`. Load associated Spec.md, Steps.md, and Tech.md for context. Parse all findings into a working list.
 
-### Step 2: Work through Fix-Now findings ([FIX])
-Process each in priority order (Critical, High, Medium, Low):
-1. Open referenced file and line
-2. Apply the fix
-3. Update finding: Status = Fixed, Resolution = description of change
-4. If fix is more complex than expected, reclassify to [TASK] or [ADR]
+### Step 2: Bulk triage
+Present a summary table of findings grouped by category and severity. Offer bulk actions using `<action> <filter>` format (e.g., `fix all [FIX] Critical`, `discard all [RULE] Low`). The user may issue multiple bulk actions before typing "done" to proceed. Update all affected findings on disk after each bulk action.
 
-### Step 3: Work through Missing Task findings ([TASK])
-For each finding:
-1. Determine next available S### number from Steps.md
-2. Add new task to Steps.md in the appropriate phase
-3. If related to a Testable Assertion, verify it exists in Spec.md
-4. Update finding: Status = Task created, Resolution = S### reference
-5. Do NOT implement the task now -- just track it
+### Step 3: Individual triage
+Process each remaining finding one at a time. For each, show the finding details and Claude's recommended action, then present a numbered menu:
 
-### Step 4: Work through Architectural Concern findings ([ADR])
-For each finding:
-1. Present the concern with context (what reviewer found, what Tech.md says)
-2. Ask user to decide:
-   - **Create ADR** -- use the adr-create skill
-   - **Dismiss** -- user provides reason
-   - **Defer** -- mark for later consideration
-3. Update finding status accordingly
+1. **Fix** -- apply the fix inline
+2. **Task** -- add S### entry to Steps.md
+3. **ADR** -- create architecture decision record
+4. **Rule** -- add/update convention in rule file
+5. **Defer** -- push to tracker (`.cortex/config.json`) or backlog
+6. **Discard** -- drop the finding (reason required for individual; not for bulk)
 
-### Step 5: Work through Convention Gap findings ([RULE])
-For each finding:
-1. Identify which rule file should be updated
-2. Present the suggested addition to the user
-3. If approved, add to the appropriate rule file
-4. Update finding status
+Wait for the user's choice before proceeding. Save progress to the review file after each decision.
 
-### Step 6: Update review file header
-After processing all findings, update status and add Resolution Summary table.
+### Step 4: Execute actions
+Process all triaged findings in order: Fix, Task, ADR, Rule, Defer, Discard. Update each finding's status and resolution in the review file.
 
-### Step 7: Commit resolution work
-Use the impl-commit skill. Commit message should reference the review file.
+### Step 5: Finalize
+Update the review file header and add a Resolution Summary table. Commit via impl-commit skill referencing the review file.
 
-### Step 8: Suggest next steps
-- New tasks added -- "Run /impl to work through new tasks"
+### Step 6: Suggest next steps
+- New tasks -- "Run /impl to work through new tasks"
 - ADRs created -- "Review the new ADRs"
 - Rules updated -- "Updated rules apply to future code automatically"
+- Items deferred -- "Check the tracker/backlog for deferred items"
 - Always -- "Run /review-verify to confirm all findings resolved"
+
+## Key rules
+- NEVER auto-resolve, auto-dismiss, or skip findings
+- Claude recommends but user decides
+- Individual discard requires a reason; bulk discard does not
+- Bulk triage phase comes before individual triage phase
+- The review file is the single source of truth
+
+See `core/skills/review-resolve/SKILL.md` for full workflow details.

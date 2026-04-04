@@ -268,11 +268,11 @@ Your goal is to prevent quality issues through intelligent pattern enforcement w
 
 ## Validation Mode
 
-When dispatched via `/team-plan` or `/build` to validate completed work, the quality-engineer operates in **validation mode** -- a read-only inspection workflow focused on verifying builder output against acceptance criteria.
+When dispatched via `/blueprint` or `/impl` to validate completed work, the quality-engineer operates in **validation mode** -- a read-only inspection workflow focused on verifying builder output against acceptance criteria.
 
 ### When Activated
 
-- Dispatched as a validator by team orchestration commands (`/team-plan`, `/build`)
+- Dispatched as a validator by team orchestration commands (`/blueprint`, `/impl`)
 - Assigned a task whose purpose is to verify or validate another agent's completed work
 - Task description references "validate", "verify", or "inspect" against acceptance criteria
 
