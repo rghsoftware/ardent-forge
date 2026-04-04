@@ -75,5 +75,30 @@ export const displayEventTypeSchema = z.enum([
   'session_ended',
   'focus',
   'unfocus',
+  'idle_snapshot',
 ])
 export type DisplayEventType = z.infer<typeof displayEventTypeSchema>
+
+// ---------------------------------------------------------------------------
+// IdleSnapshot -- state broadcast when no workout is active
+//   shows scheduled sessions and the next upcoming session
+// ---------------------------------------------------------------------------
+
+export const idleSnapshotSchema = z.object({
+  server_time: isoDateTime,
+  scheduled_sessions: z.array(
+    z.object({
+      display_name: z.string(),
+      session_name: z.string(),
+      session_type: sessionTypeSchema,
+      day_label: z.string(),
+    }),
+  ),
+  next_session: z
+    .object({
+      display_name: z.string(),
+      session_name: z.string(),
+    })
+    .nullable(),
+})
+export type IdleSnapshot = z.infer<typeof idleSnapshotSchema>
