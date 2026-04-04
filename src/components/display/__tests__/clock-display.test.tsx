@@ -43,17 +43,16 @@ describe('ClockDisplay', () => {
 
   it('serverTimeCorrection prop change resets displayed time', () => {
     const { rerender } = render(<ClockDisplay format="24h" />)
-    const initialEl = screen.getByText(/\d{2}:\d{2}:\d{2}/)
-    const initialTime = initialEl.textContent!
+    expect(screen.getByText('14:30:00')).toBeInTheDocument()
 
     // Apply a server correction 30 minutes ahead of local Date.now()
     const correctedDate = new Date(Date.now() + 30 * 60 * 1000)
     const serverIso = correctedDate.toISOString()
+    const expectedTime = correctedDate.toLocaleTimeString('en-GB')
 
     rerender(<ClockDisplay format="24h" serverTimeCorrection={serverIso} />)
 
-    const updatedTime = screen.getByText(/\d{2}:\d{2}:\d{2}/).textContent!
-    expect(updatedTime).not.toBe(initialTime)
+    expect(screen.getByText(expectedTime)).toBeInTheDocument()
   })
 
   it('clears setInterval on unmount', () => {
