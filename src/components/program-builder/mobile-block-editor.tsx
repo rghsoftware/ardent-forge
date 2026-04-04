@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,11 +21,9 @@ import {
   weeksMatch,
 } from './builder-state'
 import type { ProgramDraft, BlockDraft, SessionDraft, ValidationError } from './builder-state'
-import { HelpTrigger } from '@/components/ui/help-trigger'
-import { BLOCK_TYPE_HELP } from '@/components/builders/help-content'
+import { BlockTypeSelector } from './block-type-selector'
 import type { BlockType } from '@/domain/types'
 import {
-  BLOCK_TYPES,
   BLOCK_TYPE_STYLES,
   DAY_ABBREVIATIONS,
   DAY_ORDER,
@@ -341,47 +338,7 @@ function MobileBlockCard({
           {/* Expanded content */}
           <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-200">
             <div className="flex flex-col gap-4 px-3 pb-4">
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-semibold text-warm-ash/60">Block type</span>
-                  <HelpTrigger
-                    title="Block Types"
-                    content={
-                      <div className="space-y-3">
-                        {Object.values(BLOCK_TYPE_HELP).map((bt) => (
-                          <div key={bt.label}>
-                            <p className="font-heading text-xs font-medium text-bone-white">
-                              {bt.label}
-                            </p>
-                            <p className="text-xs text-warm-ash">{bt.description}</p>
-                          </div>
-                        ))}
-                      </div>
-                    }
-                  />
-                </div>
-                <ToggleGroup
-                  type="single"
-                  value={block.blockType}
-                  onValueChange={(v) => {
-                    if (v) handleBlockTypeChange(v as BlockType)
-                  }}
-                  className="flex flex-wrap gap-1"
-                >
-                  {BLOCK_TYPES.map((bt) => (
-                    <ToggleGroupItem
-                      key={bt.value}
-                      value={bt.value}
-                      className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
-                    >
-                      {bt.label}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
-                <p className="mt-1 font-body text-xs text-warm-ash">
-                  {BLOCK_TYPE_HELP[block.blockType].oneLiner}
-                </p>
-              </div>
+              <BlockTypeSelector value={block.blockType} onChange={handleBlockTypeChange} />
 
               {block.weeks.map((week, weekIndex) => {
                 const isCollapsible = collapsibleWeeks.has(week.clientId)

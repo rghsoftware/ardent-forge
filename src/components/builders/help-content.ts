@@ -1,10 +1,23 @@
 import type { GroupType, BlockType, ProgramSource } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
+// Shared help-entry interfaces
+// ---------------------------------------------------------------------------
+
+export interface HelpEntry {
+  label: string
+  description: string
+}
+
+export interface BlockTypeHelpEntry extends HelpEntry {
+  oneLiner: string
+}
+
+// ---------------------------------------------------------------------------
 // Group Type Help
 // ---------------------------------------------------------------------------
 
-export const GROUP_TYPE_HELP: Record<GroupType, { label: string; description: string }> = {
+export const GROUP_TYPE_HELP = {
   STRAIGHT_SETS: {
     label: 'Straight Sets',
     description: 'One exercise at a time. Complete all sets before moving on.',
@@ -33,16 +46,13 @@ export const GROUP_TYPE_HELP: Record<GroupType, { label: string; description: st
     label: 'Couplet',
     description: 'Two movements alternated for rounds, typically for time.',
   },
-}
+} satisfies Record<GroupType, HelpEntry>
 
 // ---------------------------------------------------------------------------
 // Block Type Help
 // ---------------------------------------------------------------------------
 
-export const BLOCK_TYPE_HELP: Record<
-  BlockType,
-  { label: string; description: string; oneLiner: string }
-> = {
+export const BLOCK_TYPE_HELP = {
   ACCUMULATION: {
     label: 'Accumulation',
     description:
@@ -83,13 +93,13 @@ export const BLOCK_TYPE_HELP: Record<
       'and measure progress across training cycles.',
     oneLiner: 'Maximal testing -- 1RM attempts or benchmark assessments.',
   },
-}
+} satisfies Record<BlockType, BlockTypeHelpEntry>
 
 // ---------------------------------------------------------------------------
 // Program Source Help
 // ---------------------------------------------------------------------------
 
-export const SOURCE_HELP: Record<ProgramSource, { label: string; description: string }> = {
+export const SOURCE_HELP = {
   CUSTOM: {
     label: 'Custom',
     description: 'Built from scratch. Full control over every block, week, and session.',
@@ -122,4 +132,4 @@ export const SOURCE_HELP: Record<ProgramSource, { label: string; description: st
     description:
       'A pre-built starting point. Clone it and tailor blocks, weeks, and sessions to fit your needs.',
   },
-}
+} satisfies Record<ProgramSource, HelpEntry>

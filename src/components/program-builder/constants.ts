@@ -1,4 +1,4 @@
-import type { BlockType } from '@/domain/types'
+import type { BlockType, SessionType } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // DayOfWeek type alias (0=Sun, 1=Mon, ..., 6=Sat -- JS convention)
@@ -95,25 +95,25 @@ export const SESSION_TINT: Record<string, string> = {
   EVENT: 'session-tint-event',
 }
 
-export const SESSION_TYPE_BADGE: Record<string, string> = {
+export const SESSION_TYPE_BADGE = {
   STRENGTH: 'bg-ember/10 text-ember',
   CONDITIONING: 'bg-quenched/10 text-quenched',
   SE: 'bg-arc/10 text-arc',
   MIXED: 'bg-bone-white/10 text-bone-white',
   EVENT: 'bg-ember/15 text-ember',
-}
+} satisfies Record<SessionType, string>
 
 // ---------------------------------------------------------------------------
 // Source labels for program source badges
 // ---------------------------------------------------------------------------
 
-export const BLOCK_TYPE_STYLES: Record<string, string> = {
+export const BLOCK_TYPE_STYLES = {
   ACCUMULATION: 'bg-quenched/15 text-quenched',
   INTENSIFICATION: 'bg-ember/15 text-ember',
   REALIZATION: 'bg-forge/15 text-forge',
   DELOAD: 'bg-arc/15 text-arc',
   TEST: 'bg-warm-ash/15 text-warm-ash',
-}
+} satisfies Record<BlockType, string>
 
 export const SOURCE_LABELS: Record<string, string> = {
   CUSTOM: 'CUSTOM',

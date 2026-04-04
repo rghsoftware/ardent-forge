@@ -189,7 +189,11 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
   const handleSave = useCallback(async () => {
     if (!validate()) return
-    if (!userId) return
+    if (!userId) {
+      console.error('[session-template-form] Cannot save: no authenticated user')
+      setErrors(['You must be signed in to save templates.'])
+      return
+    }
 
     const groupPayload = buildGroupsFromData(groups)
 
@@ -309,9 +313,8 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
       </div>
 
       {/* Scoring & Time Cap -- visibility depends on category */}
-      {showScoring && showTimeCap ? (
-        <>
-          {/* Scoring */}
+      {(() => {
+        const scoringField = (
           <div className="px-4">
             <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               SCORING
@@ -329,8 +332,9 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
               </SelectContent>
             </Select>
           </div>
+        )
 
-          {/* Time cap */}
+        const timeCapField = (
           <div className="px-4">
             <DurationInputCompact
               value={timeCap}
@@ -338,72 +342,36 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
               label="TIME CAP (OPTIONAL)"
             />
           </div>
-        </>
-      ) : !showScoring && !showTimeCap ? (
-        <CollapsedFieldsRow labels={['Scoring', 'Time Cap']}>
+        )
+
+        const collapsedLabels = [
+          ...(!showScoring ? ['Scoring'] : []),
+          ...(!showTimeCap ? ['Time Cap'] : []),
+        ]
+
+        const visibleFields = (
+          <>
+            {showScoring && scoringField}
+            {showTimeCap && timeCapField}
+          </>
+        )
+
+        const collapsedFields = (
           <div className="flex flex-col gap-6 py-4">
-            <div className="px-4">
-              <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-                SCORING
-              </span>
-              <Select value={scoring} onValueChange={(v) => setScoring(v as ScoringType)}>
-                <SelectTrigger className="min-h-12 border-0 border-b border-warm-ash/30 bg-transparent text-xs uppercase tracking-wider text-bone-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-surface-gunmetal">
-                  {SCORING_TYPES.map((s) => (
-                    <SelectItem key={s.value} value={s.value} className="text-xs uppercase">
-                      {s.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="px-4">
-              <DurationInputCompact
-                value={timeCap}
-                onChange={setTimeCap}
-                label="TIME CAP (OPTIONAL)"
-              />
-            </div>
+            {!showScoring && scoringField}
+            {!showTimeCap && timeCapField}
           </div>
-        </CollapsedFieldsRow>
-      ) : (
-        <>
-          {/* showScoring is false, showTimeCap is true (SE category) */}
-          <CollapsedFieldsRow labels={['Scoring']}>
-            <div className="py-4">
-              <div className="px-4">
-                <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-                  SCORING
-                </span>
-                <Select value={scoring} onValueChange={(v) => setScoring(v as ScoringType)}>
-                  <SelectTrigger className="min-h-12 border-0 border-b border-warm-ash/30 bg-transparent text-xs uppercase tracking-wider text-bone-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-surface-gunmetal">
-                    {SCORING_TYPES.map((s) => (
-                      <SelectItem key={s.value} value={s.value} className="text-xs uppercase">
-                        {s.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CollapsedFieldsRow>
+        )
 
-          {/* Time cap -- visible for SE */}
-          <div className="px-4">
-            <DurationInputCompact
-              value={timeCap}
-              onChange={setTimeCap}
-              label="TIME CAP (OPTIONAL)"
-            />
-          </div>
-        </>
-      )}
+        return (
+          <>
+            {visibleFields}
+            {collapsedLabels.length > 0 && (
+              <CollapsedFieldsRow labels={collapsedLabels}>{collapsedFields}</CollapsedFieldsRow>
+            )}
+          </>
+        )
+      })()}
 
       {/* Rest between groups -- always visible */}
       <div className="px-4">

@@ -80,20 +80,15 @@ const SCHEME_GROUPS = [
   },
 ] as const
 
-const SCHEME_GROUP_FOR_TYPE: Record<string, string> = {}
-for (const group of SCHEME_GROUPS) {
-  for (const t of group.types) {
-    SCHEME_GROUP_FOR_TYPE[t.value] = group.label
-  }
-}
-const SCHEME_TYPE_LABELS: Record<string, string> = {}
-for (const group of SCHEME_GROUPS) {
-  for (const t of group.types) {
-    SCHEME_TYPE_LABELS[t.value] = t.label
-  }
-}
-
 type SetSchemeType = SetScheme['type']
+
+const SCHEME_GROUP_FOR_TYPE = Object.fromEntries(
+  SCHEME_GROUPS.flatMap((group) => group.types.map((t) => [t.value, group.label])),
+) as Record<SetSchemeType, string>
+
+const SCHEME_TYPE_LABELS = Object.fromEntries(
+  SCHEME_GROUPS.flatMap((group) => group.types.map((t) => [t.value, t.label])),
+) as Record<SetSchemeType, string>
 
 const CARDIO_MODALITIES: CardioModality[] = [
   'RUNNING',
@@ -505,11 +500,11 @@ function LoadSpecEditor({
   // Reset to 'unspecified' when the current load type is no longer in the filtered list
   useEffect(() => {
     if (allowedLoads === null) return
-    const isCurrentAllowed = availableTypes.some((t) => t.value === value.type)
+    const isCurrentAllowed = (allowedLoads as string[]).includes(value.type)
     if (!isCurrentAllowed) {
       onChange({ type: 'unspecified' })
     }
-  }, [allowedLoads, availableTypes, value.type, onChange])
+  }, [allowedLoads, value.type, onChange])
 
   // Scheme manages its own load internally -- hide the load picker entirely
   if (allowedLoads === null) return null
@@ -1161,10 +1156,10 @@ export function SetSchemeEditor({
         {/* Compact summary when collapsed */}
         <CollapsibleTrigger className="flex w-full items-center gap-2 py-1 text-left">
           <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
-            {SCHEME_GROUP_FOR_TYPE[value.type] ?? 'STRENGTH'}
+            {SCHEME_GROUP_FOR_TYPE[value.type]}
           </span>
           <span className="text-[11px] font-medium text-bone-white">
-            {SCHEME_TYPE_LABELS[value.type] ?? value.type}
+            {SCHEME_TYPE_LABELS[value.type]}
           </span>
           <Icon
             name={typeSelectorOpen ? 'expand_less' : 'expand_more'}

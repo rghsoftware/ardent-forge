@@ -2,7 +2,7 @@ import { useState, useId, type ReactNode } from 'react'
 import { Icon } from '@/components/icon'
 
 interface CollapsedFieldsRowProps {
-  labels: string[]
+  labels: [string, ...string[]]
   children: ReactNode
   defaultExpanded?: boolean
 }

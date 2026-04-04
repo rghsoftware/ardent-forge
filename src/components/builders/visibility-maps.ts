@@ -25,7 +25,7 @@ interface GroupFieldVisibility {
 //    Maps SessionType to which session-level fields are visible.
 // ---------------------------------------------------------------------------
 
-export const CATEGORY_FIELD_VISIBILITY: Record<SessionType, CategoryFieldVisibility> = {
+export const CATEGORY_FIELD_VISIBILITY = {
   STRENGTH: { scoring: false, timeCap: false },
   CONDITIONING: { scoring: true, timeCap: true },
   SE: { scoring: false, timeCap: true },
@@ -39,7 +39,7 @@ export const CATEGORY_FIELD_VISIBILITY: Record<SessionType, CategoryFieldVisibil
 //    An empty array means "show all scheme types" (no filtering).
 // ---------------------------------------------------------------------------
 
-export const CATEGORY_SCHEME_TYPES: Record<SessionType, SetSchemeType[]> = {
+export const CATEGORY_SCHEME_TYPES = {
   STRENGTH: ['fixedSets', 'percentageSets', 'workToMax'],
   CONDITIONING: [
     'cardioSteadyState',
@@ -61,7 +61,7 @@ export const CATEGORY_SCHEME_TYPES: Record<SessionType, SetSchemeType[]> = {
 //    load picker).
 // ---------------------------------------------------------------------------
 
-export const SCHEME_LOAD_VISIBILITY: Record<SetSchemeType, LoadSpecType[] | null> = {
+export const SCHEME_LOAD_VISIBILITY = {
   fixedSets: ['absolute', 'rpe', 'bodyweight', 'bodyweightPlus', 'unspecified'],
   percentageSets: null,
   workToMax: ['absolute', 'rpe', 'unspecified'],
@@ -81,7 +81,7 @@ export const SCHEME_LOAD_VISIBILITY: Record<SetSchemeType, LoadSpecType[] | null
 //    Maps GroupType to which activity-group-level fields are visible.
 // ---------------------------------------------------------------------------
 
-export const GROUP_FIELD_VISIBILITY: Record<GroupType, GroupFieldVisibility> = {
+export const GROUP_FIELD_VISIBILITY = {
   STRAIGHT_SETS: { restBetweenRounds: false, restBetweenActivities: true, rounds: false },
   SUPERSET: { restBetweenRounds: false, restBetweenActivities: true, rounds: false },
   CIRCUIT: { restBetweenRounds: true, restBetweenActivities: true, rounds: true },

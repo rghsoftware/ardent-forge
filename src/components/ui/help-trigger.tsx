@@ -12,6 +12,14 @@ interface HelpTriggerProps {
   content: ReactNode
 }
 
+/**
+ * Contextual help surface that adapts to the viewport.
+ *
+ * Renders a Popover on desktop (>=768px) and a Drawer on mobile (<768px).
+ * The spec's `placement` prop was intentionally omitted -- responsive behavior
+ * is automatic via the `useMediaQuery` hook, so callers never need to specify
+ * where the help content appears.
+ */
 export function HelpTrigger({ title, content }: HelpTriggerProps) {
   const [open, setOpen] = useState(false)
   const isDesktop = useMediaQuery('(min-width: 768px)')
