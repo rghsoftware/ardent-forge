@@ -1,6 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { RealtimeChannel } from '@supabase/realtime-js'
-import { displaySnapshotSchema, type DisplaySnapshot } from '@/domain/types/display-snapshot'
+import {
+  displaySnapshotSchema,
+  type DisplaySnapshot,
+  type DisplayConnectionStatus,
+} from '@/domain/types/display-snapshot'
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
@@ -12,7 +16,7 @@ export interface DisplayEventHandlers {
   onSessionEnded: (payload: { user_id: string }) => void
   onFocus: (payload: { user_id: string }) => void
   onUnfocus: () => void
-  onStatusChange: (status: 'connected' | 'reconnecting' | 'disconnected') => void
+  onStatusChange: (status: DisplayConnectionStatus) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -21,9 +25,10 @@ export interface DisplayEventHandlers {
 
 let _client: SupabaseClient | null = null
 let _channel: RealtimeChannel | null = null
-let _status: 'connected' | 'reconnecting' | 'disconnected' = 'disconnected'
+let _status: DisplayConnectionStatus = 'disconnected'
 let _retryTimer: ReturnType<typeof setTimeout> | null = null
 let _retryAttempt = 0
+let _hasConnectedBefore = false
 
 const RETRY_BASE_MS = 2_000
 const RETRY_MAX_MS = 30_000
@@ -53,6 +58,7 @@ export function initDisplaySubscriber(client: SupabaseClient): void {
 export function subscribeToDisplay(handlers: DisplayEventHandlers): void {
   if (!_client) {
     console.warn('[display-subscriber] Cannot subscribe: client not initialized')
+    handlers.onStatusChange('disconnected')
     return
   }
 
@@ -101,11 +107,20 @@ export function subscribeToDisplay(handlers: DisplayEventHandlers): void {
       if (status === 'SUBSCRIBED') {
         _status = 'connected'
         _retryAttempt = 0
+        if (_hasConnectedBefore) {
+          publishHello()
+        }
+        _hasConnectedBefore = true
         handlers.onStatusChange('connected')
       } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
         console.warn(`[display-subscriber] Channel terminal status: ${status}`, err)
         _status = 'reconnecting'
         handlers.onStatusChange('reconnecting')
+
+        // Remove the dead channel before clearing the reference (P6-002)
+        if (_channel && _client) {
+          _client.removeChannel(_channel)
+        }
         _channel = null
 
         const delay = Math.min(RETRY_BASE_MS * 2 ** _retryAttempt, RETRY_MAX_MS)
@@ -136,7 +151,7 @@ export function publishHello(): void {
 /**
  * Return the current subscriber connection status.
  */
-export function getSubscriberStatus(): 'connected' | 'reconnecting' | 'disconnected' {
+export function getSubscriberStatus(): DisplayConnectionStatus {
   return _status
 }
 
@@ -158,4 +173,5 @@ export function destroyDisplaySubscriber(): void {
   _client = null
   _status = 'disconnected'
   _retryAttempt = 0
+  _hasConnectedBefore = false
 }

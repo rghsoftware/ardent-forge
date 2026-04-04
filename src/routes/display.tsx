@@ -57,40 +57,43 @@ function DisplayShell() {
     let cancelled = false
 
     async function boot() {
-      const config = await resolveConfig()
+      try {
+        const config = await resolveConfig()
 
-      if (cancelled) return
+        if (cancelled) return
 
-      if (!config) {
-        setConfigMissing(true)
-        return
+        if (!config) {
+          setConfigMissing(true)
+          return
+        }
+
+        const client = createClient(config.supabaseUrl, config.supabaseKey)
+        clientRef.current = client
+
+        initDisplaySubscriber(client)
+
+        const handlers: DisplayEventHandlers = {
+          onSnapshot: (snapshot) =>
+            useDisplayStore.getState().upsertSession(snapshot.user_id, snapshot),
+          onSessionEnded: ({ user_id }) => useDisplayStore.getState().removeSession(user_id),
+          onFocus: ({ user_id }) => useDisplayStore.getState().setFocusedUser(user_id),
+          onUnfocus: () => useDisplayStore.getState().setFocusedUser(null),
+          onStatusChange: (status) => useDisplayStore.getState().setConnectionStatus(status),
+        }
+
+        subscribeToDisplay(handlers)
+
+        // Prune stale sessions every 60s (30-minute staleness threshold)
+        pruneRef.current = setInterval(
+          () => useDisplayStore.getState().pruneStale(30 * 60 * 1_000),
+          60_000,
+        )
+      } catch (err) {
+        console.error('[display] Boot failed:', err)
+        if (!cancelled) {
+          useDisplayStore.getState().setConnectionStatus('disconnected')
+        }
       }
-
-      // Create a dedicated Supabase client for the display channel.
-      // This route is unauthenticated (kiosk/TV display), so it intentionally
-      // uses its own client rather than the shared app client which carries
-      // the signed-in user's session.
-      const client = createClient(config.supabaseUrl, config.supabaseKey)
-      clientRef.current = client
-
-      initDisplaySubscriber(client)
-
-      const handlers: DisplayEventHandlers = {
-        onSnapshot: (snapshot) =>
-          useDisplayStore.getState().upsertSession(snapshot.user_id, snapshot),
-        onSessionEnded: ({ user_id }) => useDisplayStore.getState().removeSession(user_id),
-        onFocus: ({ user_id }) => useDisplayStore.getState().setFocusedUser(user_id),
-        onUnfocus: () => useDisplayStore.getState().setFocusedUser(null),
-        onStatusChange: (status) => useDisplayStore.getState().setConnectionStatus(status),
-      }
-
-      subscribeToDisplay(handlers)
-
-      // Prune stale sessions every 60s (30-minute staleness threshold)
-      pruneRef.current = setInterval(
-        () => useDisplayStore.getState().pruneStale(30 * 60 * 1_000),
-        60_000,
-      )
     }
 
     boot()

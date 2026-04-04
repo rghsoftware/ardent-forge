@@ -1,15 +1,15 @@
 import { formatDuration } from '@/lib/format-duration'
 import { RestTimerDisplay } from '@/components/display/rest-timer-display'
 import { SetTable } from '@/components/display/set-table'
-import { useDisplayStore } from '@/stores/display-store'
+import { useDisplayStore, getSnapshot } from '@/stores/display-store'
 import { useElapsedTime } from '@/hooks/use-elapsed-time'
 import type { DisplaySnapshot } from '@/domain/types/display-snapshot'
 
 function FocusedView() {
   const focusedUserId = useDisplayStore((s) => s.focusedUserId)
-  const sessions = useDisplayStore((s) => s.sessions)
-
-  const snapshot = focusedUserId ? sessions.get(focusedUserId) : undefined
+  const snapshot = useDisplayStore((s) =>
+    focusedUserId ? getSnapshot(s, focusedUserId) : undefined,
+  )
 
   if (!snapshot) return null
 

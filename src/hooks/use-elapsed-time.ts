@@ -9,7 +9,8 @@ export function useElapsedTime(startedAt: string): number {
 
   useEffect(() => {
     const startMs = new Date(startedAt).getTime()
-    const tick = () => setElapsed(Math.floor((Date.now() - startMs) / 1000))
+    if (Number.isNaN(startMs)) return
+    const tick = () => setElapsed(Math.max(0, Math.floor((Date.now() - startMs) / 1000)))
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)

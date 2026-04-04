@@ -1,11 +1,5 @@
 import { create } from 'zustand'
-import type { DisplaySnapshot } from '@/domain/types/display-snapshot'
-
-// ---------------------------------------------------------------------------
-// Connection status for the Supabase Broadcast channel
-// ---------------------------------------------------------------------------
-
-type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected'
+import type { DisplaySnapshot, DisplayConnectionStatus } from '@/domain/types/display-snapshot'
 
 // ---------------------------------------------------------------------------
 // Display mode -- derived from session state
@@ -14,14 +8,22 @@ type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected'
 export type DisplayMode = 'idle' | 'focused' | 'board'
 
 // ---------------------------------------------------------------------------
+// Session entry -- snapshot + staleness timestamp in a single record
+// ---------------------------------------------------------------------------
+
+interface SessionEntry {
+  snapshot: DisplaySnapshot
+  lastSeenAt: number
+}
+
+// ---------------------------------------------------------------------------
 // DisplayState
 // ---------------------------------------------------------------------------
 
 interface DisplayState {
-  sessions: Map<string, DisplaySnapshot>
-  lastSeenAt: Map<string, number>
+  sessions: Map<string, SessionEntry>
   focusedUserId: string | null
-  connectionStatus: ConnectionStatus
+  connectionStatus: DisplayConnectionStatus
   currentPage: number
 }
 
@@ -33,7 +35,7 @@ interface DisplayActions {
   upsertSession(userId: string, snapshot: DisplaySnapshot): void
   removeSession(userId: string): void
   setFocusedUser(userId: string | null): void
-  setConnectionStatus(status: ConnectionStatus): void
+  setConnectionStatus(status: DisplayConnectionStatus): void
   setCurrentPage(page: number): void
   clearAllSessions(): void
   pruneStale(maxAgeMs: number): void
@@ -51,7 +53,6 @@ const SESSIONS_PER_PAGE = 4
 
 const initialState: DisplayState = {
   sessions: new Map(),
-  lastSeenAt: new Map(),
   focusedUserId: null,
   connectionStatus: 'disconnected',
   currentPage: 0,
@@ -70,27 +71,18 @@ export const useDisplayStore = create<DisplayState & DisplayActions>()((set, get
 
   upsertSession(userId: string, snapshot: DisplaySnapshot) {
     set((state) => {
-      const nextSessions = new Map(state.sessions)
-      nextSessions.set(userId, snapshot)
-
-      const nextLastSeen = new Map(state.lastSeenAt)
-      nextLastSeen.set(userId, Date.now())
-
-      return { sessions: nextSessions, lastSeenAt: nextLastSeen }
+      const next = new Map(state.sessions)
+      next.set(userId, { snapshot, lastSeenAt: Date.now() })
+      return { sessions: next }
     })
   },
 
   removeSession(userId: string) {
     set((state) => {
-      const nextSessions = new Map(state.sessions)
-      nextSessions.delete(userId)
-
-      const nextLastSeen = new Map(state.lastSeenAt)
-      nextLastSeen.delete(userId)
-
+      const next = new Map(state.sessions)
+      next.delete(userId)
       return {
-        sessions: nextSessions,
-        lastSeenAt: nextLastSeen,
+        sessions: next,
         focusedUserId: state.focusedUserId === userId ? null : state.focusedUserId,
       }
     })
@@ -104,12 +96,14 @@ export const useDisplayStore = create<DisplayState & DisplayActions>()((set, get
     set({ focusedUserId: userId })
   },
 
-  setConnectionStatus(status: ConnectionStatus) {
+  setConnectionStatus(status: DisplayConnectionStatus) {
     set({ connectionStatus: status })
   },
 
   setCurrentPage(page: number) {
-    set({ currentPage: page })
+    const totalPages = getTotalPages(get())
+    const clamped = totalPages === 0 ? 0 : Math.max(0, Math.min(page, totalPages - 1))
+    set({ currentPage: clamped })
   },
 
   // --------------------------------------------------------------------
@@ -119,8 +113,8 @@ export const useDisplayStore = create<DisplayState & DisplayActions>()((set, get
   clearAllSessions() {
     set({
       sessions: new Map(),
-      lastSeenAt: new Map(),
       focusedUserId: null,
+      currentPage: 0,
     })
   },
 
@@ -128,25 +122,22 @@ export const useDisplayStore = create<DisplayState & DisplayActions>()((set, get
     const state = get()
     const now = Date.now()
 
-    const staleIds = Array.from(state.lastSeenAt.entries())
-      .filter(([, seenAt]) => now - seenAt > maxAgeMs)
+    const staleIds = Array.from(state.sessions.entries())
+      .filter(([, entry]) => now - entry.lastSeenAt > maxAgeMs)
       .map(([userId]) => userId)
 
     if (staleIds.length === 0) return
 
-    const nextSessions = new Map(state.sessions)
-    const nextLastSeen = new Map(state.lastSeenAt)
+    const next = new Map(state.sessions)
     let focusedCleared = false
 
     for (const userId of staleIds) {
-      nextSessions.delete(userId)
-      nextLastSeen.delete(userId)
+      next.delete(userId)
       if (state.focusedUserId === userId) focusedCleared = true
     }
 
     set({
-      sessions: nextSessions,
-      lastSeenAt: nextLastSeen,
+      sessions: next,
       focusedUserId: focusedCleared ? null : state.focusedUserId,
     })
   },
@@ -163,7 +154,7 @@ export const getDisplayMode = (state: DisplayState): DisplayMode => {
 }
 
 export const getPageSessions = (state: DisplayState): DisplaySnapshot[] => {
-  const all = Array.from(state.sessions.values())
+  const all = Array.from(state.sessions.values()).map((e) => e.snapshot)
   const start = state.currentPage * SESSIONS_PER_PAGE
   return all.slice(start, start + SESSIONS_PER_PAGE)
 }
@@ -172,3 +163,12 @@ export const getTotalPages = (state: DisplayState): number => {
   if (state.sessions.size === 0) return 0
   return Math.ceil(state.sessions.size / SESSIONS_PER_PAGE)
 }
+
+// ---------------------------------------------------------------------------
+// Convenience accessor for getting a snapshot by user ID
+// ---------------------------------------------------------------------------
+
+export const getSnapshot = (state: DisplayState, userId: string): DisplaySnapshot | undefined =>
+  state.sessions.get(userId)?.snapshot
+
+export const getSessionCount = (state: DisplayState): number => state.sessions.size

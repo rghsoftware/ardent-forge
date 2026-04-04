@@ -35,7 +35,6 @@ function getState() {
 beforeEach(() => {
   useDisplayStore.setState({
     sessions: new Map(),
-    lastSeenAt: new Map(),
     focusedUserId: null,
     connectionStatus: 'disconnected',
     currentPage: 0,
@@ -66,7 +65,7 @@ describe('upsertSession', () => {
     getState().upsertSession('u1', snap)
 
     expect(getState().sessions.size).toBe(1)
-    expect(getState().sessions.get('u1')).toEqual(snap)
+    expect(getState().sessions.get('u1')?.snapshot).toEqual(snap)
   })
 
   it('updates an existing session', () => {
@@ -78,7 +77,7 @@ describe('upsertSession', () => {
     getState().upsertSession('u1', snap2)
 
     expect(getState().sessions.size).toBe(1)
-    expect(getState().sessions.get('u1')!.current_exercise).toBe('Squat')
+    expect(getState().sessions.get('u1')!.snapshot.current_exercise).toBe('Squat')
   })
 })
 
@@ -150,9 +149,27 @@ describe('setConnectionStatus', () => {
 // ===========================================================================
 
 describe('setCurrentPage', () => {
-  it('updates page number', () => {
+  it('updates page number within bounds', () => {
+    // Add enough sessions for multiple pages (5 sessions = 2 pages)
+    for (let i = 0; i < 5; i++) {
+      getState().upsertSession(`u${i}`, mockSnapshot(`u${i}`))
+    }
+    getState().setCurrentPage(1)
+    expect(getState().currentPage).toBe(1)
+  })
+
+  it('clamps page to valid range', () => {
+    getState().upsertSession('u1', mockSnapshot('u1'))
+    getState().setCurrentPage(999)
+    expect(getState().currentPage).toBe(0)
+
+    getState().setCurrentPage(-1)
+    expect(getState().currentPage).toBe(0)
+  })
+
+  it('clamps to 0 when no sessions exist', () => {
     getState().setCurrentPage(3)
-    expect(getState().currentPage).toBe(3)
+    expect(getState().currentPage).toBe(0)
   })
 })
 
@@ -161,14 +178,19 @@ describe('setCurrentPage', () => {
 // ===========================================================================
 
 describe('clearAllSessions', () => {
-  it('resets sessions and focus', () => {
-    getState().upsertSession('u1', mockSnapshot('u1'))
+  it('resets sessions, focus, and currentPage', () => {
+    // Add enough sessions for 2 pages, then navigate to page 1
+    for (let i = 0; i < 5; i++) {
+      getState().upsertSession(`u${i}`, mockSnapshot(`u${i}`))
+    }
+    getState().setCurrentPage(1)
     getState().setFocusedUser('u1')
 
     getState().clearAllSessions()
 
     expect(getState().sessions.size).toBe(0)
     expect(getState().focusedUserId).toBeNull()
+    expect(getState().currentPage).toBe(0)
   })
 })
 
@@ -182,8 +204,9 @@ describe('pruneStale', () => {
 
     // Manually set lastSeenAt to a stale timestamp
     const staleTime = Date.now() - 60_000
+    const entry = getState().sessions.get('u1')!
     useDisplayStore.setState({
-      lastSeenAt: new Map([['u1', staleTime]]),
+      sessions: new Map([['u1', { ...entry, lastSeenAt: staleTime }]]),
     })
 
     getState().pruneStale(30_000) // 30s threshold
@@ -205,25 +228,14 @@ describe('pruneStale', () => {
     getState().setFocusedUser('u1')
 
     const staleTime = Date.now() - 60_000
+    const entry = getState().sessions.get('u1')!
     useDisplayStore.setState({
-      lastSeenAt: new Map([['u1', staleTime]]),
+      sessions: new Map([['u1', { ...entry, lastSeenAt: staleTime }]]),
     })
 
     getState().pruneStale(30_000)
 
     expect(getState().focusedUserId).toBeNull()
-  })
-
-  it('handles lastSeenAt keys not present in sessions without throwing', () => {
-    // Simulate data inconsistency: lastSeenAt has a user that sessions does not
-    useDisplayStore.setState({
-      sessions: new Map(),
-      lastSeenAt: new Map([['ghost-user', Date.now() - 60_000]]),
-    })
-
-    expect(() => getState().pruneStale(30_000)).not.toThrow()
-    expect(getState().sessions.size).toBe(0)
-    expect(getState().lastSeenAt.size).toBe(0)
   })
 
   it('does not call set when no sessions are stale', () => {

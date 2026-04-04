@@ -1,17 +1,19 @@
 import { cn } from '@/lib/utils'
-import { useDisplayStore, getDisplayMode } from '@/stores/display-store'
+import {
+  useDisplayStore,
+  getDisplayMode,
+  getSnapshot,
+  getSessionCount,
+} from '@/stores/display-store'
 
 function ConnectionFooter() {
   const connectionStatus = useDisplayStore((s) => s.connectionStatus)
   const displayMode = useDisplayStore(getDisplayMode)
-  const sessions = useDisplayStore((s) => s.sessions)
   const focusedUserId = useDisplayStore((s) => s.focusedUserId)
-
-  // Resolve the focused user's display name from their snapshot
-  const focusedName =
-    focusedUserId != null ? (sessions.get(focusedUserId)?.display_name ?? 'Unknown') : null
-
-  const sessionCount = sessions.size
+  const focusedName = useDisplayStore((s) =>
+    focusedUserId != null ? (getSnapshot(s, focusedUserId)?.display_name ?? 'Unknown') : null,
+  )
+  const sessionCount = useDisplayStore(getSessionCount)
 
   return (
     <footer className="fixed inset-x-0 bottom-0 z-40 flex h-12 items-center justify-between bg-surface-pit px-6">
