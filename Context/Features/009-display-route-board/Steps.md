@@ -428,6 +428,90 @@ Depends on board view components (reuses RestTimerDisplay).
 
 ---
 
+### Wave 4: Review Follow-up Tasks
+
+Tasks added from PR #60 review findings.
+
+---
+
+#### S008: Reconnection retry unit tests
+
+**Agent:** `qa`
+**Files:** `src/lib/__tests__/display-subscriber.test.ts`
+**Dependencies:** S002
+**Review:** P6-009
+
+Write unit tests for the exponential backoff retry mechanism in `display-subscriber.ts`:
+- Verify delay computation (2s, 4s, 8s, ... capped at 30s)
+- Verify retry attempt resets on successful reconnect
+- Verify retry cancellation on `destroyDisplaySubscriber()`
+- Verify `publishHello()` called on reconnect (not first connect)
+
+**Acceptance:**
+- [ ] Retry delay doubles per attempt up to 30s cap
+- [ ] Retry counter resets on SUBSCRIBED
+- [ ] Destroy cancels pending retry timer
+- [ ] publishHello fires on reconnect only
+
+---
+
+#### S009: `use-elapsed-time` unit tests
+
+**Agent:** `qa`
+**Files:** `src/hooks/__tests__/use-elapsed-time.test.ts`
+**Dependencies:** None
+**Review:** P6-010
+
+Write unit tests for `useElapsedTime` hook using `renderHook`:
+- Returns 0 at start
+- Increases over time
+- Resets when `startedAt` changes
+- Returns 0 for invalid timestamps (NaN guard)
+- Handles future timestamps gracefully
+
+**Acceptance:**
+- [ ] All test cases pass
+- [ ] NaN guard tested
+
+---
+
+#### S010: Add `.min(1)` to string fields in display snapshot schema
+
+**Agent:** `frontend`
+**Files:** `src/domain/types/display-snapshot.ts`
+**Dependencies:** None
+**Review:** P6-011
+
+Add `.min(1)` validation to `user_id`, `display_name`, `session_name`, and `current_exercise` in `displaySnapshotSchema`. Update any affected tests that use empty strings.
+
+**Acceptance:**
+- [ ] Empty strings rejected by schema
+- [ ] Existing tests updated for non-empty strings
+- [ ] No regression in subscriber payload validation
+
+---
+
+#### S011: Invalid payload tests for `session_ended` and `focus` events
+
+**Agent:** `qa`
+**Files:** `src/lib/__tests__/display-subscriber.test.ts`
+**Dependencies:** S002
+**Review:** P6-012
+
+Add parameterized tests for invalid payloads on `session_ended` and `focus` events:
+- Missing `user_id`
+- Non-string `user_id`
+- Empty payload
+
+Verify each is dropped with a console.warn and handler is NOT called.
+
+**Acceptance:**
+- [ ] Invalid `session_ended` payloads dropped
+- [ ] Invalid `focus` payloads dropped
+- [ ] Parity with existing `workout_snapshot` invalid payload test
+
+---
+
 ## Milestone Summary
 
 | Wave | Tasks | Parallel | Description |
@@ -437,10 +521,11 @@ Depends on board view components (reuses RestTimerDisplay).
 | 2 | S005, S006 | S005 first, then S006 | Route shell + board view |
 | 3 | S007 | After S006 | Focused view |
 | 3-T | S007-T | After Wave 3 | Integration validation |
+| 4 | S008, S009, S010, S011 | S008-S009-S011 parallel, S010 independent | Review follow-up: tests + schema hardening |
 
-**Total tasks:** 8 (4 build + 2 test + 2 UI build)
-**Estimated new files:** 12
-**Estimated changed files:** 3 (root route, display-publisher, use-display-broadcast)
+**Total tasks:** 12 (5 build + 5 test + 2 UI build)
+**Estimated new files:** 13
+**Estimated changed files:** 4 (root route, display-publisher, use-display-broadcast, display-snapshot)
 
 ---
 
