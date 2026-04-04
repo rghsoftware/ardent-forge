@@ -76,5 +76,4 @@ export const STANDARD_ENV: Record<string, string> = {
   SUPABASE_URL: "http://localhost:54321",
   SUPABASE_ANON_KEY: "test-anon-key",
   SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
-  CLOUDFLARE_ACCOUNT_ID: "test-cf-account",
 };

@@ -92,20 +92,8 @@ export async function handler(req: Request): Promise<Response> {
     const { maxDurationSeconds } = parsed.data;
 
     // -----------------------------------------------------------------------
-    // 3. Read Cloudflare credentials
+    // 3. Read Cloudflare credentials from Supabase Vault
     // -----------------------------------------------------------------------
-    const accountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID");
-    if (!accountId) {
-      return new Response(
-        JSON.stringify({ error: "Cloudflare account not configured" }),
-        {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    // Read API token from Supabase Vault
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!serviceRoleKey) {
       console.error("Missing required environment configuration");
@@ -118,17 +106,15 @@ export async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const supabaseAdmin = createClient(
-      supabaseUrl,
-      serviceRoleKey,
-    );
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: secrets, error: vaultError } = await supabaseAdmin.rpc(
-      "get_secret",
-      { secret_name: "cloudflare_stream_api_token" },
-    );
-    if (vaultError || !secrets) {
-      console.error("Vault error:", vaultError);
+    const [accountIdResult, tokenResult] = await Promise.all([
+      supabaseAdmin.rpc("get_secret", { secret_name: "CF_ACCOUNT_ID" }),
+      supabaseAdmin.rpc("get_secret", { secret_name: "CF_STREAM_TOKEN" }),
+    ]);
+
+    if (accountIdResult.error || tokenResult.error) {
+      console.error("Vault error:", accountIdResult.error ?? tokenResult.error);
       return new Response(
         JSON.stringify({ error: "Failed to retrieve Cloudflare credentials" }),
         {
@@ -138,12 +124,11 @@ export async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // The vault RPC returns the decrypted secret value
-    const apiToken =
-      typeof secrets === "string" ? secrets : secrets?.decrypted_secret;
-    if (!apiToken) {
+    const accountId = accountIdResult.data as string | null;
+    const apiToken = tokenResult.data as string | null;
+    if (!accountId || !apiToken) {
       return new Response(
-        JSON.stringify({ error: "Cloudflare API token not found in vault" }),
+        JSON.stringify({ error: "Cloudflare credentials not found in vault" }),
         {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

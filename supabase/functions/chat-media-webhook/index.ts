@@ -62,14 +62,38 @@ export async function handler(req: Request): Promise<Response> {
 
   try {
     // -----------------------------------------------------------------------
-    // 1. Validate webhook signature
+    // 1. Create admin client and read secrets from Vault
     // -----------------------------------------------------------------------
-    const webhookSecret = Deno.env.get("CLOUDFLARE_WEBHOOK_SECRET");
-    if (!webhookSecret) {
-      console.error("CLOUDFLARE_WEBHOOK_SECRET not configured");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("Missing required environment configuration");
       return new Response("Server configuration error", { status: 500 });
     }
 
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+    const [webhookSecretResult, accountIdResult] = await Promise.all([
+      supabaseAdmin.rpc("get_secret", { secret_name: "CF_WEBHOOK_SECRET" }),
+      supabaseAdmin.rpc("get_secret", { secret_name: "CF_ACCOUNT_ID" }),
+    ]);
+
+    if (webhookSecretResult.error) {
+      console.error("Vault error:", webhookSecretResult.error);
+      return new Response("Server configuration error", { status: 500 });
+    }
+
+    const webhookSecret = webhookSecretResult.data as string | null;
+    if (!webhookSecret) {
+      console.error("CF_WEBHOOK_SECRET not found in vault");
+      return new Response("Server configuration error", { status: 500 });
+    }
+
+    const accountId = (accountIdResult.data as string | null) ?? "";
+
+    // -----------------------------------------------------------------------
+    // 2. Validate webhook signature
+    // -----------------------------------------------------------------------
     const rawBody = await req.text();
     const signatureHeader = req.headers.get("Webhook-Signature");
 
@@ -83,7 +107,7 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     // -----------------------------------------------------------------------
-    // 2. Parse event
+    // 3. Parse event
     // -----------------------------------------------------------------------
     const event = JSON.parse(rawBody);
 
@@ -111,19 +135,8 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     // -----------------------------------------------------------------------
-    // 3. Update media_attachments and broadcast
+    // 4. Update media_attachments and broadcast
     // -----------------------------------------------------------------------
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !serviceRoleKey) {
-      console.error("Missing required environment configuration");
-      return new Response("Server configuration error", { status: 500 });
-    }
-
-    const supabaseAdmin = createClient(
-      supabaseUrl,
-      serviceRoleKey,
-    );
 
     // Look up the media attachment by provider_asset_id
     const { data: attachment, error: fetchError } = await supabaseAdmin
@@ -152,7 +165,6 @@ export async function handler(req: Request): Promise<Response> {
 
     if (isReady) {
       // Build URLs from the Cloudflare response
-      const accountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID") ?? "";
       const thumbnailUrl: string | null =
         event.thumbnail || `https://customer-${accountId}.cloudflarestream.com/${streamUid}/thumbnails/thumbnail.jpg`;
       const playbackUrl: string | null =

@@ -93,7 +93,13 @@ export function createClient(
       update: (data: unknown) => createUpdateChain(table, data),
     }),
 
-    rpc: (fn: string, _params?: unknown) => {
+    rpc: (fn: string, params?: Record<string, unknown>) => {
+      // Support keyed lookups like "get_secret:CF_ACCOUNT_ID" for
+      // parameter-specific mock results (used by Vault secret reads).
+      if (params?.secret_name) {
+        const keyed = mockState.rpcResults.get(`${fn}:${params.secret_name}`);
+        if (keyed) return Promise.resolve(keyed);
+      }
       const result = mockState.rpcResults.get(fn);
       return Promise.resolve(result ?? { data: null, error: null });
     },

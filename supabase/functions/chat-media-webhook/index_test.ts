@@ -12,10 +12,21 @@ import { handler, verifyWebhookSignature } from "./index.ts";
 // Helpers
 // ---------------------------------------------------------------------------
 
-const WEBHOOK_ENV: Record<string, string> = {
-  ...STANDARD_ENV,
-  CLOUDFLARE_WEBHOOK_SECRET: "test-webhook-secret",
-};
+const WEBHOOK_SECRET = "test-webhook-secret";
+
+function mockVaultSecrets(overrides?: Partial<Record<string, string | null>>) {
+  const defaults: Record<string, string> = {
+    CF_WEBHOOK_SECRET: WEBHOOK_SECRET,
+    CF_ACCOUNT_ID: "test-cf-account",
+  };
+  const merged = { ...defaults, ...overrides };
+  for (const [name, value] of Object.entries(merged)) {
+    mockState.rpcResults.set(`get_secret:${name}`, {
+      data: value,
+      error: null,
+    });
+  }
+}
 
 async function computeSignature(
   body: string,
@@ -107,7 +118,7 @@ Deno.test("chat-media-webhook handler", async (t) => {
 
   function setup(envOverrides?: Record<string, string>) {
     resetMockState();
-    restoreEnv = mockEnv({ ...WEBHOOK_ENV, ...envOverrides });
+    restoreEnv = mockEnv({ ...STANDARD_ENV, ...envOverrides });
   }
 
   function teardown() {
@@ -128,15 +139,25 @@ Deno.test("chat-media-webhook handler", async (t) => {
   });
 
   // -------------------------------------------------------------------------
-  // Webhook secret
+  // Vault secret errors
   // -------------------------------------------------------------------------
 
-  await t.step("returns 500 when webhook secret not configured", async () => {
-    const { CLOUDFLARE_WEBHOOK_SECRET: _, ...envWithout } = WEBHOOK_ENV;
+  await t.step("returns 500 when webhook secret not found in vault", async () => {
     setup();
-    restoreEnv?.();
-    restoreEnv = mockEnv(envWithout);
+    // No vault mocks set -- rpc returns { data: null, error: null }
+    const res = await handler(
+      buildWebhookRequest('{"uid":"abc"}'),
+    );
+    assertEquals(res.status, 500);
+    teardown();
+  });
 
+  await t.step("returns 500 when vault returns error", async () => {
+    setup();
+    mockState.rpcResults.set("get_secret:CF_WEBHOOK_SECRET", {
+      data: null,
+      error: { message: "vault unavailable" },
+    });
     const res = await handler(
       buildWebhookRequest('{"uid":"abc"}'),
     );
@@ -150,6 +171,7 @@ Deno.test("chat-media-webhook handler", async (t) => {
 
   await t.step("returns 403 for invalid signature", async () => {
     setup();
+    mockVaultSecrets();
     const res = await handler(
       buildWebhookRequest('{"uid":"abc"}', "time=123,sig1=bad"),
     );
@@ -163,9 +185,10 @@ Deno.test("chat-media-webhook handler", async (t) => {
 
   await t.step("returns 204 for event without uid", async () => {
     setup();
+    mockVaultSecrets();
     const body = JSON.stringify({ something: "else" });
     const ts = "1700000000";
-    const sig = await computeSignature(body, "test-webhook-secret", ts);
+    const sig = await computeSignature(body, WEBHOOK_SECRET, ts);
     const res = await handler(
       buildWebhookRequest(body, `time=${ts},sig1=${sig}`),
     );
@@ -175,13 +198,14 @@ Deno.test("chat-media-webhook handler", async (t) => {
 
   await t.step("returns 204 for intermediate event", async () => {
     setup();
+    mockVaultSecrets();
     const body = JSON.stringify({
       uid: "vid-123",
       readyToStream: false,
       status: { state: "inprogress" },
     });
     const ts = "1700000000";
-    const sig = await computeSignature(body, "test-webhook-secret", ts);
+    const sig = await computeSignature(body, WEBHOOK_SECRET, ts);
     const res = await handler(
       buildWebhookRequest(body, `time=${ts},sig1=${sig}`),
     );
@@ -195,6 +219,7 @@ Deno.test("chat-media-webhook handler", async (t) => {
 
   await t.step("updates attachment to ready on readyToStream", async () => {
     setup();
+    mockVaultSecrets();
     mockState.queryResults.set("media_attachments", {
       data: {
         id: "att-1",
@@ -211,7 +236,7 @@ Deno.test("chat-media-webhook handler", async (t) => {
       playback: { hls: "https://cf.com/vid.m3u8" },
     });
     const ts = "1700000000";
-    const sig = await computeSignature(body, "test-webhook-secret", ts);
+    const sig = await computeSignature(body, WEBHOOK_SECRET, ts);
     const res = await handler(
       buildWebhookRequest(body, `time=${ts},sig1=${sig}`),
     );
@@ -234,6 +259,7 @@ Deno.test("chat-media-webhook handler", async (t) => {
 
   await t.step("updates attachment to failed on error event", async () => {
     setup();
+    mockVaultSecrets();
     mockState.queryResults.set("media_attachments", {
       data: {
         id: "att-1",
@@ -249,7 +275,7 @@ Deno.test("chat-media-webhook handler", async (t) => {
       status: { state: "error", errorReasonCode: "ERR_DURATION" },
     });
     const ts = "1700000000";
-    const sig = await computeSignature(body, "test-webhook-secret", ts);
+    const sig = await computeSignature(body, WEBHOOK_SECRET, ts);
     const res = await handler(
       buildWebhookRequest(body, `time=${ts},sig1=${sig}`),
     );
@@ -269,6 +295,7 @@ Deno.test("chat-media-webhook handler", async (t) => {
 
   await t.step("returns 500 on DB fetch error", async () => {
     setup();
+    mockVaultSecrets();
     mockState.queryResults.set("media_attachments", {
       data: null,
       error: { message: "connection refused" },
@@ -279,7 +306,7 @@ Deno.test("chat-media-webhook handler", async (t) => {
       readyToStream: true,
     });
     const ts = "1700000000";
-    const sig = await computeSignature(body, "test-webhook-secret", ts);
+    const sig = await computeSignature(body, WEBHOOK_SECRET, ts);
     const res = await handler(
       buildWebhookRequest(body, `time=${ts},sig1=${sig}`),
     );
@@ -289,13 +316,14 @@ Deno.test("chat-media-webhook handler", async (t) => {
 
   await t.step("returns 204 when no matching attachment found", async () => {
     setup();
+    mockVaultSecrets();
     // queryResults not set for media_attachments, so data = null, error = null
     const body = JSON.stringify({
       uid: "vid-unknown",
       readyToStream: true,
     });
     const ts = "1700000000";
-    const sig = await computeSignature(body, "test-webhook-secret", ts);
+    const sig = await computeSignature(body, WEBHOOK_SECRET, ts);
     const res = await handler(
       buildWebhookRequest(body, `time=${ts},sig1=${sig}`),
     );
