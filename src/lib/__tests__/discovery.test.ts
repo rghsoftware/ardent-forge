@@ -237,4 +237,50 @@ describe('discoverInstance', () => {
         'Discovery file is missing required fields (version, supabase_url, supabase_publishable_key).',
     })
   })
+
+  it('returns INVALID_RESPONSE when supabase_publishable_key is missing', async () => {
+    const { supabase_publishable_key: _, ...noKey } = VALID_DISCOVERY
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(noKey))
+
+    const result = await discoverInstance('https://forge.example.com')
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'INVALID_RESPONSE',
+      message:
+        'Discovery file is missing required fields (version, supabase_url, supabase_publishable_key).',
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Additional HTTP error codes
+  // -------------------------------------------------------------------------
+
+  it('returns NOT_FOUND for a 500 response', async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response('Internal Server Error', { status: 500 }))
+
+    const result = await discoverInstance('https://forge.example.com')
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'NOT_FOUND',
+      message:
+        'Server returned 500. No discovery file found at https://forge.example.com/.well-known/ardent-forge.json.',
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // URL path stripping
+  // -------------------------------------------------------------------------
+
+  it('strips path components and fetches from origin only', async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(VALID_DISCOVERY))
+
+    await discoverInstance('forge.example.com/app')
+
+    expect(fetch).toHaveBeenCalledWith(
+      'https://forge.example.com/.well-known/ardent-forge.json',
+      expect.any(Object),
+    )
+  })
 })

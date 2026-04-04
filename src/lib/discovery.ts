@@ -7,9 +7,9 @@ export type DiscoveryResult =
   | { ok: false; error: DiscoveryError; message: string }
 
 const DiscoverySchema = z.object({
-  version: z.string(),
-  supabase_url: z.string(),
-  supabase_publishable_key: z.string(),
+  version: z.string().min(1),
+  supabase_url: z.string().url(),
+  supabase_publishable_key: z.string().min(1),
 })
 
 /**
