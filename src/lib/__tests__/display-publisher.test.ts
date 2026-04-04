@@ -21,10 +21,11 @@ function createMockClient() {
     cb?.('SUBSCRIBED')
     return mockChannel
   })
-  const mockChannel = {
+  const mockChannel: Record<string, unknown> = {
     send: mockSend,
     subscribe: mockSubscribe,
     unsubscribe: vi.fn(),
+    on: vi.fn().mockReturnThis(),
   }
   const mockClient = {
     channel: vi.fn().mockReturnValue(mockChannel),
