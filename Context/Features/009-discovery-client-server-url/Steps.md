@@ -313,3 +313,77 @@ S001-T ◄───┘──┐
 S002 ─────────┘
                   S004 ── S004-D (after S003)
 ```
+
+---
+
+## Wave 4: Review Findings (post-review hardening)
+
+### S005: Tighten DiscoverySchema Zod validators
+
+**Agent**: `frontend-specialist`
+**Parallel**: Yes (independent of other S00x)
+**Files**:
+- MODIFY `src/lib/discovery.ts`
+
+**Instructions**:
+
+Update `DiscoverySchema` to use stricter validators:
+- `supabase_url`: `z.string().url()`
+- `supabase_publishable_key`: `z.string().min(1)`
+- `version`: `z.string().min(1)`
+
+This ensures validation is strictest at the system boundary, catching empty strings and non-URL values before they propagate to downstream validators.
+
+**Acceptance**:
+- [TA-5] Empty string or non-URL `supabase_url` returns `INVALID_RESPONSE`
+
+**Review**: P6-012
+
+---
+
+### S005-T: Add missing test for supabase_publishable_key
+
+**Agent**: `frontend-specialist`
+**Parallel**: No (blocked by S005)
+**Blocked by**: S005
+**Files**:
+- MODIFY `src/lib/__tests__/discovery.test.ts`
+
+**Instructions**:
+
+Add test: missing `supabase_publishable_key` returns `INVALID_RESPONSE`. Follow existing pattern for the `version` and `supabase_url` missing-field tests.
+
+**Acceptance**:
+- Test passes and covers the most security-sensitive field
+
+**Review**: P6-013
+
+---
+
+### S006-T: Add test for non-404 HTTP errors (e.g., 500)
+
+**Agent**: `frontend-specialist`
+**Parallel**: Yes (independent)
+**Files**:
+- MODIFY `src/lib/__tests__/discovery.test.ts`
+
+**Instructions**:
+
+Add test: 500 response returns `NOT_FOUND` with dynamic status code in message. Verifies the `Server returned ${response.status}...` template.
+
+**Review**: P6-014
+
+---
+
+### S007-T: Add test for URL with path component
+
+**Agent**: `frontend-specialist`
+**Parallel**: Yes (independent)
+**Files**:
+- MODIFY `src/lib/__tests__/discovery.test.ts`
+
+**Instructions**:
+
+Add test: `forge.example.com/app` strips `/app` via `parsed.origin` and fetches from the origin. Documents this non-obvious normalization behavior.
+
+**Review**: P6-015

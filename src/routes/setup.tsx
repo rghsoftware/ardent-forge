@@ -4,12 +4,20 @@ import { ChevronDown, ChevronUp, QrCode } from 'lucide-react'
 import { getConfigStore } from '@/lib/config-store'
 import type { BackendConfig } from '@/lib/config-store'
 import { validateConnection } from '@/lib/connection-validator'
-import type { ConnectionUiStatus } from '@/lib/connection-validator'
 import { discoverInstance } from '@/lib/discovery'
 import { initSupabaseFromConfig } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { AuthPageShell } from '@/components/auth/auth-page-shell'
 import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
+
+type SetupState =
+  | { phase: 'idle' }
+  | { phase: 'discovering'; serverUrl: string }
+  | { phase: 'discovery-failed'; serverUrl: string; error: string }
+  | { phase: 'validating'; supabaseUrl: string; supabaseKey: string }
+  | { phase: 'validation-failed'; supabaseUrl: string; supabaseKey: string; error: string }
+  | { phase: 'schema-missing'; supabaseUrl: string; supabaseKey: string }
+  | { phase: 'success' }
 
 export const Route = createFileRoute('/setup')({
   beforeLoad: async () => {
@@ -28,84 +36,114 @@ function SetupPage() {
   const envKey = import.meta.env.VITE_SUPABASE_PUB_KEY?.trim() ?? ''
   const hasEnvVars = Boolean(envUrl && envKey)
 
+  // Form input state (controlled inputs)
+  const [serverUrl, setServerUrl] = useState('')
   const [url, setUrl] = useState(envUrl)
   const [key, setKey] = useState(envKey)
-  const [status, setStatus] = useState<ConnectionUiStatus>('idle')
-  const [message, setMessage] = useState('')
-  const autoValidated = useRef(false)
-
-  const [serverUrl, setServerUrl] = useState('')
-  const [discoveryStatus, setDiscoveryStatus] = useState<
-    'idle' | 'discovering' | 'discovery-failed'
-  >('idle')
-  const [discoveryMessage, setDiscoveryMessage] = useState('')
   const [advancedOpen, setAdvancedOpen] = useState(false)
 
+  // Unified process state -- one discriminated union, no impossible states
+  const [state, setState] = useState<SetupState>({ phase: 'idle' })
+  const autoValidated = useRef(false)
+
+  const isBusy = state.phase === 'discovering' || state.phase === 'validating'
+
   const validateAndSave = async (supabaseUrl: string, supabaseKey: string) => {
-    setStatus('validating')
-    setMessage('')
+    setState({ phase: 'validating', supabaseUrl, supabaseKey })
 
     const result = await validateConnection(supabaseUrl, supabaseKey)
 
     if (result.status === 'ok') {
       try {
-        setStatus('ok')
-        setMessage('Connected successfully.')
-
         const config: BackendConfig = { supabaseUrl, supabaseKey }
         await getConfigStore().setConfig(config)
         initSupabaseFromConfig(config)
-
+        setState({ phase: 'success' })
         router.navigate({ to: '/sign-in', search: { reason: undefined } })
         return true
       } catch (err) {
         console.error('[setup] Failed to save configuration after validation:', err)
-        setStatus('unreachable')
-        setMessage('Connected but failed to save configuration. Please try again.')
+        setState({
+          phase: 'validation-failed',
+          supabaseUrl,
+          supabaseKey,
+          error: 'Connected but failed to save configuration. Please try again.',
+        })
         return false
       }
     }
 
-    setStatus(result.status)
-    setMessage(result.message)
+    if (result.status === 'no-schema') {
+      setState({ phase: 'schema-missing', supabaseUrl, supabaseKey })
+    } else {
+      setState({
+        phase: 'validation-failed',
+        supabaseUrl,
+        supabaseKey,
+        error: result.message,
+      })
+    }
     return false
   }
 
   const handleConnect = async () => {
     if (!url || !key) {
-      setStatus('unreachable')
-      setMessage('Both fields are required.')
+      setState({
+        phase: 'validation-failed',
+        supabaseUrl: url,
+        supabaseKey: key,
+        error: 'Both fields are required.',
+      })
       return
     }
 
-    await validateAndSave(url, key)
+    try {
+      await validateAndSave(url, key)
+    } catch (err) {
+      console.error('[setup] Unexpected error in handleConnect:', err)
+      setState({
+        phase: 'validation-failed',
+        supabaseUrl: url,
+        supabaseKey: key,
+        error: 'An unexpected error occurred. Please try again.',
+      })
+    }
   }
 
   const handleDiscoverAndConnect = async () => {
+    if (isBusy) return
+
     if (!serverUrl) {
-      setDiscoveryStatus('discovery-failed')
-      setDiscoveryMessage('Server address is required.')
+      setState({ phase: 'discovery-failed', serverUrl, error: 'Server address is required.' })
       return
     }
 
-    setDiscoveryStatus('discovering')
-    setDiscoveryMessage('')
-    setStatus('idle')
-    setMessage('')
+    setState({ phase: 'discovering', serverUrl })
 
-    const result = await discoverInstance(serverUrl)
+    try {
+      const result = await discoverInstance(serverUrl)
 
-    if (!result.ok) {
-      setDiscoveryStatus('discovery-failed')
-      setDiscoveryMessage(`${result.message} Try manual configuration below.`)
-      return
+      if (!result.ok) {
+        setState({
+          phase: 'discovery-failed',
+          serverUrl,
+          error: `${result.message} Try manual configuration below.`,
+        })
+        return
+      }
+
+      setUrl(result.supabaseUrl)
+      setKey(result.supabaseKey)
+
+      await validateAndSave(result.supabaseUrl, result.supabaseKey)
+    } catch (err) {
+      console.error('[setup] Unexpected error in handleDiscoverAndConnect:', err)
+      setState({
+        phase: 'discovery-failed',
+        serverUrl,
+        error: 'An unexpected error occurred. Please try again.',
+      })
     }
-
-    setDiscoveryStatus('idle')
-    setUrl(result.supabaseUrl)
-    setKey(result.supabaseKey)
-
-    await validateAndSave(result.supabaseUrl, result.supabaseKey)
   }
 
   // Auto-validate when env vars pre-fill both fields so the user
@@ -118,11 +156,15 @@ function SetupPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const showEnvWarning =
+    hasEnvVars &&
+    (state.phase === 'validation-failed' || state.phase === 'schema-missing')
+
   return (
     <AuthPageShell>
       <p className="text-sm text-warm-ash">Connect to Server</p>
 
-      {hasEnvVars && status !== 'ok' && status !== 'idle' && status !== 'validating' && (
+      {showEnvWarning && (
         <p className="rounded-md bg-warning-flare/10 px-3 py-2 text-xs text-warning-flare">
           Environment variables were detected but the connection failed. Check the values below.
         </p>
@@ -158,30 +200,36 @@ function SetupPage() {
           type="button"
           className="min-h-[48px] w-full bg-forge text-on-forge hover:bg-forge/90"
           onClick={handleDiscoverAndConnect}
-          disabled={discoveryStatus === 'discovering' || status === 'validating'}
+          disabled={isBusy}
         >
-          {discoveryStatus === 'discovering'
+          {state.phase === 'discovering'
             ? 'Looking up server...'
-            : status === 'validating'
+            : state.phase === 'validating'
               ? 'Connecting...'
               : 'Connect'}
         </Button>
 
         {/* Discovery status feedback */}
-        {discoveryStatus === 'discovering' && (
+        {state.phase === 'discovering' && (
           <p className="text-xs text-warm-ash animate-pulse">Looking up server...</p>
         )}
-        {discoveryStatus === 'discovery-failed' && (
-          <p className="text-xs text-warning-flare">{discoveryMessage}</p>
+        {state.phase === 'discovery-failed' && (
+          <p className="text-xs text-warning-flare">{state.error}</p>
         )}
 
-        {/* Validation status feedback (shown after discovery succeeds) */}
-        {status === 'validating' && (
+        {/* Validation status feedback (shared by both discovery and manual flows) */}
+        {state.phase === 'validating' && (
           <p className="text-xs text-warm-ash animate-pulse">Connecting...</p>
         )}
-        {status === 'ok' && <p className="text-xs text-forge">{message}</p>}
-        {(status === 'no-schema' || status === 'unreachable') && (
-          <p className="text-xs text-warning-flare">{message}</p>
+        {state.phase === 'success' && (
+          <p className="text-xs text-forge">Connected successfully.</p>
+        )}
+        {(state.phase === 'validation-failed' || state.phase === 'schema-missing') && (
+          <p className="text-xs text-warning-flare">
+            {state.phase === 'validation-failed'
+              ? state.error
+              : 'Database schema not found. Check that migrations have been applied.'}
+          </p>
         )}
       </div>
 
@@ -197,13 +245,15 @@ function SetupPage() {
         type="button"
         className="flex w-full items-center justify-between text-sm text-warm-ash"
         onClick={() => setAdvancedOpen(!advancedOpen)}
+        aria-expanded={advancedOpen}
+        aria-controls="manual-config-section"
       >
         Manual configuration
         {advancedOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
 
       {advancedOpen && (
-        <div className="space-y-5">
+        <div id="manual-config-section" className="space-y-5">
           <div className="space-y-1">
             <label htmlFor="setup-url" className={FORGE_LABEL_CLASS}>
               Supabase URL
@@ -234,9 +284,9 @@ function SetupPage() {
             type="button"
             className="min-h-[48px] w-full bg-forge text-on-forge hover:bg-forge/90"
             onClick={handleConnect}
-            disabled={status === 'validating'}
+            disabled={state.phase === 'validating'}
           >
-            {status === 'validating' ? 'Connecting...' : 'Connect'}
+            {state.phase === 'validating' ? 'Connecting...' : 'Connect'}
           </Button>
         </div>
       )}

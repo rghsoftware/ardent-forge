@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export type DiscoveryError = 'NETWORK_ERROR' | 'NOT_FOUND' | 'INVALID_RESPONSE'
+export type DiscoveryError = 'INVALID_INPUT' | 'NETWORK_ERROR' | 'NOT_FOUND' | 'INVALID_RESPONSE'
 
 export type DiscoveryResult =
   | { ok: true; supabaseUrl: string; supabaseKey: string }
@@ -16,8 +16,8 @@ const DiscoverySchema = z.object({
  * Resolves a human-friendly server URL into Supabase credentials by fetching
  * the well-known discovery JSON file at `/.well-known/ardent-forge.json`.
  *
- * The returned credentials can be passed directly to `createClient` or to
- * the connection validator for further verification.
+ * The returned credentials can be passed to `validateConnection` and then
+ * persisted via the config store.
  */
 export async function discoverInstance(serverUrl: string): Promise<DiscoveryResult> {
   // Normalize: prepend https:// if no protocol, validate protocol, strip trailing slashes
@@ -29,18 +29,20 @@ export async function discoverInstance(serverUrl: string): Promise<DiscoveryResu
   let parsed: URL
   try {
     parsed = new URL(normalized)
-  } catch {
+  } catch (err) {
+    console.error('[discovery] Invalid URL:', err)
     return {
       ok: false,
-      error: 'NETWORK_ERROR',
+      error: 'INVALID_INPUT',
       message: 'Invalid URL. Please enter a valid server address.',
     }
   }
 
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    console.error('[discovery] Unsupported protocol:', parsed.protocol)
     return {
       ok: false,
-      error: 'NETWORK_ERROR',
+      error: 'INVALID_INPUT',
       message: 'Only http:// and https:// URLs are supported.',
     }
   }
@@ -59,6 +61,7 @@ export async function discoverInstance(serverUrl: string): Promise<DiscoveryResu
   } catch (err) {
     const isTimeout =
       err instanceof DOMException && (err.name === 'TimeoutError' || err.name === 'AbortError')
+    console.error('[discovery] Fetch failed:', err)
     return {
       ok: false,
       error: 'NETWORK_ERROR',
@@ -69,6 +72,7 @@ export async function discoverInstance(serverUrl: string): Promise<DiscoveryResu
   }
 
   if (!response.ok) {
+    console.error('[discovery] HTTP %d from %s', response.status, discoveryUrl)
     return {
       ok: false,
       error: 'NOT_FOUND',
@@ -79,10 +83,11 @@ export async function discoverInstance(serverUrl: string): Promise<DiscoveryResu
   let json: unknown
   try {
     json = await response.json()
-  } catch {
+  } catch (err) {
+    console.error('[discovery] JSON parse failed:', err)
     return {
       ok: false,
-      error: 'NOT_FOUND',
+      error: 'INVALID_RESPONSE',
       message:
         'Response was not valid JSON. Verify the server URL points to an Ardent Forge instance.',
     }
@@ -91,6 +96,7 @@ export async function discoverInstance(serverUrl: string): Promise<DiscoveryResu
   const result = DiscoverySchema.safeParse(json)
 
   if (!result.success) {
+    console.error('[discovery] Schema validation failed:', result.error.issues)
     return {
       ok: false,
       error: 'INVALID_RESPONSE',

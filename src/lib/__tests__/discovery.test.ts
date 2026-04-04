@@ -78,45 +78,45 @@ describe('discoverInstance', () => {
     )
   })
 
-  it('returns NETWORK_ERROR for a file:// URL', async () => {
+  it('returns INVALID_INPUT for a file:// URL', async () => {
     const result = await discoverInstance('file:///etc/passwd')
 
     expect(result).toEqual({
       ok: false,
-      error: 'NETWORK_ERROR',
+      error: 'INVALID_INPUT',
       message: 'Only http:// and https:// URLs are supported.',
     })
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('returns NETWORK_ERROR for a ftp:// URL', async () => {
+  it('returns INVALID_INPUT for a ftp:// URL', async () => {
     const result = await discoverInstance('ftp://forge.example.com')
 
     expect(result).toEqual({
       ok: false,
-      error: 'NETWORK_ERROR',
+      error: 'INVALID_INPUT',
       message: 'Only http:// and https:// URLs are supported.',
     })
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('returns NETWORK_ERROR for an empty string', async () => {
+  it('returns INVALID_INPUT for an empty string', async () => {
     const result = await discoverInstance('')
 
     expect(result).toEqual({
       ok: false,
-      error: 'NETWORK_ERROR',
+      error: 'INVALID_INPUT',
       message: 'Invalid URL. Please enter a valid server address.',
     })
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('returns NETWORK_ERROR for whitespace-only input', async () => {
+  it('returns INVALID_INPUT for whitespace-only input', async () => {
     const result = await discoverInstance('   ')
 
     expect(result).toEqual({
       ok: false,
-      error: 'NETWORK_ERROR',
+      error: 'INVALID_INPUT',
       message: 'Invalid URL. Please enter a valid server address.',
     })
     expect(fetch).not.toHaveBeenCalled()
@@ -172,7 +172,7 @@ describe('discoverInstance', () => {
   // Invalid body
   // -------------------------------------------------------------------------
 
-  it('returns NOT_FOUND when a 200 response contains non-JSON (HTML)', async () => {
+  it('returns INVALID_RESPONSE when a 200 response contains non-JSON (HTML)', async () => {
     const htmlResponse = new Response('<html><body>Hello</body></html>', {
       status: 200,
       headers: { 'Content-Type': 'text/html' },
@@ -187,7 +187,7 @@ describe('discoverInstance', () => {
 
     expect(result).toEqual({
       ok: false,
-      error: 'NOT_FOUND',
+      error: 'INVALID_RESPONSE',
       message:
         'Response was not valid JSON. Verify the server URL points to an Ardent Forge instance.',
     })
