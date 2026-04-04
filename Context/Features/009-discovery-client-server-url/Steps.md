@@ -1,6 +1,6 @@
 # Feature 009: Discovery Client + Server URL Input -- Implementation Steps
 
-## Status: Draft
+## Status: Complete
 ## Created: 2026-04-04
 
 ---
