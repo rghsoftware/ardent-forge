@@ -18,6 +18,13 @@
         reverse_proxy studio:3000
     }
 
+    # Instance discovery endpoint
+    handle /.well-known/ardent-forge.json {
+        header Content-Type application/json
+        header Cache-Control "public, max-age=3600"
+        respond `{"version":"1","supabase_url":"{$SITE_URL}","supabase_publishable_key":"{$ANON_KEY}"}`
+    }
+
     # Web app -- catch-all for the SPA
     handle {
         reverse_proxy web:80
