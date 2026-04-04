@@ -50,7 +50,10 @@ android {
       }
     }
     getByName("release") {
-      signingConfig = signingConfigs.getByName("release")
+      val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+      if (keystorePath != null) {
+        signingConfig = signingConfigs.getByName("release")
+      }
       isMinifyEnabled = true
       proguardFiles(
         *fileTree(".") { include("**/*.pro") }

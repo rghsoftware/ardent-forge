@@ -18,6 +18,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          MISSING=""
+          [ -z "$KEYSTORE_BASE64" ] && MISSING="$MISSING KEYSTORE_BASE64"
+          [ -z "$KEYSTORE_PASSWORD" ] && MISSING="$MISSING KEYSTORE_PASSWORD"
+          [ -z "$KEY_ALIAS" ] && MISSING="$MISSING KEY_ALIAS"
+          [ -z "$KEY_PASSWORD" ] && MISSING="$MISSING KEY_PASSWORD"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing required secrets:$MISSING"
+            exit 1
+          fi
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -59,7 +76,19 @@ jobs:
         run: bun install
 
       - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > $RUNNER_TEMP/upload-key.jks
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::KEYSTORE_BASE64 secret is empty or not set"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > $RUNNER_TEMP/upload-key.jks
+          FILESIZE=$(stat -c%s "$RUNNER_TEMP/upload-key.jks")
+          if [ "$FILESIZE" -lt 100 ]; then
+            echo "::error::Decoded keystore is suspiciously small (${FILESIZE} bytes) -- check KEYSTORE_BASE64 secret"
+            exit 1
+          fi
 
       - name: Inject version
         run: |
@@ -92,6 +121,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate Supabase secrets
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          MISSING=""
+          [ -z "$SUPABASE_ACCESS_TOKEN" ] && MISSING="$MISSING SUPABASE_ACCESS_TOKEN"
+          [ -z "$SUPABASE_PROJECT_REF" ] && MISSING="$MISSING SUPABASE_PROJECT_REF"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing required secrets:$MISSING"
+            exit 1
+          fi
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -103,7 +145,8 @@ jobs:
       - name: Link Supabase project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: bunx supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: bunx supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Push migrations
         env:
@@ -116,19 +159,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Validate Play Store secret
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "::error::Missing required secret: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"
+            exit 1
+          fi
+
       - name: Download AAB artifact
         uses: actions/download-artifact@v4
         with:
           name: release-aab
           path: artifacts
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          generate_release_notes: true
-          files: artifacts/**/*.aab
 
       - name: Upload to Google Play
         uses: r0adkll/upload-google-play@v3
@@ -138,3 +182,11 @@ jobs:
           releaseFiles: artifacts/**/*.aab
           track: internal
           status: completed
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: artifacts/**/*.aab
