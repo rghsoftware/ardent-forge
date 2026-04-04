@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { z } from 'zod'
 import { cn } from '@/lib/utils'
 import { resolveConfig } from '@/lib/config-store'
 import {
@@ -10,12 +11,15 @@ import {
   type DisplayEventHandlers,
 } from '@/lib/display-subscriber'
 import { useDisplayStore, getDisplayMode } from '@/stores/display-store'
-import { IdlePlaceholder } from '@/components/display/idle-placeholder'
+import { IdleView } from '@/components/display/idle-view'
 import { BoardView } from '@/components/display/board-view'
 import { ConnectionFooter } from '@/components/display/connection-footer'
 import { FocusedView } from '@/components/display/focused-view'
 
 export const Route = createFileRoute('/display')({
+  validateSearch: z.object({
+    clock: z.enum(['12h', '24h']).optional().default('24h'),
+  }),
   component: DisplayPage,
 })
 
@@ -49,6 +53,7 @@ function DisplayPage() {
 // ---------------------------------------------------------------------------
 
 function DisplayShell() {
+  const { clock } = Route.useSearch()
   const [configMissing, setConfigMissing] = useState(false)
   const clientRef = useRef<SupabaseClient | null>(null)
   const pruneRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -78,6 +83,7 @@ function DisplayShell() {
           onSessionEnded: ({ user_id }) => useDisplayStore.getState().removeSession(user_id),
           onFocus: ({ user_id }) => useDisplayStore.getState().setFocusedUser(user_id),
           onUnfocus: () => useDisplayStore.getState().setFocusedUser(null),
+          onIdleSnapshot: (snapshot) => useDisplayStore.getState().setIdleSnapshot(snapshot),
           onStatusChange: (status) => useDisplayStore.getState().setConnectionStatus(status),
         }
 
@@ -122,15 +128,17 @@ function DisplayShell() {
     )
   }
 
-  return <DisplayModeRenderer />
+  return <DisplayModeRenderer clockFormat={clock} />
 }
 
 // ---------------------------------------------------------------------------
 // DisplayModeRenderer -- cross-fade between idle / board / focused views
 // ---------------------------------------------------------------------------
 
-function DisplayModeRenderer() {
+function DisplayModeRenderer({ clockFormat }: { clockFormat: '12h' | '24h' }) {
   const displayMode = useDisplayStore(getDisplayMode)
+  const idleSnapshot = useDisplayStore((s) => s.idleSnapshot)
+  const connectionStatus = useDisplayStore((s) => s.connectionStatus)
 
   return (
     <div className="relative h-full w-full">
@@ -141,7 +149,11 @@ function DisplayModeRenderer() {
           displayMode === 'idle' ? 'opacity-100' : 'pointer-events-none opacity-0',
         )}
       >
-        <IdlePlaceholder />
+        <IdleView
+          idleSnapshot={idleSnapshot}
+          clockFormat={clockFormat}
+          connectionStatus={connectionStatus === 'connected' ? 'connected' : 'reconnecting'}
+        />
       </div>
 
       {/* Board view */}

@@ -2,8 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { RealtimeChannel } from '@supabase/realtime-js'
 import {
   displaySnapshotSchema,
+  idleSnapshotSchema,
   type DisplaySnapshot,
   type DisplayConnectionStatus,
+  type IdleSnapshot,
 } from '@/domain/types/display-snapshot'
 import { z } from 'zod'
 
@@ -16,6 +18,7 @@ export interface DisplayEventHandlers {
   onSessionEnded: (payload: { user_id: string }) => void
   onFocus: (payload: { user_id: string }) => void
   onUnfocus: () => void
+  onIdleSnapshot: (snapshot: IdleSnapshot) => void
   onStatusChange: (status: DisplayConnectionStatus) => void
 }
 
@@ -98,6 +101,14 @@ export function subscribeToDisplay(handlers: DisplayEventHandlers): void {
         handlers.onFocus(result.data)
       } else {
         console.warn('[display-subscriber] Invalid focus payload, dropping', result.error)
+      }
+    })
+    .on('broadcast', { event: 'idle_snapshot' }, ({ payload }) => {
+      const result = idleSnapshotSchema.safeParse(payload)
+      if (result.success) {
+        handlers.onIdleSnapshot(result.data)
+      } else {
+        console.error('[display-subscriber] Invalid idle_snapshot payload, dropping', result.error)
       }
     })
     .on('broadcast', { event: 'unfocus' }, () => {

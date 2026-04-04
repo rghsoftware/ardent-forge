@@ -4,6 +4,7 @@ import {
   displaySetSchema,
   displayEventTypeSchema,
   restTimerStateSchema,
+  idleSnapshotSchema,
 } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
@@ -213,7 +214,7 @@ describe('displaySetSchema', () => {
 // ---------------------------------------------------------------------------
 
 describe('displayEventTypeSchema', () => {
-  it.each(['workout_snapshot', 'session_ended', 'focus', 'unfocus'] as const)(
+  it.each(['workout_snapshot', 'session_ended', 'focus', 'unfocus', 'idle_snapshot'] as const)(
     'accepts valid event type "%s"',
     (eventType) => {
       expect(displayEventTypeSchema.safeParse(eventType).success).toBe(true)
@@ -230,5 +231,140 @@ describe('displayEventTypeSchema', () => {
 
   it('rejects a number', () => {
     expect(displayEventTypeSchema.safeParse(42).success).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// idleSnapshotSchema
+// ---------------------------------------------------------------------------
+
+describe('idleSnapshotSchema', () => {
+  const validIdleSnapshot = {
+    server_time: '2026-04-04T10:00:00Z',
+    scheduled_sessions: [
+      {
+        display_name: 'Robert',
+        session_name: 'Push Day',
+        session_type: 'STRENGTH' as const,
+        day_label: 'Day 1',
+      },
+    ],
+    next_session: {
+      display_name: 'Robert',
+      session_name: 'Push Day',
+    },
+  }
+
+  it('accepts a valid payload with sessions and next_session', () => {
+    expect(idleSnapshotSchema.safeParse(validIdleSnapshot).success).toBe(true)
+  })
+
+  it('accepts a valid payload with next_session null', () => {
+    const snapshot = { ...validIdleSnapshot, next_session: null }
+    expect(idleSnapshotSchema.safeParse(snapshot).success).toBe(true)
+  })
+
+  it('rejects when server_time is missing', () => {
+    const { server_time: _, ...bad } = validIdleSnapshot
+    expect(idleSnapshotSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects scheduled_sessions entry with missing display_name', () => {
+    const snapshot = {
+      ...validIdleSnapshot,
+      scheduled_sessions: [
+        {
+          session_name: 'Push Day',
+          session_type: 'STRENGTH' as const,
+          day_label: 'Day 1',
+        },
+      ],
+    }
+    expect(idleSnapshotSchema.safeParse(snapshot).success).toBe(false)
+  })
+
+  it('idle_snapshot is a valid DisplayEventType', () => {
+    expect(displayEventTypeSchema.safeParse('idle_snapshot').success).toBe(true)
+  })
+
+  it('rejects invalid session_type value', () => {
+    const snapshot = {
+      ...validIdleSnapshot,
+      scheduled_sessions: [
+        {
+          display_name: 'Robert',
+          session_name: 'Push Day',
+          session_type: 'YOGA',
+          day_label: 'Day 1',
+        },
+      ],
+    }
+    expect(idleSnapshotSchema.safeParse(snapshot).success).toBe(false)
+  })
+
+  it('accepts empty scheduled_sessions array', () => {
+    const snapshot = { ...validIdleSnapshot, scheduled_sessions: [] }
+    expect(idleSnapshotSchema.safeParse(snapshot).success).toBe(true)
+  })
+
+  it('rejects invalid ISO date string for server_time', () => {
+    const snapshot = { ...validIdleSnapshot, server_time: 'not-a-date' }
+    expect(idleSnapshotSchema.safeParse(snapshot).success).toBe(false)
+  })
+
+  it('rejects empty string display_name in scheduled_sessions', () => {
+    const snapshot = {
+      ...validIdleSnapshot,
+      scheduled_sessions: [
+        {
+          display_name: '',
+          session_name: 'Push Day',
+          session_type: 'STRENGTH' as const,
+          day_label: 'Day 1',
+        },
+      ],
+    }
+    expect(idleSnapshotSchema.safeParse(snapshot).success).toBe(false)
+  })
+
+  it('rejects empty string session_name in scheduled_sessions', () => {
+    const snapshot = {
+      ...validIdleSnapshot,
+      scheduled_sessions: [
+        {
+          display_name: 'Robert',
+          session_name: '',
+          session_type: 'STRENGTH' as const,
+          day_label: 'Day 1',
+        },
+      ],
+    }
+    expect(idleSnapshotSchema.safeParse(snapshot).success).toBe(false)
+  })
+
+  it('rejects empty string day_label in scheduled_sessions', () => {
+    const snapshot = {
+      ...validIdleSnapshot,
+      scheduled_sessions: [
+        {
+          display_name: 'Robert',
+          session_name: 'Push Day',
+          session_type: 'STRENGTH' as const,
+          day_label: '',
+        },
+      ],
+    }
+    expect(idleSnapshotSchema.safeParse(snapshot).success).toBe(false)
+  })
+
+  it('rejects empty string display_name in next_session', () => {
+    const snapshot = {
+      ...validIdleSnapshot,
+      next_session: {
+        display_name: '',
+        session_name: 'Push Day',
+      },
+    }
+    expect(idleSnapshotSchema.safeParse(snapshot).success).toBe(false)
   })
 })

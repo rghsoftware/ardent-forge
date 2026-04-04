@@ -254,3 +254,40 @@ The Docker path runs a self-contained Supabase stack behind a Caddy reverse prox
 7. **Migration runner** is an init container that applies SQL migrations from the repository on startup, then exits. It uses the `SERVICE_ROLE_KEY` (which never leaves the Docker network) for DDL permissions.
 8. **Web app** is a multi-stage Docker build: the first stage runs `bun install && bun run build`, the second copies the static output into nginx. No Node.js runtime in production.
 9. **Supabase Studio** (optional) provides a web-based admin dashboard for inspecting and managing the database.
+
+## Remote Display
+
+The `/display` route provides a public, no-authentication TV display for gym environments. It shows a clock, today's scheduled sessions, and active workout progress.
+
+### Accessing the Display
+
+Navigate to `https://<your-domain>/display` on any browser (smart TV, tablet, etc.). No login is required.
+
+- **Default clock format:** 24-hour. Override with `?clock=12h` for 12-hour format.
+- **Example:** `https://your-app.example.com/display?clock=12h`
+
+### Edge Function: display-idle-snapshot
+
+The `display-idle-snapshot` Edge Function broadcasts scheduled session data to the display every 60 seconds. Without it, the display shows only a clock (no schedule information).
+
+The cron schedule is pre-configured in `supabase/config.toml`:
+
+```toml
+[functions.display-idle-snapshot]
+verify_jwt = false
+
+[functions.display-idle-snapshot.cron]
+schedule = "*/1 * * * *"
+```
+
+Deploy the function with:
+
+```bash
+bunx supabase functions deploy display-idle-snapshot
+```
+
+### Requirements
+
+- The Edge Function uses the `service_role` key (configured automatically via Supabase environment variables).
+- The `display-idle-snapshot` function must be deployed for schedule data to appear on the display.
+- No additional database migrations are required beyond the standard schema.

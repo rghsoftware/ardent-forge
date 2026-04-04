@@ -66,6 +66,7 @@ function createMockHandlers(): DisplayEventHandlers {
     onSessionEnded: vi.fn(),
     onFocus: vi.fn(),
     onUnfocus: vi.fn(),
+    onIdleSnapshot: vi.fn(),
     onStatusChange: vi.fn(),
   }
 }

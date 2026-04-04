@@ -1,5 +1,9 @@
 import { create } from 'zustand'
-import type { DisplaySnapshot, DisplayConnectionStatus } from '@/domain/types/display-snapshot'
+import type {
+  DisplaySnapshot,
+  DisplayConnectionStatus,
+  IdleSnapshot,
+} from '@/domain/types/display-snapshot'
 
 // ---------------------------------------------------------------------------
 // Display mode -- derived from session state
@@ -25,6 +29,7 @@ interface DisplayState {
   focusedUserId: string | null
   connectionStatus: DisplayConnectionStatus
   currentPage: number
+  idleSnapshot: IdleSnapshot | null
 }
 
 // ---------------------------------------------------------------------------
@@ -36,6 +41,7 @@ interface DisplayActions {
   removeSession(userId: string): void
   setFocusedUser(userId: string | null): void
   setConnectionStatus(status: DisplayConnectionStatus): void
+  setIdleSnapshot(snapshot: IdleSnapshot): void
   setCurrentPage(page: number): void
   clearAllSessions(): void
   pruneStale(maxAgeMs: number): void
@@ -56,6 +62,7 @@ const initialState: DisplayState = {
   focusedUserId: null,
   connectionStatus: 'disconnected',
   currentPage: 0,
+  idleSnapshot: null,
 }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +105,10 @@ export const useDisplayStore = create<DisplayState & DisplayActions>()((set, get
 
   setConnectionStatus(status: DisplayConnectionStatus) {
     set({ connectionStatus: status })
+  },
+
+  setIdleSnapshot(snapshot: IdleSnapshot) {
+    set({ idleSnapshot: snapshot })
   },
 
   setCurrentPage(page: number) {
