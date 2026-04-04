@@ -44,7 +44,7 @@ Before writing code, validate the approach:
 ### Phase 2: Plan Creation
 
 **For complex development work (5+ files, multi-phase, architectural):**
-Central AI auto-invokes `/team-plan` which generates a structured plan with team members, tasks, dependencies, and acceptance criteria. See the `session-management` SKILL.md Phase 3 for details.
+Central AI auto-invokes `/blueprint` which generates a structured plan with team members, tasks, dependencies, and acceptance criteria. See the `session-management` SKILL.md Phase 3 for details.
 
 **For moderate development work (2-5 files, clear scope):**
 Create detailed, actionable tasks manually:

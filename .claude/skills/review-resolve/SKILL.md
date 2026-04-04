@@ -1,8 +1,9 @@
 # Skill: Resolve Review Findings
 
 ## Purpose
-Work through a captured review file, resolve each finding by category, generate
-appropriate planning artifacts, and update the review file with resolution status.
+Work through a captured review file using interactive triage. Every finding requires
+an explicit user decision before any action is taken. Claude may recommend an action,
+but the user always makes the final call.
 
 ## When to use
 - At the start of a fresh session after a review was captured
@@ -11,94 +12,168 @@ appropriate planning artifacts, and update the review file with resolution statu
 
 ## Prerequisites
 - A review file must exist in `Context/Reviews/` (created by review-capture)
-- This should run in a **fresh session** with full context budget — not in the same
+- This should run in a **fresh session** with full context budget -- not in the same
   session that performed the review
+
+## Actions Reference
+
+Six actions are available for every finding:
+
+| # | Action | Description |
+|---|--------|-------------|
+| 1 | **Fix** | Open the file and apply the fix inline |
+| 2 | **Task** | Add a new S### entry to Steps.md for later implementation |
+| 3 | **ADR** | Create an Architecture Decision Record via the adr-create skill |
+| 4 | **Rule** | Add or update a convention in the appropriate rule file |
+| 5 | **Defer** | Push to an external tracker or the backlog for later |
+| 6 | **Discard** | Drop the finding (individual discard requires a reason; bulk does not) |
 
 ## Workflow
 
 ### Step 1: Load the review file
 1. If the user specified a file, load that one
 2. Otherwise, list files in `Context/Reviews/` and find the most recent with
-   `Status: 🔴 Unresolved`
-3. If no unresolved reviews exist, tell the user — nothing to do
+   `Status: Unresolved`
+3. If no unresolved reviews exist, tell the user -- nothing to do
 4. Read the full review file
 5. Load the associated feature's Spec.md, Steps.md, and Tech.md for context
+6. Parse all findings into a working list, noting each finding's category, severity,
+   file reference, and description
 
-### Step 2: Work through Fix-Now findings
+### Step 2: Bulk triage phase
+Present a summary table of all findings grouped by category and severity:
 
-Process each `[FIX]` finding in priority order (Critical → High → Medium → Low):
+```
+Findings summary:
+  [FIX]  -- Critical: 2, High: 3, Medium: 1
+  [TASK] -- High: 1, Medium: 4
+  [ADR]  -- Medium: 2
+  [RULE] -- Low: 3
 
+Total: 16 findings
+```
+
+Then offer bulk actions:
+
+```
+Bulk triage -- apply an action to a group of findings at once.
+Format: <action> <filter>
+Examples:
+  fix all [FIX] Critical
+  discard all [RULE] Low
+  defer all [TASK] Medium
+  task all [FIX] Medium
+
+Filters: category ([FIX], [TASK], [ADR], [RULE]), severity (Critical, High,
+Medium, Low), or a combination of both.
+
+Type "done" when finished with bulk triage to proceed to individual findings.
+```
+
+**Bulk triage rules:**
+- The user may issue multiple bulk actions before typing "done"
+- Bulk discard does NOT require a reason -- findings are marked
+  "Bulk discarded during triage"
+- After each bulk action, immediately update ALL affected findings in the review
+  file on disk (batch write)
+- Show a confirmation after each bulk action: "Applied [action] to N findings.
+  Remaining: M unhandled."
+- When the user types "done", proceed to Step 3
+
+### Step 3: Individual triage phase
+Process each remaining unhandled finding one at a time. For each finding, present:
+
+```
+Finding [X of Y remaining]: [CATEGORY] Severity
+File: path/to/file.ts:NN
+Description: <the finding text>
+
+Recommended action: <Claude's recommendation with brief rationale>
+
+Actions:
+  1. Fix     -- apply the fix now
+  2. Task    -- add to Steps.md
+  3. ADR     -- create architecture decision record
+  4. Rule    -- add/update convention rule
+  5. Defer   -- send to tracker or backlog
+  6. Discard -- drop this finding (reason required)
+
+Choose [1-6]:
+```
+
+**Individual triage rules:**
+- Wait for the user to respond with a number (1-6) before proceeding
+- NEVER auto-resolve, auto-dismiss, or skip a finding
+- If the user picks **6 (Discard)**, ask for a reason. Do not proceed until a
+  non-empty reason is provided.
+- After the user picks an action, record the decision against the finding
+- Immediately update the review file on disk after each individual decision
+- Continue to the next finding until all are handled
+
+### Step 4: Execution phase
+After all findings have been triaged (bulk + individual), execute each action.
+Process in this order: Fix, Task, ADR, Rule, Defer, Discard.
+
+#### Fix
 1. Open the referenced file and line
 2. Apply the fix
-3. Verify the fix doesn't break anything obvious (check imports, references)
-4. Update the finding in the review file:
-   - **Status:** ✅ Fixed
+3. Verify the fix does not break anything obvious (check imports, references)
+4. If the fix turns out to be more complex than expected (requires restructuring,
+   affects other modules, changes behavior), inform the user and ask whether to
+   reclassify as Task or ADR
+5. Update the finding in the review file:
+   - **Status:** Fixed
    - **Resolution:** {Brief description of what was changed}
 
-If a fix turns out to be more complex than expected (requires restructuring,
-affects other modules, changes behavior), reclassify it:
-- Reclassify to [TASK] if it needs tracked work
-- Reclassify to [ADR] if it requires an architectural decision
-- Update the category label and move the finding to the correct section
-
-### Step 3: Work through Missing Task findings
-
-For each `[TASK]` finding:
-
+#### Task
 1. Determine the next available S### number from Steps.md
 2. Add the new task to Steps.md in the appropriate phase:
-   - If it's a test → add as S###-T after the related implementation task
-   - If it's documentation → add as S###-D after the related implementation task
-   - If it's new implementation → add at the end of the relevant phase
+   - Test tasks: add as S###-T after the related implementation task
+   - Documentation tasks: add as S###-D after the related implementation task
+   - New implementation: add at the end of the relevant phase
 3. If the finding relates to a Testable Assertion, verify the assertion exists in
    Spec.md. If not, add it to the Testable Assertions table.
 4. Update the finding in the review file:
-   - **Status:** ✅ Task created
+   - **Status:** Task created
    - **Resolution:** Added as S### in Steps.md
 
-Do NOT implement the task now — just track it. Implementation follows the normal
-impl-start workflow.
+#### ADR
+1. Use the adr-create skill to create the ADR
+2. Update the finding in the review file:
+   - **Status:** ADR created
+   - **Resolution:** ADR-NNNN
 
-### Step 4: Work through Architectural Concern findings
-
-For each `[ADR]` finding:
-
-1. Present the concern to the user with context:
-   - What the reviewer found
-   - What the current Tech.md says
-   - What existing ADRs are relevant
-2. Ask the user to decide:
-   - **Create ADR** — proceed to use the adr-create skill
-   - **Dismiss** — the concern was considered but doesn't warrant a decision change
-     (user must provide a reason)
-   - **Defer** — mark as deferred for later consideration
-3. Update the finding in the review file:
-   - If ADR created: **Status:** ✅ ADR created → **Resolution:** ADR-NNNN
-   - If dismissed: **Status:** ✅ Dismissed → **Resolution:** {user's reason}
-   - If deferred: **Status:** 🟡 Deferred → **Resolution:** Deferred — {reason}
-
-### Step 5: Work through Convention Gap findings
-
-For each `[RULE]` finding:
-
+#### Rule
 1. Identify which rule file should be updated (or if a new rule file is needed)
 2. Read the current rule file
-3. Present the suggested addition to the user
-4. If approved:
-   - Add the convention to the appropriate rule file
-   - If the gap is something the post-edit hook could catch, update the hook too
+3. Add the convention to the appropriate rule file
+4. If the gap is something the post-edit hook could catch, update the hook too
 5. Update the finding in the review file:
-   - If applied: **Status:** ✅ Rule updated → **Resolution:** Added to {rule-file}
-   - If dismissed: **Status:** ✅ Dismissed → **Resolution:** {reason}
+   - **Status:** Rule updated
+   - **Resolution:** Added to {rule-file}
 
-### Step 6: Update review file header
+#### Defer
+1. Check `.cortex/config.json` for an `issueTracker` configuration:
+   - If `issueTracker.type` is `"github"`: run `gh issue create --title "<finding summary>" --body "<finding details>"`
+   - If `issueTracker.type` is `"gitlab"`: run `glab issue create --title "<finding summary>" --description "<finding details>"`
+   - If `issueTracker.type` is `"backlog"` or no config file exists: create an entry
+     in `Context/Backlog/` with the finding details
+2. Update the finding in the review file:
+   - **Status:** Deferred
+   - **Resolution:** {Issue URL or "Added to Context/Backlog/<filename>"}
 
-After processing all findings, update the review file:
+#### Discard
+1. Mark the finding in the review file:
+   - **Status:** Discarded
+   - **Resolution:** {User's reason} (individual) or "Bulk discarded during triage" (bulk)
+
+### Step 5: Update review file header
+After executing all actions, update the review file:
 
 1. Count resolutions:
-   - All resolved → **Status:** 🟢 Resolved
-   - Some deferred → **Status:** 🟡 Partially resolved
-   - Any unresolved → **Status:** 🔴 Unresolved (should not happen if workflow completes)
+   - All resolved (no Deferred) -- **Status:** Resolved
+   - Some deferred -- **Status:** Partially resolved
+   - Any unresolved -- **Status:** Unresolved (should not happen if workflow completes)
 2. Update the Resolution Checklist at the bottom (check completed items)
 3. Add a Resolution Summary section:
 
@@ -107,17 +182,16 @@ After processing all findings, update the review file:
 **Resolved at:** {YYYY-MM-DD}
 **Session:** {brief description}
 
-| Category | Total | Fixed | Tasks Created | ADRs | Rules | Dismissed | Deferred |
+| Category | Total | Fixed | Tasks | ADRs | Rules | Deferred | Discarded |
 |---|---|---|---|---|---|---|---|
-| [FIX] | N | N | — | — | — | — | — |
-| [TASK] | N | — | N | — | — | — | — |
-| [ADR] | N | — | — | N | — | N | N |
-| [RULE] | N | — | — | — | N | N | — |
+| [FIX] | N | N | N | -- | -- | N | N |
+| [TASK] | N | -- | N | -- | -- | N | N |
+| [ADR] | N | -- | -- | N | -- | N | N |
+| [RULE] | N | -- | -- | -- | N | N | N |
 | **Total** | **N** | | | | | | |
 ```
 
-### Step 7: Commit resolution work
-
+### Step 6: Commit resolution work
 Use the impl-commit skill to commit the fixes. The commit message should reference
 the review file:
 
@@ -128,25 +202,32 @@ Fixes: [FIX] items resolved inline
 Tasks: S### added for [TASK] items
 ADR-NNNN created for [ADR] items
 Rules updated for [RULE] items
+Deferred: N items pushed to tracker/backlog
+Discarded: N items dropped
 
 Review: Context/Reviews/PR-{branch}-{date}.md
 ```
 
-### Step 8: Suggest next steps
-
+### Step 7: Suggest next steps
 Based on what was generated:
-- If new tasks were added → "Run impl-start to work through the new tasks"
-- If ADRs were created → "Review the new ADRs to make sure they're complete"
-- If rules were updated → "The updated rules will apply to future code automatically"
-- Always → "Run review-verify to confirm all findings are resolved"
+- If new tasks were added -- "Run impl-start to work through the new tasks"
+- If ADRs were created -- "Review the new ADRs to make sure they're complete"
+- If rules were updated -- "The updated rules will apply to future code automatically"
+- If items were deferred -- "Check the tracker/backlog for deferred items"
+- Always -- "Run review-verify to confirm all findings are resolved"
 
 ## Rules
-- ALWAYS start by loading the review file — don't work from conversation memory
-- Process findings in category order: FIX → TASK → ADR → RULE
-- Within each category, process in priority order: Critical → High → Medium → Low
-- Never skip a finding without explicit user input (dismiss or defer with reason)
-- Never auto-dismiss architectural concerns — the user must decide
+- ALWAYS start by loading the review file -- don't work from conversation memory
+- NEVER take action on a finding without an explicit user decision (bulk or individual)
+- NEVER auto-resolve, auto-dismiss, or skip findings
+- Claude SHOULD recommend an action for each finding, but the user makes the final call
+- Individual discard MUST require a non-empty reason from the user
+- Bulk discard does NOT require a reason
+- Bulk triage phase MUST come before individual triage phase
+- After each individual decision, immediately update the review file on disk
+- After each bulk action, batch-update all affected findings on disk
+- Within individual triage, process in priority order: Critical, High, Medium, Low
 - If context is getting tight, save progress to the review file immediately
   (update statuses for what's done so far) before continuing
-- Keep the review file as the single source of truth — don't track resolutions
+- Keep the review file as the single source of truth -- don't track resolutions
   anywhere else

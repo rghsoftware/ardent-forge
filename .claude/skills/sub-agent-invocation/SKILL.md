@@ -81,28 +81,28 @@ DELIVERABLES:
 
 | Scenario                                           | Approach                                                   |
 | -------------------------------------------------- | ---------------------------------------------------------- |
-| Multi-phase feature, 5+ files, architectural       | Auto-invoke `/team-plan` → user approval → `/build`        |
-| Cross-domain integration, agents need coordination | `/team-plan` → user approval → `/team-build` (Agent Teams) |
+| Multi-phase feature, 5+ files, architectural       | Auto-invoke `/blueprint` → user approval → `/impl`        |
+| Cross-domain integration, agents need coordination | `/blueprint` → user approval → `/team-impl` (Agent Teams) |
 | Simple file edit, pattern search, single-component | Direct sub-agent delegation                                |
-| Ambiguous scope, needs planning                    | Gather context → `/team-plan` → user approval → `/build`   |
+| Ambiguous scope, needs planning                    | Gather context → `/blueprint` → user approval → `/impl`   |
 | Clear scope, bounded execution                     | Direct delegation                                          |
-| High-reliability task, production changes          | `/team-plan` with Specialist + Quality Engineer validation |
+| High-reliability task, production changes          | `/blueprint` with Specialist + Quality Engineer validation |
 | Research/exploration only                          | Direct Explore agent or deep-researcher                    |
 
-**`/build` vs `/team-build` Decision:**
+**`/impl` vs `/team-impl` Decision:**
 
-- `/build`: Tasks are independent, sub-agents don't need to communicate, cost-sensitive (1x tokens)
-- `/team-build`: Agents need peer-to-peer coordination, cross-domain interfaces, contract-first spawning (2-4x tokens)
+- `/impl`: Tasks are independent, sub-agents don't need to communicate, cost-sensitive (1x tokens)
+- `/team-impl`: Agents need peer-to-peer coordination, cross-domain interfaces, contract-first spawning (2-4x tokens)
 
 ---
 
 ## Auto-Invocation Protocol
 
-Central AI auto-invokes `/team-plan` + `/build` (or `/team-build`) for complex work. This is the standard operating procedure for all non-trivial implementation.
+Central AI auto-invokes `/blueprint` + `/impl` (or `/team-impl`) for complex work. This is the standard operating procedure for all non-trivial implementation.
 
 ### Decision Criteria
 
-**Auto-invoke `/team-plan` immediately when:**
+**Auto-invoke `/blueprint` immediately when:**
 
 - Request involves 5+ files or multiple domains
 - Request is clearly multi-phase (e.g., "build feature with X, Y, Z")
@@ -126,31 +126,31 @@ Central AI auto-invokes `/team-plan` + `/build` (or `/team-build`) for complex w
 **Step 1 - Plan:**
 
 ```
-Skill({ skill: "team-plan", args: "<comprehensive prompt with all context>" })
+Skill({ skill: "blueprint", args: "<comprehensive prompt with all context>" })
 ```
 
 **Step 2 - Pause:**
-Present the plan summary to the user. Wait for approval ("go", `/build`, `/team-build`, or feedback).
+Present the plan summary to the user. Wait for approval ("go", `/impl`, `/team-impl`, or feedback).
 
 **Step 3 - Execute (after user approval):**
 
 For isolated sub-agent execution (default):
 
 ```
-Skill({ skill: "build", args: ".claude/tasks/<plan-file>.md" })
+Skill({ skill: "impl", args: ".claude/tasks/<plan-file>.md" })
 ```
 
 For collaborative Agent Teams execution (when agents need peer-to-peer coordination):
 
 ```
-Skill({ skill: "team-build", args: ".claude/tasks/<plan-file>.md" })
+Skill({ skill: "team-impl", args: ".claude/tasks/<plan-file>.md" })
 ```
 
-Use `/team-build` when the plan involves cross-domain integration where agents need to share contracts (schemas, API specs, interfaces) and coordinate in real-time. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
+Use `/team-impl` when the plan involves cross-domain integration where agents need to share contracts (schemas, API specs, interfaces) and coordinate in real-time. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`.
 
 ### Prompt Composition for Auto-Invocation
 
-When composing the prompt for `/team-plan`, Central AI should include:
+When composing the prompt for `/blueprint`, Central AI should include:
 
 1. **User's verbatim request** - Always include the original words
 2. **Clarifications gathered** - Any answers from `AskUserQuestion`
@@ -162,7 +162,7 @@ When composing the prompt for `/team-plan`, Central AI should include:
 
 ```
 Skill({
-  skill: "team-plan",
+  skill: "blueprint",
   args: "Build a new models section for the blog with 11 model profile pages. User wants: chronological model pages from Claude 3 through Opus 4.6, a models index page, and cross-links to existing posts. Existing blog structure is in apps/web/src/content/blog/blog-structure.ts. Content style should match existing guide posts. Use content-writer agents for parallel page creation."
 })
 ```
