@@ -1,13 +1,13 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Collapsible,
-  CollapsibleTrigger,
-  CollapsibleContent,
-} from '@/components/ui/collapsible'
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { Icon } from '@/components/icon'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { defaultScheme } from './set-scheme-defaults'
+import {
+  SCHEME_LOAD_VISIBILITY,
+  CATEGORY_SCHEME_TYPES,
+} from '@/components/builders/visibility-maps'
 import {
   Select,
   SelectContent,
@@ -24,6 +24,7 @@ import type {
   Pace,
   CardioModality,
   NumberRange,
+  SessionType,
 } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
@@ -34,6 +35,9 @@ interface SetSchemeEditorProps {
   value: SetScheme
   onChange: (scheme: SetScheme) => void
   exerciseSupports1RM?: boolean
+  sessionCategory?: SessionType
+  showAllTypes?: boolean
+  onShowAllTypesChange?: (v: boolean) => void
   errors?: Record<string, string>
 }
 
@@ -449,15 +453,35 @@ function CardioModalitySelect({
 function LoadSpecEditor({
   value,
   onChange,
+  schemeType,
   exerciseSupports1RM = false,
 }: {
   value: LoadSpec
   onChange: (spec: LoadSpec) => void
+  schemeType: SetScheme['type']
   exerciseSupports1RM?: boolean
 }) {
-  const availableTypes = LOAD_TYPES.filter(
-    (t) => t.value !== 'percentageOf1RM' || exerciseSupports1RM,
-  )
+  const allowedLoads = SCHEME_LOAD_VISIBILITY[schemeType]
+
+  // Filter by scheme-level visibility, then by 1RM support
+  const availableTypes = allowedLoads
+    ? LOAD_TYPES.filter(
+        (t) =>
+          allowedLoads.includes(t.value) && (t.value !== 'percentageOf1RM' || exerciseSupports1RM),
+      )
+    : LOAD_TYPES.filter((t) => t.value !== 'percentageOf1RM' || exerciseSupports1RM)
+
+  // Reset to 'unspecified' when the current load type is no longer in the filtered list
+  useEffect(() => {
+    if (allowedLoads === null) return
+    const isCurrentAllowed = availableTypes.some((t) => t.value === value.type)
+    if (!isCurrentAllowed) {
+      onChange({ type: 'unspecified' })
+    }
+  }, [schemeType]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Scheme manages its own load internally -- hide the load picker entirely
+  if (allowedLoads === null) return null
 
   const handleTypeChange = useCallback(
     (newType: string) => {
@@ -610,6 +634,7 @@ function FixedSetsFields({
       <LoadSpecEditor
         value={value.load}
         onChange={(load) => onChange({ ...value, load })}
+        schemeType={value.type}
         exerciseSupports1RM={exerciseSupports1RM}
       />
 
@@ -632,7 +657,9 @@ function FixedSetsFields({
                 checked={value.lastSetAMRAP ?? false}
                 onCheckedChange={(c) => onChange({ ...value, lastSetAMRAP: c === true })}
               />
-              <span className="text-xs uppercase tracking-wider text-bone-white">LAST SET AMRAP</span>
+              <span className="text-xs uppercase tracking-wider text-bone-white">
+                LAST SET AMRAP
+              </span>
             </div>
           </div>
         </CollapsibleContent>
@@ -697,7 +724,9 @@ function PercentageSetsFields({
                 checked={value.lastSetAMRAP ?? false}
                 onCheckedChange={(c) => onChange({ ...value, lastSetAMRAP: c === true })}
               />
-              <span className="text-xs uppercase tracking-wider text-bone-white">LAST SET AMRAP</span>
+              <span className="text-xs uppercase tracking-wider text-bone-white">
+                LAST SET AMRAP
+              </span>
             </div>
           </div>
         </CollapsibleContent>
@@ -792,6 +821,7 @@ function ForRepsFields({
       <LoadSpecEditor
         value={value.load ?? { type: 'unspecified' }}
         onChange={(load) => onChange({ ...value, load })}
+        schemeType={value.type}
         exerciseSupports1RM={exerciseSupports1RM}
       />
     </div>
@@ -966,6 +996,7 @@ function EmomFields({
       <LoadSpecEditor
         value={value.load ?? { type: 'unspecified' }}
         onChange={(load) => onChange({ ...value, load })}
+        schemeType={value.type}
         exerciseSupports1RM={exerciseSupports1RM}
       />
     </div>
@@ -1026,6 +1057,7 @@ function DescendingRepsFields({
       <LoadSpecEditor
         value={value.load ?? { type: 'unspecified' }}
         onChange={(load) => onChange({ ...value, load })}
+        schemeType={value.type}
         exerciseSupports1RM={exerciseSupports1RM}
       />
     </div>
@@ -1067,11 +1099,31 @@ export function SetSchemeEditor({
   value,
   onChange,
   exerciseSupports1RM = false,
+  sessionCategory,
+  showAllTypes = false,
+  onShowAllTypesChange,
   errors = {},
 }: SetSchemeEditorProps) {
-  const activeGroup = SCHEME_GROUPS.find(g => g.types.some(t => t.value === value.type))?.label ?? 'STRENGTH'
+  const activeGroup =
+    SCHEME_GROUPS.find((g) => g.types.some((t) => t.value === value.type))?.label ?? 'STRENGTH'
   const [selectedGroup, setSelectedGroup] = useState(activeGroup)
-  const [typeSelectorOpen, setTypeSelectorOpen] = useState(!value.type || value.type === 'fixedSets')
+  const [typeSelectorOpen, setTypeSelectorOpen] = useState(
+    !value.type || value.type === 'fixedSets',
+  )
+
+  // Category-based filtering: derive which types to show
+  const defaultTypes = sessionCategory ? CATEGORY_SCHEME_TYPES[sessionCategory] : []
+  // Empty array means "show all" (Mixed/Event categories)
+  const categoryShowsAll = defaultTypes.length === 0
+  const isFiltered = !categoryShowsAll && !showAllTypes
+
+  // Filter SCHEME_GROUPS to only include visible types, omitting empty groups
+  const visibleGroups = isFiltered
+    ? SCHEME_GROUPS.map((group) => ({
+        ...group,
+        types: group.types.filter((t) => defaultTypes.includes(t.value as SetSchemeType)),
+      })).filter((group) => group.types.length > 0)
+    : SCHEME_GROUPS
 
   const handleTypeChange = useCallback(
     (newType: SetSchemeType) => {
@@ -1082,13 +1134,19 @@ export function SetSchemeEditor({
         ;(next as Record<string, unknown>).restBetweenSets = value.restBetweenSets
       }
       // Update selected group to match the new type's group
-      const newGroup = SCHEME_GROUPS.find(g => g.types.some(t => t.value === newType))?.label
+      const newGroup = SCHEME_GROUPS.find((g) => g.types.some((t) => t.value === newType))?.label
       if (newGroup) setSelectedGroup(newGroup)
       onChange(next)
       setTypeSelectorOpen(false)
     },
     [value, onChange],
   )
+
+  // When filtering is active, ensure selectedGroup is valid for visible groups
+  const effectiveSelectedGroup =
+    isFiltered && !visibleGroups.some((g) => g.label === selectedGroup)
+      ? (visibleGroups[0]?.label ?? selectedGroup)
+      : selectedGroup
 
   return (
     <div className="flex flex-col gap-4">
@@ -1102,18 +1160,24 @@ export function SetSchemeEditor({
           <span className="text-[11px] font-medium text-bone-white">
             {SCHEME_TYPE_LABELS[value.type] ?? value.type}
           </span>
-          <Icon name={typeSelectorOpen ? 'expand_less' : 'expand_more'} size={14} className="ml-auto text-warm-ash/40" />
+          <Icon
+            name={typeSelectorOpen ? 'expand_less' : 'expand_more'}
+            size={14}
+            className="ml-auto text-warm-ash/40"
+          />
         </CollapsibleTrigger>
         <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-150">
           <div className="flex flex-col gap-2">
             {/* Level 1: Group selector */}
             <ToggleGroup
               type="single"
-              value={selectedGroup}
-              onValueChange={(v) => { if (v) setSelectedGroup(v as typeof selectedGroup) }}
+              value={effectiveSelectedGroup}
+              onValueChange={(v) => {
+                if (v) setSelectedGroup(v as typeof selectedGroup)
+              }}
               className="flex gap-1"
             >
-              {SCHEME_GROUPS.map((group) => (
+              {visibleGroups.map((group) => (
                 <ToggleGroupItem
                   key={group.label}
                   value={group.label}
@@ -1125,25 +1189,40 @@ export function SetSchemeEditor({
             </ToggleGroup>
 
             {/* Level 2: Type selector within group */}
-            {SCHEME_GROUPS.filter(g => g.label === selectedGroup).map((group) => (
-              <ToggleGroup
-                key={group.label}
-                type="single"
-                value={value.type}
-                onValueChange={(v) => { if (v) handleTypeChange(v as SetSchemeType) }}
-                className="flex gap-1"
+            {visibleGroups
+              .filter((g) => g.label === effectiveSelectedGroup)
+              .map((group) => (
+                <ToggleGroup
+                  key={group.label}
+                  type="single"
+                  value={value.type}
+                  onValueChange={(v) => {
+                    if (v) handleTypeChange(v as SetSchemeType)
+                  }}
+                  className="flex gap-1"
+                >
+                  {group.types.map((t) => (
+                    <ToggleGroupItem
+                      key={t.value}
+                      value={t.value}
+                      className="min-h-8 flex-1 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider"
+                    >
+                      {t.label}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+              ))}
+
+            {/* "Show all types" toggle -- only when filtered */}
+            {isFiltered && onShowAllTypesChange && (
+              <button
+                type="button"
+                onClick={() => onShowAllTypesChange(true)}
+                className="mt-1 text-warm-ash font-body text-xs uppercase tracking-wider hover:text-bone-white"
               >
-                {group.types.map((t) => (
-                  <ToggleGroupItem
-                    key={t.value}
-                    value={t.value}
-                    className="min-h-8 flex-1 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider"
-                  >
-                    {t.label}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-            ))}
+                Show all types
+              </button>
+            )}
           </div>
         </CollapsibleContent>
       </Collapsible>

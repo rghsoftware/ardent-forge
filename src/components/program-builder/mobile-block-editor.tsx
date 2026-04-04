@@ -22,6 +22,8 @@ import {
   weeksMatch,
 } from './builder-state'
 import type { ProgramDraft, BlockDraft, SessionDraft, ValidationError } from './builder-state'
+import { HelpTrigger } from '@/components/ui/help-trigger'
+import { BLOCK_TYPE_HELP } from '@/components/builders/help-content'
 import type { BlockType } from '@/domain/types'
 import {
   BLOCK_TYPES,
@@ -278,7 +280,9 @@ function MobileBlockCard({
                 }}
                 autoFocus
                 className={`min-w-0 flex-1 border-0 border-b bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:outline-none ${
-                  nameError ? 'border-warning-flare focus:border-warning-flare' : 'border-warm-ash/30 focus:border-ember'
+                  nameError
+                    ? 'border-warning-flare focus:border-warning-flare'
+                    : 'border-warm-ash/30 focus:border-ember'
                 }`}
                 aria-label="Block name"
                 aria-invalid={!!nameError}
@@ -344,24 +348,48 @@ function MobileBlockCard({
           {/* Expanded content */}
           <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-200">
             <div className="flex flex-col gap-4 px-3 pb-4">
-              <ToggleGroup
-                type="single"
-                value={block.blockType}
-                onValueChange={(v) => {
-                  if (v) handleBlockTypeChange(v as BlockType)
-                }}
-                className="flex flex-wrap gap-1"
-              >
-                {BLOCK_TYPES.map((bt) => (
-                  <ToggleGroupItem
-                    key={bt.value}
-                    value={bt.value}
-                    className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
-                  >
-                    {bt.label}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-warm-ash/60">Block type</span>
+                  <HelpTrigger
+                    placement="section"
+                    title="Block Types"
+                    content={
+                      <div className="space-y-3">
+                        {Object.values(BLOCK_TYPE_HELP).map((bt) => (
+                          <div key={bt.label}>
+                            <p className="font-heading text-xs font-medium text-bone-white">
+                              {bt.label}
+                            </p>
+                            <p className="text-xs text-warm-ash">{bt.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                    }
+                  />
+                </div>
+                <ToggleGroup
+                  type="single"
+                  value={block.blockType}
+                  onValueChange={(v) => {
+                    if (v) handleBlockTypeChange(v as BlockType)
+                  }}
+                  className="flex flex-wrap gap-1"
+                >
+                  {BLOCK_TYPES.map((bt) => (
+                    <ToggleGroupItem
+                      key={bt.value}
+                      value={bt.value}
+                      className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
+                    >
+                      {bt.label}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
+                <p className="mt-1 font-body text-xs text-warm-ash">
+                  {BLOCK_TYPE_HELP[block.blockType].oneLiner}
+                </p>
+              </div>
 
               {block.weeks.map((week, weekIndex) => {
                 const isCollapsible = collapsibleWeeks.has(week.clientId)
@@ -393,7 +421,9 @@ function MobileBlockCard({
                       </div>
                       <button
                         type="button"
-                        onClick={() => setManuallyExpanded((prev) => new Set([...prev, week.clientId]))}
+                        onClick={() =>
+                          setManuallyExpanded((prev) => new Set([...prev, week.clientId]))
+                        }
                         className="min-h-10 p-1 text-warm-ash/40 active:text-bone-white"
                         aria-label={`Expand week ${weekIndex + 1}`}
                       >

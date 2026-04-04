@@ -227,6 +227,23 @@
     letter-spacing: 0.05em;
   }
 
+  /* Label large - medium-weight heading font for prominent labels */
+  .text-label-large {
+    font-family: var(--font-heading);
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.25rem; /* 20px */
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  /* Body small - compact body text for secondary content */
+  .text-body-small {
+    font-family: var(--font-body);
+    font-size: 0.75rem; /* 12px */
+    line-height: 1rem; /* 16px */
+    font-weight: 400;
+  }
+
   /* Ghost border - accessibility-only subtle separator */
   .ghost-border {
     border-color: rgba(91, 64, 57, 0.15);

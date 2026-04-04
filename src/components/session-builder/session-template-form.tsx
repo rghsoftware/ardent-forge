@@ -10,8 +10,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ActivityGroupEditor, type ActivityGroupData } from './activity-group-editor'
+import { CollapsedFieldsRow } from './collapsed-fields-row'
 import { DurationInputCompact } from './duration-input-compact'
-import { defaultScheme } from './set-scheme-defaults'
+import { CATEGORY_FIELD_VISIBILITY } from '@/components/builders/visibility-maps'
 import { useExercises } from '@/hooks/use-exercises'
 import { useCreateSessionTemplate, useUpdateSessionTemplate } from '@/hooks/use-session-templates'
 import { useAuth } from '@/lib/auth'
@@ -69,7 +70,7 @@ function buildGroupsFromData(groups: ActivityGroupData[]) {
   return groups.map((g) => ({
     group: {
       sessionTemplateId: '',
-      groupType: g.groupType,
+      groupType: g.groupType!,
       ordinal: g.ordinal,
       rounds: g.rounds,
       restBetweenRounds: g.restBetweenRounds,
@@ -131,21 +132,16 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
     initial?.template.restBetweenGroups ?? undefined,
   )
   const [groups, setGroups] = useState<ActivityGroupData[]>(initial ? hydrateGroups(initial) : [])
+  const [showAllSchemeTypes, setShowAllSchemeTypes] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
 
   const isSaving = createMutation.isPending || updateMutation.isPending
 
   const handleAddGroup = useCallback(() => {
     const newGroup: ActivityGroupData = {
-      groupType: 'STRAIGHT_SETS',
+      groupType: null,
       ordinal: groups.length + 1,
-      activities: [
-        {
-          exerciseId: null,
-          setScheme: defaultScheme('fixedSets'),
-          ordinal: 1,
-        },
-      ],
+      activities: [],
     }
     setGroups((prev) => [...prev, newGroup])
   }, [groups.length])
@@ -171,6 +167,9 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
     if (groups.length === 0) errs.push('At least one activity group is required')
 
     for (const g of groups) {
+      if (!g.groupType) {
+        errs.push(`Group ${g.ordinal} needs a group type selected`)
+      }
       if (g.activities.length === 0) {
         errs.push(`Group ${g.ordinal} must have at least one activity`)
       }
@@ -250,6 +249,8 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
     onSave,
   ])
 
+  const { scoring: showScoring, timeCap: showTimeCap } = CATEGORY_FIELD_VISIBILITY[category]
+
   return (
     <div className="flex flex-col gap-6 pb-8">
       {/* Template name */}
@@ -272,7 +273,9 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
         <ToggleGroup
           type="single"
           value={category}
-          onValueChange={(v) => { if (v) setCategory(v as SessionType) }}
+          onValueChange={(v) => {
+            if (v) setCategory(v as SessionType)
+          }}
           className="flex flex-wrap gap-1"
         >
           {SESSION_CATEGORIES.map((c) => (
@@ -302,31 +305,104 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
         />
       </div>
 
-      {/* Scoring */}
-      <div className="px-4">
-        <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-          SCORING
-        </span>
-        <Select value={scoring} onValueChange={(v) => setScoring(v as ScoringType)}>
-          <SelectTrigger className="min-h-12 border-0 border-b border-warm-ash/30 bg-transparent text-xs uppercase tracking-wider text-bone-white">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-surface-gunmetal">
-            {SCORING_TYPES.map((s) => (
-              <SelectItem key={s.value} value={s.value} className="text-xs uppercase">
-                {s.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Scoring & Time Cap -- visibility depends on category */}
+      {showScoring && showTimeCap ? (
+        <>
+          {/* Scoring */}
+          <div className="px-4">
+            <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              SCORING
+            </span>
+            <Select value={scoring} onValueChange={(v) => setScoring(v as ScoringType)}>
+              <SelectTrigger className="min-h-12 border-0 border-b border-warm-ash/30 bg-transparent text-xs uppercase tracking-wider text-bone-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-surface-gunmetal">
+                {SCORING_TYPES.map((s) => (
+                  <SelectItem key={s.value} value={s.value} className="text-xs uppercase">
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      {/* Time cap */}
-      <div className="px-4">
-        <DurationInputCompact value={timeCap} onChange={setTimeCap} label="TIME CAP (OPTIONAL)" />
-      </div>
+          {/* Time cap */}
+          <div className="px-4">
+            <DurationInputCompact
+              value={timeCap}
+              onChange={setTimeCap}
+              label="TIME CAP (OPTIONAL)"
+            />
+          </div>
+        </>
+      ) : !showScoring && !showTimeCap ? (
+        <CollapsedFieldsRow labels={['Scoring', 'Time Cap']}>
+          <div className="flex flex-col gap-6 py-4">
+            <div className="px-4">
+              <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+                SCORING
+              </span>
+              <Select value={scoring} onValueChange={(v) => setScoring(v as ScoringType)}>
+                <SelectTrigger className="min-h-12 border-0 border-b border-warm-ash/30 bg-transparent text-xs uppercase tracking-wider text-bone-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-surface-gunmetal">
+                  {SCORING_TYPES.map((s) => (
+                    <SelectItem key={s.value} value={s.value} className="text-xs uppercase">
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-      {/* Rest between groups */}
+            <div className="px-4">
+              <DurationInputCompact
+                value={timeCap}
+                onChange={setTimeCap}
+                label="TIME CAP (OPTIONAL)"
+              />
+            </div>
+          </div>
+        </CollapsedFieldsRow>
+      ) : (
+        <>
+          {/* showScoring is false, showTimeCap is true (SE category) */}
+          <CollapsedFieldsRow labels={['Scoring']}>
+            <div className="py-4">
+              <div className="px-4">
+                <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+                  SCORING
+                </span>
+                <Select value={scoring} onValueChange={(v) => setScoring(v as ScoringType)}>
+                  <SelectTrigger className="min-h-12 border-0 border-b border-warm-ash/30 bg-transparent text-xs uppercase tracking-wider text-bone-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-surface-gunmetal">
+                    {SCORING_TYPES.map((s) => (
+                      <SelectItem key={s.value} value={s.value} className="text-xs uppercase">
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CollapsedFieldsRow>
+
+          {/* Time cap -- visible for SE */}
+          <div className="px-4">
+            <DurationInputCompact
+              value={timeCap}
+              onChange={setTimeCap}
+              label="TIME CAP (OPTIONAL)"
+            />
+          </div>
+        </>
+      )}
+
+      {/* Rest between groups -- always visible */}
       <div className="px-4">
         <DurationInputCompact
           value={restBetweenGroups}
@@ -348,6 +424,9 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
             key={index}
             group={group}
             exercises={exercises}
+            sessionCategory={category}
+            showAllSchemeTypes={showAllSchemeTypes}
+            onShowAllSchemeTypesChange={setShowAllSchemeTypes}
             onChange={(updated) => handleUpdateGroup(index, updated)}
             onDelete={() => handleDeleteGroup(index)}
           />

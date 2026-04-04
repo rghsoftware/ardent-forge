@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { HelpTrigger } from '@/components/ui/help-trigger'
+import { SOURCE_HELP } from '@/components/builders/help-content'
 import { Icon } from '@/components/icon'
 import type { ProgramDraft } from './builder-state'
 import type { ProgramSource } from '@/domain/types'
@@ -44,7 +46,9 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder="Program name"
           className={`w-full border-0 border-b bg-transparent py-3 font-display text-lg font-medium text-bone-white placeholder:text-warm-ash/40 focus:outline-none ${
-            error ? 'border-warning-flare focus:border-warning-flare' : 'border-warm-ash/30 focus:border-ember'
+            error
+              ? 'border-warning-flare focus:border-warning-flare'
+              : 'border-warm-ash/30 focus:border-ember'
           }`}
           aria-label="Program name"
           aria-invalid={!!error}
@@ -80,13 +84,31 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
         </div>
 
         <div>
-          <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
-            SOURCE
-          </span>
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
+              SOURCE
+            </span>
+            <HelpTrigger
+              placement="section"
+              title="Program Sources"
+              content={
+                <div className="space-y-3">
+                  {Object.values(SOURCE_HELP).map((source) => (
+                    <div key={source.label}>
+                      <p className="font-medium text-bone-white">{source.label}</p>
+                      <p>{source.description}</p>
+                    </div>
+                  ))}
+                </div>
+              }
+            />
+          </div>
           <ToggleGroup
             type="single"
             value={draft.source}
-            onValueChange={(v) => { if (v) onChange({ source: v as ProgramSource }) }}
+            onValueChange={(v) => {
+              if (v) onChange({ source: v as ProgramSource })
+            }}
             className="flex flex-wrap gap-1"
           >
             {PROGRAM_SOURCES.map((s) => (
