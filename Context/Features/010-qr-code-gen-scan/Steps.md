@@ -259,6 +259,42 @@ export function parseInviteLink(raw: string): { url: string; key: string } | nul
 
 ---
 
+#### S006-T1: Component tests for processInviteLink valid/invalid flows
+
+**Agent:** `qa`
+**Files:** `src/routes/__tests__/setup.test.tsx` (NEW)
+**Depends on:** S005, S006
+**Parallel:** no
+
+1. Create component test file for the setup page QR/paste flow:
+   - Test that a valid invite link populates url/key fields, expands Advanced section, triggers validation
+   - Test that an invalid invite link shows "Invalid invite link" toast and leaves fields unchanged
+   - Mock `validateConnection`, `getConfigStore`, and `parseInviteLink` as needed
+
+**Done:** Component tests verify processInviteLink valid/invalid paths.
+
+**Assertions:** TA-6, TA-7
+
+---
+
+#### S006-T2: Component tests for "Share this server" conditional rendering and copy button
+
+**Agent:** `qa`
+**Files:** `src/components/profile/__tests__/backend-settings.test.tsx` (NEW)
+**Depends on:** S004, S006
+**Parallel:** yes (with S006-T1)
+
+1. Create component test file for backend settings QR section:
+   - Test that QR section is absent when config is null and present when configured (TA-3)
+   - Test that copy button writes correct invite link to clipboard and shows toast (TA-2)
+   - Mock `getConfigStore` and `navigator.clipboard`
+
+**Done:** Component tests verify conditional rendering and copy behavior.
+
+**Assertions:** TA-2, TA-3
+
+---
+
 ### >> M4: Validation Milestone (Final)
 
 **Gate:** S006 complete.
