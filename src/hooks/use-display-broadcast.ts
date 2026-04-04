@@ -7,8 +7,13 @@ import {
   publishFocusEvent,
   publishUnfocusEvent,
   destroyDisplayPublisher,
+  setHelloResponder,
 } from '@/lib/display-publisher'
-import { setSnapshotContext, useActiveWorkoutStore } from '@/stores/active-workout-store'
+import {
+  setSnapshotContext,
+  useActiveWorkoutStore,
+  republishCurrentState,
+} from '@/stores/active-workout-store'
 import { useUserProfile } from '@/hooks/use-user-profile'
 import { useExercises } from '@/hooks/use-exercises'
 import type { SessionType } from '@/domain/types/session'
@@ -47,8 +52,12 @@ export function useDisplayBroadcast(userId: string): UseDisplayBroadcastReturn {
     if (!client) return
 
     initDisplayPublisher(client)
+    setHelloResponder(() => {
+      republishCurrentState()
+    })
 
     return () => {
+      setHelloResponder(null)
       setSnapshotContext(null)
       destroyDisplayPublisher()
     }
@@ -81,7 +90,10 @@ export function useDisplayBroadcast(userId: string): UseDisplayBroadcastReturn {
   const { data: exercises, error: exercisesError } = useExercises()
 
   if (exercisesError) {
-    console.warn('[display-broadcast] Failed to load exercises, exercise names will be unavailable', exercisesError)
+    console.warn(
+      '[display-broadcast] Failed to load exercises, exercise names will be unavailable',
+      exercisesError,
+    )
   }
 
   const exerciseNameMap = useMemo<Record<string, string>>(() => {

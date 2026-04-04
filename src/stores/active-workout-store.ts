@@ -105,6 +105,10 @@ function _publishCurrentState(): void {
   }
 }
 
+export function republishCurrentState(): void {
+  _publishCurrentState()
+}
+
 // ---------------------------------------------------------------------------
 // Actions
 // ---------------------------------------------------------------------------

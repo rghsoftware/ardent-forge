@@ -13,6 +13,7 @@ import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as DisplayRouteImport } from './routes/display'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as STokenRouteImport } from './routes/s/$token'
@@ -50,6 +51,11 @@ const SetupRoute = SetupRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DisplayRoute = DisplayRouteImport.update({
+  id: '/display',
+  path: '/display',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -152,6 +158,7 @@ const AuthenticatedCommsConversationIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/display': typeof DisplayRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/history/': typeof AuthenticatedHistoryIndexRoute
 }
 export interface FileRoutesByTo {
+  '/display': typeof DisplayRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
@@ -199,6 +207,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/display': typeof DisplayRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
@@ -225,6 +234,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/display'
     | '/forgot-password'
     | '/setup'
     | '/sign-in'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/history/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/display'
     | '/forgot-password'
     | '/setup'
     | '/sign-in'
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_authenticated'
+    | '/display'
     | '/forgot-password'
     | '/setup'
     | '/sign-in'
@@ -296,6 +308,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  DisplayRoute: typeof DisplayRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   SetupRoute: typeof SetupRoute
   SignInRoute: typeof SignInRoute
@@ -332,6 +345,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/display': {
+      id: '/display'
+      path: '/display'
+      fullPath: '/display'
+      preLoaderRoute: typeof DisplayRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -523,6 +543,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  DisplayRoute: DisplayRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   SetupRoute: SetupRoute,
   SignInRoute: SignInRoute,

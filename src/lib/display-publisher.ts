@@ -9,6 +9,7 @@ import type { DisplaySnapshot } from '@/domain/types/display-snapshot'
 let _client: SupabaseClient | null = null
 let _channel: RealtimeChannel | null = null
 let _displayVisible: boolean = true
+let _helloResponder: (() => void) | null = null
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -24,6 +25,10 @@ function ensureChannel(): RealtimeChannel | null {
 
   _channel = _client.channel('display', {
     config: { broadcast: { ack: false, self: false } },
+  })
+
+  _channel.on('broadcast', { event: 'display_hello' }, () => {
+    _helloResponder?.()
   })
 
   _channel.subscribe((status, err) => {
@@ -52,11 +57,7 @@ export function initDisplayPublisher(client: SupabaseClient): void {
 /**
  * Configure the publisher with the current user's display visibility preference.
  */
-export function configureDisplayPublisher({
-  displayVisible,
-}: {
-  displayVisible: boolean
-}): void {
+export function configureDisplayPublisher({ displayVisible }: { displayVisible: boolean }): void {
   _displayVisible = displayVisible
 }
 
@@ -121,11 +122,17 @@ export function publishUnfocusEvent(): void {
   const channel = ensureChannel()
   if (!channel) return
 
-  channel
-    .send({ type: 'broadcast', event: 'unfocus', payload: {} })
-    .catch((err: unknown) => {
-      console.error('[display-publisher] Failed to send unfocus', err)
-    })
+  channel.send({ type: 'broadcast', event: 'unfocus', payload: {} }).catch((err: unknown) => {
+    console.error('[display-publisher] Failed to send unfocus', err)
+  })
+}
+
+/**
+ * Register a callback to invoke when a display_hello event is received.
+ * Pass null to deregister the current responder.
+ */
+export function setHelloResponder(fn: (() => void) | null): void {
+  _helloResponder = fn
 }
 
 /**
@@ -147,4 +154,5 @@ export function destroyDisplayPublisher(): void {
   _channel = null
   _client = null
   _displayVisible = true
+  _helloResponder = null
 }
