@@ -21,7 +21,6 @@ export function useTimerInterpolation(restTimer: RestTimerState): number {
 
   useEffect(() => {
     if (!isRunning) {
-      setSeconds(0)
       lastSecondRef.current = -1
       return
     }
@@ -50,5 +49,5 @@ export function useTimerInterpolation(restTimer: RestTimerState): number {
     }
   }, [isRunning, startedAt, totalSecs])
 
-  return seconds
+  return isRunning ? seconds : 0
 }

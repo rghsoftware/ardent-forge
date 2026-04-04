@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 import { formatDuration } from '@/lib/format-duration'
 import { RestTimerDisplay } from '@/components/display/rest-timer-display'
+import { useElapsedTime } from '@/hooks/use-elapsed-time'
 import type { DisplaySnapshot } from '@/domain/types/display-snapshot'
 
 interface SessionCardProps {
@@ -9,15 +9,7 @@ interface SessionCardProps {
 }
 
 function SessionCard({ snapshot }: SessionCardProps) {
-  const [elapsed, setElapsed] = useState(0)
-
-  useEffect(() => {
-    const startMs = new Date(snapshot.workout_started_at).getTime()
-    const tick = () => setElapsed(Math.floor((Date.now() - startMs) / 1000))
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [snapshot.workout_started_at])
+  const elapsed = useElapsedTime(snapshot.workout_started_at)
 
   return (
     <div className="flex h-full flex-col gap-4 bg-surface-iron p-6">

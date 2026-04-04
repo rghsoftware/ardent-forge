@@ -128,8 +128,8 @@ export function publishUnfocusEvent(): void {
 }
 
 /**
- * Check whether the publisher has a working client and display is visible.
- * Used by the hook to reflect true broadcast readiness in the UI.
+ * Register a callback to invoke when a display_hello event is received.
+ * Pass null to deregister the current responder.
  */
 export function setHelloResponder(fn: (() => void) | null): void {
   _helloResponder = fn

@@ -10,7 +10,6 @@ function BoardView() {
   const sessions = useDisplayStore(getPageSessions)
   const totalPages = useDisplayStore(getTotalPages)
   const currentPage = useDisplayStore((s) => s.currentPage)
-  const setCurrentPage = useDisplayStore((s) => s.setCurrentPage)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Auto-cycle pages when there are multiple
@@ -27,7 +26,7 @@ function BoardView() {
       const state = useDisplayStore.getState()
       const total = getTotalPages(state)
       const next = (state.currentPage + 1) % total
-      setCurrentPage(next)
+      state.setCurrentPage(next)
     }, PAGE_CYCLE_MS)
 
     return () => {
@@ -36,7 +35,7 @@ function BoardView() {
         intervalRef.current = null
       }
     }
-  }, [totalPages, setCurrentPage])
+  }, [totalPages])
 
   const count = sessions.length
 

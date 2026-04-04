@@ -22,6 +22,11 @@ export interface DisplayEventHandlers {
 let _client: SupabaseClient | null = null
 let _channel: RealtimeChannel | null = null
 let _status: 'connected' | 'reconnecting' | 'disconnected' = 'disconnected'
+let _retryTimer: ReturnType<typeof setTimeout> | null = null
+let _retryAttempt = 0
+
+const RETRY_BASE_MS = 2_000
+const RETRY_MAX_MS = 30_000
 
 // ---------------------------------------------------------------------------
 // Inline schemas for lightweight payload validation
@@ -95,13 +100,21 @@ export function subscribeToDisplay(handlers: DisplayEventHandlers): void {
     .subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
         _status = 'connected'
+        _retryAttempt = 0
         handlers.onStatusChange('connected')
       } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
         console.warn(`[display-subscriber] Channel terminal status: ${status}`, err)
         _status = 'reconnecting'
         handlers.onStatusChange('reconnecting')
-        // Clear the dead channel so a future subscribeToDisplay call recreates it
         _channel = null
+
+        const delay = Math.min(RETRY_BASE_MS * 2 ** _retryAttempt, RETRY_MAX_MS)
+        _retryAttempt++
+        console.info(`[display-subscriber] Reconnecting in ${delay}ms (attempt ${_retryAttempt})`)
+        _retryTimer = setTimeout(() => {
+          _retryTimer = null
+          if (_client) subscribeToDisplay(handlers)
+        }, delay)
       }
     })
 }
@@ -128,9 +141,15 @@ export function getSubscriberStatus(): 'connected' | 'reconnecting' | 'disconnec
 }
 
 /**
- * Tear down the broadcast channel and reset all module-scope state.
+ * Tear down the broadcast channel, cancel any pending reconnect, and reset
+ * all module-scope state.
  */
 export function destroyDisplaySubscriber(): void {
+  if (_retryTimer !== null) {
+    clearTimeout(_retryTimer)
+    _retryTimer = null
+  }
+
   if (_channel && _client) {
     _client.removeChannel(_channel)
   }
@@ -138,4 +157,5 @@ export function destroyDisplaySubscriber(): void {
   _channel = null
   _client = null
   _status = 'disconnected'
+  _retryAttempt = 0
 }

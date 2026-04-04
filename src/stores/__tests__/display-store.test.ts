@@ -213,6 +213,28 @@ describe('pruneStale', () => {
 
     expect(getState().focusedUserId).toBeNull()
   })
+
+  it('handles lastSeenAt keys not present in sessions without throwing', () => {
+    // Simulate data inconsistency: lastSeenAt has a user that sessions does not
+    useDisplayStore.setState({
+      sessions: new Map(),
+      lastSeenAt: new Map([['ghost-user', Date.now() - 60_000]]),
+    })
+
+    expect(() => getState().pruneStale(30_000)).not.toThrow()
+    expect(getState().sessions.size).toBe(0)
+    expect(getState().lastSeenAt.size).toBe(0)
+  })
+
+  it('does not call set when no sessions are stale', () => {
+    getState().upsertSession('u1', mockSnapshot('u1'))
+    const sessionsBefore = getState().sessions
+
+    getState().pruneStale(30_000)
+
+    // Same Map reference means set() was not called (early return)
+    expect(getState().sessions).toBe(sessionsBefore)
+  })
 })
 
 // ===========================================================================

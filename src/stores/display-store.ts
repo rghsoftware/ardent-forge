@@ -127,16 +127,21 @@ export const useDisplayStore = create<DisplayState & DisplayActions>()((set, get
   pruneStale(maxAgeMs: number) {
     const state = get()
     const now = Date.now()
+
+    const staleIds = Array.from(state.lastSeenAt.entries())
+      .filter(([, seenAt]) => now - seenAt > maxAgeMs)
+      .map(([userId]) => userId)
+
+    if (staleIds.length === 0) return
+
     const nextSessions = new Map(state.sessions)
     const nextLastSeen = new Map(state.lastSeenAt)
     let focusedCleared = false
 
-    for (const [userId, seenAt] of state.lastSeenAt) {
-      if (now - seenAt > maxAgeMs) {
-        nextSessions.delete(userId)
-        nextLastSeen.delete(userId)
-        if (state.focusedUserId === userId) focusedCleared = true
-      }
+    for (const userId of staleIds) {
+      nextSessions.delete(userId)
+      nextLastSeen.delete(userId)
+      if (state.focusedUserId === userId) focusedCleared = true
     }
 
     set({

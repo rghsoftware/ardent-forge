@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
 import { formatDuration } from '@/lib/format-duration'
 import { RestTimerDisplay } from '@/components/display/rest-timer-display'
 import { SetTable } from '@/components/display/set-table'
 import { useDisplayStore } from '@/stores/display-store'
+import { useElapsedTime } from '@/hooks/use-elapsed-time'
+import type { DisplaySnapshot } from '@/domain/types/display-snapshot'
 
 function FocusedView() {
   const focusedUserId = useDisplayStore((s) => s.focusedUserId)
@@ -16,22 +17,8 @@ function FocusedView() {
 }
 
 // Separate component so the elapsed timer hook resets properly per user
-function FocusedViewContent({
-  snapshot,
-}: {
-  snapshot: ReturnType<typeof useDisplayStore.getState>['sessions'] extends Map<string, infer V>
-    ? V
-    : never
-}) {
-  const [elapsed, setElapsed] = useState(0)
-
-  useEffect(() => {
-    const startMs = new Date(snapshot.workout_started_at).getTime()
-    const tick = () => setElapsed(Math.floor((Date.now() - startMs) / 1000))
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [snapshot.workout_started_at])
+function FocusedViewContent({ snapshot }: { snapshot: DisplaySnapshot }) {
+  const elapsed = useElapsedTime(snapshot.workout_started_at)
 
   return (
     <div className="flex h-full flex-col items-center justify-center px-12 py-8">

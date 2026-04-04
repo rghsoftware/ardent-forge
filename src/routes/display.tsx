@@ -66,7 +66,10 @@ function DisplayShell() {
         return
       }
 
-      // Create a dedicated Supabase client for the display channel
+      // Create a dedicated Supabase client for the display channel.
+      // This route is unauthenticated (kiosk/TV display), so it intentionally
+      // uses its own client rather than the shared app client which carries
+      // the signed-in user's session.
       const client = createClient(config.supabaseUrl, config.supabaseKey)
       clientRef.current = client
 
