@@ -26,7 +26,7 @@ Six actions are available for every finding:
 | 3 | **ADR** | Create an Architecture Decision Record via the adr-create skill |
 | 4 | **Rule** | Add or update a convention in the appropriate rule file |
 | 5 | **Defer** | Push to an external tracker or the backlog for later |
-| 6 | **Discard** | Drop the finding (individual discard requires a reason; bulk does not) |
+| 6 | **Discard** | Drop the finding |
 
 ## Workflow
 
@@ -40,7 +40,7 @@ Six actions are available for every finding:
 6. Parse all findings into a working list, noting each finding's category, severity,
    file reference, and description
 
-### Step 2: Bulk triage phase
+### Step 2: Bulk accept phase
 Present a summary table of all findings grouped by category and severity:
 
 ```
@@ -51,34 +51,28 @@ Findings summary:
   [RULE] -- Low: 3
 
 Total: 16 findings
+
+Accept suggested actions in bulk?
+  1. Accept all -- apply each finding's category as its action
+  2. Accept all [FIX] -- fix all fix findings
+  3. Accept all [TASK] -- create tasks for all task findings
+  4. Accept all [ADR] -- create ADRs for all ADR findings
+  5. Accept all [RULE] -- update rules for all rule findings
+  6. Skip -- go straight to individual triage
+
+You can accept multiple groups. Type "done" when ready for individual triage.
 ```
 
-Then offer bulk actions:
+The category assigned during capture IS the suggested action. Bulk accept means
+"yes, do what the category says" for a group of findings at once.
 
-```
-Bulk triage -- apply an action to a group of findings at once.
-Format: <action> <filter>
-Examples:
-  fix all [FIX] Critical
-  discard all [RULE] Low
-  defer all [TASK] Medium
-  task all [FIX] Medium
-
-Filters: category ([FIX], [TASK], [ADR], [RULE]), severity (Critical, High,
-Medium, Low), or a combination of both.
-
-Type "done" when finished with bulk triage to proceed to individual findings.
-```
-
-**Bulk triage rules:**
-- The user may issue multiple bulk actions before typing "done"
-- Bulk discard does NOT require a reason -- findings are marked
-  "Bulk discarded during triage"
-- After each bulk action, immediately update ALL affected findings in the review
+**Bulk accept rules:**
+- The user may accept multiple groups before typing "done"
+- After each bulk accept, immediately update ALL affected findings in the review
   file on disk (batch write)
-- Show a confirmation after each bulk action: "Applied [action] to N findings.
+- Show a confirmation after each accept: "Accepted N [CATEGORY] findings.
   Remaining: M unhandled."
-- When the user types "done", proceed to Step 3
+- When the user types "done" or "skip", proceed to Step 3
 
 ### Step 3: Individual triage phase
 Process each remaining unhandled finding one at a time. For each finding, present:
@@ -96,7 +90,7 @@ Actions:
   3. ADR     -- create architecture decision record
   4. Rule    -- add/update convention rule
   5. Defer   -- send to tracker or backlog
-  6. Discard -- drop this finding (reason required)
+  6. Discard -- drop this finding
 
 Choose [1-6]:
 ```
@@ -104,8 +98,7 @@ Choose [1-6]:
 **Individual triage rules:**
 - Wait for the user to respond with a number (1-6) before proceeding
 - NEVER auto-resolve, auto-dismiss, or skip a finding
-- If the user picks **6 (Discard)**, ask for a reason. Do not proceed until a
-  non-empty reason is provided.
+- If the user picks **6 (Discard)**, proceed immediately. No reason required.
 - After the user picks an action, record the decision against the finding
 - Immediately update the review file on disk after each individual decision
 - Continue to the next finding until all are handled
@@ -165,7 +158,7 @@ Process in this order: Fix, Task, ADR, Rule, Defer, Discard.
 #### Discard
 1. Mark the finding in the review file:
    - **Status:** Discarded
-   - **Resolution:** {User's reason} (individual) or "Bulk discarded during triage" (bulk)
+   - **Resolution:** Discarded by user
 
 ### Step 5: Update review file header
 After executing all actions, update the review file:
@@ -221,11 +214,10 @@ Based on what was generated:
 - NEVER take action on a finding without an explicit user decision (bulk or individual)
 - NEVER auto-resolve, auto-dismiss, or skip findings
 - Claude SHOULD recommend an action for each finding, but the user makes the final call
-- Individual discard MUST require a non-empty reason from the user
-- Bulk discard does NOT require a reason
-- Bulk triage phase MUST come before individual triage phase
+- Discard does NOT require a reason
+- Bulk accept phase MUST come before individual triage phase
 - After each individual decision, immediately update the review file on disk
-- After each bulk action, batch-update all affected findings on disk
+- After each bulk accept, batch-update all affected findings on disk
 - Within individual triage, process in priority order: Critical, High, Medium, Low
 - If context is getting tight, save progress to the review file immediately
   (update statuses for what's done so far) before continuing

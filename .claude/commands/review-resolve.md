@@ -19,8 +19,8 @@ Interactively triage and resolve review findings. Claude recommends actions, but
 ### Step 1: Load the review file
 Find the specified or most recent unresolved review in `Context/Reviews/`. Load associated Spec.md, Steps.md, and Tech.md for context. Parse all findings into a working list.
 
-### Step 2: Bulk triage
-Present a summary table of findings grouped by category and severity. Offer bulk actions using `<action> <filter>` format (e.g., `fix all [FIX] Critical`, `discard all [RULE] Low`). The user may issue multiple bulk actions before typing "done" to proceed. Update all affected findings on disk after each bulk action.
+### Step 2: Bulk accept
+Present a summary table of findings grouped by category and severity. Offer to accept suggested actions in bulk -- the category from capture IS the suggested action. User can accept all, accept by category, or skip to individual triage. Update all affected findings on disk after each bulk accept.
 
 ### Step 3: Individual triage
 Process each remaining finding one at a time. For each, show the finding details and Claude's recommended action, then present a numbered menu:
@@ -30,7 +30,7 @@ Process each remaining finding one at a time. For each, show the finding details
 3. **ADR** -- create architecture decision record
 4. **Rule** -- add/update convention in rule file
 5. **Defer** -- push to tracker (`.cortex/config.json`) or backlog
-6. **Discard** -- drop the finding (reason required for individual; not for bulk)
+6. **Discard** -- drop the finding
 
 Wait for the user's choice before proceeding. Save progress to the review file after each decision.
 
@@ -50,8 +50,8 @@ Update the review file header and add a Resolution Summary table. Commit via imp
 ## Key rules
 - NEVER auto-resolve, auto-dismiss, or skip findings
 - Claude recommends but user decides
-- Individual discard requires a reason; bulk discard does not
-- Bulk triage phase comes before individual triage phase
+- Discard does not require a reason
+- Bulk accept phase comes before individual triage phase
 - The review file is the single source of truth
 
 See `core/skills/review-resolve/SKILL.md` for full workflow details.
