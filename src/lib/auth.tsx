@@ -3,6 +3,7 @@ import type { AuthError, Session, User } from '@supabase/supabase-js'
 import { isTauri } from '@tauri-apps/api/core'
 import { getSupabaseClient } from './supabase'
 import { getConfigStore } from './config-store'
+import { handleConnectLink } from './deep-link-handler'
 import { resetAdapter } from './adapter'
 import { resetRealtimeManager } from './realtime-manager'
 import { initSync, stopSync } from './sync-bridge'
@@ -171,6 +172,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           for (const urlStr of urls) {
             try {
               const url = new URL(urlStr)
+
+              if (url.hostname === 'connect') {
+                await handleConnectLink(urlStr)
+                return
+              }
+
               const code = url.searchParams.get('code')
               const oauthError = url.searchParams.get('error')
 

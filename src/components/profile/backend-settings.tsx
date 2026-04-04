@@ -4,6 +4,7 @@ import { isTauri, invoke } from '@tauri-apps/api/core'
 import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'sonner'
 import { getConfigStore } from '@/lib/config-store'
+import { usePendingConnect } from '@/lib/pending-connect'
 import type { BackendConfig } from '@/lib/config-store'
 import { validateConnection } from '@/lib/connection-validator'
 import type { ConnectionUiStatus } from '@/lib/connection-validator'
@@ -44,6 +45,16 @@ export function BackendSettings() {
       .catch((err) => {
         console.error('[backend-settings] Failed to load config:', err)
       })
+  }, [])
+
+  useEffect(() => {
+    const { pending, clear } = usePendingConnect.getState()
+    if (pending) {
+      setEditing(true)
+      setUrl(pending.url)
+      setKey(pending.key)
+      clear()
+    }
   }, [])
 
   const currentUrl = currentConfig?.supabaseUrl ?? null

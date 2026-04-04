@@ -7,6 +7,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     // Allow /setup, public share routes, and /display to load without a backend configuration
     if (
       location.pathname === '/setup' ||
+      location.pathname === '/connect' ||
       location.pathname.startsWith('/s/') ||
       location.pathname === '/display'
     )

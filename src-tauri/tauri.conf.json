@@ -40,6 +40,10 @@
         {
           "schemes": ["ardentforge"],
           "host": "auth"
+        },
+        {
+          "schemes": ["ardentforge"],
+          "host": "connect"
         }
       ]
     }

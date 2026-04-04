@@ -23,6 +23,10 @@ type SetupState =
   | { phase: 'success' }
 
 export const Route = createFileRoute('/setup')({
+  validateSearch: (search: Record<string, unknown>): { url?: string; key?: string } => ({
+    url: (search.url as string) || undefined,
+    key: (search.key as string) || undefined,
+  }),
   beforeLoad: async () => {
     const hasConfig = await getConfigStore().hasConfig()
     if (hasConfig) {
@@ -204,10 +208,27 @@ function SetupPage() {
     }
   }
 
+  const search = Route.useSearch()
+  const deepLinkPopulated = useRef(false)
+
+  // Pre-populate from deep link search params (url & key from /connect redirect)
+  useEffect(() => {
+    if (search.url && search.key && !deepLinkPopulated.current) {
+      deepLinkPopulated.current = true
+      setUrl(search.url)
+      setKey(search.key)
+      setAdvancedOpen(true)
+      validateAndSave(search.url, search.key).catch((err) => {
+        console.error('[setup] Auto-validate from deep link failed:', err)
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Auto-validate when env vars pre-fill both fields so the user
   // immediately sees why the connection failed instead of a blank form.
   useEffect(() => {
-    if (hasEnvVars && !autoValidated.current) {
+    if (hasEnvVars && !autoValidated.current && !deepLinkPopulated.current) {
       autoValidated.current = true
       handleConnect()
     }

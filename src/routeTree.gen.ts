@@ -14,6 +14,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DisplayRouteImport } from './routes/display'
+import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as STokenRouteImport } from './routes/s/$token'
@@ -56,6 +57,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
 const DisplayRoute = DisplayRouteImport.update({
   id: '/display',
   path: '/display',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectRoute = ConnectRouteImport.update({
+  id: '/connect',
+  path: '/connect',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -158,6 +164,7 @@ const AuthenticatedCommsConversationIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
+  '/connect': typeof ConnectRoute
   '/display': typeof DisplayRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/setup': typeof SetupRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/history/': typeof AuthenticatedHistoryIndexRoute
 }
 export interface FileRoutesByTo {
+  '/connect': typeof ConnectRoute
   '/display': typeof DisplayRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/setup': typeof SetupRoute
@@ -207,6 +215,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/connect': typeof ConnectRoute
   '/display': typeof DisplayRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/setup': typeof SetupRoute
@@ -234,6 +243,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/connect'
     | '/display'
     | '/forgot-password'
     | '/setup'
@@ -257,6 +267,7 @@ export interface FileRouteTypes {
     | '/history/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/connect'
     | '/display'
     | '/forgot-password'
     | '/setup'
@@ -282,6 +293,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_authenticated'
+    | '/connect'
     | '/display'
     | '/forgot-password'
     | '/setup'
@@ -308,6 +320,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  ConnectRoute: typeof ConnectRoute
   DisplayRoute: typeof DisplayRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   SetupRoute: typeof SetupRoute
@@ -352,6 +365,13 @@ declare module '@tanstack/react-router' {
       path: '/display'
       fullPath: '/display'
       preLoaderRoute: typeof DisplayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connect': {
+      id: '/connect'
+      path: '/connect'
+      fullPath: '/connect'
+      preLoaderRoute: typeof ConnectRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -543,6 +563,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  ConnectRoute: ConnectRoute,
   DisplayRoute: DisplayRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   SetupRoute: SetupRoute,
