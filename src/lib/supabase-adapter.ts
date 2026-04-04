@@ -2171,6 +2171,39 @@ export class SupabaseAdapter implements DataAdapter {
     if (error) throw error
     return toMediaAttachment(data as MediaAttachmentRow)
   }
+
+  async getMediaAttachments(messageIds: string[]): Promise<MediaAttachment[]> {
+    if (messageIds.length === 0) return []
+
+    const { data, error } = await this.client
+      .from('media_attachments')
+      .select('*')
+      .in('message_id', messageIds)
+    if (error) throw error
+    return (data as MediaAttachmentRow[]).map(toMediaAttachment)
+  }
+
+  async updateMediaAttachment(
+    attachmentId: string,
+    updates: Partial<
+      Pick<MediaAttachment, 'status' | 'thumbnailUrl' | 'playbackUrl' | 'providerAssetId'>
+    >,
+  ): Promise<MediaAttachment> {
+    const patch: Record<string, unknown> = {}
+    if (updates.status !== undefined) patch.status = updates.status
+    if (updates.thumbnailUrl !== undefined) patch.thumbnail_url = updates.thumbnailUrl
+    if (updates.playbackUrl !== undefined) patch.playback_url = updates.playbackUrl
+    if (updates.providerAssetId !== undefined) patch.provider_asset_id = updates.providerAssetId
+
+    const { data, error } = await this.client
+      .from('media_attachments')
+      .update(patch)
+      .eq('id', attachmentId)
+      .select()
+      .single()
+    if (error) throw error
+    return toMediaAttachment(data as MediaAttachmentRow)
+  }
 }
 
 // ---------------------------------------------------------------------------

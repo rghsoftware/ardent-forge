@@ -25,7 +25,12 @@ export function initSupabaseFromConfig(config: BackendConfig): SupabaseClient {
       `[supabase] Invalid Supabase URL: "${config.supabaseUrl}". Provide a valid HTTPS URL.`,
     )
   }
-  _client = createClient(config.supabaseUrl, config.supabaseKey)
+  _client = createClient(config.supabaseUrl, config.supabaseKey, {
+    auth: {
+      flowType: 'pkce',
+      detectSessionInUrl: false,
+    },
+  })
   return _client
 }
 
