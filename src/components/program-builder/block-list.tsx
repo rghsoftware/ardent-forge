@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { BlockEditor } from './block-editor'
 import { addBlock, reorderBlocks } from './builder-state'
-import type { ProgramDraft } from './builder-state'
+import type { ProgramDraft, ValidationError } from './builder-state'
 import type { DayOfWeek } from './constants'
 
 // ---------------------------------------------------------------------------
@@ -35,6 +35,7 @@ interface BlockListProps {
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek?: (sourceWeekClientId: string) => void
   showWeekends: boolean
+  fieldErrors?: ValidationError[]
 }
 
 export function BlockList({
@@ -43,6 +44,7 @@ export function BlockList({
   onPickSession,
   onCopyWeek,
   showWeekends,
+  fieldErrors = [],
 }: BlockListProps) {
   const [newBlockId, setNewBlockId] = useState<string | null>(null)
 
@@ -102,6 +104,7 @@ export function BlockList({
               onCopyWeek={onCopyWeek}
               showWeekends={showWeekends}
               isNew={block.clientId === newBlockId}
+              errors={fieldErrors.filter((e) => e.blockClientId === block.clientId)}
             />
           ))}
         </SortableContext>

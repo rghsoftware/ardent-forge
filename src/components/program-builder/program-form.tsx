@@ -25,9 +25,10 @@ const PROGRAM_SOURCES: Array<{ value: ProgramSource; label: string }> = [
 interface ProgramFormProps {
   draft: ProgramDraft
   onChange: (updates: Partial<Pick<ProgramDraft, 'name' | 'description' | 'source'>>) => void
+  error?: string
 }
 
-export function ProgramForm({ draft, onChange }: ProgramFormProps) {
+export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
   const [detailsOpen, setDetailsOpen] = useState(false)
 
   return (
@@ -42,9 +43,13 @@ export function ProgramForm({ draft, onChange }: ProgramFormProps) {
           value={draft.name}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder="Program name"
-          className="w-full border-0 border-b border-warm-ash/30 bg-transparent py-3 font-display text-lg font-medium text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
+          className={`w-full border-0 border-b bg-transparent py-3 font-display text-lg font-medium text-bone-white placeholder:text-warm-ash/40 focus:outline-none ${
+            error ? 'border-warning-flare focus:border-warning-flare' : 'border-warm-ash/30 focus:border-ember'
+          }`}
           aria-label="Program name"
+          aria-invalid={!!error}
         />
+        {error && <p className="mt-1 text-xs text-warning-flare">{error}</p>}
       </div>
 
       {/* Mobile details toggle (hidden on desktop) */}

@@ -516,67 +516,94 @@ describe('validateDraft', () => {
   it('returns error for empty name', () => {
     const draft = makeProgramDraft({ name: '' })
     const errors = validateDraft(draft)
-    expect(errors).toContain('Program name is required')
+    expect(errors).toContainEqual(
+      expect.objectContaining({ field: 'programName', message: 'Program name is required' }),
+    )
   })
 
   it('returns error for whitespace-only name', () => {
     const draft = makeProgramDraft({ name: '   ' })
     const errors = validateDraft(draft)
-    expect(errors).toContain('Program name is required')
+    expect(errors).toContainEqual(
+      expect.objectContaining({ field: 'programName', message: 'Program name is required' }),
+    )
   })
 
   it('returns error for empty blocks array', () => {
     const draft = makeProgramDraft({ name: 'Has Name', blocks: [] })
     const errors = validateDraft(draft)
-    expect(errors).toContain('At least one block is required')
-  })
-
-  it('returns error for non-sequential ordinals', () => {
-    const block1 = makeBlock({ ordinal: 1 })
-    const block2 = makeBlock({ ordinal: 3 }) // gap: should be 2
-    const draft = makeProgramDraft({ name: 'Test', blocks: [block1, block2] })
-    const errors = validateDraft(draft)
-    expect(errors.some((e) => e.includes('not sequential'))).toBe(true)
+    expect(errors).toContainEqual(
+      expect.objectContaining({ field: 'blocks', message: 'At least one block is required' }),
+    )
   })
 
   it('returns error for a block with zero weeks', () => {
     const block = makeBlock({ weeks: [] })
     const draft = makeProgramDraft({ name: 'Test', blocks: [block] })
     const errors = validateDraft(draft)
-    expect(errors.some((e) => e.includes('at least one week'))).toBe(true)
+    expect(errors).toContainEqual(
+      expect.objectContaining({
+        field: 'blockWeeks',
+        blockClientId: block.clientId,
+        message: 'Must have at least one week',
+      }),
+    )
   })
 
   it('returns error for name over 200 characters', () => {
     const draft = makeProgramDraft({ name: 'X'.repeat(201) })
     const errors = validateDraft(draft)
-    expect(errors).toContain('Program name must be 200 characters or less')
+    expect(errors).toContainEqual(
+      expect.objectContaining({
+        field: 'programName',
+        message: 'Program name must be 200 characters or less',
+      }),
+    )
   })
 
   it('accepts name of exactly 200 characters', () => {
     const draft = makeProgramDraft({ name: 'X'.repeat(200) })
     const errors = validateDraft(draft)
-    expect(errors).not.toContain('Program name must be 200 characters or less')
+    expect(errors.find((e) => e.field === 'programName')).toBeUndefined()
   })
 
   it('returns error for block name over 200 characters', () => {
     const block = makeBlock({ name: 'B'.repeat(201) })
     const draft = makeProgramDraft({ name: 'Valid', blocks: [block] })
     const errors = validateDraft(draft)
-    expect(errors).toContain('Block name must be 200 characters or less')
+    expect(errors).toContainEqual(
+      expect.objectContaining({
+        field: 'blockName',
+        blockClientId: block.clientId,
+        message: 'Block name must be 200 characters or less',
+      }),
+    )
   })
 
   it('returns error for empty block name', () => {
     const block = makeBlock({ name: '' })
     const draft = makeProgramDraft({ name: 'Valid', blocks: [block] })
     const errors = validateDraft(draft)
-    expect(errors).toContain('Block name is required')
+    expect(errors).toContainEqual(
+      expect.objectContaining({
+        field: 'blockName',
+        blockClientId: block.clientId,
+        message: 'Block name is required',
+      }),
+    )
   })
 
   it('returns error for whitespace-only block name', () => {
     const block = makeBlock({ name: '   ' })
     const draft = makeProgramDraft({ name: 'Valid', blocks: [block] })
     const errors = validateDraft(draft)
-    expect(errors).toContain('Block name is required')
+    expect(errors).toContainEqual(
+      expect.objectContaining({
+        field: 'blockName',
+        blockClientId: block.clientId,
+        message: 'Block name is required',
+      }),
+    )
   })
 })
 

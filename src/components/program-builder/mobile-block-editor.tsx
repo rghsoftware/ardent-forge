@@ -20,7 +20,7 @@ import {
   removeWeekFromBlock,
   removeSession,
 } from './builder-state'
-import type { ProgramDraft, BlockDraft, SessionDraft } from './builder-state'
+import type { ProgramDraft, BlockDraft, SessionDraft, ValidationError } from './builder-state'
 import type { BlockType } from '@/domain/types'
 import {
   BLOCK_TYPES,
@@ -48,6 +48,7 @@ interface MobileBlockEditorProps {
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek: (sourceWeekClientId: string) => void
+  fieldErrors?: ValidationError[]
 }
 
 export function MobileBlockEditor({
@@ -55,6 +56,7 @@ export function MobileBlockEditor({
   onUpdate,
   onPickSession,
   onCopyWeek,
+  fieldErrors = [],
 }: MobileBlockEditorProps) {
   const [newBlockId, setNewBlockId] = useState<string | null>(null)
 
@@ -84,6 +86,7 @@ export function MobileBlockEditor({
           onPickSession={onPickSession}
           onCopyWeek={onCopyWeek}
           isNew={block.clientId === newBlockId}
+          errors={fieldErrors.filter((e) => e.blockClientId === block.clientId)}
         />
       ))}
 
@@ -118,6 +121,7 @@ interface MobileBlockCardProps {
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek: (sourceWeekClientId: string) => void
   isNew?: boolean
+  errors?: ValidationError[]
 }
 
 function MobileBlockCard({
@@ -128,11 +132,15 @@ function MobileBlockCard({
   onPickSession,
   onCopyWeek,
   isNew,
+  errors = [],
 }: MobileBlockCardProps) {
   const [expanded, setExpanded] = useState(blockIndex === 0)
   const [isEditingName, setIsEditingName] = useState(false)
   const [newWeekId, setNewWeekId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  const nameError = errors.find((e) => e.field === 'blockName')?.message
+  const weeksError = errors.find((e) => e.field === 'blockWeeks')?.message
 
   const isFirst = blockIndex === 0
   const isLast = blockIndex === draft.blocks.length - 1
@@ -230,14 +238,19 @@ function MobileBlockCard({
                   if (e.key === 'Enter') setIsEditingName(false)
                 }}
                 autoFocus
-                className="min-w-0 flex-1 border-0 border-b border-warm-ash/30 bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:border-ember focus:outline-none"
+                className={`min-w-0 flex-1 border-0 border-b bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:outline-none ${
+                  nameError ? 'border-warning-flare focus:border-warning-flare' : 'border-warm-ash/30 focus:border-ember'
+                }`}
                 aria-label="Block name"
+                aria-invalid={!!nameError}
               />
             ) : (
               <button
                 type="button"
                 onClick={() => setIsEditingName(true)}
-                className="min-w-0 flex-1 text-left font-display text-sm font-medium text-bone-white hover:text-ember"
+                className={`min-w-0 flex-1 text-left font-display text-sm font-medium ${
+                  nameError ? 'text-warning-flare' : 'text-bone-white hover:text-ember'
+                }`}
               >
                 {block.name || 'Untitled block'}
               </button>
@@ -280,6 +293,14 @@ function MobileBlockCard({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
+          {/* Inline validation errors */}
+          {errors.length > 0 && (
+            <div className="flex flex-col gap-1 px-3 pb-2">
+              {nameError && <p className="text-xs text-warning-flare">{nameError}</p>}
+              {weeksError && <p className="text-xs text-warning-flare">{weeksError}</p>}
+            </div>
+          )}
 
           {/* Expanded content */}
           <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-200">

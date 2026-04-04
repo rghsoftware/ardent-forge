@@ -18,7 +18,11 @@ import {
   validateDraft,
   buildSavePayload,
 } from '@/components/program-builder/builder-state'
-import type { ProgramDraft, WeekDraft } from '@/components/program-builder/builder-state'
+import type {
+  ProgramDraft,
+  WeekDraft,
+  ValidationError,
+} from '@/components/program-builder/builder-state'
 import type { DayOfWeek } from '@/components/program-builder/constants'
 import type { SessionType } from '@/domain/types'
 
@@ -57,7 +61,8 @@ function BuilderPage() {
     allWeeks: WeekDraft[]
   } | null>(null)
 
-  // Error, preview, and view state
+  // Error state: fieldErrors for inline validation, error for server/auth failures
+  const [fieldErrors, setFieldErrors] = useState<ValidationError[]>([])
   const [error, setError] = useState<string | null>(null)
   const [showWeekends, setShowWeekends] = useState(false)
 
@@ -83,17 +88,25 @@ function BuilderPage() {
   // Handlers
   // ---------------------------------------------------------------------------
 
-  const handleUpdateDraft = useCallback((updated: ProgramDraft) => {
-    setDraft(updated)
+  const clearErrors = useCallback(() => {
+    setFieldErrors([])
     setError(null)
   }, [])
+
+  const handleUpdateDraft = useCallback(
+    (updated: ProgramDraft) => {
+      setDraft(updated)
+      clearErrors()
+    },
+    [clearErrors],
+  )
 
   const handleDraftChange = useCallback(
     (updates: Partial<Pick<ProgramDraft, 'name' | 'description' | 'source'>>) => {
       setDraft((prev) => ({ ...prev, ...updates }))
-      setError(null)
+      clearErrors()
     },
-    [],
+    [clearErrors],
   )
 
   const handlePickSession = useCallback((weekClientId: string, dayOfWeek: DayOfWeek) => {
@@ -150,7 +163,7 @@ function BuilderPage() {
   const handleSave = useCallback(async () => {
     const errors = validateDraft(draft)
     if (errors.length > 0) {
-      setError(errors.join('. '))
+      setFieldErrors(errors)
       return
     }
 
@@ -219,6 +232,11 @@ function BuilderPage() {
         <div className="flex-1" />
 
         {error && <p className="text-xs text-warning-flare">{error}</p>}
+        {fieldErrors.some((e) => e.field === 'blocks') && (
+          <p className="text-xs text-warning-flare">
+            {fieldErrors.find((e) => e.field === 'blocks')!.message}
+          </p>
+        )}
         <Button
           type="button"
           variant="default"
@@ -242,7 +260,11 @@ function BuilderPage() {
       <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[320px_1fr] lg:gap-6 lg:px-4">
         {/* Sidebar: Program form */}
         <div className="px-4 pb-6 lg:px-0">
-          <ProgramForm draft={draft} onChange={handleDraftChange} />
+          <ProgramForm
+            draft={draft}
+            onChange={handleDraftChange}
+            error={fieldErrors.find((e) => e.field === 'programName')?.message}
+          />
         </div>
 
         {/* Main content: Block list */}
@@ -272,6 +294,7 @@ function BuilderPage() {
               onPickSession={handlePickSession}
               onCopyWeek={handleCopyWeek}
               showWeekends={showWeekends}
+              fieldErrors={fieldErrors}
             />
           </div>
           {/* Mobile list editor */}
@@ -281,6 +304,7 @@ function BuilderPage() {
               onUpdate={handleUpdateDraft}
               onPickSession={handlePickSession}
               onCopyWeek={handleCopyWeek}
+              fieldErrors={fieldErrors}
             />
           </div>
         </div>

@@ -251,41 +251,46 @@ export function copyWeek(
 // Validation
 // ---------------------------------------------------------------------------
 
-export function validateDraft(draft: ProgramDraft): string[] {
-  const errors: string[] = []
+export type ValidationError = {
+  field: 'programName' | 'blocks' | 'blockName' | 'blockWeeks'
+  blockClientId?: string
+  message: string
+}
+
+export function validateDraft(draft: ProgramDraft): ValidationError[] {
+  const errors: ValidationError[] = []
 
   if (!draft.name.trim()) {
-    errors.push('Program name is required')
-  }
-
-  if (draft.name.trim().length > 200) {
-    errors.push('Program name must be 200 characters or less')
+    errors.push({ field: 'programName', message: 'Program name is required' })
+  } else if (draft.name.trim().length > 200) {
+    errors.push({ field: 'programName', message: 'Program name must be 200 characters or less' })
   }
 
   if (draft.blocks.length === 0) {
-    errors.push('At least one block is required')
+    errors.push({ field: 'blocks', message: 'At least one block is required' })
   }
 
   for (const block of draft.blocks) {
     if (block.name.trim().length === 0) {
-      errors.push('Block name is required')
-    }
-
-    if (block.name.trim().length > 200) {
-      errors.push('Block name must be 200 characters or less')
+      errors.push({
+        field: 'blockName',
+        blockClientId: block.clientId,
+        message: 'Block name is required',
+      })
+    } else if (block.name.trim().length > 200) {
+      errors.push({
+        field: 'blockName',
+        blockClientId: block.clientId,
+        message: 'Block name must be 200 characters or less',
+      })
     }
 
     if (block.weeks.length === 0) {
-      errors.push(`Block "${block.name}" must have at least one week`)
-    }
-  }
-
-  // Verify ordinals are sequential
-  for (let i = 0; i < draft.blocks.length; i++) {
-    if (draft.blocks[i].ordinal !== i + 1) {
-      errors.push(
-        `Block ordinals are not sequential (expected ${i + 1}, got ${draft.blocks[i].ordinal})`,
-      )
+      errors.push({
+        field: 'blockWeeks',
+        blockClientId: block.clientId,
+        message: 'Must have at least one week',
+      })
     }
   }
 

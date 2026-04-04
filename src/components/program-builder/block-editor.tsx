@@ -14,7 +14,7 @@ import { Icon } from '@/components/icon'
 import { WeekGrid } from './week-grid'
 import { ConfirmDeleteDialog } from './confirm-delete-dialog'
 import { removeBlock, addWeekToBlock } from './builder-state'
-import type { BlockDraft, ProgramDraft } from './builder-state'
+import type { BlockDraft, ProgramDraft, ValidationError } from './builder-state'
 import type { BlockType } from '@/domain/types'
 import { BLOCK_TYPES } from './constants'
 import type { DayOfWeek } from './constants'
@@ -39,6 +39,7 @@ interface BlockEditorProps {
   onCopyWeek?: (sourceWeekClientId: string) => void
   showWeekends: boolean
   isNew?: boolean
+  errors?: ValidationError[]
 }
 
 export function BlockEditor({
@@ -49,11 +50,15 @@ export function BlockEditor({
   onCopyWeek,
   showWeekends,
   isNew,
+  errors = [],
 }: BlockEditorProps) {
   const [expanded, setExpanded] = useState(true)
   const [isEditingName, setIsEditingName] = useState(false)
   const [newWeekId, setNewWeekId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  const nameError = errors.find((e) => e.field === 'blockName')?.message
+  const weeksError = errors.find((e) => e.field === 'blockWeeks')?.message
 
   const {
     attributes,
@@ -181,8 +186,11 @@ export function BlockEditor({
                 if (e.key === 'Enter') setIsEditingName(false)
               }}
               autoFocus
-              className="flex-1 border-0 border-b border-warm-ash/30 bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:border-ember focus:outline-none"
+              className={`flex-1 border-0 border-b bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:outline-none ${
+                nameError ? 'border-warning-flare focus:border-warning-flare' : 'border-warm-ash/30 focus:border-ember'
+              }`}
               aria-label="Block name"
+              aria-invalid={!!nameError}
             />
           ) : (
             <button
@@ -191,7 +199,9 @@ export function BlockEditor({
                 e.stopPropagation()
                 setIsEditingName(true)
               }}
-              className="flex-1 text-left font-display text-sm font-medium text-bone-white hover:text-ember"
+              className={`flex-1 text-left font-display text-sm font-medium ${
+                nameError ? 'text-warning-flare' : 'text-bone-white hover:text-ember'
+              }`}
             >
               {block.name || 'Untitled block'}
             </button>
@@ -232,6 +242,14 @@ export function BlockEditor({
             className="shrink-0 text-warm-ash/40"
           />
         </div>
+
+        {/* Inline validation errors */}
+        {errors.length > 0 && (
+          <div className="flex flex-col gap-1 px-3 pb-2">
+            {nameError && <p className="text-xs text-warning-flare">{nameError}</p>}
+            {weeksError && <p className="text-xs text-warning-flare">{weeksError}</p>}
+          </div>
+        )}
 
         {/* Expanded content */}
         <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-200">
