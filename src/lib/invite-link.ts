@@ -20,8 +20,16 @@ export function parseInviteLink(raw: string): { url: string; key: string } | nul
 
     if (!url || !key) return null
 
+    try {
+      const parsedUrl = new URL(url)
+      if (parsedUrl.protocol !== 'https:' || !parsedUrl.hostname) return null
+    } catch {
+      return null
+    }
+
     return { url, key }
-  } catch {
+  } catch (err) {
+    console.error('[invite-link] Failed to parse invite link:', err)
     return null
   }
 }

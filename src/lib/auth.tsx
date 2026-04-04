@@ -3,6 +3,7 @@ import type { AuthError, Session, User } from '@supabase/supabase-js'
 import { isTauri } from '@tauri-apps/api/core'
 import { getSupabaseClient } from './supabase'
 import { getConfigStore } from './config-store'
+import { handleConnectLink } from './deep-link-handler'
 import { resetAdapter } from './adapter'
 import { resetRealtimeManager } from './realtime-manager'
 import { initSync, stopSync } from './sync-bridge'
@@ -171,6 +172,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           for (const urlStr of urls) {
             try {
               const url = new URL(urlStr)
+
+              if (url.hostname === 'connect') {
+                try {
+                  await handleConnectLink(urlStr)
+                } catch (err) {
+                  console.error('[auth] Connect deep-link failed:', err)
+                }
+                return
+              }
+
               const code = url.searchParams.get('code')
               const oauthError = url.searchParams.get('error')
 
@@ -285,7 +296,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { openUrl } = await import('@tauri-apps/plugin-opener')
         await openUrl(data.url, 'inAppBrowser')
-      } catch {
+      } catch (err) {
+        console.error('[auth] Failed to open sign-in browser:', err)
         return {
           error: {
             message: 'Failed to open the sign-in browser. Please try again.',

@@ -36,10 +36,17 @@
   },
   "plugins": {
     "deep-link": {
+      "desktop": {
+        "schemes": ["ardentforge"]
+      },
       "mobile": [
         {
           "schemes": ["ardentforge"],
           "host": "auth"
+        },
+        {
+          "schemes": ["ardentforge"],
+          "host": "connect"
         }
       ]
     }

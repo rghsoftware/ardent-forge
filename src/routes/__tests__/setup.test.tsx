@@ -25,7 +25,7 @@ const { mockNavigate, mockToast, mockValidateConnection, mockSetConfig, captured
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (routeConfig: { component?: React.ComponentType }) => {
     capturedComponent.current = routeConfig.component
-    return routeConfig
+    return { ...routeConfig, useSearch: () => ({}) }
   },
   useRouter: () => ({ navigate: mockNavigate }),
   redirect: vi.fn(),
