@@ -368,6 +368,8 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Cron-only function: broadcasts idle display state every minute.
+# verify_jwt disabled because this is invoked by Supabase cron, not browsers.
 [functions.display-idle-snapshot]
 verify_jwt = false
 

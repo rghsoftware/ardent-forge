@@ -5,6 +5,7 @@ import { IdleView } from '@/components/display/idle-view'
 import { DisplayModeTransition } from '@/components/display/display-mode-transition'
 import { useDisplayMode } from '@/components/display/use-display-mode'
 import { useIdleSnapshot } from '@/components/display/use-idle-snapshot'
+import { getSupabaseClient } from '@/lib/supabase'
 import type { DisplaySnapshot } from '@/domain/types'
 
 export const Route = createFileRoute('/display')({
@@ -32,10 +33,23 @@ function DisplayPage() {
     'connected',
   )
 
-  // Placeholder: future steps will wire Realtime channel status to setConnectionStatus
+  // Wire Realtime channel status to connection indicator
   useEffect(() => {
-    setConnectionStatus('connected')
-    return () => {}
+    const client = getSupabaseClient()
+    if (!client) return
+
+    const channel = client.channel('display-status')
+    channel.subscribe((status: string) => {
+      if (status === 'SUBSCRIBED') {
+        setConnectionStatus('connected')
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        setConnectionStatus('reconnecting')
+      }
+    })
+
+    return () => {
+      void client.removeChannel(channel)
+    }
   }, [])
 
   return (

@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react'
+import { useState } from 'react'
 import type { DisplaySnapshot, IdleSnapshot } from '@/domain/types'
 
 type DisplayMode = 'idle' | 'board' | 'focused'
@@ -9,38 +9,37 @@ interface UseDisplayModeResult {
   focusedSnapshot: DisplaySnapshot | null
 }
 
+function deriveMode(
+  sessionMap: Map<string, DisplaySnapshot>,
+  focusedUserId: string | null,
+): { mode: DisplayMode; focusedSnapshot: DisplaySnapshot | null } {
+  if (sessionMap.size === 0) {
+    return { mode: 'idle', focusedSnapshot: null }
+  }
+  if (focusedUserId && sessionMap.has(focusedUserId)) {
+    return { mode: 'focused', focusedSnapshot: sessionMap.get(focusedUserId) ?? null }
+  }
+  return { mode: 'board', focusedSnapshot: null }
+}
+
+// _idleSnapshot reserved: future steps may colocate idle broadcast with live session logic
 export function useDisplayMode(
   sessionMap: Map<string, DisplaySnapshot>,
   focusedUserId: string | null,
-  idleSnapshot: IdleSnapshot | null,
+  _idleSnapshot: IdleSnapshot | null,
 ): UseDisplayModeResult {
-  const previousModeRef = useRef<DisplayMode | null>(null)
-  const currentModeRef = useRef<DisplayMode>('idle')
+  const { mode, focusedSnapshot } = deriveMode(sessionMap, focusedUserId)
 
-  const result = useMemo(() => {
-    let mode: DisplayMode
-    let focusedSnapshot: DisplaySnapshot | null = null
+  // React "storing info from previous renders" pattern:
+  // calling setState conditionally during render triggers an immediate re-render
+  // with updated state before paint, avoiding stale refs or cascading effects.
+  const [previousMode, setPreviousMode] = useState<DisplayMode | null>(null)
+  const [trackedMode, setTrackedMode] = useState<DisplayMode>(mode)
 
-    if (sessionMap.size === 0) {
-      mode = 'idle'
-    } else if (focusedUserId && sessionMap.has(focusedUserId)) {
-      mode = 'focused'
-      focusedSnapshot = sessionMap.get(focusedUserId)!
-    } else {
-      mode = 'board'
-    }
+  if (trackedMode !== mode) {
+    setPreviousMode(trackedMode)
+    setTrackedMode(mode)
+  }
 
-    if (currentModeRef.current !== mode) {
-      previousModeRef.current = currentModeRef.current
-      currentModeRef.current = mode
-    }
-
-    return {
-      mode,
-      previousMode: previousModeRef.current,
-      focusedSnapshot,
-    }
-  }, [sessionMap, focusedUserId, idleSnapshot])
-
-  return result
+  return { mode, previousMode, focusedSnapshot }
 }

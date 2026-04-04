@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup, act } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import { ClockDisplay } from '../clock-display'
 
 describe('ClockDisplay', () => {
@@ -10,7 +10,6 @@ describe('ClockDisplay', () => {
   })
 
   afterEach(() => {
-    cleanup()
     vi.useRealTimers()
   })
 

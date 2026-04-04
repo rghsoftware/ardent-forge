@@ -25,12 +25,14 @@ export function useIdleSnapshot(): IdleSnapshot | null {
         const parsed = idleSnapshotSchema.safeParse(payload.payload)
         if (parsed.success) {
           setSnapshot(parsed.data)
+        } else if (import.meta.env.DEV) {
+          console.warn('[useIdleSnapshot] Invalid payload:', parsed.error.issues)
         }
       })
       .subscribe()
 
     return () => {
-      client.removeChannel(channel)
+      void client.removeChannel(channel)
     }
   }, [])
 

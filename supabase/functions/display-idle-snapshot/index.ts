@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// CORS: wildcard origin is acceptable -- this function is only invoked by
+// Supabase cron (verify_jwt = false), not by browsers directly.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -50,9 +52,9 @@ export async function handler(req: Request): Promise<Response> {
     );
 
     if (queryError) {
-      console.error("Query failed:", queryError);
+      console.error("RPC get_display_idle_sessions failed:", queryError.message, queryError.code);
       return new Response(
-        JSON.stringify({ error: "Query failed" }),
+        JSON.stringify({ error: "Query failed", code: queryError.code }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -65,13 +67,10 @@ export async function handler(req: Request): Promise<Response> {
     // -----------------------------------------------------------------------
     // 3. Build the IdleSnapshot payload
     // -----------------------------------------------------------------------
-    const nextSession =
-      sessions.length > 0
-        ? {
-            display_name: sessions[0]!.display_name,
-            session_name: sessions[0]!.session_name,
-          }
-        : null;
+    const first = sessions[0];
+    const nextSession = first
+      ? { display_name: first.display_name, session_name: first.session_name }
+      : null;
 
     const idleSnapshotPayload = {
       server_time: new Date().toISOString(),
@@ -102,13 +101,14 @@ export async function handler(req: Request): Promise<Response> {
     });
 
     if (!broadcastResponse.ok) {
+      const body = await broadcastResponse.text();
       console.error(
-        "Broadcast failed:",
+        "Realtime broadcast failed:",
         broadcastResponse.status,
-        await broadcastResponse.text(),
+        body,
       );
       return new Response(
-        JSON.stringify({ error: "Broadcast failed" }),
+        JSON.stringify({ error: "Broadcast failed", status: broadcastResponse.status }),
         {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

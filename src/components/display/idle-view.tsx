@@ -33,9 +33,9 @@ export function IdleView({ idleSnapshot, clockFormat, connectionStatus }: IdleVi
             TODAY&apos;S SESSIONS
           </h2>
           <div className="flex flex-wrap justify-center gap-4">
-            {visibleSessions.map((session, i) => (
+            {visibleSessions.map((session) => (
               <div
-                key={`${session.session_name}-${i}`}
+                key={`${session.display_name}-${session.session_name}`}
                 className="flex flex-col gap-1 bg-[#201F1F] px-8 py-6"
               >
                 <span className="font-display text-2xl text-foreground">
