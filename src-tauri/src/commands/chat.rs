@@ -655,6 +655,36 @@ pub async fn save_media_attachment(
     Ok(row)
 }
 
+/// Fetches media attachments for a batch of message IDs.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `message_ids`: A list of message IDs to fetch attachments for.
+///
+/// # Returns
+/// A vector of `MediaAttachmentRow` for all matching messages.
+#[tauri::command]
+pub async fn get_media_attachments(
+    pool: State<'_, SqlitePool>,
+    message_ids: Vec<String>,
+) -> Result<Vec<MediaAttachmentRow>, AppError> {
+    if message_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let placeholders = message_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let sql = format!(
+        "SELECT * FROM media_attachments WHERE message_id IN ({placeholders})"
+    );
+    let mut query = sqlx::query_as::<_, MediaAttachmentRow>(&sql);
+    for mid in &message_ids {
+        query = query.bind(mid);
+    }
+    let rows = query.fetch_all(pool.inner()).await?;
+
+    Ok(rows)
+}
+
 /// Toggles the `is_archived` flag for a user's conversation participation.
 ///
 /// # Parameters

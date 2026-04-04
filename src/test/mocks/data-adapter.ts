@@ -133,6 +133,8 @@ export function createMockAdapter(
     leaveConversation: vi.fn().mockResolvedValue(undefined),
     toggleArchive: vi.fn().mockResolvedValue(undefined),
     saveMediaAttachment: vi.fn().mockResolvedValue({}),
+    getMediaAttachments: vi.fn().mockResolvedValue([]),
+    updateMediaAttachment: vi.fn().mockResolvedValue({}),
   }
 
   return { ...base, ...overrides }

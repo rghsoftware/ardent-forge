@@ -340,4 +340,11 @@ export interface DataAdapter {
     messageId: string,
     attachment: Omit<MediaAttachment, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<MediaAttachment>
+  getMediaAttachments(messageIds: string[]): Promise<MediaAttachment[]>
+  updateMediaAttachment(
+    attachmentId: string,
+    updates: Partial<
+      Pick<MediaAttachment, 'status' | 'thumbnailUrl' | 'playbackUrl' | 'providerAssetId'>
+    >,
+  ): Promise<MediaAttachment>
 }

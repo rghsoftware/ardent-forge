@@ -2242,6 +2242,27 @@ export class TauriAdapter implements DataAdapter {
     })
     return toMediaAttachment(toMediaAttachmentRowFromTauri(row))
   }
+
+  async getMediaAttachments(messageIds: string[]): Promise<MediaAttachment[]> {
+    if (messageIds.length === 0) return []
+
+    const rows = await invokeCommand<TauriMediaAttachmentResponse[]>('get_media_attachments', {
+      message_ids: messageIds,
+    })
+    return rows.map((r) => toMediaAttachment(toMediaAttachmentRowFromTauri(r)))
+  }
+
+  async updateMediaAttachment(
+    _attachmentId: string,
+    _updates: Partial<
+      Pick<MediaAttachment, 'status' | 'thumbnailUrl' | 'playbackUrl' | 'providerAssetId'>
+    >,
+  ): Promise<MediaAttachment> {
+    // Media status updates come from the webhook edge function which uses
+    // SupabaseAdapter. The Tauri offline path uses save_media_attachment
+    // (INSERT OR REPLACE) for full upserts instead of partial updates.
+    throw new Error('updateMediaAttachment is not supported in offline mode')
+  }
 }
 
 // ---------------------------------------------------------------------------

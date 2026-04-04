@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { entityId, isoDateTime } from '@/domain/types/units'
 import { messageTypeSchema } from '@/domain/types/message'
 import type { Message } from '@/domain/types/message'
+import { mediaStatusSchema } from '@/domain/types/media'
 
 // ---------------------------------------------------------------------------
 // MessageBroadcastPayload -- inbound Realtime Broadcast for new messages
@@ -29,6 +30,20 @@ export const typingBroadcastPayloadSchema = z.object({
 })
 
 export type TypingBroadcastPayload = z.infer<typeof typingBroadcastPayloadSchema>
+
+// ---------------------------------------------------------------------------
+// MediaStatusBroadcastPayload -- inbound Realtime Broadcast for media status
+// ---------------------------------------------------------------------------
+
+export const mediaStatusBroadcastPayloadSchema = z.object({
+  message_id: entityId,
+  attachment_id: entityId,
+  status: mediaStatusSchema,
+  thumbnail_url: z.string().url().optional(),
+  playback_url: z.string().url().optional(),
+})
+
+export type MediaStatusBroadcastPayload = z.infer<typeof mediaStatusBroadcastPayloadSchema>
 
 // ---------------------------------------------------------------------------
 // Mappers

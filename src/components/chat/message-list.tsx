@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useMessages } from '@/hooks/use-chat'
+import { useMediaAttachments } from '@/hooks/use-media-attachments'
+import { getMediaProvider } from '@/lib/media-provider'
+import { getSupabaseClient } from '@/lib/supabase'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 import { MessageBubble, SystemMessage } from './message-bubble'
+import { VideoPlayer } from './video-player'
+import { ImageLightbox } from './image-lightbox'
 import type { ConversationType, Message } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
@@ -170,6 +175,49 @@ export function MessageList({
     [allMessages, blockedUserIds, conversationType],
   )
 
+  // ---- Media attachments ----
+  const mediaMessageIds = useMemo(
+    () => allMessages.filter((m) => m.messageType === 'media').map((m) => m.id),
+    [allMessages],
+  )
+  const { attachments } = useMediaAttachments(mediaMessageIds)
+
+  // ---- Media overlay state ----
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+
+  // ---- Media action handlers ----
+  const handleVideoPlay = useCallback(
+    async (assetId: string) => {
+      try {
+        const { url } = await getMediaProvider().getSignedPlaybackUrl(assetId, conversationId)
+        setVideoUrl(url)
+      } catch {
+        // Signed URL fetch failed -- silently ignore for now
+      }
+    },
+    [conversationId],
+  )
+
+  const handleImageView = useCallback((imageUrl: string) => {
+    setLightboxUrl(imageUrl)
+  }, [])
+
+  const handleFileDownload = useCallback(async (providerAssetId: string, _filename: string) => {
+    try {
+      const client = getSupabaseClient()
+      if (!client) return
+      const { data: signedData } = await client.storage
+        .from('chat-images')
+        .createSignedUrl(providerAssetId, 3600)
+      if (signedData?.signedUrl) {
+        window.open(signedData.signedUrl, '_blank')
+      }
+    } catch {
+      // Download URL generation failed -- silently ignore for now
+    }
+  }, [])
+
   const parentRef = useRef<HTMLDivElement>(null)
   const [showScrollButton, setShowScrollButton] = useState(false)
   const prevCountRef = useRef(items.length)
@@ -308,6 +356,10 @@ export function MessageList({
                         isOwn={item.message.senderId === currentUserId}
                         showSender={item.showSender}
                         isPending={item.message.syncStatus === 'pending'}
+                        attachment={attachments.get(item.message.id)}
+                        onVideoPlay={handleVideoPlay}
+                        onImageView={handleImageView}
+                        onFileDownload={handleFileDownload}
                       />
                     )}
                   </div>
@@ -336,6 +388,10 @@ export function MessageList({
           New messages
         </button>
       )}
+
+      {/* Media overlays */}
+      {videoUrl && <VideoPlayer signedUrl={videoUrl} onClose={() => setVideoUrl(null)} />}
+      {lightboxUrl && <ImageLightbox imageUrl={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
     </div>
   )
 }
