@@ -128,15 +128,19 @@ function SetupPage() {
     await validateAndSave(parsed.url, parsed.key)
   }
 
+  const cancelRef = useRef<(() => Promise<void>) | null>(null)
+
   const handleScan = async () => {
     if (!isTauri()) return
     try {
       const { scan, cancel, checkPermissions, requestPermissions, openAppSettings, Format } =
         await import('@tauri-apps/plugin-barcode-scanner')
 
+      cancelRef.current = cancel
+
       let perms = await checkPermissions()
       if (perms === 'prompt') perms = await requestPermissions()
-      if (perms === 'denied') {
+      if (perms !== 'granted') {
         toast('Camera permission required')
         await openAppSettings()
         return
@@ -252,14 +256,18 @@ function SetupPage() {
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  processInviteLink(e.currentTarget.value)
+                  processInviteLink(e.currentTarget.value).catch((err) => {
+                    console.error('[setup] Failed to process invite link:', err)
+                  })
                 }
               }}
               onPaste={(e) => {
                 const pasted = e.clipboardData.getData('text')
                 if (pasted) {
                   e.preventDefault()
-                  processInviteLink(pasted)
+                  processInviteLink(pasted).catch((err) => {
+                    console.error('[setup] Failed to process invite link:', err)
+                  })
                 }
               }}
             />
@@ -379,8 +387,7 @@ function SetupPage() {
             className="mt-8 flex items-center gap-2 rounded-md px-6 py-3 text-sm text-bone-white hover:bg-surface-gunmetal"
             onClick={async () => {
               try {
-                const { cancel } = await import('@tauri-apps/plugin-barcode-scanner')
-                await cancel()
+                await cancelRef.current?.()
               } catch (err) {
                 console.error('[setup] Failed to cancel scan:', err)
               }

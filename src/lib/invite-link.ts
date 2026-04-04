@@ -1,6 +1,8 @@
 const SCHEME = 'ardentforge:'
 const HOST = 'connect'
 
+// Encodes the Supabase publishable (anon) key -- not a secret. Safe to expose in QR codes
+// and invite links since the anon key is already bundled into every client build.
 export function buildInviteLink(supabaseUrl: string, publishableKey: string): string {
   return `ardentforge://connect?url=${encodeURIComponent(supabaseUrl)}&key=${encodeURIComponent(publishableKey)}`
 }
@@ -11,11 +13,7 @@ export function parseInviteLink(raw: string): { url: string; key: string } | nul
     const parsed = new URL(trimmed)
 
     if (parsed.protocol !== SCHEME) return null
-    if (parsed.hostname !== HOST && parsed.pathname !== `///${HOST}`) {
-      // URL constructor parses ardentforge://connect as hostname="connect"
-      // but some browsers may parse it as pathname="///connect"
-      return null
-    }
+    if (parsed.hostname !== HOST) return null
 
     const url = parsed.searchParams.get('url')
     const key = parsed.searchParams.get('key')

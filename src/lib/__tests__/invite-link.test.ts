@@ -45,8 +45,12 @@ describe('parseInviteLink', () => {
     expect(parseInviteLink('ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co')).toBeNull()
   })
 
-  it('returns null for malformed URL', () => {
+  it('returns null for wrong scheme (non-ardentforge protocol)', () => {
     expect(parseInviteLink('not://a://valid://url')).toBeNull()
+  })
+
+  it('returns null for genuinely malformed URL', () => {
+    expect(parseInviteLink('::bad')).toBeNull()
   })
 
   it('handles extra whitespace', () => {
