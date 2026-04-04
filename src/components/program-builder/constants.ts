@@ -23,13 +23,25 @@ export const BLOCK_TYPES: Array<{ value: BlockType; label: string }> = [
 // ---------------------------------------------------------------------------
 
 export const DAY_COLUMNS: Array<{ dayOfWeek: DayOfWeek; label: string }> = [
-  { dayOfWeek: 1, label: 'M' },
-  { dayOfWeek: 2, label: 'T' },
-  { dayOfWeek: 3, label: 'W' },
-  { dayOfWeek: 4, label: 'T' },
-  { dayOfWeek: 5, label: 'F' },
-  { dayOfWeek: 6, label: 'S' },
-  { dayOfWeek: 0, label: 'S' },
+  { dayOfWeek: 1, label: 'Mo' },
+  { dayOfWeek: 2, label: 'Tu' },
+  { dayOfWeek: 3, label: 'We' },
+  { dayOfWeek: 4, label: 'Th' },
+  { dayOfWeek: 5, label: 'Fr' },
+  { dayOfWeek: 6, label: 'Sa' },
+  { dayOfWeek: 0, label: 'Su' },
+]
+
+// ---------------------------------------------------------------------------
+// Weekday-only columns (Mon through Fri) -- default view for readability
+// ---------------------------------------------------------------------------
+
+export const WEEKDAY_COLUMNS: Array<{ dayOfWeek: DayOfWeek; label: string }> = [
+  { dayOfWeek: 1, label: 'Mo' },
+  { dayOfWeek: 2, label: 'Tu' },
+  { dayOfWeek: 3, label: 'We' },
+  { dayOfWeek: 4, label: 'Th' },
+  { dayOfWeek: 5, label: 'Fr' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -65,6 +77,31 @@ export const DAY_ABBREVIATIONS: Record<DayOfWeek, string> = {
 // ---------------------------------------------------------------------------
 
 export const DAY_ORDER: DayOfWeek[] = [1, 2, 3, 4, 5, 6, 0]
+export const WEEKDAY_ORDER: DayOfWeek[] = [1, 2, 3, 4, 5]
+
+// ---------------------------------------------------------------------------
+// Source labels for program source badges
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Session type visual mappings (tint, badge colours)
+// ---------------------------------------------------------------------------
+
+export const SESSION_TINT: Record<string, string> = {
+  STRENGTH: 'session-tint-strength',
+  CONDITIONING: 'session-tint-conditioning',
+  SE: 'session-tint-se',
+  MIXED: 'session-tint-mixed',
+  EVENT: 'session-tint-event',
+}
+
+export const SESSION_TYPE_BADGE: Record<string, string> = {
+  STRENGTH: 'bg-ember/10 text-ember',
+  CONDITIONING: 'bg-quenched/10 text-quenched',
+  SE: 'bg-arc/10 text-arc',
+  MIXED: 'bg-bone-white/10 text-bone-white',
+  EVENT: 'bg-ember/15 text-ember',
+}
 
 // ---------------------------------------------------------------------------
 // Source labels for program source badges

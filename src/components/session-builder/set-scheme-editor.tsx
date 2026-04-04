@@ -1,5 +1,12 @@
 import { useState, useCallback } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from '@/components/ui/collapsible'
+import { Icon } from '@/components/icon'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { defaultScheme } from './set-scheme-defaults'
 import {
   Select,
@@ -68,6 +75,19 @@ const SCHEME_GROUPS = [
     ],
   },
 ] as const
+
+const SCHEME_GROUP_FOR_TYPE: Record<string, string> = {}
+for (const group of SCHEME_GROUPS) {
+  for (const t of group.types) {
+    SCHEME_GROUP_FOR_TYPE[t.value] = group.label
+  }
+}
+const SCHEME_TYPE_LABELS: Record<string, string> = {}
+for (const group of SCHEME_GROUPS) {
+  for (const t of group.types) {
+    SCHEME_TYPE_LABELS[t.value] = t.label
+  }
+}
 
 type SetSchemeType = SetScheme['type']
 
@@ -472,27 +492,19 @@ function LoadSpecEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-        LOAD
-      </span>
-
-      {/* Load type badges */}
-      <div className="flex flex-wrap gap-1">
-        {availableTypes.map((t) => (
-          <button
-            key={t.value}
-            type="button"
-            onClick={() => handleTypeChange(t.value)}
-            className={`min-h-8 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
-              value.type === t.value
-                ? 'bg-forge text-on-forge'
-                : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* Load type dropdown */}
+      <Select value={value.type} onValueChange={handleTypeChange}>
+        <SelectTrigger className="min-h-12 w-full border-0 border-b border-warm-ash/30 bg-transparent text-xs uppercase tracking-wider text-bone-white">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="bg-surface-gunmetal">
+          {availableTypes.map((t) => (
+            <SelectItem key={t.value} value={t.value} className="text-xs uppercase">
+              {t.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {/* Load value fields */}
       {value.type === 'absolute' && (
@@ -558,6 +570,7 @@ function FixedSetsFields({
 }) {
   const setsIsRange = typeof value.sets === 'object'
   const repsIsRange = typeof value.reps === 'object'
+  const hasOptions = !!(value.restBetweenSets?.seconds || value.lastSetAMRAP)
 
   return (
     <div className="flex flex-col gap-4">
@@ -600,19 +613,30 @@ function FixedSetsFields({
         exerciseSupports1RM={exerciseSupports1RM}
       />
 
-      <DurationInput
-        value={value.restBetweenSets}
-        onChange={(d) => onChange({ ...value, restBetweenSets: d })}
-        label="REST BETWEEN SETS"
-      />
+      <Collapsible defaultOpen={hasOptions}>
+        <CollapsibleTrigger className="flex items-center gap-1 py-1 text-[11px] font-medium text-warm-ash/60 hover:text-warm-ash">
+          <Icon name="tune" size={14} />
+          More options
+          <Icon name="expand_more" size={14} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-150">
+          <div className="flex flex-col gap-4 pt-2">
+            <DurationInput
+              value={value.restBetweenSets}
+              onChange={(d) => onChange({ ...value, restBetweenSets: d })}
+              label="REST BETWEEN SETS"
+            />
 
-      <div className="flex items-center gap-3">
-        <Checkbox
-          checked={value.lastSetAMRAP ?? false}
-          onCheckedChange={(c) => onChange({ ...value, lastSetAMRAP: c === true })}
-        />
-        <span className="text-xs uppercase tracking-wider text-bone-white">LAST SET AMRAP</span>
-      </div>
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={value.lastSetAMRAP ?? false}
+                onCheckedChange={(c) => onChange({ ...value, lastSetAMRAP: c === true })}
+              />
+              <span className="text-xs uppercase tracking-wider text-bone-white">LAST SET AMRAP</span>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   )
 }
@@ -624,6 +648,8 @@ function PercentageSetsFields({
   value: SetScheme & { type: 'percentageSets' }
   onChange: (s: SetScheme) => void
 }) {
+  const hasOptions = !!(value.restBetweenSets?.seconds || value.lastSetAMRAP)
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-4">
@@ -652,19 +678,30 @@ function PercentageSetsFields({
         step={1}
       />
 
-      <DurationInput
-        value={value.restBetweenSets}
-        onChange={(d) => onChange({ ...value, restBetweenSets: d })}
-        label="REST BETWEEN SETS"
-      />
+      <Collapsible defaultOpen={hasOptions}>
+        <CollapsibleTrigger className="flex items-center gap-1 py-1 text-[11px] font-medium text-warm-ash/60 hover:text-warm-ash">
+          <Icon name="tune" size={14} />
+          More options
+          <Icon name="expand_more" size={14} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-150">
+          <div className="flex flex-col gap-4 pt-2">
+            <DurationInput
+              value={value.restBetweenSets}
+              onChange={(d) => onChange({ ...value, restBetweenSets: d })}
+              label="REST BETWEEN SETS"
+            />
 
-      <div className="flex items-center gap-3">
-        <Checkbox
-          checked={value.lastSetAMRAP ?? false}
-          onCheckedChange={(c) => onChange({ ...value, lastSetAMRAP: c === true })}
-        />
-        <span className="text-xs uppercase tracking-wider text-bone-white">LAST SET AMRAP</span>
-      </div>
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={value.lastSetAMRAP ?? false}
+                onCheckedChange={(c) => onChange({ ...value, lastSetAMRAP: c === true })}
+              />
+              <span className="text-xs uppercase tracking-wider text-bone-white">LAST SET AMRAP</span>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   )
 }
@@ -1032,6 +1069,10 @@ export function SetSchemeEditor({
   exerciseSupports1RM = false,
   errors = {},
 }: SetSchemeEditorProps) {
+  const activeGroup = SCHEME_GROUPS.find(g => g.types.some(t => t.value === value.type))?.label ?? 'STRENGTH'
+  const [selectedGroup, setSelectedGroup] = useState(activeGroup)
+  const [typeSelectorOpen, setTypeSelectorOpen] = useState(!value.type || value.type === 'fixedSets')
+
   const handleTypeChange = useCallback(
     (newType: SetSchemeType) => {
       if (newType === value.type) return
@@ -1040,39 +1081,72 @@ export function SetSchemeEditor({
       if ('restBetweenSets' in value && 'restBetweenSets' in next && value.restBetweenSets) {
         ;(next as Record<string, unknown>).restBetweenSets = value.restBetweenSets
       }
+      // Update selected group to match the new type's group
+      const newGroup = SCHEME_GROUPS.find(g => g.types.some(t => t.value === newType))?.label
+      if (newGroup) setSelectedGroup(newGroup)
       onChange(next)
+      setTypeSelectorOpen(false)
     },
     [value, onChange],
   )
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Type selector grid */}
-      <div className="flex flex-col gap-2">
-        {SCHEME_GROUPS.map((group) => (
-          <div key={group.label} className="flex flex-col gap-1">
-            <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
-              {group.label}
-            </span>
-            <div className="flex flex-wrap gap-1">
-              {group.types.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => handleTypeChange(t.value as SetSchemeType)}
-                  className={`min-h-8 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
-                    value.type === t.value
-                      ? 'bg-forge text-on-forge'
-                      : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
-                  }`}
+      {/* Two-level type selector */}
+      <Collapsible open={typeSelectorOpen} onOpenChange={setTypeSelectorOpen}>
+        {/* Compact summary when collapsed */}
+        <CollapsibleTrigger className="flex w-full items-center gap-2 py-1 text-left">
+          <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
+            {SCHEME_GROUP_FOR_TYPE[value.type] ?? 'STRENGTH'}
+          </span>
+          <span className="text-[11px] font-medium text-bone-white">
+            {SCHEME_TYPE_LABELS[value.type] ?? value.type}
+          </span>
+          <Icon name={typeSelectorOpen ? 'expand_less' : 'expand_more'} size={14} className="ml-auto text-warm-ash/40" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-150">
+          <div className="flex flex-col gap-2">
+            {/* Level 1: Group selector */}
+            <ToggleGroup
+              type="single"
+              value={selectedGroup}
+              onValueChange={(v) => { if (v) setSelectedGroup(v as typeof selectedGroup) }}
+              className="flex gap-1"
+            >
+              {SCHEME_GROUPS.map((group) => (
+                <ToggleGroupItem
+                  key={group.label}
+                  value={group.label}
+                  className="min-h-8 flex-1 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
                 >
-                  {t.label}
-                </button>
+                  {group.label}
+                </ToggleGroupItem>
               ))}
-            </div>
+            </ToggleGroup>
+
+            {/* Level 2: Type selector within group */}
+            {SCHEME_GROUPS.filter(g => g.label === selectedGroup).map((group) => (
+              <ToggleGroup
+                key={group.label}
+                type="single"
+                value={value.type}
+                onValueChange={(v) => { if (v) handleTypeChange(v as SetSchemeType) }}
+                className="flex gap-1"
+              >
+                {group.types.map((t) => (
+                  <ToggleGroupItem
+                    key={t.value}
+                    value={t.value}
+                    className="min-h-8 flex-1 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider"
+                  >
+                    {t.label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            ))}
           </div>
-        ))}
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* Dynamic fields */}
       <div className="border-t border-warm-ash/10 pt-4">

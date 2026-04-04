@@ -74,6 +74,7 @@ pub fn run() {
             commands::session_templates::create_session_template_full,
             commands::session_templates::update_session_template_full,
             commands::session_templates::delete_session_template,
+            commands::session_templates::touch_session_template_last_assigned,
             // Programs
             commands::programs::get_programs,
             commands::programs::get_program_full,

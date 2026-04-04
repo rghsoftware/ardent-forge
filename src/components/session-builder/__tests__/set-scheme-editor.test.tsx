@@ -13,32 +13,31 @@ describe('SetSchemeEditor', () => {
 
   // -- Type selector grid ---------------------------------------------------
 
-  it('renders all scheme type buttons', () => {
+  it('renders active group type buttons and group selector', async () => {
+    const user = userEvent.setup()
     render(<SetSchemeEditor value={defaultScheme('fixedSets')} onChange={onChange} />)
-    // Strength group
-    expect(screen.getByText('Fixed')).toBeInTheDocument()
-    expect(screen.getByText('% 1RM')).toBeInTheDocument()
-    expect(screen.getByText('Max')).toBeInTheDocument()
-    // Endurance group
+    // Default group is STRENGTH -- its types visible (may appear in summary too)
+    expect(screen.getAllByText('Fixed').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('% 1RM').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Max').length).toBeGreaterThanOrEqual(1)
+    // Group selector buttons are visible
+    expect(screen.getAllByText('STRENGTH').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('ENDURANCE').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('CARDIO').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('METCON').length).toBeGreaterThanOrEqual(1)
+    // Switch to ENDURANCE group to see its types
+    await user.click(screen.getAllByText('ENDURANCE')[0])
     expect(screen.getByText('Reps')).toBeInTheDocument()
     expect(screen.getByText('Hold')).toBeInTheDocument()
     expect(screen.getByText('% Reps')).toBeInTheDocument()
-    // Cardio group
-    expect(screen.getByText('Steady')).toBeInTheDocument()
-    expect(screen.getByText('Interval')).toBeInTheDocument()
-    expect(screen.getByText('Ruck')).toBeInTheDocument()
-    // Metcon group
-    expect(screen.getByText('EMOM')).toBeInTheDocument()
-    expect(screen.getByText('AMRAP')).toBeInTheDocument()
-    expect(screen.getByText('Descend')).toBeInTheDocument()
   })
 
-  it('renders group labels', () => {
+  it('renders group selector labels', () => {
     render(<SetSchemeEditor value={defaultScheme('fixedSets')} onChange={onChange} />)
-    expect(screen.getByText('STRENGTH')).toBeInTheDocument()
-    expect(screen.getByText('ENDURANCE')).toBeInTheDocument()
-    expect(screen.getByText('CARDIO')).toBeInTheDocument()
-    expect(screen.getByText('METCON')).toBeInTheDocument()
+    expect(screen.getAllByText('STRENGTH').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('ENDURANCE').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('CARDIO').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('METCON').length).toBeGreaterThanOrEqual(1)
   })
 
   // -- fixedSets fields -----------------------------------------------------
@@ -49,18 +48,20 @@ describe('SetSchemeEditor', () => {
     expect(screen.getByLabelText('REPS')).toBeInTheDocument()
   })
 
-  it('renders LOAD section for fixedSets', () => {
+  it('renders load type selector for fixedSets', () => {
     render(<SetSchemeEditor value={defaultScheme('fixedSets')} onChange={onChange} />)
-    expect(screen.getByText('LOAD')).toBeInTheDocument()
+    // Load type is now a Select dropdown; check for the trigger
+    expect(screen.getByText('NONE')).toBeInTheDocument()
   })
 
-  it('renders REST BETWEEN SETS for fixedSets', () => {
+  it('renders REST and AMRAP in More options for fixedSets', async () => {
+    const user = userEvent.setup()
     render(<SetSchemeEditor value={defaultScheme('fixedSets')} onChange={onChange} />)
+    // REST and AMRAP are behind "More options" collapsible
+    const moreBtn = screen.getByText('More options')
+    expect(moreBtn).toBeInTheDocument()
+    await user.click(moreBtn)
     expect(screen.getByText('REST BETWEEN SETS')).toBeInTheDocument()
-  })
-
-  it('renders LAST SET AMRAP checkbox for fixedSets', () => {
-    render(<SetSchemeEditor value={defaultScheme('fixedSets')} onChange={onChange} />)
     expect(screen.getByText('LAST SET AMRAP')).toBeInTheDocument()
   })
 

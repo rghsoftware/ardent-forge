@@ -235,6 +235,7 @@ interface TauriSessionTemplateResponse {
   rest_between_groups: string | null
   time_cap: string | null
   scoring: string
+  last_assigned_at: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -689,6 +690,7 @@ function toSessionTemplateRowFromTauri(r: TauriSessionTemplateResponse): Session
     time_cap: r.time_cap,
     scoring: r.scoring,
     event_metadata: null, // Event features deferred for Tauri offline mode (W-8)
+    last_assigned_at: r.last_assigned_at ?? null,
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -1494,6 +1496,10 @@ export class TauriAdapter implements DataAdapter {
 
   async deleteSessionTemplate(id: string): Promise<void> {
     await invokeCommand<void>('delete_session_template', { id })
+  }
+
+  async touchSessionTemplateLastAssigned(id: string): Promise<void> {
+    await invokeCommand<void>('touch_session_template_last_assigned', { id })
   }
 
   async cloneSessionTemplate(_id: string, _userId: string): Promise<SessionTemplateFull> {

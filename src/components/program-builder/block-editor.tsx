@@ -1,14 +1,31 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { WeekGrid } from './week-grid'
-import { removeBlock, addWeekToBlock } from './builder-state'
-import type { BlockDraft, ProgramDraft } from './builder-state'
+import { ConfirmDeleteDialog } from './confirm-delete-dialog'
+import { removeBlock, addWeekToBlock, weeksMatch } from './builder-state'
+import type { BlockDraft, ProgramDraft, ValidationError } from './builder-state'
 import type { BlockType } from '@/domain/types'
-import { BLOCK_TYPES } from './constants'
+import { BLOCK_TYPES, SESSION_TYPE_BADGE } from './constants'
 import type { DayOfWeek } from './constants'
+
+const BLOCK_TYPE_STYLES: Record<string, string> = {
+  ACCUMULATION: 'bg-quenched/15 text-quenched',
+  INTENSIFICATION: 'bg-ember/15 text-ember',
+  REALIZATION: 'bg-forge/15 text-forge',
+  DELOAD: 'bg-arc/15 text-arc',
+  TEST: 'bg-warm-ash/15 text-warm-ash',
+}
 
 // ---------------------------------------------------------------------------
 // BlockEditor
@@ -20,6 +37,9 @@ interface BlockEditorProps {
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek?: (sourceWeekClientId: string) => void
+  showWeekends: boolean
+  isNew?: boolean
+  errors?: ValidationError[]
 }
 
 export function BlockEditor({
@@ -28,9 +48,31 @@ export function BlockEditor({
   onUpdate,
   onPickSession,
   onCopyWeek,
+  showWeekends,
+  isNew,
+  errors = [],
 }: BlockEditorProps) {
   const [expanded, setExpanded] = useState(true)
   const [isEditingName, setIsEditingName] = useState(false)
+  const [newWeekId, setNewWeekId] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [manuallyExpanded, setManuallyExpanded] = useState<Set<string>>(new Set())
+
+  // Determine which weeks match the first week in the block
+  const collapsibleWeeks = useMemo(() => {
+    if (block.weeks.length < 2) return new Map<string, number>()
+    const first = block.weeks[0]
+    const map = new Map<string, number>()
+    for (let i = 1; i < block.weeks.length; i++) {
+      if (weeksMatch(first, block.weeks[i]) && first.sessions.length > 0) {
+        map.set(block.weeks[i].clientId, 1) // references week 1
+      }
+    }
+    return map
+  }, [block.weeks])
+
+  const nameError = errors.find((e) => e.field === 'blockName')?.message
+  const weeksError = errors.find((e) => e.field === 'blockWeeks')?.message
 
   const {
     attributes,
@@ -42,10 +84,11 @@ export function BlockEditor({
     isDragging,
   } = useSortable({ id: block.clientId })
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    ...(isNew ? { animation: 'block-enter 0.3s ease-out both' } : {}),
   }
 
   const handleNameChange = useCallback(
@@ -74,9 +117,34 @@ export function BlockEditor({
     onUpdate(removeBlock(draft, block.clientId))
   }, [draft, block.clientId, onUpdate])
 
+  const totalSessions = useMemo(
+    () => block.weeks.reduce((sum, w) => sum + w.sessions.length, 0),
+    [block.weeks],
+  )
+
+  const deleteDescription = useMemo(() => {
+    const parts: string[] = []
+    if (block.weeks.length > 0)
+      parts.push(`${block.weeks.length} ${block.weeks.length === 1 ? 'week' : 'weeks'}`)
+    if (totalSessions > 0)
+      parts.push(`${totalSessions} ${totalSessions === 1 ? 'session' : 'sessions'}`)
+    return parts.length > 0 ? `This will remove ${parts.join(' and ')}.` : 'This block is empty.'
+  }, [block.weeks.length, totalSessions])
+
   const handleAddWeek = useCallback(() => {
-    onUpdate(addWeekToBlock(draft, block.clientId))
+    const updated = addWeekToBlock(draft, block.clientId)
+    const updatedBlock = updated.blocks.find((b) => b.clientId === block.clientId)
+    const newWeek = updatedBlock?.weeks[updatedBlock.weeks.length - 1]
+    if (newWeek) setNewWeekId(newWeek.clientId)
+    onUpdate(updated)
   }, [draft, block.clientId, onUpdate])
+
+  useEffect(() => {
+    if (newWeekId) {
+      const t = setTimeout(() => setNewWeekId(null), 350)
+      return () => clearTimeout(t)
+    }
+  }, [newWeekId])
 
   const handleCopyWeek = useCallback(
     (sourceWeekClientId: string) => {
@@ -99,119 +167,203 @@ export function BlockEditor({
   }, [])
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} className="bg-surface-iron">
-      <div
-        className="flex min-h-12 cursor-pointer items-center gap-2 px-3 py-2"
-        onClick={handleHeaderClick}
-      >
-        <button
-          ref={setActivatorNodeRef}
-          {...listeners}
-          type="button"
-          data-drag-handle
-          className="cursor-grab touch-none text-warm-ash/60 hover:text-bone-white"
-          aria-label="Drag to reorder block"
+    <>
+      <Collapsible open={expanded} onOpenChange={setExpanded} asChild>
+        <div
+          ref={setNodeRef}
+          style={style}
+          {...attributes}
+          className="border-l-2 border-forge bg-surface-iron milled-edge"
         >
-          <Icon name="drag_indicator" size={20} />
-        </button>
-
-        {isEditingName ? (
-          <input
-            type="text"
-            value={block.name}
-            onChange={(e) => handleNameChange(e.target.value)}
-            onBlur={() => setIsEditingName(false)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') setIsEditingName(false)
-            }}
-            autoFocus
-            className="flex-1 border-0 border-b border-warm-ash/30 bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:border-ember focus:outline-none"
-            aria-label="Block name"
-          />
-        ) : (
+        <div
+          className="flex min-h-12 cursor-pointer items-center gap-2 px-3 py-2"
+          onClick={handleHeaderClick}
+        >
           <button
+            ref={setActivatorNodeRef}
+            {...listeners}
             type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              setIsEditingName(true)
-            }}
-            className="flex-1 text-left font-display text-sm font-medium text-bone-white hover:text-ember"
+            data-drag-handle
+            className="cursor-grab touch-none text-warm-ash/60 hover:text-bone-white"
+            aria-label="Drag to reorder block"
           >
-            {block.name || 'Untitled block'}
+            <Icon name="drag_indicator" size={20} />
           </button>
+
+          {isEditingName ? (
+            <input
+              type="text"
+              value={block.name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              onBlur={() => setIsEditingName(false)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') setIsEditingName(false)
+              }}
+              autoFocus
+              className={`flex-1 border-0 border-b bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:outline-none ${
+                nameError ? 'border-warning-flare focus:border-warning-flare' : 'border-warm-ash/30 focus:border-ember'
+              }`}
+              aria-label="Block name"
+              aria-invalid={!!nameError}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsEditingName(true)
+              }}
+              className={`flex-1 text-left font-display text-sm font-medium ${
+                nameError ? 'text-warning-flare' : 'text-bone-white hover:text-ember'
+              }`}
+            >
+              {block.name || 'Untitled block'}
+            </button>
+          )}
+
+          <span
+            className={`shrink-0 px-2 py-1 text-[11px] font-medium uppercase tracking-wider ${BLOCK_TYPE_STYLES[block.blockType] ?? 'bg-surface-steel text-bone-white'}`}
+          >
+            {block.blockType}
+          </span>
+
+          <span className="shrink-0 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
+            {block.weeks.length} {block.weeks.length === 1 ? 'WEEK' : 'WEEKS'}
+          </span>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                className="flex min-h-8 min-w-8 items-center justify-center text-warm-ash/60 hover:text-bone-white"
+                aria-label="Block actions"
+              >
+                <Icon name="more_vert" size={18} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-40">
+              <DropdownMenuItem variant="destructive" onSelect={() => setShowDeleteConfirm(true)}>
+                <Icon name="delete" size={16} />
+                Delete block
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Icon
+            name={expanded ? 'expand_less' : 'expand_more'}
+            size={18}
+            className="shrink-0 text-warm-ash/40"
+          />
+        </div>
+
+        {/* Inline validation errors */}
+        {errors.length > 0 && (
+          <div className="flex flex-col gap-1 px-3 pb-2">
+            {nameError && <p className="text-xs text-warning-flare">{nameError}</p>}
+            {weeksError && <p className="text-xs text-warning-flare">{weeksError}</p>}
+          </div>
         )}
 
-        <span className="bg-surface-steel px-2 py-1 text-[11px] font-medium uppercase tracking-wider text-bone-white">
-          {block.blockType}
-        </span>
+        {/* Expanded content */}
+        <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-200">
+          <div className="flex flex-col gap-4 px-3 pb-4">
+            <ToggleGroup
+              type="single"
+              value={block.blockType}
+              onValueChange={(v) => {
+                if (v) handleBlockTypeChange(v as BlockType)
+              }}
+              className="flex flex-wrap gap-1"
+            >
+              {BLOCK_TYPES.map((bt) => (
+                <ToggleGroupItem
+                  key={bt.value}
+                  value={bt.value}
+                  className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
+                >
+                  {bt.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
 
-        <span className="text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
-          {block.weeks.length} {block.weeks.length === 1 ? 'WEEK' : 'WEEKS'}
-        </span>
+            {block.weeks.map((week, weekIndex) => {
+              const isCollapsible = collapsibleWeeks.has(week.clientId)
+              const isForceExpanded = manuallyExpanded.has(week.clientId)
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            handleDelete()
-          }}
-          className="min-h-8 min-w-8 p-1 text-warm-ash/60 hover:text-warning-flare"
-          aria-label="Delete block"
-        >
-          <Icon name="delete" size={18} />
-        </button>
+              if (isCollapsible && !isForceExpanded) {
+                const refWeekNum = collapsibleWeeks.get(week.clientId)!
+                const sessionTypes = [...new Set(week.sessions.map((s) => s.sessionType))]
+                return (
+                  <div
+                    key={week.clientId}
+                    className="flex items-center gap-2 border-t border-warm-ash/10 pt-3 mt-1"
+                  >
+                    <span className="text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
+                      Week {weekIndex + 1}
+                    </span>
+                    <span className="text-[10px] text-warm-ash/40">
+                      same as Week {refWeekNum}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {sessionTypes.map((st) => (
+                        <span
+                          key={st}
+                          className={`px-1 py-px text-[9px] font-medium uppercase tracking-wider ${SESSION_TYPE_BADGE[st] ?? 'bg-surface-steel text-warm-ash'}`}
+                        >
+                          {st}
+                        </span>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setManuallyExpanded((prev) => new Set([...prev, week.clientId]))}
+                      className="p-1 text-warm-ash/40 hover:text-bone-white"
+                      aria-label={`Expand week ${weekIndex + 1}`}
+                    >
+                      <Icon name="expand_more" size={14} />
+                    </button>
+                  </div>
+                )
+              }
 
-        <Icon
-          name={expanded ? 'expand_less' : 'expand_more'}
-          size={18}
-          className="text-warm-ash/40"
-        />
-      </div>
+              return (
+                <WeekGrid
+                  key={week.clientId}
+                  week={week}
+                  weekIndex={weekIndex}
+                  draft={draft}
+                  blockClientId={block.clientId}
+                  onUpdate={onUpdate}
+                  onPickSession={onPickSession}
+                  onCopyWeek={handleCopyWeek}
+                  showWeekends={showWeekends}
+                  isNew={week.clientId === newWeekId}
+                />
+              )
+            })}
 
-      {/* Expanded content */}
-      {expanded && (
-        <div className="flex flex-col gap-4 px-3 pb-4">
-          <div className="flex flex-wrap gap-1">
-            {BLOCK_TYPES.map((bt) => (
-              <button
-                key={bt.value}
-                type="button"
-                onClick={() => handleBlockTypeChange(bt.value)}
-                className={`min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
-                  block.blockType === bt.value
-                    ? 'bg-forge text-on-forge'
-                    : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
-                }`}
-              >
-                {bt.label}
-              </button>
-            ))}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleAddWeek}
+              className="min-h-10 text-xs"
+            >
+              <Icon name="add" size={16} />
+              Add week
+            </Button>
           </div>
-
-          {block.weeks.map((week, weekIndex) => (
-            <WeekGrid
-              key={week.clientId}
-              week={week}
-              weekIndex={weekIndex}
-              draft={draft}
-              blockClientId={block.clientId}
-              onUpdate={onUpdate}
-              onPickSession={onPickSession}
-              onCopyWeek={handleCopyWeek}
-            />
-          ))}
-
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleAddWeek}
-            className="min-h-10 text-xs"
-          >
-            <Icon name="add" size={16} />
-            Add week
-          </Button>
+        </CollapsibleContent>
         </div>
-      )}
-    </div>
+      </Collapsible>
+
+      <ConfirmDeleteDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title={`Delete ${block.name || 'Untitled block'}?`}
+        description={deleteDescription}
+        onConfirm={handleDelete}
+      />
+    </>
   )
 }

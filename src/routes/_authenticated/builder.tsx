@@ -10,7 +10,6 @@ import { BlockList } from '@/components/program-builder/block-list'
 import { MobileBlockEditor } from '@/components/program-builder/mobile-block-editor'
 import { SessionPickerSheet } from '@/components/program-builder/session-picker-sheet'
 import { CopyWeekDialog } from '@/components/program-builder/copy-week-dialog'
-import { ProgramPreview } from '@/components/program-builder/program-preview'
 import {
   createEmptyDraft,
   hydrateDraft,
@@ -19,7 +18,11 @@ import {
   validateDraft,
   buildSavePayload,
 } from '@/components/program-builder/builder-state'
-import type { ProgramDraft, WeekDraft } from '@/components/program-builder/builder-state'
+import type {
+  ProgramDraft,
+  WeekDraft,
+  ValidationError,
+} from '@/components/program-builder/builder-state'
 import type { DayOfWeek } from '@/components/program-builder/constants'
 import type { SessionType } from '@/domain/types'
 
@@ -58,9 +61,10 @@ function BuilderPage() {
     allWeeks: WeekDraft[]
   } | null>(null)
 
-  // Error and preview state
+  // Error state: fieldErrors for inline validation, error for server/auth failures
+  const [fieldErrors, setFieldErrors] = useState<ValidationError[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [previewMode, setPreviewMode] = useState(false)
+  const [showWeekends, setShowWeekends] = useState(false)
 
   // Mutations
   const createMutation = useCreateProgram()
@@ -84,17 +88,25 @@ function BuilderPage() {
   // Handlers
   // ---------------------------------------------------------------------------
 
-  const handleUpdateDraft = useCallback((updated: ProgramDraft) => {
-    setDraft(updated)
+  const clearErrors = useCallback(() => {
+    setFieldErrors([])
     setError(null)
   }, [])
+
+  const handleUpdateDraft = useCallback(
+    (updated: ProgramDraft) => {
+      setDraft(updated)
+      clearErrors()
+    },
+    [clearErrors],
+  )
 
   const handleDraftChange = useCallback(
     (updates: Partial<Pick<ProgramDraft, 'name' | 'description' | 'source'>>) => {
       setDraft((prev) => ({ ...prev, ...updates }))
-      setError(null)
+      clearErrors()
     },
-    [],
+    [clearErrors],
   )
 
   const handlePickSession = useCallback((weekClientId: string, dayOfWeek: DayOfWeek) => {
@@ -151,7 +163,7 @@ function BuilderPage() {
   const handleSave = useCallback(async () => {
     const errors = validateDraft(draft)
     if (errors.length > 0) {
-      setError(errors.join('. '))
+      setFieldErrors(errors)
       return
     }
 
@@ -219,14 +231,21 @@ function BuilderPage() {
 
         <div className="flex-1" />
 
+        {error && <p className="text-xs text-warning-flare">{error}</p>}
+        {fieldErrors.some((e) => e.field === 'blocks') && (
+          <p className="text-xs text-warning-flare">
+            {fieldErrors.find((e) => e.field === 'blocks')!.message}
+          </p>
+        )}
         <Button
           type="button"
-          variant="ghost"
-          onClick={() => setPreviewMode(true)}
-          className="min-h-10 text-xs text-warm-ash hover:text-bone-white"
+          variant="default"
+          size="sm"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="bg-forge text-on-forge text-xs hover:brightness-110"
         >
-          <Icon name="visibility" size={16} />
-          Preview
+          {isSaving ? 'Saving...' : 'Save program'}
         </Button>
       </div>
 
@@ -241,11 +260,32 @@ function BuilderPage() {
       <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[320px_1fr] lg:gap-6 lg:px-4">
         {/* Sidebar: Program form */}
         <div className="px-4 pb-6 lg:px-0">
-          <ProgramForm draft={draft} onChange={handleDraftChange} />
+          <ProgramForm
+            draft={draft}
+            onChange={handleDraftChange}
+            error={fieldErrors.find((e) => e.field === 'programName')?.message}
+          />
         </div>
 
         {/* Main content: Block list */}
         <div className="px-4 lg:px-0">
+          {/* Weekend toggle (desktop only) */}
+          <div className="mb-3 hidden items-center justify-end md:flex">
+            <button
+              type="button"
+              onClick={() => setShowWeekends((prev) => !prev)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
+                showWeekends
+                  ? 'bg-forge/15 text-forge'
+                  : 'bg-surface-steel text-warm-ash hover:text-bone-white'
+              }`}
+              aria-label={showWeekends ? 'Hide weekends' : 'Show weekends'}
+            >
+              <Icon name={showWeekends ? 'date_range' : 'calendar_view_week'} size={14} />
+              {showWeekends ? '7 days' : '5 days'}
+            </button>
+          </div>
+
           {/* Desktop DnD builder */}
           <div className="hidden md:block">
             <BlockList
@@ -253,6 +293,8 @@ function BuilderPage() {
               onUpdate={handleUpdateDraft}
               onPickSession={handlePickSession}
               onCopyWeek={handleCopyWeek}
+              showWeekends={showWeekends}
+              fieldErrors={fieldErrors}
             />
           </div>
           {/* Mobile list editor */}
@@ -262,25 +304,14 @@ function BuilderPage() {
               onUpdate={handleUpdateDraft}
               onPickSession={handlePickSession}
               onCopyWeek={handleCopyWeek}
+              showWeekends={showWeekends}
+              onToggleWeekends={() => setShowWeekends((prev) => !prev)}
+              fieldErrors={fieldErrors}
             />
           </div>
         </div>
       </div>
 
-      {/* Save button */}
-      <div className="flex-shrink-0 px-4 pt-6 pb-8">
-        <Button
-          type="button"
-          variant="default"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="min-h-12 w-full bg-forge text-on-forge text-xs hover:brightness-110"
-        >
-          {isSaving ? 'Saving...' : 'Save program'}
-        </Button>
-
-        {error && <p className="mt-2 text-xs text-warning-flare">{error}</p>}
-      </div>
 
       {/* Session picker sheet */}
       <SessionPickerSheet
@@ -305,8 +336,6 @@ function BuilderPage() {
         />
       )}
 
-      {/* Program preview overlay */}
-      <ProgramPreview draft={draft} open={previewMode} onClose={() => setPreviewMode(false)} />
     </div>
   )
 }

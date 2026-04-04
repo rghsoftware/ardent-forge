@@ -813,6 +813,14 @@ export class SupabaseAdapter implements DataAdapter {
     if (error) throw error
   }
 
+  async touchSessionTemplateLastAssigned(id: string): Promise<void> {
+    const { error } = await this.client
+      .from('session_templates')
+      .update({ last_assigned_at: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
+  }
+
   // ---------------------------------------------------------------------------
   // Event item operations
   // ---------------------------------------------------------------------------

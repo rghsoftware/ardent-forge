@@ -156,6 +156,7 @@ const sessionTemplateRow: SessionTemplateRow = {
   time_cap: null,
   scoring: 'NONE',
   event_metadata: null,
+  last_assigned_at: null,
   created_at: now,
   updated_at: now,
 }

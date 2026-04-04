@@ -9,6 +9,7 @@ import { SyncListener } from '@/components/sync-listener'
 import { ChatRealtimeListener } from '@/components/chat-realtime-listener'
 import { resolveConfig } from '@/lib/config-store'
 import { initSupabaseFromConfig } from '@/lib/supabase'
+import { Toaster } from 'sonner'
 import './index.css'
 
 const router = createRouter({
@@ -44,6 +45,12 @@ function InnerApp() {
           <ChatRealtimeListener />
           <InnerApp />
         </AuthProvider>
+        <Toaster
+          position="bottom-center"
+          toastOptions={{
+            className: 'bg-surface-iron text-bone-white border-surface-steel',
+          }}
+        />
       </QueryClientProvider>
     </React.StrictMode>,
   )

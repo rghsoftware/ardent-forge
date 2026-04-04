@@ -367,6 +367,7 @@ export function toSessionTemplate(row: SessionTemplateRow): SessionTemplate {
       row.event_metadata != null
         ? eventMetadataSchema.parse(JSON.parse(row.event_metadata))
         : undefined,
+    lastAssignedAt: row.last_assigned_at ?? undefined,
   }
 }
 
