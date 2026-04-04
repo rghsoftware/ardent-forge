@@ -12,12 +12,17 @@ import type { IdleSnapshot } from '@/domain/types'
  *   discards anything that fails validation
  * - Cleans up the channel subscription on unmount (A-013)
  */
-export function useIdleSnapshot(): IdleSnapshot | null {
+export function useIdleSnapshot(
+  onConnectionStatus?: (status: 'connected' | 'reconnecting') => void,
+): IdleSnapshot | null {
   const [snapshot, setSnapshot] = useState<IdleSnapshot | null>(null)
 
   useEffect(() => {
     const client = getSupabaseClient()
-    if (!client) return
+    if (!client) {
+      console.error('[useIdleSnapshot] Supabase client not initialized -- /display requires app configuration')
+      return
+    }
 
     const channel = client
       .channel('display')
@@ -25,16 +30,22 @@ export function useIdleSnapshot(): IdleSnapshot | null {
         const parsed = idleSnapshotSchema.safeParse(payload.payload)
         if (parsed.success) {
           setSnapshot(parsed.data)
-        } else if (import.meta.env.DEV) {
-          console.warn('[useIdleSnapshot] Invalid payload:', parsed.error.issues)
+        } else {
+          console.error('[useIdleSnapshot] Invalid payload:', parsed.error.issues)
         }
       })
-      .subscribe()
+      .subscribe((status: string) => {
+        if (status === 'SUBSCRIBED') {
+          onConnectionStatus?.('connected')
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          onConnectionStatus?.('reconnecting')
+        }
+      })
 
     return () => {
       void client.removeChannel(channel)
     }
-  }, [])
+  }, [onConnectionStatus])
 
   return snapshot
 }

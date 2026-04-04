@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
-
-type DisplayMode = 'idle' | 'board' | 'focused'
+import type { DisplayMode } from './types'
 
 interface DisplayModeTransitionProps {
   mode: DisplayMode

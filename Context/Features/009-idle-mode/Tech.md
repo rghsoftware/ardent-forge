@@ -107,8 +107,8 @@ schedule = "*/1 * * * *"   # every 60 seconds
 - **(b) Create a Postgres VIEW or function** -- encapsulate the join; simpler Edge Function code. Added migration complexity for a view that has only one consumer.
 - **(c) Supabase RPC function** -- same encapsulation benefit as (b), callable via `.rpc()` from the Supabase JS client.
 
-**Chosen:** Option (a) for the initial implementation  
-**Rationale:** The Edge Function runs every 60 seconds under low load (< 50 users). The JOIN is not performance-critical. A raw query is transparent and does not add migration surface. If the query becomes complex to maintain, extracting to an RPC is a straightforward follow-up.
+**Chosen:** Option (c) -- Supabase RPC function  
+**Rationale:** The query was extracted to a `get_display_idle_sessions` Postgres function callable via `.rpc()`. This encapsulates the multi-table JOIN in a migration-managed SQL function, keeping the Edge Function code simple. The Edge Function calls `supabase.rpc('get_display_idle_sessions')` rather than embedding raw SQL.
 
 **Query sketch:**
 ```sql

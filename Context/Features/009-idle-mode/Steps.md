@@ -191,6 +191,36 @@
 
 ---
 
+### Phase 5: Review Remediation Tasks
+
+> Added from review 0006-idle-mode-review.md findings.
+
+- [ ] S011: Add tests for `useIdleSnapshot` hook
+  - **Assigned:** builder-frontend
+  - **Depends:** S008
+  - **Parallel:** false
+  - **Details:** Create `src/components/display/__tests__/use-idle-snapshot.test.ts`. Test scenarios: valid payload updates state; invalid payload discarded (state stays null); null client returns null without throwing and logs error; `removeChannel` called on unmount; connection status callback fires on SUBSCRIBED, CHANNEL_ERROR, TIMED_OUT, and CLOSED.
+
+- [ ] S012: Add tests for `DisplayModeTransition`
+  - **Assigned:** builder-frontend
+  - **Depends:** S007
+  - **Parallel:** false
+  - **Details:** Create `src/components/display/__tests__/display-mode-transition.test.tsx`. Test `getTransitionClasses` pure function: idle-to-board returns `duration-300` fade classes; board-to-focused returns `duration-[400ms]` zoom+fade classes; focused-to-board returns `duration-[400ms]` classes; null previousMode returns default fade classes.
+
+- [ ] S013: Add schema edge case tests for `IdleSnapshot`
+  - **Assigned:** builder-frontend
+  - **Depends:** S001-T
+  - **Parallel:** false
+  - **Details:** Add edge case tests to `src/domain/types/__tests__/display-snapshot.test.ts`. Scenarios: invalid session_type value (e.g., "YOGA") fails validation; empty scheduled_sessions array parses successfully; invalid ISO date string for server_time fails validation.
+
+- [ ] S014: Strengthen ClockDisplay server correction test assertion
+  - **Assigned:** builder-frontend
+  - **Depends:** S005-T
+  - **Parallel:** false
+  - **Details:** In `src/components/display/__tests__/clock-display.test.tsx`, update the server correction test to assert the rendered time matches the expected formatted output of the correction timestamp, not just that it differs from the initial time.
+
+---
+
 ## Acceptance Criteria
 
 - [ ] All 17 testable assertions from Spec.md verified (A-001 through A-017)

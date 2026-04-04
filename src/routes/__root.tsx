@@ -8,7 +8,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     if (
       location.pathname === '/setup' ||
       location.pathname.startsWith('/s/') ||
-      location.pathname.startsWith('/display')
+      location.pathname === '/display'
     )
       return
 

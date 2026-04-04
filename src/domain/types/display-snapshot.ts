@@ -88,16 +88,16 @@ export const idleSnapshotSchema = z.object({
   server_time: isoDateTime,
   scheduled_sessions: z.array(
     z.object({
-      display_name: z.string(),
-      session_name: z.string(),
+      display_name: z.string().min(1),
+      session_name: z.string().min(1),
       session_type: sessionTypeSchema,
-      day_label: z.string(),
+      day_label: z.string().min(1),
     }),
   ),
   next_session: z
     .object({
-      display_name: z.string(),
-      session_name: z.string(),
+      display_name: z.string().min(1),
+      session_name: z.string().min(1),
     })
     .nullable(),
 })

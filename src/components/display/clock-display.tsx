@@ -20,19 +20,8 @@ export function ClockDisplay({ format, serverTimeCorrection }: ClockDisplayProps
     }
   }, [serverTimeCorrection])
 
-  // Tick every second, applying the offset. Re-sync offset every 60s to handle
-  // NTP corrections and DST transitions on long-running displays.
   useEffect(() => {
-    let tickCount = 0
     const id = setInterval(() => {
-      tickCount += 1
-      if (tickCount >= 60 && serverTimeCorrection) {
-        const serverTime = new Date(serverTimeCorrection).getTime()
-        if (!Number.isNaN(serverTime)) {
-          offsetRef.current = serverTime - Date.now()
-        }
-        tickCount = 0
-      }
       setNow(new Date(Date.now() + offsetRef.current))
     }, 1000)
 

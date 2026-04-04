@@ -62,7 +62,14 @@ export async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const sessions = (sessionRows ?? []) as ScheduledSession[];
+    const rows = sessionRows ?? [];
+    const sessions: ScheduledSession[] = rows.filter(
+      (r: Record<string, unknown>) =>
+        typeof r.display_name === 'string' &&
+        typeof r.session_name === 'string' &&
+        typeof r.session_type === 'string' &&
+        typeof r.day_label === 'string',
+    );
 
     // -----------------------------------------------------------------------
     // 3. Build the IdleSnapshot payload

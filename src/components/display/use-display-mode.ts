@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { DisplaySnapshot, IdleSnapshot } from '@/domain/types'
-
-type DisplayMode = 'idle' | 'board' | 'focused'
+import type { DisplayMode } from './types'
 
 interface UseDisplayModeResult {
   mode: DisplayMode

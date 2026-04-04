@@ -20,13 +20,11 @@ export function IdleView({ idleSnapshot, clockFormat, connectionStatus }: IdleVi
 
   return (
     <div className="flex h-dvh flex-col bg-[#131313]">
-      {/* Upper section -- clock + date, centered and fills available space */}
       <div className="flex flex-1 flex-col items-center justify-center gap-4">
         <ClockDisplay format={clockFormat} serverTimeCorrection={idleSnapshot?.server_time} />
         <p className="font-body text-2xl text-secondary">{dateString}</p>
       </div>
 
-      {/* Scheduled sessions */}
       {visibleSessions.length > 0 && (
         <div className="flex flex-col items-center gap-4 px-8 pb-8">
           <h2 className="font-display text-xl uppercase tracking-widest text-secondary">
@@ -50,7 +48,6 @@ export function IdleView({ idleSnapshot, clockFormat, connectionStatus }: IdleVi
         </div>
       )}
 
-      {/* Next-up badge */}
       {nextSession && (
         <div className="flex justify-center px-8 pb-6">
           <div className="bg-[#353534] px-8 py-4">
@@ -61,7 +58,6 @@ export function IdleView({ idleSnapshot, clockFormat, connectionStatus }: IdleVi
         </div>
       )}
 
-      {/* Footer -- connection status */}
       <div className="flex w-full items-center justify-center bg-[#0E0E0E] py-3">
         <span className="font-body text-xl text-secondary">
           {connectionStatus === 'connected' ? 'Connected' : 'Reconnecting...'}
