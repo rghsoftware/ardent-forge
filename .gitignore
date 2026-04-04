@@ -23,6 +23,15 @@ dist-ssr
 *.sln
 *.sw?
 .claude/tasks/
+.claude/backups/
+.claude/hooks/
+.claude/worktrees/
+
+# Serena LSP server state
+.serena/
+
+# Hook runtime state
+hooks/skill-activation/.state/
 
 # Test artifacts
 test-results/
