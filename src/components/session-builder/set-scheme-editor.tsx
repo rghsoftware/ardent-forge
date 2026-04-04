@@ -462,7 +462,8 @@ function LoadSpecEditor({
   const availableTypes = allowedLoads
     ? LOAD_TYPES.filter(
         (t) =>
-          allowedLoads.includes(t.value) && (t.value !== 'percentageOf1RM' || exerciseSupports1RM),
+          (allowedLoads as LoadSpec['type'][]).includes(t.value) &&
+          (t.value !== 'percentageOf1RM' || exerciseSupports1RM),
       )
     : LOAD_TYPES.filter((t) => t.value !== 'percentageOf1RM' || exerciseSupports1RM)
 
@@ -1122,7 +1123,7 @@ export function SetSchemeEditor({
   const visibleGroups = isFiltered
     ? SCHEME_GROUPS.map((group) => ({
         ...group,
-        types: group.types.filter((t) => defaultTypes.includes(t.value as SetSchemeType)),
+        types: group.types.filter((t) => (defaultTypes as SetSchemeType[]).includes(t.value)),
       })).filter((group) => group.types.length > 0)
     : SCHEME_GROUPS
 

@@ -367,7 +367,9 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
           <>
             {visibleFields}
             {collapsedLabels.length > 0 && (
-              <CollapsedFieldsRow labels={collapsedLabels}>{collapsedFields}</CollapsedFieldsRow>
+              <CollapsedFieldsRow labels={collapsedLabels as [string, ...string[]]}>
+                {collapsedFields}
+              </CollapsedFieldsRow>
             )}
           </>
         )

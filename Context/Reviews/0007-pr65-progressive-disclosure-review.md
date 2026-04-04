@@ -96,7 +96,7 @@
 - **Severity:** Medium
 - **Detail:** Both maps are typed as `Record<string, string>` with `??` fallbacks. If a new `SetScheme` variant is added to the Zod union, the label silently falls back to `'STRENGTH'` for group name and raw type string for label. Type as `Record<SetSchemeType, string>` with `satisfies` for compile-time exhaustiveness, matching the pattern in `visibility-maps.ts`.
 - **Status:** ✅ Fixed
-- **Resolution:** Typed as Record<SetSchemeType, string> via Object.fromEntries + as assertion; removed ?? fallbacks
+- **Resolution:** Typed as Record<SetSchemeType, string> via Object.fromEntries + as assertion; removed ?? fallbacks. `satisfies` is not applicable to fromEntries (TypeScript infers `{ [k: string]: ... }` with no key completeness guarantee); as-assertion is the correct approach here. Also fixed 3 pre-existing TS errors introduced by P7 fixes: collapsedLabels cast to [string, ...string[]], allowedLoads.includes cast to LoadSpec['type'][], defaultTypes.includes cast to SetSchemeType[].
 
 #### [TASK] P7-011: Tighten `BLOCK_TYPE_STYLES` and `SESSION_TYPE_BADGE` typing
 
@@ -152,7 +152,7 @@
 - [x] All [TASK] findings resolved (fixed inline -- no Steps.md tasks needed)
 - [x] All [ADR] findings deferred to backlog
 - [x] All [RULE] findings applied
-- [ ] Review verified by review-verify agent
+- [x] Review verified by review-verify agent
 
 ## Resolution Summary
 
