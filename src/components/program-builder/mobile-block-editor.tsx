@@ -19,6 +19,7 @@ import {
   addWeekToBlock,
   removeWeekFromBlock,
   removeSession,
+  weeksMatch,
 } from './builder-state'
 import type { ProgramDraft, BlockDraft, SessionDraft, ValidationError } from './builder-state'
 import type { BlockType } from '@/domain/types'
@@ -26,6 +27,7 @@ import {
   BLOCK_TYPES,
   DAY_ABBREVIATIONS,
   DAY_ORDER,
+  WEEKDAY_ORDER,
   SESSION_TINT,
   SESSION_TYPE_BADGE,
 } from './constants'
@@ -48,6 +50,8 @@ interface MobileBlockEditorProps {
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek: (sourceWeekClientId: string) => void
+  showWeekends: boolean
+  onToggleWeekends: () => void
   fieldErrors?: ValidationError[]
 }
 
@@ -56,6 +60,8 @@ export function MobileBlockEditor({
   onUpdate,
   onPickSession,
   onCopyWeek,
+  showWeekends,
+  onToggleWeekends,
   fieldErrors = [],
 }: MobileBlockEditorProps) {
   const [newBlockId, setNewBlockId] = useState<string | null>(null)
@@ -76,6 +82,22 @@ export function MobileBlockEditor({
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={onToggleWeekends}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
+            showWeekends
+              ? 'bg-forge/15 text-forge'
+              : 'bg-surface-steel text-warm-ash hover:text-bone-white'
+          }`}
+          aria-label={showWeekends ? 'Hide weekends' : 'Show weekends'}
+        >
+          <Icon name={showWeekends ? 'date_range' : 'calendar_view_week'} size={14} />
+          {showWeekends ? '7 days' : '5 days'}
+        </button>
+      </div>
+
       {draft.blocks.map((block, blockIndex) => (
         <MobileBlockCard
           key={block.clientId}
@@ -85,6 +107,7 @@ export function MobileBlockEditor({
           onUpdate={onUpdate}
           onPickSession={onPickSession}
           onCopyWeek={onCopyWeek}
+          showWeekends={showWeekends}
           isNew={block.clientId === newBlockId}
           errors={fieldErrors.filter((e) => e.blockClientId === block.clientId)}
         />
@@ -120,6 +143,7 @@ interface MobileBlockCardProps {
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek: (sourceWeekClientId: string) => void
+  showWeekends: boolean
   isNew?: boolean
   errors?: ValidationError[]
 }
@@ -131,6 +155,7 @@ function MobileBlockCard({
   onUpdate,
   onPickSession,
   onCopyWeek,
+  showWeekends,
   isNew,
   errors = [],
 }: MobileBlockCardProps) {
@@ -138,6 +163,20 @@ function MobileBlockCard({
   const [isEditingName, setIsEditingName] = useState(false)
   const [newWeekId, setNewWeekId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [manuallyExpanded, setManuallyExpanded] = useState<Set<string>>(new Set())
+
+  // Determine which weeks match the first week in the block
+  const collapsibleWeeks = useMemo(() => {
+    if (block.weeks.length < 2) return new Map<string, number>()
+    const first = block.weeks[0]
+    const map = new Map<string, number>()
+    for (let i = 1; i < block.weeks.length; i++) {
+      if (weeksMatch(first, block.weeks[i]) && first.sessions.length > 0) {
+        map.set(block.weeks[i].clientId, 1) // references week 1
+      }
+    }
+    return map
+  }, [block.weeks])
 
   const nameError = errors.find((e) => e.field === 'blockName')?.message
   const weeksError = errors.find((e) => e.field === 'blockWeeks')?.message
@@ -324,20 +363,62 @@ function MobileBlockCard({
                 ))}
               </ToggleGroup>
 
-              {block.weeks.map((week, weekIndex) => (
-                <MobileWeekSection
-                  key={week.clientId}
-                  weekIndex={weekIndex}
-                  weekClientId={week.clientId}
-                  sessions={week.sessions}
-                  draft={draft}
-                  blockClientId={block.clientId}
-                  onUpdate={onUpdate}
-                  onPickSession={onPickSession}
-                  onCopyWeek={onCopyWeek}
-                  isNew={week.clientId === newWeekId}
-                />
-              ))}
+              {block.weeks.map((week, weekIndex) => {
+                const isCollapsible = collapsibleWeeks.has(week.clientId)
+                const isForceExpanded = manuallyExpanded.has(week.clientId)
+
+                if (isCollapsible && !isForceExpanded) {
+                  const refWeekNum = collapsibleWeeks.get(week.clientId)!
+                  const sessionTypes = [...new Set(week.sessions.map((s) => s.sessionType))]
+                  return (
+                    <div
+                      key={week.clientId}
+                      className="flex items-center gap-2 border-t border-warm-ash/10 pt-3 mt-1"
+                    >
+                      <span className="text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
+                        Week {weekIndex + 1}
+                      </span>
+                      <span className="text-[10px] text-warm-ash/40">
+                        same as Week {refWeekNum}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {sessionTypes.map((st) => (
+                          <span
+                            key={st}
+                            className={`px-1 py-px text-[9px] font-medium uppercase tracking-wider ${SESSION_TYPE_BADGE[st] ?? 'bg-surface-steel text-warm-ash'}`}
+                          >
+                            {st}
+                          </span>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setManuallyExpanded((prev) => new Set([...prev, week.clientId]))}
+                        className="min-h-10 p-1 text-warm-ash/40 active:text-bone-white"
+                        aria-label={`Expand week ${weekIndex + 1}`}
+                      >
+                        <Icon name="expand_more" size={14} />
+                      </button>
+                    </div>
+                  )
+                }
+
+                return (
+                  <MobileWeekSection
+                    key={week.clientId}
+                    weekIndex={weekIndex}
+                    weekClientId={week.clientId}
+                    sessions={week.sessions}
+                    draft={draft}
+                    blockClientId={block.clientId}
+                    onUpdate={onUpdate}
+                    onPickSession={onPickSession}
+                    onCopyWeek={onCopyWeek}
+                    showWeekends={showWeekends}
+                    isNew={week.clientId === newWeekId}
+                  />
+                )
+              })}
 
               <Button
                 type="button"
@@ -377,6 +458,7 @@ interface MobileWeekSectionProps {
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek: (sourceWeekClientId: string) => void
+  showWeekends: boolean
   isNew?: boolean
 }
 
@@ -389,6 +471,7 @@ function MobileWeekSection({
   onUpdate,
   onPickSession,
   onCopyWeek,
+  showWeekends,
   isNew,
 }: MobileWeekSectionProps) {
   const [showWeekDeleteConfirm, setShowWeekDeleteConfirm] = useState(false)
@@ -397,6 +480,11 @@ function MobileWeekSection({
   const sessionsByDay = new Map(
     sessions.filter((s) => s.dayOfWeek !== null).map((s) => [s.dayOfWeek!, s]),
   )
+
+  const weekendSessionCount = useMemo(() => {
+    if (showWeekends) return 0
+    return sessions.filter((s) => s.dayOfWeek === 0 || s.dayOfWeek === 6).length
+  }, [showWeekends, sessions])
 
   const handleRemoveWeek = useCallback(() => {
     onUpdate(removeWeekFromBlock(draft, blockClientId, weekClientId))
@@ -440,7 +528,7 @@ function MobileWeekSection({
       </div>
 
       <div className="flex flex-col gap-1">
-        {DAY_ORDER.map((dayOfWeek) => {
+        {(showWeekends ? DAY_ORDER : WEEKDAY_ORDER).map((dayOfWeek) => {
           const session = sessionsByDay.get(dayOfWeek)
 
           return (
@@ -456,6 +544,12 @@ function MobileWeekSection({
           )
         })}
       </div>
+
+      {!showWeekends && weekendSessionCount > 0 && (
+        <p className="px-1 text-[10px] text-warm-ash/50">
+          +{weekendSessionCount} weekend {weekendSessionCount === 1 ? 'session' : 'sessions'}
+        </p>
+      )}
 
       <ConfirmDeleteDialog
         open={showWeekDeleteConfirm}
@@ -516,14 +610,16 @@ function MobileDayRow({
       <button
         type="button"
         onClick={handleTap}
-        className="flex min-h-12 items-center gap-3 bg-surface-charcoal px-3 py-2 text-left transition-colors hover:bg-surface-steel"
+        className="flex min-h-12 items-center gap-3 bg-surface-gunmetal/40 px-3 py-2 text-left transition-colors active:bg-surface-steel"
         aria-label={`Assign session to ${DAY_ABBREVIATIONS[dayOfWeek]}`}
       >
-        <span className="w-8 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
+        <span className="w-8 text-[11px] font-medium uppercase tracking-wider text-warm-ash/40">
           {DAY_ABBREVIATIONS[dayOfWeek]}
         </span>
-        <span className="flex-1 text-xs text-warm-ash/40">Tap to assign</span>
-        <Icon name="add" size={16} className="text-warm-ash/30" />
+        <span className="flex-1 text-[10px] font-medium uppercase tracking-wider text-warm-ash/20">
+          Rest
+        </span>
+        <Icon name="add" size={14} className="text-warm-ash/20" />
       </button>
     )
   }

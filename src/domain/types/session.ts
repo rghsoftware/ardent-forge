@@ -57,6 +57,7 @@ export const sessionTemplateSchema = syncableEntitySchema.extend({
   scoring: scoringTypeSchema,
   // EV-1: only populated when category = 'EVENT'; mutual exclusivity with activity groups enforced at composite level
   eventMetadata: eventMetadataSchema.optional(),
+  lastAssignedAt: z.string().datetime().optional(),
 })
 export type SessionTemplate = z.infer<typeof sessionTemplateSchema>
 

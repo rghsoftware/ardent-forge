@@ -248,6 +248,24 @@ export function copyWeek(
 }
 
 // ---------------------------------------------------------------------------
+// Week comparison -- determines if two weeks have the same session layout
+// ---------------------------------------------------------------------------
+
+export function weeksMatch(a: WeekDraft, b: WeekDraft): boolean {
+  if (a.sessions.length !== b.sessions.length) return false
+  if (a.sessions.length === 0) return true
+
+  const sortedA = [...a.sessions].sort((x, y) => (x.dayOfWeek ?? -1) - (y.dayOfWeek ?? -1))
+  const sortedB = [...b.sessions].sort((x, y) => (x.dayOfWeek ?? -1) - (y.dayOfWeek ?? -1))
+
+  return sortedA.every(
+    (sa, i) =>
+      sa.dayOfWeek === sortedB[i].dayOfWeek &&
+      sa.sessionTemplateId === sortedB[i].sessionTemplateId,
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
 

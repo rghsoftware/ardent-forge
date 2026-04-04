@@ -12,7 +12,10 @@ import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SessionTemplateForm } from '@/components/session-builder/session-template-form'
-import { useSessionTemplates } from '@/hooks/use-session-templates'
+import {
+  useSessionTemplates,
+  useTouchSessionTemplateLastAssigned,
+} from '@/hooks/use-session-templates'
 import type { SessionType, SessionTemplate } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
@@ -32,6 +35,8 @@ const SESSION_FILTERS: Array<{ value: SessionType | 'ALL'; label: string }> = [
 // SessionPickerSheet
 // ---------------------------------------------------------------------------
 
+const MAX_RECENT = 5
+
 interface SessionPickerSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -47,9 +52,22 @@ export function SessionPickerSheet({
 }: SessionPickerSheetProps) {
   const navigate = useNavigate()
   const { data: templates = [], isLoading } = useSessionTemplates(userId)
+  const touchLastAssigned = useTouchSessionTemplateLastAssigned()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<SessionType | 'ALL'>('ALL')
   const [showCreate, setShowCreate] = useState(false)
+
+  const isDefaultView = filter === 'ALL' && !search.trim()
+
+  const recentTemplates = useMemo(() => {
+    if (!isDefaultView) return []
+    return templates
+      .filter((t) => t.lastAssignedAt)
+      .sort((a, b) => (b.lastAssignedAt! > a.lastAssignedAt! ? 1 : -1))
+      .slice(0, MAX_RECENT)
+  }, [templates, isDefaultView])
+
+  const recentIds = useMemo(() => new Set(recentTemplates.map((t) => t.id)), [recentTemplates])
 
   // Filter templates by type and search query
   const filtered = useMemo(() => {
@@ -72,12 +90,13 @@ export function SessionPickerSheet({
   const handleSelect = useCallback(
     (template: SessionTemplate) => {
       onSelect(template.id, template.name, template.category)
+      touchLastAssigned.mutate(template.id)
       onOpenChange(false)
       setSearch('')
       setFilter('ALL')
       setShowCreate(false)
     },
-    [onSelect, onOpenChange],
+    [onSelect, onOpenChange, touchLastAssigned],
   )
 
   const handleCreated = useCallback(
@@ -170,49 +189,40 @@ export function SessionPickerSheet({
                   <Skeleton className="h-14 w-full bg-surface-iron" />
                   <Skeleton className="h-14 w-full bg-surface-iron" />
                 </div>
-              ) : filtered.length === 0 ? (
+              ) : filtered.length === 0 && recentTemplates.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-12">
                   <Icon name="search_off" size={36} className="text-warm-ash/40" />
                   <p className="text-center text-xs text-warm-ash/60">No templates found</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-1">
-                  {filtered.map((template) => {
-                    const isEvent = template.category === 'EVENT'
-                    return (
-                      <button
+                  {recentTemplates.length > 0 && (
+                    <>
+                      <p className="px-1 pb-1 text-[10px] font-medium uppercase tracking-wider text-warm-ash/50">
+                        Recent
+                      </p>
+                      {recentTemplates.map((template) => (
+                        <TemplateButton
+                          key={template.id}
+                          template={template}
+                          onSelect={handleSelect}
+                        />
+                      ))}
+                      <div className="my-2 border-t border-warm-ash/10" />
+                      <p className="px-1 pb-1 text-[10px] font-medium uppercase tracking-wider text-warm-ash/50">
+                        All templates
+                      </p>
+                    </>
+                  )}
+                  {filtered
+                    .filter((t) => !recentIds.has(t.id))
+                    .map((template) => (
+                      <TemplateButton
                         key={template.id}
-                        type="button"
-                        onClick={() => handleSelect(template)}
-                        className={`flex w-full items-center gap-3 px-3 py-3 text-left transition-colors ${
-                          isEvent
-                            ? 'border-l-2 border-ember bg-surface-iron hover:bg-surface-gunmetal'
-                            : 'bg-surface-iron hover:bg-surface-gunmetal'
-                        }`}
-                      >
-                        {isEvent && (
-                          <Icon name="flag" size={16} fill className="shrink-0 text-ember" />
-                        )}
-                        <div className="flex flex-1 flex-col gap-1">
-                          <span
-                            className={`text-sm font-medium text-bone-white ${
-                              isEvent ? 'font-display uppercase tracking-wider' : 'font-display'
-                            }`}
-                          >
-                            {template.name}
-                          </span>
-                          <span
-                            className={`inline-block self-start px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ${
-                              isEvent ? 'bg-ember/15 text-ember' : 'bg-surface-steel text-warm-ash'
-                            }`}
-                          >
-                            {template.category}
-                          </span>
-                        </div>
-                        <Icon name="chevron_right" size={18} className="text-warm-ash/40" />
-                      </button>
-                    )
-                  })}
+                        template={template}
+                        onSelect={handleSelect}
+                      />
+                    ))}
                 </div>
               )}
             </div>
@@ -233,5 +243,49 @@ export function SessionPickerSheet({
         )}
       </SheetContent>
     </Sheet>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// TemplateButton -- shared row used in both Recent and All sections
+// ---------------------------------------------------------------------------
+
+function TemplateButton({
+  template,
+  onSelect,
+}: {
+  template: SessionTemplate
+  onSelect: (template: SessionTemplate) => void
+}) {
+  const isEvent = template.category === 'EVENT'
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(template)}
+      className={`flex w-full items-center gap-3 px-3 py-3 text-left transition-colors ${
+        isEvent
+          ? 'border-l-2 border-ember bg-surface-iron hover:bg-surface-gunmetal'
+          : 'bg-surface-iron hover:bg-surface-gunmetal'
+      }`}
+    >
+      {isEvent && <Icon name="flag" size={16} fill className="shrink-0 text-ember" />}
+      <div className="flex flex-1 flex-col gap-1">
+        <span
+          className={`text-sm font-medium text-bone-white ${
+            isEvent ? 'font-display uppercase tracking-wider' : 'font-display'
+          }`}
+        >
+          {template.name}
+        </span>
+        <span
+          className={`inline-block self-start px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ${
+            isEvent ? 'bg-ember/15 text-ember' : 'bg-surface-steel text-warm-ash'
+          }`}
+        >
+          {template.category}
+        </span>
+      </div>
+      <Icon name="chevron_right" size={18} className="text-warm-ash/40" />
+    </button>
   )
 }

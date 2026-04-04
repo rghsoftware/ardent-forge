@@ -13,10 +13,10 @@ import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { WeekGrid } from './week-grid'
 import { ConfirmDeleteDialog } from './confirm-delete-dialog'
-import { removeBlock, addWeekToBlock } from './builder-state'
+import { removeBlock, addWeekToBlock, weeksMatch } from './builder-state'
 import type { BlockDraft, ProgramDraft, ValidationError } from './builder-state'
 import type { BlockType } from '@/domain/types'
-import { BLOCK_TYPES } from './constants'
+import { BLOCK_TYPES, SESSION_TYPE_BADGE } from './constants'
 import type { DayOfWeek } from './constants'
 
 const BLOCK_TYPE_STYLES: Record<string, string> = {
@@ -56,6 +56,20 @@ export function BlockEditor({
   const [isEditingName, setIsEditingName] = useState(false)
   const [newWeekId, setNewWeekId] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [manuallyExpanded, setManuallyExpanded] = useState<Set<string>>(new Set())
+
+  // Determine which weeks match the first week in the block
+  const collapsibleWeeks = useMemo(() => {
+    if (block.weeks.length < 2) return new Map<string, number>()
+    const first = block.weeks[0]
+    const map = new Map<string, number>()
+    for (let i = 1; i < block.weeks.length; i++) {
+      if (weeksMatch(first, block.weeks[i]) && first.sessions.length > 0) {
+        map.set(block.weeks[i].clientId, 1) // references week 1
+      }
+    }
+    return map
+  }, [block.weeks])
 
   const nameError = errors.find((e) => e.field === 'blockName')?.message
   const weeksError = errors.find((e) => e.field === 'blockWeeks')?.message
@@ -273,20 +287,61 @@ export function BlockEditor({
               ))}
             </ToggleGroup>
 
-            {block.weeks.map((week, weekIndex) => (
-              <WeekGrid
-                key={week.clientId}
-                week={week}
-                weekIndex={weekIndex}
-                draft={draft}
-                blockClientId={block.clientId}
-                onUpdate={onUpdate}
-                onPickSession={onPickSession}
-                onCopyWeek={handleCopyWeek}
-                showWeekends={showWeekends}
-                isNew={week.clientId === newWeekId}
-              />
-            ))}
+            {block.weeks.map((week, weekIndex) => {
+              const isCollapsible = collapsibleWeeks.has(week.clientId)
+              const isForceExpanded = manuallyExpanded.has(week.clientId)
+
+              if (isCollapsible && !isForceExpanded) {
+                const refWeekNum = collapsibleWeeks.get(week.clientId)!
+                const sessionTypes = [...new Set(week.sessions.map((s) => s.sessionType))]
+                return (
+                  <div
+                    key={week.clientId}
+                    className="flex items-center gap-2 border-t border-warm-ash/10 pt-3 mt-1"
+                  >
+                    <span className="text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
+                      Week {weekIndex + 1}
+                    </span>
+                    <span className="text-[10px] text-warm-ash/40">
+                      same as Week {refWeekNum}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {sessionTypes.map((st) => (
+                        <span
+                          key={st}
+                          className={`px-1 py-px text-[9px] font-medium uppercase tracking-wider ${SESSION_TYPE_BADGE[st] ?? 'bg-surface-steel text-warm-ash'}`}
+                        >
+                          {st}
+                        </span>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setManuallyExpanded((prev) => new Set([...prev, week.clientId]))}
+                      className="p-1 text-warm-ash/40 hover:text-bone-white"
+                      aria-label={`Expand week ${weekIndex + 1}`}
+                    >
+                      <Icon name="expand_more" size={14} />
+                    </button>
+                  </div>
+                )
+              }
+
+              return (
+                <WeekGrid
+                  key={week.clientId}
+                  week={week}
+                  weekIndex={weekIndex}
+                  draft={draft}
+                  blockClientId={block.clientId}
+                  onUpdate={onUpdate}
+                  onPickSession={onPickSession}
+                  onCopyWeek={handleCopyWeek}
+                  showWeekends={showWeekends}
+                  isNew={week.clientId === newWeekId}
+                />
+              )
+            })}
 
             <Button
               type="button"

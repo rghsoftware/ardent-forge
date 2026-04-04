@@ -304,6 +304,8 @@ function BuilderPage() {
               onUpdate={handleUpdateDraft}
               onPickSession={handlePickSession}
               onCopyWeek={handleCopyWeek}
+              showWeekends={showWeekends}
+              onToggleWeekends={() => setShowWeekends((prev) => !prev)}
               fieldErrors={fieldErrors}
             />
           </div>

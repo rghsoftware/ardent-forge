@@ -1517,6 +1517,7 @@ const sessionTemplateRowFull: SessionTemplateRow = {
   time_cap: JSON.stringify({ seconds: 3600 }),
   scoring: 'NONE',
   event_metadata: null,
+  last_assigned_at: null,
   created_at: now,
   updated_at: now,
 }
@@ -1531,6 +1532,7 @@ const sessionTemplateRowNulls: SessionTemplateRow = {
   time_cap: null,
   scoring: 'FOR_TIME',
   event_metadata: null,
+  last_assigned_at: null,
   created_at: now,
   updated_at: now,
 }

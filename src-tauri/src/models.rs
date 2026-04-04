@@ -170,6 +170,8 @@ pub struct SessionTemplateRow {
     pub time_cap: Option<String>,            // JSON Duration
     pub scoring: String,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub last_assigned_at: Option<i64>,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub updated_at: Option<i64>,

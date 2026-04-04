@@ -77,6 +77,7 @@ export const DAY_ABBREVIATIONS: Record<DayOfWeek, string> = {
 // ---------------------------------------------------------------------------
 
 export const DAY_ORDER: DayOfWeek[] = [1, 2, 3, 4, 5, 6, 0]
+export const WEEKDAY_ORDER: DayOfWeek[] = [1, 2, 3, 4, 5]
 
 // ---------------------------------------------------------------------------
 // Source labels for program source badges

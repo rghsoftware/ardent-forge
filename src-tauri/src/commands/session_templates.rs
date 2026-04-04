@@ -447,6 +447,26 @@ pub async fn update_session_template_full(
     })
 }
 
+/// Updates the `last_assigned_at` timestamp on a session template to the
+/// current time. Called when a template is assigned to a program session slot.
+#[tauri::command]
+pub async fn touch_session_template_last_assigned(
+    pool: State<'_, SqlitePool>,
+    id: String,
+) -> Result<(), AppError> {
+    let now = now_unix();
+    let result = sqlx::query("UPDATE session_templates SET last_assigned_at = ? WHERE id = ?")
+        .bind(now)
+        .bind(&id)
+        .execute(pool.inner())
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("SessionTemplate", &id));
+    }
+    Ok(())
+}
+
 /// Deletes a session template and all its associated activity groups and
 /// activities (cascaded via foreign key constraints).
 ///

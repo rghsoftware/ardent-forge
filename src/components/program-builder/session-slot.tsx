@@ -77,10 +77,17 @@ export function SessionSlot({
       <button
         type="button"
         onClick={handleClick}
-        className="flex min-h-[56px] w-full cursor-pointer items-center justify-center border border-dashed border-warm-ash/20 bg-surface-gunmetal transition-colors hover:border-warm-ash/40 hover:bg-surface-steel"
+        className="group flex min-h-[56px] w-full cursor-pointer flex-col items-center justify-center bg-surface-gunmetal/40 transition-colors hover:bg-surface-steel"
         aria-label={`Assign session to day ${dayOfWeek}`}
       >
-        <Icon name="add" size={18} className="text-warm-ash/40" />
+        <span className="text-[10px] font-medium uppercase tracking-wider text-warm-ash/25 transition-opacity group-hover:opacity-0">
+          Rest
+        </span>
+        <Icon
+          name="add"
+          size={16}
+          className="absolute text-warm-ash/40 opacity-0 transition-opacity group-hover:opacity-100"
+        />
       </button>
     )
   }
