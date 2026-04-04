@@ -67,6 +67,12 @@ export const displaySnapshotSchema = z.object({
 export type DisplaySnapshot = z.infer<typeof displaySnapshotSchema>
 
 // ---------------------------------------------------------------------------
+// DisplayConnectionStatus -- shared connection state for subscriber and store
+// ---------------------------------------------------------------------------
+
+export type DisplayConnectionStatus = 'connected' | 'reconnecting' | 'disconnected'
+
+// ---------------------------------------------------------------------------
 // DisplayEventType -- the types of events sent over the broadcast channel
 // ---------------------------------------------------------------------------
 
