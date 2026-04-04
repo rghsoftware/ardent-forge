@@ -39,8 +39,8 @@ export const mediaStatusBroadcastPayloadSchema = z.object({
   message_id: entityId,
   attachment_id: entityId,
   status: mediaStatusSchema,
-  thumbnail_url: z.string().url().optional(),
-  playback_url: z.string().url().optional(),
+  thumbnail_url: z.url().optional(),
+  playback_url: z.url().optional(),
 })
 
 export type MediaStatusBroadcastPayload = z.infer<typeof mediaStatusBroadcastPayloadSchema>

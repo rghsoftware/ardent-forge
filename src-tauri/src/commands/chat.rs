@@ -672,10 +672,12 @@ pub async fn get_media_attachments(
         return Ok(Vec::new());
     }
 
-    let placeholders = message_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-    let sql = format!(
-        "SELECT * FROM media_attachments WHERE message_id IN ({placeholders})"
-    );
+    let placeholders = message_ids
+        .iter()
+        .map(|_| "?")
+        .collect::<Vec<_>>()
+        .join(",");
+    let sql = format!("SELECT * FROM media_attachments WHERE message_id IN ({placeholders})");
     let mut query = sqlx::query_as::<_, MediaAttachmentRow>(&sql);
     for mid in &message_ids {
         query = query.bind(mid);
