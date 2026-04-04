@@ -3,6 +3,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import {
   initDisplayPublisher,
   configureDisplayPublisher,
+  isPublisherReady,
   publishFocusEvent,
   publishUnfocusEvent,
   destroyDisplayPublisher,
@@ -57,7 +58,12 @@ export function useDisplayBroadcast(userId: string): UseDisplayBroadcastReturn {
   // 2. Read user profile (cached via TanStack Query)
   // -----------------------------------------------------------------------
 
-  const { data: profile } = useUserProfile(userId)
+  const { data: profile, error: profileError } = useUserProfile(userId)
+
+  if (profileError) {
+    console.warn('[display-broadcast] Failed to load user profile, using defaults', profileError)
+  }
+
   const displayVisible = profile?.displayVisible ?? true
 
   // -----------------------------------------------------------------------
@@ -72,7 +78,11 @@ export function useDisplayBroadcast(userId: string): UseDisplayBroadcastReturn {
   // 4. Build exercise name map
   // -----------------------------------------------------------------------
 
-  const { data: exercises } = useExercises()
+  const { data: exercises, error: exercisesError } = useExercises()
+
+  if (exercisesError) {
+    console.warn('[display-broadcast] Failed to load exercises, exercise names will be unavailable', exercisesError)
+  }
 
   const exerciseNameMap = useMemo<Record<string, string>>(() => {
     if (!exercises) return {}
@@ -120,7 +130,7 @@ export function useDisplayBroadcast(userId: string): UseDisplayBroadcastReturn {
     publishUnfocusEvent()
   }, [])
 
-  const isBroadcasting = workoutLog !== null && displayVisible
+  const isBroadcasting = workoutLog !== null && displayVisible && isPublisherReady()
 
   return { publishFocus, publishUnfocus, isBroadcasting }
 }

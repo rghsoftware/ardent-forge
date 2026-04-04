@@ -42,13 +42,18 @@ export function VideoPlayer({ signedUrl, onClose }: VideoPlayerProps) {
         } else if (video!.canPlayType('application/vnd.apple.mpegurl')) {
           // Safari native HLS
           video!.src = signedUrl
+          video!.addEventListener('error', () => setError(true))
         } else {
           setError(true)
         }
-      } catch {
+      } catch (err) {
+        console.warn('[video-player] hls.js import failed, falling back to native:', err)
         // hls.js not available, try native
         if (!destroyed && video) {
           video.src = signedUrl
+          video.addEventListener('error', () => setError(true))
+        } else {
+          setError(true)
         }
       }
     }
@@ -125,7 +130,6 @@ export function VideoPlayer({ signedUrl, onClose }: VideoPlayerProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-surface-pit/90"
       onClick={handleBackdropClick}
     >
-      {/* Close button */}
       <button
         type="button"
         onClick={onClose}
@@ -149,7 +153,6 @@ export function VideoPlayer({ signedUrl, onClose }: VideoPlayerProps) {
           />
         )}
 
-        {/* Controls bar */}
         <div className="flex items-center gap-3 bg-surface-charcoal px-3 py-2">
           <button
             type="button"

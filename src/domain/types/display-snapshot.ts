@@ -24,21 +24,21 @@ export type RestTimerState = z.infer<typeof restTimerStateSchema>
 // ---------------------------------------------------------------------------
 
 const displayWeightSchema = z.object({
-  value: z.number(),
-  unit: z.string(),
+  value: z.number().nonnegative(),
+  unit: z.enum(['lb', 'kg']),
 })
 
 export const displaySetSchema = z.object({
   set_number: z.number().int().min(1),
   prescribed: z
     .object({
-      reps: z.number(),
+      reps: z.number().int().nonnegative(),
       weight: displayWeightSchema,
     })
     .optional(),
   actual: z
     .object({
-      reps: z.number(),
+      reps: z.number().int().nonnegative(),
       weight: displayWeightSchema,
     })
     .optional(),

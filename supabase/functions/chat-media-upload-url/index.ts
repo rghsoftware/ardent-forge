@@ -29,9 +29,22 @@ export async function handler(req: Request): Promise<Response> {
       });
     }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("Missing required environment configuration");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
+      supabaseUrl,
+      supabaseAnonKey,
       { global: { headers: { Authorization: authHeader } } },
     );
 
@@ -49,7 +62,18 @@ export async function handler(req: Request): Promise<Response> {
     // -----------------------------------------------------------------------
     // 2. Validate request body
     // -----------------------------------------------------------------------
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
     const parsed = uploadUrlRequestSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -82,9 +106,21 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     // Read API token from Supabase Vault
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceRoleKey) {
+      console.error("Missing required environment configuration");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      supabaseUrl,
+      serviceRoleKey,
     );
 
     const { data: secrets, error: vaultError } = await supabaseAdmin.rpc(
@@ -150,9 +186,7 @@ export async function handler(req: Request): Promise<Response> {
     const cfData = await cfResponse.json();
     // Cloudflare returns the TUS URL in the response header "location" for
     // direct creator uploads, and the stream UID in the result.
-    const tusUrl =
-      cfResponse.headers.get("location") ??
-      cfResponse.headers.get("stream-media-id");
+    const tusUrl = cfResponse.headers.get("location");
     const assetId = cfData.result?.uid;
 
     if (!tusUrl || !assetId) {

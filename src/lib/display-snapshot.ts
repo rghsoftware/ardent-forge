@@ -65,7 +65,7 @@ function toDisplaySet(loggedSet: {
       reps: loggedSet.prescribed.reps,
       weight: {
         value: loggedSet.prescribed.weight.value,
-        unit: loggedSet.prescribed.weight.unit,
+        unit: loggedSet.prescribed.weight.unit as 'lb' | 'kg',
       },
     }
   }
@@ -75,7 +75,7 @@ function toDisplaySet(loggedSet: {
       reps: loggedSet.actualReps,
       weight: {
         value: loggedSet.actualWeight.value,
-        unit: loggedSet.actualWeight.unit,
+        unit: loggedSet.actualWeight.unit as 'lb' | 'kg',
       },
     }
   }
@@ -106,8 +106,8 @@ function toRestTimerState(
 // ---------------------------------------------------------------------------
 
 /**
- * Pure function that projects the active-workout store state plus external
- * context into a DisplaySnapshot suitable for broadcast to remote displays.
+ * Projects the active-workout store state plus external context into a
+ * DisplaySnapshot suitable for broadcast to remote displays.
  *
  * Precondition: the caller must verify that `state.workoutLog` is non-null
  * and that the user has opted in to display broadcasting before calling.
@@ -125,7 +125,7 @@ export function buildDisplaySnapshot(
   const allActivities = flattenActivities(state.loggedGroups)
   const totalExercises = Math.max(allActivities.length, 1)
 
-  // Current exercise is the last activity in the last group (most recently active).
+  // Current exercise is the last entry in the flattened activity list (most recently active).
   // Falls back to sensible defaults when no activities exist yet.
   const currentActivity = allActivities.length > 0
     ? allActivities[allActivities.length - 1]

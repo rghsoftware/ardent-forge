@@ -98,7 +98,11 @@ function _publishCurrentState(): void {
   if (!_snapshotContext) return
   const state = useActiveWorkoutStore.getState()
   if (!state.workoutLog) return
-  publishDisplaySnapshot(buildDisplaySnapshot(state, _snapshotContext))
+  try {
+    publishDisplaySnapshot(buildDisplaySnapshot(state, _snapshotContext))
+  } catch (err) {
+    console.error('[display-broadcast] Failed to publish snapshot:', err)
+  }
 }
 
 // ---------------------------------------------------------------------------

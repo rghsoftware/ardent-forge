@@ -30,9 +30,22 @@ export async function handler(req: Request): Promise<Response> {
       });
     }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("Missing required environment configuration");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
+      supabaseUrl,
+      supabaseAnonKey,
       { global: { headers: { Authorization: authHeader } } },
     );
 
@@ -50,7 +63,18 @@ export async function handler(req: Request): Promise<Response> {
     // -----------------------------------------------------------------------
     // 2. Validate request body
     // -----------------------------------------------------------------------
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
     const parsed = signedUrlRequestSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -114,9 +138,32 @@ export async function handler(req: Request): Promise<Response> {
       );
     }
 
+    const customerSubdomain = Deno.env.get("CLOUDFLARE_CUSTOMER_SUBDOMAIN");
+    if (!customerSubdomain) {
+      return new Response(
+        JSON.stringify({ error: "Cloudflare customer subdomain not configured" }),
+        {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceRoleKey) {
+      console.error("Missing required environment configuration");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      supabaseUrl,
+      serviceRoleKey,
     );
 
     const { data: secrets, error: vaultError } = await supabaseAdmin.rpc(
@@ -200,7 +247,7 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     // Build the signed playback URL
-    const signedUrl = `https://customer-${accountId}.cloudflarestream.com/${token}/manifest/video.m3u8`;
+    const signedUrl = `https://customer-${customerSubdomain}.cloudflarestream.com/${token}/manifest/video.m3u8`;
 
     // -----------------------------------------------------------------------
     // 6. Return signed URL

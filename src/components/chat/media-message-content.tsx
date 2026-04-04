@@ -1,7 +1,41 @@
+import { useState, useEffect } from 'react'
 import type { MediaAttachment } from '@/domain/types'
 import { Icon } from '@/components/icon'
+import { getSupabaseClient } from '@/lib/supabase'
 import { MediaStatusIndicator } from './media-status-indicator'
 import { FileCard } from './file-card'
+
+// ---------------------------------------------------------------------------
+// Hook: derive a signed URL from providerAssetId for Supabase Storage assets
+// ---------------------------------------------------------------------------
+
+function useStorageSignedUrl(attachment: MediaAttachment): string | null {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (attachment.provider !== 'supabase_storage') return
+    if (attachment.playbackUrl || attachment.thumbnailUrl) return
+    if (!attachment.providerAssetId) return
+
+    const client = getSupabaseClient()
+    if (!client) return
+
+    const bucket = attachment.mediaType === 'image' ? 'chat-images' : 'chat-files'
+
+    client.storage
+      .from(bucket)
+      .createSignedUrl(attachment.providerAssetId, 60 * 60)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Failed to generate signed URL:', error)
+          return
+        }
+        if (data?.signedUrl) setSignedUrl(data.signedUrl)
+      })
+  }, [attachment.provider, attachment.providerAssetId, attachment.playbackUrl, attachment.thumbnailUrl, attachment.mediaType])
+
+  return signedUrl
+}
 
 // ---------------------------------------------------------------------------
 // MediaMessageContent -- routes media attachment rendering by type and status
@@ -23,7 +57,8 @@ export function MediaMessageContent({
   onDownload,
   onRetry,
 }: MediaMessageContentProps) {
-  // --- Video ---
+  const derivedUrl = useStorageSignedUrl(attachment)
+
   if (attachment.mediaType === 'video') {
     if (attachment.status === 'processing') {
       return <MediaStatusIndicator status="processing" />
@@ -56,10 +91,15 @@ export function MediaMessageContent({
     )
   }
 
-  // --- Image ---
   if (attachment.mediaType === 'image') {
-    const imageUrl = attachment.playbackUrl ?? attachment.thumbnailUrl
-    if (!imageUrl) return null
+    const imageUrl = attachment.playbackUrl ?? attachment.thumbnailUrl ?? derivedUrl
+    if (!imageUrl) {
+      return (
+        <div className="flex items-center justify-center rounded bg-surface-steel px-4 py-3">
+          <span className="text-warm-ash text-xs">Media unavailable</span>
+        </div>
+      )
+    }
 
     return (
       <button
@@ -76,7 +116,6 @@ export function MediaMessageContent({
     )
   }
 
-  // --- File ---
   if (attachment.mediaType === 'file') {
     return (
       <FileCard
@@ -93,5 +132,9 @@ export function MediaMessageContent({
     )
   }
 
-  return null
+  return (
+    <div className="flex items-center justify-center rounded bg-surface-steel px-4 py-3">
+      <span className="text-warm-ash text-xs">Media unavailable</span>
+    </div>
+  )
 }

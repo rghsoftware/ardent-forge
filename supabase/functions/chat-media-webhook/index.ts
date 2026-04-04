@@ -113,9 +113,16 @@ export async function handler(req: Request): Promise<Response> {
     // -----------------------------------------------------------------------
     // 3. Update media_attachments and broadcast
     // -----------------------------------------------------------------------
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("Missing required environment configuration");
+      return new Response("Server configuration error", { status: 500 });
+    }
+
     const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      supabaseUrl,
+      serviceRoleKey,
     );
 
     // Look up the media attachment by provider_asset_id

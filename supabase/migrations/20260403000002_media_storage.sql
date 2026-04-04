@@ -26,20 +26,22 @@ values
 -- 2. Storage RLS policies
 -- ---------------------------------------------------------------------------
 
--- Upload: any authenticated user can upload to chat-images
+-- Upload: authenticated user can upload to chat-images for conversations they participate in
 create policy "chat_images_insert_authenticated"
     on storage.objects for insert
     with check (
         bucket_id = 'chat-images'
         and auth.uid() is not null
+        and is_conversation_participant((string_to_array(name, '/'))[2]::uuid)
     );
 
--- Upload: any authenticated user can upload to chat-files
+-- Upload: authenticated user can upload to chat-files for conversations they participate in
 create policy "chat_files_insert_authenticated"
     on storage.objects for insert
     with check (
         bucket_id = 'chat-files'
         and auth.uid() is not null
+        and is_conversation_participant((string_to_array(name, '/'))[2]::uuid)
     );
 
 -- Download: conversation participation check for chat-images

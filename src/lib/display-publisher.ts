@@ -50,7 +50,7 @@ export function initDisplayPublisher(client: SupabaseClient): void {
 }
 
 /**
- * Configure the publisher with the current user's ID and visibility preference.
+ * Configure the publisher with the current user's display visibility preference.
  */
 export function configureDisplayPublisher({
   displayVisible,
@@ -126,6 +126,14 @@ export function publishUnfocusEvent(): void {
     .catch((err: unknown) => {
       console.error('[display-publisher] Failed to send unfocus', err)
     })
+}
+
+/**
+ * Check whether the publisher has a working client and display is visible.
+ * Used by the hook to reflect true broadcast readiness in the UI.
+ */
+export function isPublisherReady(): boolean {
+  return _client !== null && _displayVisible
 }
 
 /**
