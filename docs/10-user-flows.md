@@ -418,6 +418,76 @@ flowchart TB
 
 ---
 
+### Builder Progressive Disclosure
+
+Both the template builder and program builder use progressive disclosure to reduce visual complexity. Fields appear based on earlier selections rather than showing all options simultaneously.
+
+```mermaid
+flowchart TB
+    subgraph TemplateDisclosure["Template Builder — Field Visibility"]
+        Cat["Select Category<br/>(Strength / Conditioning / SE / Mixed)"]
+        Cat -->|Strength| StrFields["Show: Rest Between Groups<br/>Hide: Scoring, Time Cap<br/>(collapsed row, expandable)"]
+        Cat -->|Conditioning| CondFields["Show: Scoring, Time Cap,<br/>Rest Between Groups"]
+        Cat -->|SE| SEFields["Show: Time Cap,<br/>Rest Between Groups<br/>Hide: Scoring"]
+        Cat -->|Mixed| MixedFields["Show: All fields"]
+    end
+```
+
+```mermaid
+flowchart TB
+    subgraph GroupDisclosure["Activity Group — Staged Reveal"]
+        Add["+Add group"] --> TypeOnly["Stage 1: Group type selector only<br/>(with help icon)"]
+        TypeOnly --> Pick["User picks type"]
+        Pick --> Expand["Stage 2: Group expands<br/>Type-relevant rest fields<br/>+ exercise selector"]
+        Expand --> ExAdd["User adds exercise"]
+        ExAdd --> Scheme["Set scheme editor shows<br/>category-filtered types only<br/>(Show All toggle available)"]
+    end
+```
+
+#### Template-Level Field Visibility
+
+| Field               | Strength  | Conditioning | SE        | Mixed   |
+| ------------------- | --------- | ------------ | --------- | ------- |
+| Scoring             | Collapsed | Visible      | Collapsed | Visible |
+| Time Cap            | Collapsed | Visible      | Visible   | Visible |
+| Rest Between Groups | Visible   | Visible      | Visible   | Visible |
+
+"Collapsed" fields are accessible via an expandable row but hidden by default to reduce noise.
+
+#### Set Scheme Filtering by Session Category
+
+| Session Category | Default Visible Types                                                          | Full List Via Toggle |
+| ---------------- | ------------------------------------------------------------------------------ | -------------------- |
+| Strength         | FixedSets, PercentageSets, WorkToMax                                           | All 12               |
+| Conditioning     | CardioSteadyState, CardioInterval, RuckMarch, EMOM, AMRAPTimed, DescendingReps | All 12               |
+| SE               | ForReps, TimedHold, PercentageOfMaxReps                                        | All 12               |
+| Mixed            | All 12                                                                         | —                    |
+
+---
+
+### Contextual Help System
+
+Complex builder screens include a `help_outline` icon (the HelpTrigger component) next to domain-specific labels. Tapping opens a popover (desktop) or bottom sheet (mobile) with a focused explanation.
+
+```mermaid
+flowchart LR
+    subgraph HelpPlacements["HelpTrigger Locations"]
+        H1["Activity group type selector"]
+        H2["Block type selector<br/>(Accumulation, Intensification...)"]
+        H3["Source selector<br/>(Custom, Template, Imported...)"]
+    end
+```
+
+| Screen           | HelpTrigger Location         | Content                                                                                              |
+| ---------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Template builder | Activity group type selector | One-line description of each group type (Straight, Superset, Circuit, Complex, EMOM, AMRAP, Couplet) |
+| Program builder  | Block type pills             | One-line description of each periodization phase, plus inline summary below pills on selection       |
+| Program builder  | Source badges                | One-line description of each program source type                                                     |
+
+Help content uses `surface-gunmetal` background, zero border-radius, and industrial vocabulary throughout.
+
+---
+
 ## Flow 8: Update 1RM
 
 ```mermaid
