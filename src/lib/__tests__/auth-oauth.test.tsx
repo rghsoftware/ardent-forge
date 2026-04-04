@@ -7,30 +7,44 @@ import type { AuthError } from '@supabase/supabase-js'
 // Hoisted variables -- available inside vi.mock factories
 // ---------------------------------------------------------------------------
 
-const { mockIsTauri, mockOnOpenUrl, mockOpenUrl, mockSupabaseAuth, stableSupabaseClient } =
-  vi.hoisted(() => {
-    const mockIsTauri = vi.fn(() => false)
-    const mockOnOpenUrl = vi.fn().mockResolvedValue(vi.fn())
-    const mockOpenUrl = vi.fn().mockResolvedValue(undefined)
+const {
+  mockIsTauri,
+  mockOnOpenUrl,
+  mockOpenUrl,
+  mockSupabaseAuth,
+  stableSupabaseClient,
+  mockHandleConnectLink,
+} = vi.hoisted(() => {
+  const mockIsTauri = vi.fn(() => false)
+  const mockOnOpenUrl = vi.fn().mockResolvedValue(vi.fn())
+  const mockOpenUrl = vi.fn().mockResolvedValue(undefined)
+  const mockHandleConnectLink = vi.fn().mockResolvedValue(undefined)
 
-    const mockSupabaseAuth = {
-      getSession: vi.fn(),
-      getUser: vi.fn(),
-      onAuthStateChange: vi.fn(),
-      signInWithPassword: vi.fn(),
-      signUp: vi.fn(),
-      signOut: vi.fn(),
-      signInWithOAuth: vi.fn(),
-      exchangeCodeForSession: vi.fn(),
-      resetPasswordForEmail: vi.fn(),
-    }
+  const mockSupabaseAuth = {
+    getSession: vi.fn(),
+    getUser: vi.fn(),
+    onAuthStateChange: vi.fn(),
+    signInWithPassword: vi.fn(),
+    signUp: vi.fn(),
+    signOut: vi.fn(),
+    signInWithOAuth: vi.fn(),
+    exchangeCodeForSession: vi.fn(),
+    resetPasswordForEmail: vi.fn(),
+  }
 
-    // Stable reference so AuthProvider's useEffect dependency on `supabase`
-    // does not trigger infinite re-render loops.
-    const stableSupabaseClient = { auth: mockSupabaseAuth, from: vi.fn() }
+  // Stable reference so AuthProvider's useEffect dependency on `supabase`
+  // does not trigger infinite re-render loops.
+  const stableSupabaseClient = { auth: mockSupabaseAuth, from: vi.fn() }
 
-    return { mockIsTauri, mockOnOpenUrl, mockOpenUrl, mockSupabaseAuth, stableSupabaseClient }
-  })
+  return {
+    mockIsTauri,
+    mockOnOpenUrl,
+    mockOpenUrl,
+    mockSupabaseAuth,
+    stableSupabaseClient,
+    mockHandleConnectLink,
+  }
+})
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -63,6 +77,10 @@ vi.mock('@/lib/sync-bridge', () => ({
 
 vi.mock('@/stores/sync-store', () => ({
   useSyncStore: { getState: vi.fn(() => ({ setSyncState: vi.fn() })) },
+}))
+
+vi.mock('@/lib/deep-link-handler', () => ({
+  handleConnectLink: (...args: unknown[]) => mockHandleConnectLink(...args),
 }))
 
 // Import after mocks are registered
@@ -392,5 +410,84 @@ describe('signInWithGoogle', () => {
 
       expect(result!.error).toBe(oauthError)
     })
+  })
+})
+
+// ===========================================================================
+// onOpenUrl connect dispatch
+// ===========================================================================
+
+describe('onOpenUrl connect dispatch', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockIsTauri.mockReturnValue(true)
+    mockOnOpenUrl.mockResolvedValue(vi.fn())
+    mockHandleConnectLink.mockResolvedValue(undefined)
+    resetAuthMockDefaults()
+
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      configurable: true,
+      value: { ...window.location, href: '', origin: 'http://localhost:3000' },
+    })
+  })
+
+  async function getOnOpenUrlCallback() {
+    render(
+      <AuthProvider>
+        <div />
+      </AuthProvider>,
+    )
+
+    await waitFor(() => {
+      expect(mockOnOpenUrl).toHaveBeenCalled()
+    })
+
+    return mockOnOpenUrl.mock.calls[0][0] as (urls: string[]) => Promise<void>
+  }
+
+  it('dispatches connect URLs to handleConnectLink', async () => {
+    const callback = await getOnOpenUrlCallback()
+
+    await act(async () => {
+      await callback(['ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-key'])
+    })
+
+    expect(mockHandleConnectLink).toHaveBeenCalledWith(
+      'ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-key',
+    )
+  })
+
+  it('does not trigger OAuth exchange for connect URLs', async () => {
+    const callback = await getOnOpenUrlCallback()
+
+    await act(async () => {
+      await callback(['ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-key'])
+    })
+
+    expect(mockSupabaseAuth.exchangeCodeForSession).not.toHaveBeenCalled()
+  })
+
+  it('still routes auth callback URLs to OAuth exchange', async () => {
+    const callback = await getOnOpenUrlCallback()
+
+    await act(async () => {
+      await callback(['ardentforge://auth/callback?code=abc123'])
+    })
+
+    expect(mockSupabaseAuth.exchangeCodeForSession).toHaveBeenCalledWith('abc123')
+    expect(mockHandleConnectLink).not.toHaveBeenCalled()
+  })
+
+  it('does not redirect to OAuth error page when connect link fails', async () => {
+    mockHandleConnectLink.mockRejectedValueOnce(new Error('store failure'))
+
+    const callback = await getOnOpenUrlCallback()
+
+    await act(async () => {
+      await callback(['ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-key'])
+    })
+
+    expect(window.location.href).not.toContain('oauth_error')
   })
 })
