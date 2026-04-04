@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useId } from 'react'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { HelpTrigger } from '@/components/ui/help-trigger'
 import { SOURCE_HELP } from '@/components/builders/help-content'
@@ -32,6 +32,7 @@ interface ProgramFormProps {
 
 export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const detailsId = useId()
 
   return (
     <div className="flex flex-col gap-6">
@@ -61,6 +62,8 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
         type="button"
         onClick={() => setDetailsOpen((prev) => !prev)}
         className="flex items-center gap-1 text-[11px] font-medium text-warm-ash/60 hover:text-warm-ash lg:hidden"
+        aria-expanded={detailsOpen}
+        aria-controls={detailsId}
       >
         <Icon name="tune" size={14} />
         {detailsOpen ? 'Hide details' : 'Show details'}
@@ -68,7 +71,7 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
       </button>
 
       {/* Details: always visible on lg+, toggled on mobile */}
-      <div className={`flex flex-col gap-6 ${detailsOpen ? '' : 'hidden lg:flex'}`}>
+      <div id={detailsId} className={`flex flex-col gap-6 ${detailsOpen ? '' : 'hidden lg:flex'}`}>
         <div>
           <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
             DESCRIPTION (OPTIONAL)
@@ -89,7 +92,6 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
               SOURCE
             </span>
             <HelpTrigger
-              placement="section"
               title="Program Sources"
               content={
                 <div className="space-y-3">

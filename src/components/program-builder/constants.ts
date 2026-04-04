@@ -107,6 +107,14 @@ export const SESSION_TYPE_BADGE: Record<string, string> = {
 // Source labels for program source badges
 // ---------------------------------------------------------------------------
 
+export const BLOCK_TYPE_STYLES: Record<string, string> = {
+  ACCUMULATION: 'bg-quenched/15 text-quenched',
+  INTENSIFICATION: 'bg-ember/15 text-ember',
+  REALIZATION: 'bg-forge/15 text-forge',
+  DELOAD: 'bg-arc/15 text-arc',
+  TEST: 'bg-warm-ash/15 text-warm-ash',
+}
+
 export const SOURCE_LABELS: Record<string, string> = {
   CUSTOM: 'CUSTOM',
   IMPORTED: 'IMPORTED',

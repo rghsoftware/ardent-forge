@@ -471,18 +471,6 @@ function LoadSpecEditor({
       )
     : LOAD_TYPES.filter((t) => t.value !== 'percentageOf1RM' || exerciseSupports1RM)
 
-  // Reset to 'unspecified' when the current load type is no longer in the filtered list
-  useEffect(() => {
-    if (allowedLoads === null) return
-    const isCurrentAllowed = availableTypes.some((t) => t.value === value.type)
-    if (!isCurrentAllowed) {
-      onChange({ type: 'unspecified' })
-    }
-  }, [schemeType]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Scheme manages its own load internally -- hide the load picker entirely
-  if (allowedLoads === null) return null
-
   const handleTypeChange = useCallback(
     (newType: string) => {
       switch (newType) {
@@ -513,6 +501,18 @@ function LoadSpecEditor({
     },
     [onChange],
   )
+
+  // Reset to 'unspecified' when the current load type is no longer in the filtered list
+  useEffect(() => {
+    if (allowedLoads === null) return
+    const isCurrentAllowed = availableTypes.some((t) => t.value === value.type)
+    if (!isCurrentAllowed) {
+      onChange({ type: 'unspecified' })
+    }
+  }, [allowedLoads, availableTypes, value.type, onChange])
+
+  // Scheme manages its own load internally -- hide the load picker entirely
+  if (allowedLoads === null) return null
 
   return (
     <div className="flex flex-col gap-3">
@@ -1029,6 +1029,12 @@ function DescendingRepsFields({
   exerciseSupports1RM: boolean
 }) {
   const [ladderText, setLadderText] = useState(value.repLadder.join(', '))
+
+  // Sync local text when repLadder changes externally (e.g. scheme type reset)
+  const externalLadder = value.repLadder.join(', ')
+  useEffect(() => {
+    setLadderText(externalLadder)
+  }, [externalLadder])
 
   return (
     <div className="flex flex-col gap-4">

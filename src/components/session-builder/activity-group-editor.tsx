@@ -14,6 +14,7 @@ import type { GroupType, Duration, Exercise, SessionType } from '@/domain/types'
 // ---------------------------------------------------------------------------
 
 export interface ActivityGroupData {
+  clientId: string
   groupType: GroupType | null
   ordinal: number
   rounds?: number
@@ -97,6 +98,7 @@ export function ActivityGroupEditor({
 
   const handleAddActivity = () => {
     const newActivity: ActivityData = {
+      clientId: crypto.randomUUID(),
       exerciseId: null,
       setScheme: defaultScheme('fixedSets'),
       ordinal: group.activities.length + 1,
@@ -143,7 +145,7 @@ export function ActivityGroupEditor({
           ))}
         </ToggleGroup>
 
-        <HelpTrigger title="Group types" content={groupTypeHelpContent} placement="inline" />
+        <HelpTrigger title="Group types" content={groupTypeHelpContent} />
 
         <button
           type="button"
@@ -206,7 +208,7 @@ export function ActivityGroupEditor({
           <div className="flex flex-col gap-2 px-2 pb-2">
             {group.activities.map((activity, index) => (
               <ActivityEditor
-                key={index}
+                key={activity.clientId}
                 activity={activity}
                 exercises={exercises}
                 sessionCategory={sessionCategory}

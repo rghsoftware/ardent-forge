@@ -89,17 +89,19 @@ export function SessionPickerSheet({
     return result
   }, [templates, filter, search])
 
+  const touchMutate = touchLastAssigned.mutate
+
   const handleSelect = useCallback(
     (template: SessionTemplate) => {
       onSelect(template.id, template.name, template.category)
-      touchLastAssigned.mutate(template.id)
+      touchMutate(template.id)
       onOpenChange(false)
       setSearch('')
       setFilter('ALL')
       setShowCreate(false)
       setShowCreateEvent(false)
     },
-    [onSelect, onOpenChange, touchLastAssigned],
+    [onSelect, onOpenChange, touchMutate],
   )
 
   const handleCreated = useCallback(

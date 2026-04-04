@@ -10,6 +10,7 @@ import type { SetScheme, Exercise, SessionType } from '@/domain/types'
 // ---------------------------------------------------------------------------
 
 export interface ActivityData {
+  clientId: string
   exerciseId: string | null
   setScheme: SetScheme
   notes?: string

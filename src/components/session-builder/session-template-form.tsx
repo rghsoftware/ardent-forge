@@ -92,12 +92,14 @@ function hydrateGroups(initial: SessionTemplateFull): ActivityGroupData[] {
       .sort((a, b) => a.ordinal - b.ordinal)
 
     return {
+      clientId: crypto.randomUUID(),
       groupType: g.groupType,
       ordinal: g.ordinal,
       rounds: g.rounds ?? undefined,
       restBetweenRounds: g.restBetweenRounds ?? undefined,
       restBetweenActivities: g.restBetweenActivities ?? undefined,
       activities: groupActivities.map((a) => ({
+        clientId: crypto.randomUUID(),
         exerciseId: a.exerciseId,
         setScheme: a.setScheme,
         notes: a.notes,
@@ -139,6 +141,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
   const handleAddGroup = useCallback(() => {
     const newGroup: ActivityGroupData = {
+      clientId: crypto.randomUUID(),
       groupType: null,
       ordinal: groups.length + 1,
       activities: [],
@@ -421,7 +424,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
         {groups.map((group, index) => (
           <ActivityGroupEditor
-            key={index}
+            key={group.clientId}
             group={group}
             exercises={exercises}
             sessionCategory={category}

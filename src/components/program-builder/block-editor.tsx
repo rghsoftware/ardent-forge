@@ -18,16 +18,8 @@ import { ConfirmDeleteDialog } from './confirm-delete-dialog'
 import { removeBlock, addWeekToBlock, weeksMatch } from './builder-state'
 import type { BlockDraft, ProgramDraft, ValidationError } from './builder-state'
 import type { BlockType } from '@/domain/types'
-import { BLOCK_TYPES, SESSION_TYPE_BADGE } from './constants'
+import { BLOCK_TYPES, BLOCK_TYPE_STYLES, SESSION_TYPE_BADGE } from './constants'
 import type { DayOfWeek } from './constants'
-
-const BLOCK_TYPE_STYLES: Record<string, string> = {
-  ACCUMULATION: 'bg-quenched/15 text-quenched',
-  INTENSIFICATION: 'bg-ember/15 text-ember',
-  REALIZATION: 'bg-forge/15 text-forge',
-  DELOAD: 'bg-arc/15 text-arc',
-  TEST: 'bg-warm-ash/15 text-warm-ash',
-}
 
 // ---------------------------------------------------------------------------
 // BlockEditor
@@ -276,7 +268,6 @@ export function BlockEditor({
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-semibold text-warm-ash/60">Block type</span>
                   <HelpTrigger
-                    placement="section"
                     title="Block Types"
                     content={
                       <div className="space-y-3">

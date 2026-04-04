@@ -10,17 +10,16 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from 
 interface HelpTriggerProps {
   title: string
   content: ReactNode
-  placement: 'inline' | 'section'
 }
 
-export function HelpTrigger({ title, content, placement: _placement }: HelpTriggerProps) {
+export function HelpTrigger({ title, content }: HelpTriggerProps) {
   const [open, setOpen] = useState(false)
   const isDesktop = useMediaQuery('(min-width: 768px)')
 
   const triggerButton = (
     <button
       type="button"
-      aria-label="Help"
+      aria-label={`Help: ${title}`}
       className="inline-flex items-center justify-center text-warm-ash transition-colors hover:text-ember focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <Icon name="help_outline" size={20} />
