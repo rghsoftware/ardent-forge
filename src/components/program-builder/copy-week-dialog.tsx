@@ -78,7 +78,8 @@ export function CopyWeekDialog({
         <DialogHeader>
           <DialogTitle className="text-xs text-ember">Copy Week</DialogTitle>
           <DialogDescription className="text-sm text-warm-ash">
-            Copy sessions from Week {sourceWeek.weekNumber} to other weeks.
+            Copy sessions from Week {sourceWeek.weekNumber} to other weeks. Existing sessions in
+            target weeks will be replaced.
           </DialogDescription>
         </DialogHeader>
 
@@ -124,8 +125,8 @@ export function CopyWeekDialog({
                   WEEK {week.weekNumber}
                 </span>
                 {week.sessions.length > 0 && (
-                  <span className="text-[11px] text-warm-ash/40">
-                    ({week.sessions.length} existing)
+                  <span className="text-[11px] text-warning-flare/70">
+                    ({week.sessions.length} existing -- will be replaced)
                   </span>
                 )}
               </label>

@@ -12,27 +12,13 @@ import {
   useSessionTemplatesFull,
 } from './session-detail'
 import type { ProgramDraft } from './builder-state'
-import { DAY_COLUMNS, WEEKDAY_COLUMNS, SOURCE_LABELS } from './constants'
-
-// ---------------------------------------------------------------------------
-// Session type visual mappings
-// ---------------------------------------------------------------------------
-
-const SESSION_TINT: Record<string, string> = {
-  STRENGTH: 'session-tint-strength',
-  CONDITIONING: 'session-tint-conditioning',
-  SE: 'session-tint-se',
-  MIXED: 'session-tint-mixed',
-  EVENT: 'session-tint-event',
-}
-
-const SESSION_TYPE_BADGE: Record<string, string> = {
-  STRENGTH: 'bg-ember/10 text-ember',
-  CONDITIONING: 'bg-quenched/10 text-quenched',
-  SE: 'bg-arc/10 text-arc',
-  MIXED: 'bg-bone-white/10 text-bone-white',
-  EVENT: 'bg-ember/15 text-ember',
-}
+import {
+  DAY_COLUMNS,
+  WEEKDAY_COLUMNS,
+  SOURCE_LABELS,
+  SESSION_TINT,
+  SESSION_TYPE_BADGE,
+} from './constants'
 
 // ---------------------------------------------------------------------------
 // ProgramPreview
@@ -149,7 +135,7 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
 
                     return (
                       <div key={week.clientId} className="flex flex-col gap-2">
-                        <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
+                        <span className="text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
                           WEEK {weekIdx + 1}
                         </span>
 
@@ -158,7 +144,7 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                           {previewColumns.map((col) => (
                             <div
                               key={`hdr-${col.dayOfWeek}`}
-                              className="text-center text-[11px] font-medium uppercase tracking-widest text-warm-ash/60"
+                              className="text-center text-xs font-semibold uppercase tracking-widest text-warm-ash/60"
                             >
                               {col.label}
                             </div>
@@ -310,13 +296,13 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                                 </div>
 
                                 <div className="grid grid-cols-[1fr_auto_auto] gap-2 bg-surface-gunmetal px-2 py-1">
-                                  <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
+                                  <span className="text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
                                     EXERCISE
                                   </span>
-                                  <span className="text-right text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
+                                  <span className="text-right text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
                                     SETS x REPS
                                   </span>
-                                  <span className="w-20 text-right text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
+                                  <span className="w-20 text-right text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
                                     LOAD
                                   </span>
                                 </div>
@@ -358,4 +344,3 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
     </Dialog>
   )
 }
-

@@ -22,7 +22,13 @@ import {
 } from './builder-state'
 import type { ProgramDraft, BlockDraft, SessionDraft } from './builder-state'
 import type { BlockType } from '@/domain/types'
-import { BLOCK_TYPES, DAY_ABBREVIATIONS, DAY_ORDER } from './constants'
+import {
+  BLOCK_TYPES,
+  DAY_ABBREVIATIONS,
+  DAY_ORDER,
+  SESSION_TINT,
+  SESSION_TYPE_BADGE,
+} from './constants'
 import type { DayOfWeek } from './constants'
 
 const BLOCK_TYPE_STYLES: Record<string, string> = {
@@ -31,22 +37,6 @@ const BLOCK_TYPE_STYLES: Record<string, string> = {
   REALIZATION: 'bg-forge/15 text-forge',
   DELOAD: 'bg-arc/15 text-arc',
   TEST: 'bg-warm-ash/15 text-warm-ash',
-}
-
-const SESSION_TINT: Record<string, string> = {
-  STRENGTH: 'session-tint-strength',
-  CONDITIONING: 'session-tint-conditioning',
-  SE: 'session-tint-se',
-  MIXED: 'session-tint-mixed',
-  EVENT: 'session-tint-event',
-}
-
-const SESSION_TYPE_BADGE: Record<string, string> = {
-  STRENGTH: 'bg-ember/10 text-ember',
-  CONDITIONING: 'bg-quenched/10 text-quenched',
-  SE: 'bg-arc/10 text-arc',
-  MIXED: 'bg-bone-white/10 text-bone-white',
-  EVENT: 'bg-ember/15 text-ember',
 }
 
 // ---------------------------------------------------------------------------
@@ -96,6 +86,12 @@ export function MobileBlockEditor({
           isNew={block.clientId === newBlockId}
         />
       ))}
+
+      {draft.blocks.length === 0 && (
+        <p className="py-8 text-center text-sm text-warm-ash/50">
+          Start by adding your first training block.
+        </p>
+      )}
 
       <Button
         type="button"
@@ -213,126 +209,126 @@ function MobileBlockCard({
           className="border-l-2 border-forge bg-surface-iron milled-edge"
           style={isNew ? { animation: 'block-enter 0.3s ease-out both' } : undefined}
         >
-        <div className="flex min-h-12 items-center gap-2 px-3 py-2">
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex min-h-12 min-w-8 items-center justify-center text-warm-ash/40"
-              aria-label={expanded ? 'Collapse block' : 'Expand block'}
-            >
-              <Icon name={expanded ? 'expand_less' : 'expand_more'} size={18} />
-            </button>
-          </CollapsibleTrigger>
-
-          {isEditingName ? (
-            <input
-              type="text"
-              value={block.name}
-              onChange={(e) => handleNameChange(e.target.value)}
-              onBlur={() => setIsEditingName(false)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') setIsEditingName(false)
-              }}
-              autoFocus
-              className="min-w-0 flex-1 border-0 border-b border-warm-ash/30 bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:border-ember focus:outline-none"
-              aria-label="Block name"
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsEditingName(true)}
-              className="min-w-0 flex-1 text-left font-display text-sm font-medium text-bone-white hover:text-ember"
-            >
-              {block.name || 'Untitled block'}
-            </button>
-          )}
-
-          <span
-            className={`shrink-0 px-2 py-1 text-[11px] font-medium uppercase tracking-wider ${BLOCK_TYPE_STYLES[block.blockType] ?? 'bg-surface-steel text-bone-white'}`}
-          >
-            {block.blockType}
-          </span>
-
-          <span className="shrink-0 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
-            {block.weeks.length} {block.weeks.length === 1 ? 'WK' : 'WKS'}
-          </span>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <div className="flex min-h-12 items-center gap-2 px-3 py-2">
+            <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="flex min-h-12 min-w-10 items-center justify-center text-warm-ash/60 hover:text-bone-white"
-                aria-label="Block actions"
+                className="flex min-h-12 min-w-8 items-center justify-center text-warm-ash/40"
+                aria-label={expanded ? 'Collapse block' : 'Expand block'}
               >
-                <Icon name="more_vert" size={18} />
+                <Icon name={expanded ? 'expand_less' : 'expand_more'} size={18} />
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-40">
-              <DropdownMenuItem disabled={isFirst} onSelect={handleMoveUp}>
-                <Icon name="arrow_upward" size={16} />
-                Move up
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled={isLast} onSelect={handleMoveDown}>
-                <Icon name="arrow_downward" size={16} />
-                Move down
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onSelect={() => setShowDeleteConfirm(true)}>
-                <Icon name="delete" size={16} />
-                Delete block
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            </CollapsibleTrigger>
 
-        {/* Expanded content */}
-        <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-200">
-          <div className="flex flex-col gap-4 px-3 pb-4">
-            <ToggleGroup
-              type="single"
-              value={block.blockType}
-              onValueChange={(v) => {
-                if (v) handleBlockTypeChange(v as BlockType)
-              }}
-              className="flex flex-wrap gap-1"
-            >
-              {BLOCK_TYPES.map((bt) => (
-                <ToggleGroupItem
-                  key={bt.value}
-                  value={bt.value}
-                  className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
-                >
-                  {bt.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-
-            {block.weeks.map((week, weekIndex) => (
-              <MobileWeekSection
-                key={week.clientId}
-                weekIndex={weekIndex}
-                weekClientId={week.clientId}
-                sessions={week.sessions}
-                draft={draft}
-                blockClientId={block.clientId}
-                onUpdate={onUpdate}
-                onPickSession={onPickSession}
-                onCopyWeek={onCopyWeek}
-                isNew={week.clientId === newWeekId}
+            {isEditingName ? (
+              <input
+                type="text"
+                value={block.name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                onBlur={() => setIsEditingName(false)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') setIsEditingName(false)
+                }}
+                autoFocus
+                className="min-w-0 flex-1 border-0 border-b border-warm-ash/30 bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:border-ember focus:outline-none"
+                aria-label="Block name"
               />
-            ))}
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsEditingName(true)}
+                className="min-w-0 flex-1 text-left font-display text-sm font-medium text-bone-white hover:text-ember"
+              >
+                {block.name || 'Untitled block'}
+              </button>
+            )}
 
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleAddWeek}
-              className="min-h-10 text-xs"
+            <span
+              className={`shrink-0 px-2 py-1 text-[11px] font-medium uppercase tracking-wider ${BLOCK_TYPE_STYLES[block.blockType] ?? 'bg-surface-steel text-bone-white'}`}
             >
-              <Icon name="add" size={16} />
-              Add week
-            </Button>
+              {block.blockType}
+            </span>
+
+            <span className="shrink-0 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
+              {block.weeks.length} {block.weeks.length === 1 ? 'WK' : 'WKS'}
+            </span>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex min-h-12 min-w-10 items-center justify-center text-warm-ash/60 hover:text-bone-white"
+                  aria-label="Block actions"
+                >
+                  <Icon name="more_vert" size={18} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-40">
+                <DropdownMenuItem disabled={isFirst} onSelect={handleMoveUp}>
+                  <Icon name="arrow_upward" size={16} />
+                  Move up
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={isLast} onSelect={handleMoveDown}>
+                  <Icon name="arrow_downward" size={16} />
+                  Move down
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onSelect={() => setShowDeleteConfirm(true)}>
+                  <Icon name="delete" size={16} />
+                  Delete block
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </CollapsibleContent>
+
+          {/* Expanded content */}
+          <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-200">
+            <div className="flex flex-col gap-4 px-3 pb-4">
+              <ToggleGroup
+                type="single"
+                value={block.blockType}
+                onValueChange={(v) => {
+                  if (v) handleBlockTypeChange(v as BlockType)
+                }}
+                className="flex flex-wrap gap-1"
+              >
+                {BLOCK_TYPES.map((bt) => (
+                  <ToggleGroupItem
+                    key={bt.value}
+                    value={bt.value}
+                    className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
+                  >
+                    {bt.label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+
+              {block.weeks.map((week, weekIndex) => (
+                <MobileWeekSection
+                  key={week.clientId}
+                  weekIndex={weekIndex}
+                  weekClientId={week.clientId}
+                  sessions={week.sessions}
+                  draft={draft}
+                  blockClientId={block.clientId}
+                  onUpdate={onUpdate}
+                  onPickSession={onPickSession}
+                  onCopyWeek={onCopyWeek}
+                  isNew={week.clientId === newWeekId}
+                />
+              ))}
+
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleAddWeek}
+                className="min-h-10 text-xs"
+              >
+                <Icon name="add" size={16} />
+                Add week
+              </Button>
+            </div>
+          </CollapsibleContent>
         </div>
       </Collapsible>
 
@@ -401,7 +397,7 @@ function MobileWeekSection({
       style={isNew ? { animation: 'block-enter 0.25s ease-out both' } : undefined}
     >
       <div className="flex items-center gap-2">
-        <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
+        <span className="text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
           WEEK {weekIndex + 1}
         </span>
         <button

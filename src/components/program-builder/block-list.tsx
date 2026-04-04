@@ -107,6 +107,12 @@ export function BlockList({
         </SortableContext>
       </DndContext>
 
+      {draft.blocks.length === 0 && (
+        <p className="py-8 text-center text-sm text-warm-ash/50">
+          Start by adding your first training block.
+        </p>
+      )}
+
       <Button
         type="button"
         variant="secondary"

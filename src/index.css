@@ -301,30 +301,6 @@
     }
   }
 
-  /* Builder: new block/week entrance -- translateY fade-up */
-  @keyframes block-enter {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Builder: session slot assignment -- subtle scale-up */
-  @keyframes slot-fill {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
   /* Session type tints -- subtle background coding for week grid slots */
   .session-tint-strength {
     background-color: rgba(255, 181, 156, 0.06);

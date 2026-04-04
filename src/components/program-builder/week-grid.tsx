@@ -72,7 +72,7 @@ export function WeekGrid({
       style={isNew ? { animation: 'block-enter 0.25s ease-out both' } : undefined}
     >
       <div className="flex items-center gap-2">
-        <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
+        <span className="text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
           WEEK {weekIndex + 1}
         </span>
         <button
@@ -111,7 +111,7 @@ export function WeekGrid({
         {columns.map((col) => (
           <div
             key={`header-${col.dayOfWeek}`}
-            className="text-center text-[11px] font-medium uppercase tracking-widest text-warm-ash/60"
+            className="text-center text-xs font-semibold uppercase tracking-widest text-warm-ash/60"
           >
             {col.label}
           </div>

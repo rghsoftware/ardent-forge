@@ -3,23 +3,8 @@ import { toast } from 'sonner'
 import { Icon } from '@/components/icon'
 import { removeSession } from './builder-state'
 import type { SessionDraft, ProgramDraft } from './builder-state'
+import { SESSION_TINT, SESSION_TYPE_BADGE } from './constants'
 import type { DayOfWeek } from './constants'
-
-const SESSION_TINT: Record<string, string> = {
-  STRENGTH: 'session-tint-strength',
-  CONDITIONING: 'session-tint-conditioning',
-  SE: 'session-tint-se',
-  MIXED: 'session-tint-mixed',
-  EVENT: 'session-tint-event',
-}
-
-const SESSION_TYPE_BADGE: Record<string, string> = {
-  STRENGTH: 'bg-ember/10 text-ember',
-  CONDITIONING: 'bg-quenched/10 text-quenched',
-  SE: 'bg-arc/10 text-arc',
-  MIXED: 'bg-bone-white/10 text-bone-white',
-  EVENT: 'bg-ember/15 text-ember',
-}
 
 const SESSION_BORDER: Record<string, string> = {
   STRENGTH: 'border-l-2 border-ember',

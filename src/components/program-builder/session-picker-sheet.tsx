@@ -104,7 +104,9 @@ export function SessionPickerSheet({
         showCloseButton={false}
       >
         <SheetHeader className="px-4 pt-4 pb-0">
-          <SheetTitle className="text-xs text-ember">Select Session Template</SheetTitle>
+          <SheetTitle className="font-display text-sm text-ember">
+            Select Session Template
+          </SheetTitle>
           <SheetDescription className="sr-only">
             Choose a session template to assign to this day
           </SheetDescription>

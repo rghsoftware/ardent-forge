@@ -82,6 +82,30 @@ export const DAY_ORDER: DayOfWeek[] = [1, 2, 3, 4, 5, 6, 0]
 // Source labels for program source badges
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Session type visual mappings (tint, badge colours)
+// ---------------------------------------------------------------------------
+
+export const SESSION_TINT: Record<string, string> = {
+  STRENGTH: 'session-tint-strength',
+  CONDITIONING: 'session-tint-conditioning',
+  SE: 'session-tint-se',
+  MIXED: 'session-tint-mixed',
+  EVENT: 'session-tint-event',
+}
+
+export const SESSION_TYPE_BADGE: Record<string, string> = {
+  STRENGTH: 'bg-ember/10 text-ember',
+  CONDITIONING: 'bg-quenched/10 text-quenched',
+  SE: 'bg-arc/10 text-arc',
+  MIXED: 'bg-bone-white/10 text-bone-white',
+  EVENT: 'bg-ember/15 text-ember',
+}
+
+// ---------------------------------------------------------------------------
+// Source labels for program source badges
+// ---------------------------------------------------------------------------
+
 export const SOURCE_LABELS: Record<string, string> = {
   CUSTOM: 'CUSTOM',
   IMPORTED: 'IMPORTED',
