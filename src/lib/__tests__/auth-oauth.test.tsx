@@ -7,28 +7,30 @@ import type { AuthError } from '@supabase/supabase-js'
 // Hoisted variables -- available inside vi.mock factories
 // ---------------------------------------------------------------------------
 
-const { mockIsTauri, mockOnOpenUrl, mockSupabaseAuth, stableSupabaseClient } = vi.hoisted(() => {
-  const mockIsTauri = vi.fn(() => false)
-  const mockOnOpenUrl = vi.fn().mockResolvedValue(vi.fn())
+const { mockIsTauri, mockOnOpenUrl, mockOpenUrl, mockSupabaseAuth, stableSupabaseClient } =
+  vi.hoisted(() => {
+    const mockIsTauri = vi.fn(() => false)
+    const mockOnOpenUrl = vi.fn().mockResolvedValue(vi.fn())
+    const mockOpenUrl = vi.fn().mockResolvedValue(undefined)
 
-  const mockSupabaseAuth = {
-    getSession: vi.fn(),
-    getUser: vi.fn(),
-    onAuthStateChange: vi.fn(),
-    signInWithPassword: vi.fn(),
-    signUp: vi.fn(),
-    signOut: vi.fn(),
-    signInWithOAuth: vi.fn(),
-    exchangeCodeForSession: vi.fn(),
-    resetPasswordForEmail: vi.fn(),
-  }
+    const mockSupabaseAuth = {
+      getSession: vi.fn(),
+      getUser: vi.fn(),
+      onAuthStateChange: vi.fn(),
+      signInWithPassword: vi.fn(),
+      signUp: vi.fn(),
+      signOut: vi.fn(),
+      signInWithOAuth: vi.fn(),
+      exchangeCodeForSession: vi.fn(),
+      resetPasswordForEmail: vi.fn(),
+    }
 
-  // Stable reference so AuthProvider's useEffect dependency on `supabase`
-  // does not trigger infinite re-render loops.
-  const stableSupabaseClient = { auth: mockSupabaseAuth, from: vi.fn() }
+    // Stable reference so AuthProvider's useEffect dependency on `supabase`
+    // does not trigger infinite re-render loops.
+    const stableSupabaseClient = { auth: mockSupabaseAuth, from: vi.fn() }
 
-  return { mockIsTauri, mockOnOpenUrl, mockSupabaseAuth, stableSupabaseClient }
-})
+    return { mockIsTauri, mockOnOpenUrl, mockOpenUrl, mockSupabaseAuth, stableSupabaseClient }
+  })
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -40,6 +42,10 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 vi.mock('@tauri-apps/plugin-deep-link', () => ({
   onOpenUrl: mockOnOpenUrl,
+}))
+
+vi.mock('@tauri-apps/plugin-opener', () => ({
+  openUrl: mockOpenUrl,
 }))
 
 vi.mock('@/lib/supabase', () => ({
@@ -160,9 +166,8 @@ describe('signInWithGoogle', () => {
     vi.clearAllMocks()
     mockIsTauri.mockReturnValue(false)
     mockOnOpenUrl.mockResolvedValue(vi.fn())
+    mockOpenUrl.mockResolvedValue(undefined)
     resetAuthMockDefaults()
-
-    vi.spyOn(window, 'open').mockReturnValue({} as Window)
 
     Object.defineProperty(window, 'location', {
       writable: true,
@@ -208,7 +213,7 @@ describe('signInWithGoogle', () => {
       expect(result!.error).toBeUndefined()
     })
 
-    it('calls window.open with the returned URL', async () => {
+    it('opens the OAuth URL via plugin-opener', async () => {
       const oauthUrl = 'https://accounts.google.com/oauth?state=abc'
       mockSupabaseAuth.signInWithOAuth.mockResolvedValueOnce({
         data: { provider: 'google', url: oauthUrl },
@@ -225,7 +230,7 @@ describe('signInWithGoogle', () => {
         await getHandle().signInWithGoogle()
       })
 
-      expect(window.open).toHaveBeenCalledWith(oauthUrl, '_blank')
+      expect(mockOpenUrl).toHaveBeenCalledWith(oauthUrl, 'inAppBrowser')
     })
 
     it('returns error when data.url is missing', async () => {
@@ -271,13 +276,13 @@ describe('signInWithGoogle', () => {
       expect(mockSupabaseAuth.signInWithOAuth).not.toHaveBeenCalled()
     })
 
-    it('returns error when window.open is blocked (returns null)', async () => {
+    it('returns error when plugin-opener fails', async () => {
       mockSupabaseAuth.signInWithOAuth.mockResolvedValueOnce({
         data: { provider: 'google', url: 'https://accounts.google.com/oauth' },
         error: null,
       })
 
-      vi.spyOn(window, 'open').mockReturnValue(null)
+      mockOpenUrl.mockRejectedValueOnce(new Error('Browser unavailable'))
 
       const { getHandle } = renderWithProvider()
 
@@ -291,7 +296,9 @@ describe('signInWithGoogle', () => {
       })
 
       expect(result!.error).toBeDefined()
-      expect(result!.error!.message).toContain('Browser blocked the sign-in window')
+      expect(result!.error!.message).toContain(
+        'Failed to open the sign-in browser. Please try again.',
+      )
     })
   })
 

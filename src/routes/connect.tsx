@@ -24,6 +24,7 @@ function ConnectPage() {
 
     handleConnectLink(
       `ardentforge://connect?url=${encodeURIComponent(url)}&key=${encodeURIComponent(key)}`,
+      (path) => navigate({ to: path }),
     ).catch((err) => {
       console.error('[connect] Failed to handle connect link:', err)
       toast('Something went wrong. Please try again.')

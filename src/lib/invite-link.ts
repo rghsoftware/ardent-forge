@@ -20,8 +20,11 @@ export function parseInviteLink(raw: string): { url: string; key: string } | nul
 
     if (!url || !key) return null
 
+    if (!url.startsWith('https://')) return null
+
     return { url, key }
-  } catch {
+  } catch (err) {
+    console.error('[invite-link] Failed to parse invite link:', err)
     return null
   }
 }

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { handleConnectLink } from '../deep-link-handler'
 
 const mockToast = vi.fn()
@@ -22,42 +22,41 @@ vi.mock('@/lib/pending-connect', () => ({
 }))
 
 describe('handleConnectLink', () => {
-  let locationHref: string
-
-  beforeEach(() => {
-    locationHref = window.location.href
-    Object.defineProperty(window, 'location', {
-      value: { href: locationHref },
-      writable: true,
-      configurable: true,
-    })
-  })
+  const mockNavigate = vi.fn()
 
   afterEach(() => {
     vi.clearAllMocks()
-    Object.defineProperty(window, 'location', {
-      value: { href: locationHref },
-      writable: true,
-      configurable: true,
-    })
   })
 
   it('toasts "Invalid invite link" for non-connect URL', async () => {
-    await handleConnectLink('https://example.com')
+    await handleConnectLink('https://example.com', mockNavigate)
     expect(mockToast).toHaveBeenCalledWith('Invalid invite link')
   })
 
   it('toasts "Invalid invite link" for missing params', async () => {
-    await handleConnectLink('ardentforge://connect')
+    await handleConnectLink('ardentforge://connect', mockNavigate)
     expect(mockToast).toHaveBeenCalledWith('Invalid invite link')
   })
 
-  it('redirects to /setup with params when unconfigured', async () => {
+  it('toasts "Invalid invite link" for non-HTTPS url param', async () => {
+    await handleConnectLink(
+      'ardentforge://connect?url=http%3A%2F%2Fevil.com&key=test-key',
+      mockNavigate,
+    )
+    expect(mockToast).toHaveBeenCalledWith('Invalid invite link')
+  })
+
+  it('navigates to /setup with params when unconfigured', async () => {
     mockHasConfig.mockResolvedValue(false)
 
-    await handleConnectLink('ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-key')
+    await handleConnectLink(
+      'ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-key',
+      mockNavigate,
+    )
 
-    expect(window.location.href).toBe('/setup?url=https%3A%2F%2Fabc.supabase.co&key=test-key')
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/setup?url=https%3A%2F%2Fabc.supabase.co&key=test-key',
+    )
   })
 
   it('toasts "Already connected" when same instance', async () => {
@@ -67,7 +66,10 @@ describe('handleConnectLink', () => {
       supabaseKey: 'existing-key',
     })
 
-    await handleConnectLink('ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-key')
+    await handleConnectLink(
+      'ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-key',
+      mockNavigate,
+    )
 
     expect(mockToast).toHaveBeenCalledWith('Already connected to this server')
   })
@@ -79,9 +81,25 @@ describe('handleConnectLink', () => {
       supabaseKey: 'other-key',
     })
 
-    await handleConnectLink('ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-key')
+    await handleConnectLink(
+      'ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-key',
+      mockNavigate,
+    )
 
     expect(mockSetPending).toHaveBeenCalledWith('https://abc.supabase.co', 'test-key')
-    expect(window.location.href).toBe('/profile')
+    expect(mockNavigate).toHaveBeenCalledWith('/profile')
+  })
+
+  it('sets pending and navigates when config is null despite hasConfig', async () => {
+    mockHasConfig.mockResolvedValue(true)
+    mockGetConfig.mockResolvedValue(null)
+
+    await handleConnectLink(
+      'ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-key',
+      mockNavigate,
+    )
+
+    expect(mockSetPending).toHaveBeenCalledWith('https://abc.supabase.co', 'test-key')
+    expect(mockNavigate).toHaveBeenCalledWith('/profile')
   })
 })

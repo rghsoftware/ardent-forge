@@ -3,7 +3,18 @@ import { parseInviteLink } from '@/lib/invite-link'
 import { getConfigStore } from '@/lib/config-store'
 import { usePendingConnect } from '@/lib/pending-connect'
 
-export async function handleConnectLink(urlStr: string): Promise<void> {
+type Navigate = (path: string) => void
+
+// Default navigation uses window.location.href for contexts without a router
+// (e.g. the Tauri deep-link listener in auth.tsx which runs outside React).
+const defaultNavigate: Navigate = (path) => {
+  window.location.href = path
+}
+
+export async function handleConnectLink(
+  urlStr: string,
+  navigate: Navigate = defaultNavigate,
+): Promise<void> {
   const parsed = parseInviteLink(urlStr)
   if (!parsed) {
     toast('Invalid invite link')
@@ -14,7 +25,7 @@ export async function handleConnectLink(urlStr: string): Promise<void> {
   const hasConfig = await store.hasConfig()
 
   if (!hasConfig) {
-    window.location.href = `/setup?url=${encodeURIComponent(parsed.url)}&key=${encodeURIComponent(parsed.key)}`
+    navigate(`/setup?url=${encodeURIComponent(parsed.url)}&key=${encodeURIComponent(parsed.key)}`)
     return
   }
 
@@ -25,5 +36,5 @@ export async function handleConnectLink(urlStr: string): Promise<void> {
   }
 
   usePendingConnect.getState().setPending(parsed.url, parsed.key)
-  window.location.href = '/profile'
+  navigate('/profile')
 }

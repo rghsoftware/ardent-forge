@@ -36,6 +36,9 @@
   },
   "plugins": {
     "deep-link": {
+      "desktop": {
+        "schemes": ["ardentforge"]
+      },
       "mobile": [
         {
           "schemes": ["ardentforge"],

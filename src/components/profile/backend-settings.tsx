@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { isTauri, invoke } from '@tauri-apps/api/core'
 import { QRCodeSVG } from 'qrcode.react'
@@ -47,7 +47,11 @@ export function BackendSettings() {
       })
   }, [])
 
-  useEffect(() => {
+  // Synchronously check for a pending connect on mount and apply it to initial state.
+  // Using a ref to run once avoids the React Compiler lint error for setState-in-effect.
+  const pendingApplied = useRef(false)
+  if (!pendingApplied.current) {
+    pendingApplied.current = true
     const { pending, clear } = usePendingConnect.getState()
     if (pending) {
       setEditing(true)
@@ -55,7 +59,7 @@ export function BackendSettings() {
       setKey(pending.key)
       clear()
     }
-  }, [])
+  }
 
   const currentUrl = currentConfig?.supabaseUrl ?? null
   const truncatedUrl =
