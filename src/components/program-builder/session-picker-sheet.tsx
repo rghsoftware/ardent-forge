@@ -50,7 +50,6 @@ export function SessionPickerSheet({
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<SessionType | 'ALL'>('ALL')
   const [showCreate, setShowCreate] = useState(false)
-  const [showCreateCallout, setShowCreateCallout] = useState(false)
 
   // Filter templates by type and search query
   const filtered = useMemo(() => {
@@ -77,7 +76,6 @@ export function SessionPickerSheet({
       setSearch('')
       setFilter('ALL')
       setShowCreate(false)
-      setShowCreateCallout(false)
     },
     [onSelect, onOpenChange],
   )
@@ -90,14 +88,12 @@ export function SessionPickerSheet({
       setSearch('')
       setFilter('ALL')
       setShowCreate(false)
-      setShowCreateCallout(false)
     },
     [onSelect, onOpenChange],
   )
 
   const handleCancelCreate = useCallback(() => {
     setShowCreate(false)
-    setShowCreateCallout(false)
   }, [])
 
   return (
@@ -116,8 +112,20 @@ export function SessionPickerSheet({
 
         {showCreate ? (
           /* Inline template creation form */
-          <div className="flex-1 overflow-y-auto pt-2">
+          <div className="flex flex-1 flex-col overflow-y-auto pt-2">
             <SessionTemplateForm onSave={handleCreated} onCancel={handleCancelCreate} />
+            <div className="px-4 py-3">
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenChange(false)
+                  navigate({ to: '/library' })
+                }}
+                className="text-[11px] text-warm-ash/50 transition-colors hover:text-ember"
+              >
+                Want more options? Create in the Library
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -136,7 +144,9 @@ export function SessionPickerSheet({
               <ToggleGroup
                 type="single"
                 value={filter}
-                onValueChange={(v) => { if (v) setFilter(v as SessionType | 'ALL') }}
+                onValueChange={(v) => {
+                  if (v) setFilter(v as SessionType | 'ALL')
+                }}
                 className="flex flex-wrap gap-1"
               >
                 {SESSION_FILTERS.map((f) => (
@@ -205,50 +215,18 @@ export function SessionPickerSheet({
               )}
             </div>
 
-            {/* Create callout -- shown after tapping "Create new template" */}
-            {showCreateCallout && !showCreate && (
-              <div className="flex flex-col gap-3 border-t border-warm-ash/10 px-4 py-3">
-                <p className="text-xs text-warm-ash/60">
-                  For the best experience, create templates from the Library first.
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      onOpenChange(false)
-                      navigate({ to: '/library' })
-                    }}
-                    className="min-h-10 flex-1 text-xs"
-                  >
-                    Go to Library
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => { setShowCreate(true); setShowCreateCallout(false) }}
-                    className="min-h-10 flex-1 text-xs"
-                  >
-                    Quick create
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Create new template button */}
-            {!showCreateCallout && (
-              <div className="border-t border-warm-ash/10 px-4 py-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setShowCreateCallout(true)}
-                  className="min-h-12 w-full text-xs"
-                >
-                  <Icon name="add" size={16} />
-                  Create new template
-                </Button>
-              </div>
-            )}
+            {/* Create new template -- opens inline form directly */}
+            <div className="border-t border-warm-ash/10 px-4 py-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowCreate(true)}
+                className="min-h-12 w-full text-xs"
+              >
+                <Icon name="add" size={16} />
+                Create new template
+              </Button>
+            </div>
           </>
         )}
       </SheetContent>
