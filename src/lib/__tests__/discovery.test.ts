@@ -78,6 +78,50 @@ describe('discoverInstance', () => {
     )
   })
 
+  it('returns NETWORK_ERROR for a file:// URL', async () => {
+    const result = await discoverInstance('file:///etc/passwd')
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'NETWORK_ERROR',
+      message: 'Only http:// and https:// URLs are supported.',
+    })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('returns NETWORK_ERROR for a ftp:// URL', async () => {
+    const result = await discoverInstance('ftp://forge.example.com')
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'NETWORK_ERROR',
+      message: 'Only http:// and https:// URLs are supported.',
+    })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('returns NETWORK_ERROR for an empty string', async () => {
+    const result = await discoverInstance('')
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'NETWORK_ERROR',
+      message: 'Invalid URL. Please enter a valid server address.',
+    })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('returns NETWORK_ERROR for whitespace-only input', async () => {
+    const result = await discoverInstance('   ')
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'NETWORK_ERROR',
+      message: 'Invalid URL. Please enter a valid server address.',
+    })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   // -------------------------------------------------------------------------
   // Network errors
   // -------------------------------------------------------------------------

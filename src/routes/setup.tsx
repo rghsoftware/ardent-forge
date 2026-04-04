@@ -41,6 +41,36 @@ function SetupPage() {
   const [discoveryMessage, setDiscoveryMessage] = useState('')
   const [advancedOpen, setAdvancedOpen] = useState(false)
 
+  const validateAndSave = async (supabaseUrl: string, supabaseKey: string) => {
+    setStatus('validating')
+    setMessage('')
+
+    const result = await validateConnection(supabaseUrl, supabaseKey)
+
+    if (result.status === 'ok') {
+      try {
+        setStatus('ok')
+        setMessage('Connected successfully.')
+
+        const config: BackendConfig = { supabaseUrl, supabaseKey }
+        await getConfigStore().setConfig(config)
+        initSupabaseFromConfig(config)
+
+        router.navigate({ to: '/sign-in', search: { reason: undefined } })
+        return true
+      } catch (err) {
+        console.error('[setup] Failed to save configuration after validation:', err)
+        setStatus('unreachable')
+        setMessage('Connected but failed to save configuration. Please try again.')
+        return false
+      }
+    }
+
+    setStatus(result.status)
+    setMessage(result.message)
+    return false
+  }
+
   const handleConnect = async () => {
     if (!url || !key) {
       setStatus('unreachable')
@@ -48,32 +78,7 @@ function SetupPage() {
       return
     }
 
-    setStatus('validating')
-    setMessage('')
-
-    const result = await validateConnection(url, key)
-
-    if (result.status === 'ok') {
-      try {
-        setStatus('ok')
-        setMessage('Connected successfully.')
-
-        const config: BackendConfig = { supabaseUrl: url, supabaseKey: key }
-        await getConfigStore().setConfig(config)
-        initSupabaseFromConfig(config)
-
-        router.navigate({ to: '/sign-in', search: { reason: undefined } })
-        return
-      } catch (err) {
-        console.error('[setup] Failed to save configuration after validation:', err)
-        setStatus('unreachable')
-        setMessage('Connected but failed to save configuration. Please try again.')
-        return
-      }
-    }
-
-    setStatus(result.status)
-    setMessage(result.message)
+    await validateAndSave(url, key)
   }
 
   const handleDiscoverAndConnect = async () => {
@@ -100,36 +105,7 @@ function SetupPage() {
     setUrl(result.supabaseUrl)
     setKey(result.supabaseKey)
 
-    // Validate using discovered credentials directly since setState is async
-    setStatus('validating')
-    setMessage('')
-
-    const validation = await validateConnection(result.supabaseUrl, result.supabaseKey)
-
-    if (validation.status === 'ok') {
-      try {
-        setStatus('ok')
-        setMessage('Connected successfully.')
-
-        const config: BackendConfig = {
-          supabaseUrl: result.supabaseUrl,
-          supabaseKey: result.supabaseKey,
-        }
-        await getConfigStore().setConfig(config)
-        initSupabaseFromConfig(config)
-
-        router.navigate({ to: '/sign-in', search: { reason: undefined } })
-        return
-      } catch (err) {
-        console.error('[setup] Failed to save configuration after validation:', err)
-        setStatus('unreachable')
-        setMessage('Connected but failed to save configuration. Please try again.')
-        return
-      }
-    }
-
-    setStatus(validation.status)
-    setMessage(validation.message)
+    await validateAndSave(result.supabaseUrl, result.supabaseKey)
   }
 
   // Auto-validate when env vars pre-fill both fields so the user

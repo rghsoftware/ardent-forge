@@ -1,8 +1,16 @@
+import { z } from 'zod'
+
 export type DiscoveryError = 'NETWORK_ERROR' | 'NOT_FOUND' | 'INVALID_RESPONSE'
 
 export type DiscoveryResult =
   | { ok: true; supabaseUrl: string; supabaseKey: string }
   | { ok: false; error: DiscoveryError; message: string }
+
+const DiscoverySchema = z.object({
+  version: z.string(),
+  supabase_url: z.string(),
+  supabase_publishable_key: z.string(),
+})
 
 /**
  * Resolves a human-friendly server URL into Supabase credentials by fetching
@@ -12,13 +20,32 @@ export type DiscoveryResult =
  * the connection validator for further verification.
  */
 export async function discoverInstance(serverUrl: string): Promise<DiscoveryResult> {
-  // Normalize: prepend https:// if no protocol, strip trailing slashes
+  // Normalize: prepend https:// if no protocol, validate protocol, strip trailing slashes
   let normalized = serverUrl.trim()
   if (!normalized.includes('://')) {
     normalized = `https://${normalized}`
   }
-  normalized = normalized.replace(/\/+$/, '')
 
+  let parsed: URL
+  try {
+    parsed = new URL(normalized)
+  } catch {
+    return {
+      ok: false,
+      error: 'NETWORK_ERROR',
+      message: 'Invalid URL. Please enter a valid server address.',
+    }
+  }
+
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    return {
+      ok: false,
+      error: 'NETWORK_ERROR',
+      message: 'Only http:// and https:// URLs are supported.',
+    }
+  }
+
+  normalized = parsed.origin
   const discoveryUrl = `${normalized}/.well-known/ardent-forge.json`
 
   let response: Response
@@ -61,14 +88,9 @@ export async function discoverInstance(serverUrl: string): Promise<DiscoveryResu
     }
   }
 
-  // Validate required fields
-  if (
-    typeof json !== 'object' ||
-    json === null ||
-    typeof (json as Record<string, unknown>).version !== 'string' ||
-    typeof (json as Record<string, unknown>).supabase_url !== 'string' ||
-    typeof (json as Record<string, unknown>).supabase_publishable_key !== 'string'
-  ) {
+  const result = DiscoverySchema.safeParse(json)
+
+  if (!result.success) {
     return {
       ok: false,
       error: 'INVALID_RESPONSE',
@@ -77,11 +99,9 @@ export async function discoverInstance(serverUrl: string): Promise<DiscoveryResu
     }
   }
 
-  const record = json as Record<string, string>
-
   return {
     ok: true,
-    supabaseUrl: record.supabase_url,
-    supabaseKey: record.supabase_publishable_key,
+    supabaseUrl: result.data.supabase_url,
+    supabaseKey: result.data.supabase_publishable_key,
   }
 }
