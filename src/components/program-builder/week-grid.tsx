@@ -1,6 +1,7 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Icon } from '@/components/icon'
 import { SessionSlot } from './session-slot'
+import { ConfirmDeleteDialog } from './confirm-delete-dialog'
 import { removeWeekFromBlock } from './builder-state'
 import type { WeekDraft, ProgramDraft } from './builder-state'
 import { DAY_COLUMNS, WEEKDAY_COLUMNS } from './constants'
@@ -33,6 +34,8 @@ export function WeekGrid({
   showWeekends,
   isNew,
 }: WeekGridProps) {
+  const [showWeekDeleteConfirm, setShowWeekDeleteConfirm] = useState(false)
+
   // Map sessions by dayOfWeek for quick lookup
   const sessionsByDay = new Map(
     week.sessions.filter((s) => s.dayOfWeek !== null).map((s) => [s.dayOfWeek!, s]),
@@ -55,6 +58,12 @@ export function WeekGrid({
     onUpdate(removeWeekFromBlock(draft, blockClientId, week.clientId))
   }, [draft, blockClientId, week.clientId, onUpdate])
 
+  const weekDeleteDescription = useMemo(() => {
+    if (week.sessions.length > 0)
+      return `This will remove ${week.sessions.length} ${week.sessions.length === 1 ? 'session' : 'sessions'}.`
+    return 'This week is empty.'
+  }, [week.sessions.length])
+
   return (
     <div
       className="flex flex-col gap-1 border-t border-warm-ash/10 pt-3 mt-1"
@@ -74,7 +83,7 @@ export function WeekGrid({
         </button>
         <button
           type="button"
-          onClick={handleRemoveWeek}
+          onClick={() => setShowWeekDeleteConfirm(true)}
           className="p-1 text-warm-ash/40 hover:text-warning-flare"
           aria-label={`Remove week ${weekIndex + 1}`}
         >
@@ -112,6 +121,14 @@ export function WeekGrid({
           +{weekendSessionCount} weekend {weekendSessionCount === 1 ? 'session' : 'sessions'}
         </p>
       )}
+
+      <ConfirmDeleteDialog
+        open={showWeekDeleteConfirm}
+        onOpenChange={setShowWeekDeleteConfirm}
+        title={`Delete week ${weekIndex + 1}?`}
+        description={weekDeleteDescription}
+        onConfirm={handleRemoveWeek}
+      />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { Icon } from '@/components/icon'
 import { removeSession } from './builder-state'
 import type { SessionDraft, ProgramDraft } from './builder-state'
@@ -68,7 +69,15 @@ export function SessionSlot({
     (e: React.MouseEvent) => {
       e.stopPropagation()
       if (session) {
+        const previousDraft = draft
         onUpdate(removeSession(draft, weekClientId, session.clientId))
+        toast('Session removed', {
+          action: {
+            label: 'Undo',
+            onClick: () => onUpdate(previousDraft),
+          },
+          duration: 5000,
+        })
       }
     },
     [session, draft, weekClientId, onUpdate],

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { WeekGrid } from './week-grid'
+import { ConfirmDeleteDialog } from './confirm-delete-dialog'
 import { removeBlock, addWeekToBlock } from './builder-state'
 import type { BlockDraft, ProgramDraft } from './builder-state'
 import type { BlockType } from '@/domain/types'
@@ -52,6 +53,7 @@ export function BlockEditor({
   const [expanded, setExpanded] = useState(true)
   const [isEditingName, setIsEditingName] = useState(false)
   const [newWeekId, setNewWeekId] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const {
     attributes,
@@ -95,6 +97,20 @@ export function BlockEditor({
   const handleDelete = useCallback(() => {
     onUpdate(removeBlock(draft, block.clientId))
   }, [draft, block.clientId, onUpdate])
+
+  const totalSessions = useMemo(
+    () => block.weeks.reduce((sum, w) => sum + w.sessions.length, 0),
+    [block.weeks],
+  )
+
+  const deleteDescription = useMemo(() => {
+    const parts: string[] = []
+    if (block.weeks.length > 0)
+      parts.push(`${block.weeks.length} ${block.weeks.length === 1 ? 'week' : 'weeks'}`)
+    if (totalSessions > 0)
+      parts.push(`${totalSessions} ${totalSessions === 1 ? 'session' : 'sessions'}`)
+    return parts.length > 0 ? `This will remove ${parts.join(' and ')}.` : 'This block is empty.'
+  }, [block.weeks.length, totalSessions])
 
   const handleAddWeek = useCallback(() => {
     const updated = addWeekToBlock(draft, block.clientId)
@@ -202,7 +218,7 @@ export function BlockEditor({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-40">
-              <DropdownMenuItem variant="destructive" onSelect={handleDelete}>
+              <DropdownMenuItem variant="destructive" onSelect={() => setShowDeleteConfirm(true)}>
                 <Icon name="delete" size={16} />
                 Delete block
               </DropdownMenuItem>
@@ -265,6 +281,14 @@ export function BlockEditor({
           </div>
         </CollapsibleContent>
       </div>
+
+      <ConfirmDeleteDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title={`Delete ${block.name || 'Untitled block'}?`}
+        description={deleteDescription}
+        onConfirm={handleDelete}
+      />
     </Collapsible>
   )
 }
