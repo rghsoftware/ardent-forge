@@ -4,9 +4,9 @@
 **Tech:** Context/Features/009-idle-mode/Tech.md
 
 ## Progress
-- **Status:** Not started
+- **Status:** Complete
 - **Current task:** --
-- **Last milestone:** --
+- **Last milestone:** Feature complete (all 17 assertions verified)
 
 ---
 
