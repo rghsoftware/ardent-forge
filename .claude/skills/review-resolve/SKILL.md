@@ -41,23 +41,43 @@ Six actions are available for every finding:
    file reference, and description
 
 ### Step 2: Bulk accept phase
-Present a summary table of all findings grouped by category and severity:
+List every finding with its ID, severity, and title so the user can see what
+they are deciding on. Group by category.
 
 ```
-Findings summary:
-  [FIX]  -- Critical: 2, High: 3, Medium: 1
-  [TASK] -- High: 1, Medium: 4
-  [ADR]  -- Medium: 2
-  [RULE] -- Low: 3
+## Findings
+
+### [FIX] -- 6 findings
+  P1-001 (Critical) Missing null check in auth handler
+  P1-002 (Critical) SQL injection in search query
+  P1-004 (High)     Unclosed file handle in export
+  P1-005 (High)     Wrong HTTP status on validation error
+  P1-007 (Medium)   Inconsistent error message format
+
+### [TASK] -- 5 findings
+  P1-003 (High)     No integration test for payment flow
+  P1-008 (Medium)   Missing rate limiting on public API
+  P1-009 (Medium)   Accessibility labels missing on form inputs
+  P1-010 (Medium)   No migration rollback script
+  P1-012 (Low)      Add changelog entry for breaking change
+
+### [ADR] -- 2 findings
+  P1-006 (High)     Auth middleware stores tokens in localStorage
+  P1-011 (Medium)   Tight coupling between order and inventory services
+
+### [RULE] -- 3 findings
+  P1-013 (Low)      Bare except clauses in 4 files
+  P1-014 (Low)      No structured logging -- raw print() in 6 files
+  P1-015 (Low)      Inconsistent import ordering across modules
 
 Total: 16 findings
 
 Accept suggested actions in bulk?
-  1. Accept all -- apply each finding's category as its action
-  2. Accept all [FIX] -- fix all fix findings
-  3. Accept all [TASK] -- create tasks for all task findings
-  4. Accept all [ADR] -- create ADRs for all ADR findings
-  5. Accept all [RULE] -- update rules for all rule findings
+  1. Accept all -- apply each finding's category as its action (fix 6, task 5, adr 2, rule 3)
+  2. Accept all [FIX]
+  3. Accept all [TASK]
+  4. Accept all [ADR]
+  5. Accept all [RULE]
   6. Skip -- go straight to individual triage
 
 You can accept multiple groups. Type "done" when ready for individual triage.
@@ -65,6 +85,9 @@ You can accept multiple groups. Type "done" when ready for individual triage.
 
 The category assigned during capture IS the suggested action. Bulk accept means
 "yes, do what the category says" for a group of findings at once.
+
+**CRITICAL:** Always list findings by title, not just counts. The user needs to
+see what each finding IS to decide whether to bulk-accept or individually triage.
 
 **Bulk accept rules:**
 - The user may accept multiple groups before typing "done"

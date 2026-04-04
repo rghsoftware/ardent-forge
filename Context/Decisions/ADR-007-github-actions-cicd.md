@@ -1,6 +1,6 @@
 # ADR-007: GitHub Actions for CI/CD Pipeline
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-04-04
 **Feature:** [011-ci-cd-pipeline](../Features/011-ci-cd-pipeline/Spec.md)
 

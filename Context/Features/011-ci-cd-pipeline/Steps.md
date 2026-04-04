@@ -129,7 +129,7 @@ Add `e2e` job to `ci.yml`:
 8. `bun run test:e2e`
 9. On failure: upload `playwright-report/` as artifact via `actions/upload-artifact@v4`
 
-Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` environment variables from `bunx supabase status` output for the E2E tests.
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` environment variables from `bunx supabase status` output for the E2E tests.
 
 **Acceptance criteria:**
 
@@ -350,6 +350,30 @@ Create `.github/README.md` covering:
 - A new developer can set up the pipeline from this document alone
 - All prerequisites are listed
 - No secrets or credentials are included in the document
+
+---
+
+### S010 -- Add secret validation steps to release workflow jobs
+
+**Agent:** `cicd-engineer`
+**Files:** `.github/workflows/release.yml`
+**Depends on:** S008
+
+Add an upfront "Validate secrets" step at the beginning of each release workflow job that uses secrets (`build-release`, `migrate`, `publish`). Each step should validate that all required secrets for that job are non-empty, failing fast with a clear error message instead of letting builds run 10-15 minutes before hitting opaque failures.
+
+Required validations per job:
+
+- `build-release`: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`
+- `migrate`: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`
+- `publish`: `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
+
+**Acceptance criteria:**
+
+- Each job fails within 10 seconds if a required secret is missing
+- Error messages clearly identify which secret is missing
+- All 7 secrets across the release workflow are validated
+
+**Ref:** TA9, PR Review P8-015
 
 ---
 

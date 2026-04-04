@@ -8,7 +8,7 @@
 
 ## Architecture Overview
 
-Four GitHub Actions workflows, triggered by different events, sharing a common toolchain setup:
+Two GitHub Actions workflows, triggered by different events, sharing a common toolchain setup:
 
 ```
 PR to develop          v*-alpha/beta/rc tag (develop)     v* stable tag (main)
@@ -43,14 +43,14 @@ Two workflows total. `release.yml` handles both pre-release and stable tags, dif
 
 Each workflow installs tools in this dependency order:
 
-| Step | Tool                 | Action / Method                                    | Version                                            |
-| ---- | -------------------- | -------------------------------------------------- | -------------------------------------------------- |
-| 1    | Java 21              | `actions/setup-java@v4` (temurin, `cache: gradle`) | `21`                                               |
-| 2    | Android SDK + NDK    | `android-actions/setup-android@v3` + `sdkmanager`  | SDK 36, NDK pinned                                 |
-| 3    | Rust stable          | `dtolnay/rust-toolchain@stable`                    | stable (min 1.77.2)                                |
-| 4    | Rust Android targets | `rustup target add`                                | `aarch64-linux-android`, `armv7-linux-androideabi` |
-| 5    | Bun                  | `oven-sh/setup-bun@v2`                             | pinned (currently latest)                          |
-| 6    | Supabase CLI         | `supabase/setup-cli@v1`                            | latest (E2E + release)                             |
+| Step | Tool                 | Action / Method                                    | Version                   |
+| ---- | -------------------- | -------------------------------------------------- | ------------------------- |
+| 1    | Java 21              | `actions/setup-java@v4` (temurin, `cache: gradle`) | `21`                      |
+| 2    | Android SDK + NDK    | `android-actions/setup-android@v3` + `sdkmanager`  | SDK 36, NDK pinned        |
+| 3    | Rust stable          | `dtolnay/rust-toolchain@stable`                    | stable (min 1.77.2)       |
+| 4    | Rust Android targets | `dtolnay/rust-toolchain` `targets` input           | `aarch64-linux-android`   |
+| 5    | Bun                  | `oven-sh/setup-bun@v2`                             | pinned (currently latest) |
+| 6    | Supabase CLI         | `supabase/setup-cli@v1`                            | latest (E2E + release)    |
 
 ### Caching Strategy
 
@@ -198,10 +198,13 @@ Add a `signingConfigs` block that reads from environment variables:
 ```kotlin
 signingConfigs {
     create("release") {
-        storeFile = file(System.getenv("ANDROID_KEYSTORE_PATH") ?: "/dev/null")
-        storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: ""
-        keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: ""
-        keyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: ""
+        val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+        if (keystorePath != null) {
+            storeFile = file(keystorePath)
+            storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+            keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+        }
     }
 }
 ```
@@ -229,11 +232,11 @@ Then reference it in the `release` build type's `signingConfig`.
 Playwright is **not yet configured** in the project. This feature will add:
 
 - `@playwright/test` as a dev dependency
-- `playwright.config.ts` configured for Chromium, targeting `http://localhost:5173` (Vite dev server)
+- `playwright.config.ts` configured for Chromium, targeting `http://localhost:4173` (Vite preview server)
 - `e2e/` directory for test files
 - Initial smoke test: app loads, auth page renders
 
-E2E tests run against a local Supabase instance (`bunx supabase start`) seeded with `supabase/seed.sql`. The Vite dev server is started in preview mode (`bun run preview`) pointing at the local Supabase URL.
+E2E tests run against a local Supabase instance (`bunx supabase start`) seeded with `supabase/seed.sql`. The Vite preview server is started via `bun run preview` (port 4173) pointing at the local Supabase URL.
 
 ---
 
