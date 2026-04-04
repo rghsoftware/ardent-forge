@@ -10,7 +10,7 @@ import {
   formatLoad,
   buildGroupedActivities,
   useSessionTemplatesFull,
-} from './session-detail'
+} from './session-detail-utils'
 import type { ProgramDraft } from './builder-state'
 import {
   DAY_COLUMNS,
