@@ -27,6 +27,7 @@ export function initSupabaseFromConfig(config: BackendConfig): SupabaseClient {
   }
   _client = createClient(config.supabaseUrl, config.supabaseKey, {
     auth: {
+      flowType: 'pkce',
       detectSessionInUrl: false,
     },
   })

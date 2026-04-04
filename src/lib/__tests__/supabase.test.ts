@@ -45,7 +45,7 @@ describe('supabase client lifecycle', () => {
     expect(client).toBeDefined()
     expect(client).toBe(getSupabaseClient())
     expect(mockCreateClient).toHaveBeenCalledWith('https://example.supabase.co', 'test-anon-key', {
-      auth: { detectSessionInUrl: false },
+      auth: { flowType: 'pkce', detectSessionInUrl: false },
     })
   })
 
