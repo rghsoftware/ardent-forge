@@ -268,6 +268,31 @@ Mock `getConfigStore` (return mock object), `toast` (from sonner), and `window.l
 | 2    | S005-S008 | All parallel                             | Deep links dispatch correctly, UI pre-populates |
 | 3    | S009-S010 | S009+S010 parallel                       | Build passes, tests pass                        |
 
-**Total tasks:** 10
+#### S011: Tests for /connect route and auth.tsx connect dispatch
+
+**Agent:** `frontend`
+**Files:** `src/routes/__tests__/connect.test.tsx` (new), `src/lib/__tests__/auth-oauth.test.tsx`
+**Depends on:** S006, S005
+**Parallel:** no
+
+Add tests for:
+
+1. `/connect` route component: missing-params guard (toasts + redirects to /setup), error catch when `handleConnectLink` rejects (toasts + redirects to /setup), URL reconstruction from search params.
+2. `auth.tsx` connect dispatch: verify `url.hostname === 'connect'` routes to `handleConnectLink` instead of OAuth code exchange. Verify non-connect hostnames still go through OAuth flow.
+
+**Done when:** Both the `/connect` route edge cases and the `onOpenUrl` connect dispatch branch have test coverage.
+
+---
+
+## Milestone Summary
+
+| Wave | Tasks     | Parallel?                                | Validates                                       |
+| ---- | --------- | ---------------------------------------- | ----------------------------------------------- |
+| 1    | S001-S004 | S001+S003+S004 parallel, S002 after S001 | New modules exist, config updated               |
+| 2    | S005-S008 | All parallel                             | Deep links dispatch correctly, UI pre-populates |
+| 3    | S009-S010 | S009+S010 parallel                       | Build passes, tests pass                        |
+| 4    | S011      | Independent                              | Route + dispatch edge cases covered             |
+
+**Total tasks:** 11
 **Critical path:** S001 -> S002 -> S005 (Tauri dispatch wired up)
 **Estimated effort:** 0.5 days

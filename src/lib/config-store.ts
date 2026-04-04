@@ -38,7 +38,8 @@ class BrowserConfigStore implements ConfigStore {
         return null
       }
       return parsed.data
-    } catch {
+    } catch (err) {
+      console.error('[config-store] Failed to parse stored config:', err)
       return null
     }
   }
@@ -63,7 +64,8 @@ class BrowserConfigStore implements ConfigStore {
     if (!raw) return false
     try {
       return backendConfigSchema.safeParse(JSON.parse(raw)).success
-    } catch {
+    } catch (err) {
+      console.error('[config-store] Failed to validate stored config:', err)
       return false
     }
   }
@@ -87,7 +89,8 @@ class TauriConfigStore implements ConfigStore {
         return null
       }
       return parsed.data
-    } catch {
+    } catch (err) {
+      console.error('[config-store] Failed to parse stored config:', err)
       return null
     }
   }

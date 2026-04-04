@@ -5,8 +5,8 @@ import { handleConnectLink } from '@/lib/deep-link-handler'
 
 export const Route = createFileRoute('/connect')({
   validateSearch: (search: Record<string, unknown>): { url?: string; key?: string } => ({
-    url: (search.url as string) || undefined,
-    key: (search.key as string) || undefined,
+    url: typeof search.url === 'string' ? search.url || undefined : undefined,
+    key: typeof search.key === 'string' ? search.key || undefined : undefined,
   }),
   component: ConnectPage,
 })

@@ -174,7 +174,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const url = new URL(urlStr)
 
               if (url.hostname === 'connect') {
-                await handleConnectLink(urlStr)
+                try {
+                  await handleConnectLink(urlStr)
+                } catch (err) {
+                  console.error('[auth] Connect deep-link failed:', err)
+                }
                 return
               }
 

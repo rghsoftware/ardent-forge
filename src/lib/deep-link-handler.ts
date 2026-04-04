@@ -21,20 +21,25 @@ export async function handleConnectLink(
     return
   }
 
-  const store = getConfigStore()
-  const hasConfig = await store.hasConfig()
+  try {
+    const store = getConfigStore()
+    const hasConfig = await store.hasConfig()
 
-  if (!hasConfig) {
-    navigate(`/setup?url=${encodeURIComponent(parsed.url)}&key=${encodeURIComponent(parsed.key)}`)
-    return
+    if (!hasConfig) {
+      navigate(`/setup?url=${encodeURIComponent(parsed.url)}&key=${encodeURIComponent(parsed.key)}`)
+      return
+    }
+
+    const config = await store.getConfig()
+    if (config && config.supabaseUrl === parsed.url) {
+      toast('Already connected to this server')
+      return
+    }
+
+    usePendingConnect.getState().setPending(parsed.url, parsed.key)
+    navigate('/profile')
+  } catch (err) {
+    console.error('[deep-link] Failed to process connect link:', err)
+    toast('Failed to process invite link. Please try again.')
   }
-
-  const config = await store.getConfig()
-  if (config && config.supabaseUrl === parsed.url) {
-    toast('Already connected to this server')
-    return
-  }
-
-  usePendingConnect.getState().setPending(parsed.url, parsed.key)
-  navigate('/profile')
 }

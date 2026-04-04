@@ -24,8 +24,8 @@ type SetupState =
 
 export const Route = createFileRoute('/setup')({
   validateSearch: (search: Record<string, unknown>): { url?: string; key?: string } => ({
-    url: (search.url as string) || undefined,
-    key: (search.key as string) || undefined,
+    url: typeof search.url === 'string' ? search.url || undefined : undefined,
+    key: typeof search.key === 'string' ? search.key || undefined : undefined,
   }),
   beforeLoad: async () => {
     const hasConfig = await getConfigStore().hasConfig()
@@ -220,6 +220,7 @@ function SetupPage() {
       setAdvancedOpen(true)
       validateAndSave(search.url, search.key).catch((err) => {
         console.error('[setup] Auto-validate from deep link failed:', err)
+        toast('Auto-connection failed. Please try connecting manually.')
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

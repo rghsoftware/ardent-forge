@@ -27,10 +27,13 @@ export function BackendSettings() {
   const router = useRouter()
   const { signOut } = useAuth()
 
+  // Read pending connect state once at initialization to pre-populate the form.
+  const initialPending = useRef(usePendingConnect.getState().pending)
+
   const [currentConfig, setCurrentConfig] = useState<BackendConfig | null>(null)
-  const [editing, setEditing] = useState(false)
-  const [url, setUrl] = useState('')
-  const [key, setKey] = useState('')
+  const [editing, setEditing] = useState(() => !!initialPending.current)
+  const [url, setUrl] = useState(() => initialPending.current?.url ?? '')
+  const [key, setKey] = useState(() => initialPending.current?.key ?? '')
   const [status, setStatus] = useState<ConnectionUiStatus>('idle')
   const [message, setMessage] = useState('')
   const [copied, setCopied] = useState(false)
@@ -45,21 +48,12 @@ export function BackendSettings() {
       .catch((err) => {
         console.error('[backend-settings] Failed to load config:', err)
       })
-  }, [])
 
-  // Synchronously check for a pending connect on mount and apply it to initial state.
-  // Using a ref to run once avoids the React Compiler lint error for setState-in-effect.
-  const pendingApplied = useRef(false)
-  if (!pendingApplied.current) {
-    pendingApplied.current = true
-    const { pending, clear } = usePendingConnect.getState()
-    if (pending) {
-      setEditing(true)
-      setUrl(pending.url)
-      setKey(pending.key)
-      clear()
+    // Clear the consumed pending connect state after mount
+    if (initialPending.current) {
+      usePendingConnect.getState().clear()
     }
-  }
+  }, [])
 
   const currentUrl = currentConfig?.supabaseUrl ?? null
   const truncatedUrl =
