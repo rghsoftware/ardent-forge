@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile-capability",
+  "windows": ["main"],
+  "platforms": ["iOS", "android"],
+  "permissions": [
+    "core:default",
+    "notification:default",
+    "deep-link:allow-get-current",
+    "deep-link:allow-is-registered",
+    "deep-link:allow-register",
+    "deep-link:allow-unregister",
+    "opener:allow-open-url",
+    "opener:allow-default-urls",
+    "log:allow-log"
+  ]
+}

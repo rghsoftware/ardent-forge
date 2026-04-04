@@ -27,6 +27,7 @@ pub fn run() {
             )?;
             app.handle().plugin(tauri_plugin_notification::init())?;
             app.handle().plugin(tauri_plugin_deep_link::init())?;
+            app.handle().plugin(tauri_plugin_opener::init())?;
 
             // Initialize the SQLite database and store the pool in managed state
             let pool = tauri::async_runtime::block_on(db::init_db(app))

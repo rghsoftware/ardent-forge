@@ -282,11 +282,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const popup = window.open(data.url, '_blank')
-      if (!popup) {
+      try {
+        const { openUrl } = await import('@tauri-apps/plugin-opener')
+        await openUrl(data.url, 'inAppBrowser')
+      } catch {
         return {
           error: {
-            message: 'Browser blocked the sign-in window. Please allow popups and try again.',
+            message: 'Failed to open the sign-in browser. Please try again.',
           } as AuthError,
         }
       }
