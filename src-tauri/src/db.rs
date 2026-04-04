@@ -30,9 +30,7 @@ pub async fn init_db(app: &tauri::App) -> Result<SqlitePool, Box<dyn std::error:
             Ok(pool)
         }
         Err(e) if cfg!(debug_assertions) => {
-            log::warn!(
-                "Migration failed (debug build) -- recreating database: {e}"
-            );
+            log::warn!("Migration failed (debug build) -- recreating database: {e}");
             pool.close().await;
             for suffix in ["", "-shm", "-wal"] {
                 let path = db_path.with_extension(format!("db{suffix}"));

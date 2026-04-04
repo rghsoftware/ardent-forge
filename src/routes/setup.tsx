@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
-import { ChevronDown, ChevronUp, QrCode } from 'lucide-react'
+import { isTauri } from '@tauri-apps/api/core'
+import { ChevronDown, ChevronUp, QrCode, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { getConfigStore } from '@/lib/config-store'
 import type { BackendConfig } from '@/lib/config-store'
 import { validateConnection } from '@/lib/connection-validator'
 import { discoverInstance } from '@/lib/discovery'
+import { parseInviteLink } from '@/lib/invite-link'
 import { initSupabaseFromConfig } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { AuthPageShell } from '@/components/auth/auth-page-shell'
@@ -41,6 +44,8 @@ function SetupPage() {
   const [url, setUrl] = useState(envUrl)
   const [key, setKey] = useState(envKey)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  const [showPasteField, setShowPasteField] = useState(false)
 
   // Unified process state -- one discriminated union, no impossible states
   const [state, setState] = useState<SetupState>({ phase: 'idle' })
@@ -110,6 +115,59 @@ function SetupPage() {
     }
   }
 
+  const processInviteLink = async (raw: string) => {
+    const parsed = parseInviteLink(raw)
+    if (!parsed) {
+      toast('Invalid invite link')
+      return
+    }
+    setUrl(parsed.url)
+    setKey(parsed.key)
+    setAdvancedOpen(true)
+    setShowPasteField(false)
+    try {
+      await validateAndSave(parsed.url, parsed.key)
+    } catch (err) {
+      console.error('[setup] Unexpected error in processInviteLink:', err)
+      setState({
+        phase: 'validation-failed',
+        supabaseUrl: parsed.url,
+        supabaseKey: parsed.key,
+        error: 'An unexpected error occurred. Please try again.',
+      })
+    }
+  }
+
+  const cancelRef = useRef<(() => Promise<void>) | null>(null)
+
+  const handleScan = async () => {
+    if (!isTauri()) return
+    try {
+      const { scan, cancel, checkPermissions, requestPermissions, openAppSettings, Format } =
+        await import('@tauri-apps/plugin-barcode-scanner')
+
+      cancelRef.current = cancel
+
+      let perms = await checkPermissions()
+      if (perms === 'prompt') perms = await requestPermissions()
+      if (perms !== 'granted') {
+        toast('Camera permission required')
+        await openAppSettings()
+        return
+      }
+
+      setScanning(true)
+      const result = await scan({ windowed: true, formats: [Format.QRCode] })
+      await cancel()
+      setScanning(false)
+      await processInviteLink(result.content)
+    } catch (err) {
+      console.error('[setup] QR scan failed:', err)
+      setScanning(false)
+      toast('QR scan failed. Try pasting the invite link instead.')
+    }
+  }
+
   const handleDiscoverAndConnect = async () => {
     if (isBusy) return
 
@@ -157,8 +215,7 @@ function SetupPage() {
   }, [])
 
   const showEnvWarning =
-    hasEnvVars &&
-    (state.phase === 'validation-failed' || state.phase === 'schema-missing')
+    hasEnvVars && (state.phase === 'validation-failed' || state.phase === 'schema-missing')
 
   return (
     <AuthPageShell>
@@ -187,13 +244,50 @@ function SetupPage() {
             />
             <button
               type="button"
-              disabled
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-surface-charcoal opacity-30 cursor-not-allowed"
-              aria-label="Scan QR code (coming soon)"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-surface-charcoal hover:border-warm-ash hover:bg-surface-gunmetal"
+              aria-label={isTauri() ? 'Scan QR code' : 'Paste invite link'}
+              onClick={() => {
+                if (isTauri()) {
+                  handleScan().catch((err) => {
+                    console.error('[setup] QR scan failed:', err)
+                    toast('QR scan failed. Try pasting the invite link instead.')
+                  })
+                } else {
+                  setShowPasteField(!showPasteField)
+                }
+              }}
             >
               <QrCode className="h-4 w-4 text-warm-ash" />
             </button>
           </div>
+
+          {/* Browser paste field */}
+          {!isTauri() && showPasteField && (
+            <ForgeInput
+              type="text"
+              placeholder="Paste invite link"
+              aria-label="Paste invite link"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  processInviteLink(e.currentTarget.value).catch((err) => {
+                    console.error('[setup] Failed to process invite link:', err)
+                    toast('Something went wrong. Please try again.')
+                  })
+                }
+              }}
+              onPaste={(e) => {
+                const pasted = e.clipboardData.getData('text')
+                if (pasted) {
+                  e.preventDefault()
+                  processInviteLink(pasted).catch((err) => {
+                    console.error('[setup] Failed to process invite link:', err)
+                    toast('Something went wrong. Please try again.')
+                  })
+                }
+              }}
+            />
+          )}
         </div>
 
         <Button
@@ -221,9 +315,7 @@ function SetupPage() {
         {state.phase === 'validating' && (
           <p className="text-xs text-warm-ash animate-pulse">Connecting...</p>
         )}
-        {state.phase === 'success' && (
-          <p className="text-xs text-forge">Connected successfully.</p>
-        )}
+        {state.phase === 'success' && <p className="text-xs text-forge">Connected successfully.</p>}
         {(state.phase === 'validation-failed' || state.phase === 'schema-missing') && (
           <p className="text-xs text-warning-flare">
             {state.phase === 'validation-failed'
@@ -302,6 +394,27 @@ function SetupPage() {
           See the setup guide
         </a>
       </p>
+      {/* Scanning overlay (Tauri/Android only) */}
+      {scanning && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80">
+          <div className="h-[280px] w-[280px] rounded-lg border-2 border-ember" />
+          <button
+            type="button"
+            className="mt-8 flex items-center gap-2 rounded-md px-6 py-3 text-sm text-bone-white hover:bg-surface-gunmetal"
+            onClick={async () => {
+              try {
+                await cancelRef.current?.()
+              } catch (err) {
+                console.error('[setup] Failed to cancel scan:', err)
+              }
+              setScanning(false)
+            }}
+          >
+            <X className="h-4 w-4" />
+            Cancel
+          </button>
+        </div>
+      )}
     </AuthPageShell>
   )
 }

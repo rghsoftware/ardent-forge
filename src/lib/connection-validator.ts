@@ -22,7 +22,8 @@ export async function validateConnection(url: string, key: string): Promise<Vali
   let client: ReturnType<typeof createClient>
   try {
     client = createClient(normalizedUrl, key)
-  } catch {
+  } catch (err) {
+    console.error('[connection-validator] Failed to create Supabase client:', err)
     return {
       status: 'unreachable',
       message: 'Invalid Supabase URL or key format.',
@@ -50,7 +51,12 @@ export async function validateConnection(url: string, key: string): Promise<Vali
       const status = (error as unknown as { status?: number }).status
       const msg = error.message?.toLowerCase() ?? ''
 
-      if (status === 401 || status === 403 || msg.includes('invalid api key') || msg.includes('invalid claim')) {
+      if (
+        status === 401 ||
+        status === 403 ||
+        msg.includes('invalid api key') ||
+        msg.includes('invalid claim')
+      ) {
         return {
           status: 'unreachable',
           message: 'API key is not valid for this project. Check that the key matches the URL.',
@@ -59,7 +65,12 @@ export async function validateConnection(url: string, key: string): Promise<Vali
 
       // Any other error (like "relation does not exist") means the server
       // is reachable and the key authenticated -- proceed to schema check.
-      if (code !== 'PGRST116' && !msg.includes('does not exist') && status !== 404 && code !== '42P01') {
+      if (
+        code !== 'PGRST116' &&
+        !msg.includes('does not exist') &&
+        status !== 404 &&
+        code !== '42P01'
+      ) {
         // Unexpected error that isn't a missing-table error
         if (msg.includes('fetch') || msg.includes('network') || msg.includes('failed')) {
           return {
@@ -103,13 +114,15 @@ export async function validateConnection(url: string, key: string): Promise<Vali
       if (status === 401 || status === 403) {
         return {
           status: 'unreachable',
-          message: 'API key does not have access to this project. Check that the key matches the URL.',
+          message:
+            'API key does not have access to this project. Check that the key matches the URL.',
         }
       }
 
       return {
         status: 'no-schema',
-        message: 'Could not verify the database schema. Ensure the database migrations have been run.',
+        message:
+          'Could not verify the database schema. Ensure the database migrations have been run.',
       }
     }
   } catch (err) {

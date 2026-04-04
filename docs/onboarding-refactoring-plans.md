@@ -126,7 +126,21 @@ Add a new section to the existing Settings → Backend area, below the current U
 
 Add a QR input method to the setup screen alongside the server URL field.
 
-**Tauri mode (Android/iOS/desktop):** Add an icon button (`qr_code_scanner` Material Symbol) to the right of the server URL field. Tapping it opens the device camera via a barcode scanning library. Tauri v2 does not have a built-in barcode scanner plugin, so use `@anthropic-tauri/plugin-barcode-scanner` or `tauri-plugin-barcode-scanner` if available, otherwise use a WebView-based scanner library like `html5-qrcode` that accesses the camera through standard browser APIs inside the Tauri WebView.
+**Tauri mode (Android/iOS):** Add an icon button (`qr_code_scanner` Material Symbol) to the right of the server URL field. Tapping it opens the device camera via the official Tauri barcode scanner plugin (`@tauri-apps/plugin-barcode-scanner`). The plugin is mobile-only (Android + iOS) and accesses the camera natively, bypassing WebView camera APIs entirely.
+
+Setup: `bun tauri add barcode-scanner` handles both the Rust crate and JS bindings. Add `barcode-scanner:allow-scan` and `barcode-scanner:allow-cancel` to the mobile capability file (`src-tauri/capabilities/mobile.json`). For iOS, add `NSCameraUsageDescription` to `src-tauri/Info.ios.plist` (e.g., "Scan a QR code to connect to a server").
+
+Scanning uses `windowed: true` mode, which makes the WebView transparent and renders the camera feed underneath. The app shows a dark semi-transparent overlay with a viewfinder cutout during scanning. On successful scan, call `cancel()` to dismiss the camera and process the result.
+
+```typescript
+import { scan, cancel, Format } from '@tauri-apps/plugin-barcode-scanner';
+
+const result = await scan({ windowed: true, formats: [Format.QRCode] });
+await cancel();
+// result.content contains the decoded string
+```
+
+**Tauri mode (desktop):** The barcode scanner plugin does not support desktop platforms. Hide the QR scan button on desktop builds. Desktop users use the server URL field or manual entry.
 
 **Browser mode:** Replace the camera-based scan with a text input. The icon button opens a small inline field labeled "Paste invite link" that accepts an `ardentforge://connect?...` string. On paste/enter, parse the URL and extract `url` and `key` query parameters.
 
@@ -142,13 +156,19 @@ Add a QR input method to the setup screen alongside the server URL field.
 ### Done when
 
 - [ ] `qrcode.react` added to dependencies
+- [ ] `@tauri-apps/plugin-barcode-scanner` added via `bun tauri add barcode-scanner`
+- [ ] Barcode scanner permissions added to `src-tauri/capabilities/mobile.json`
+- [ ] `NSCameraUsageDescription` added to `src-tauri/Info.ios.plist`
 - [ ] Settings → Backend shows "SHARE THIS SERVER" section with QR code
 - [ ] QR code encodes correct `ardentforge://connect?url=...&key=...` from config store
 - [ ] "COPY INVITE LINK" copies deep link to clipboard with success toast
 - [ ] Explainer text renders in `body-small` / `text-muted`
-- [ ] Setup screen has QR scan button (Tauri: camera, browser: paste field)
+- [ ] Setup screen has QR scan button on mobile (opens native camera via barcode scanner plugin)
+- [ ] QR scan button hidden on desktop builds
+- [ ] Browser mode shows "paste invite link" field instead of camera scan
 - [ ] Scanning/pasting a valid invite link pre-populates and auto-validates
 - [ ] Invalid QR/link content shows error toast
+- [ ] Camera overlay renders correctly (transparent WebView with viewfinder cutout)
 - [ ] Section is hidden if config store is empty (defensive guard)
 
 ---
@@ -222,7 +242,7 @@ REFACTOR A: Discovery + Server URL Input        (1 day)
 
 REFACTOR B: QR Generation + Scan                (1 day)  
     ├── Modifies: Settings → Backend, /setup route
-    ├── Adds: qrcode.react dependency
+    ├── Adds: qrcode.react, @tauri-apps/plugin-barcode-scanner
     └── No strict dependencies (can parallel with A)
 
 REFACTOR C: Deep Link Handler                   (0.5 day)
@@ -233,4 +253,4 @@ REFACTOR C: Deep Link Handler                   (0.5 day)
 
 Refactors A and B can be done in parallel. Refactor C should land last since it depends on having both the setup screen changes (A) and QR-generated links (B) in place to be testable end-to-end. Total effort is approximately 2.5 days.
 
-All three refactors leave the existing connection validator, config store, lazy Supabase client initialization, and root route guard completely untouched. The backend change flow (including Tauri data wipe confirmation) is reused as-is. No Supabase schema changes, no Rust changes, no sync engine changes.
+All three refactors leave the existing connection validator, config store, lazy Supabase client initialization, and root route guard completely untouched. The backend change flow (including Tauri data wipe confirmation) is reused as-is. No Supabase schema changes, no sync engine changes. The only Rust-side change is Refactor B registering the barcode scanner plugin in `lib.rs` (one line, handled by `bun tauri add`).
