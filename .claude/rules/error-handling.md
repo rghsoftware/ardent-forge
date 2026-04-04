@@ -1,9 +1,11 @@
 # Error Handling Conventions
 
 ## Error Type Semantics
+
 Error types at system boundaries must distinguish input validation failures from network/transport failures. Use distinct error variants (e.g., `INVALID_INPUT` vs `NETWORK_ERROR`) so callers can branch on error type for retry logic, user messaging, and logging without ambiguity.
 
 ## Catch Blocks
+
 Never use bare `catch {}`. Always capture the error parameter and log it with a bracketed module prefix:
 
 ```typescript
@@ -18,3 +20,25 @@ try { ... } catch (err) {
 ```
 
 This ensures errors are traceable in the dev console and production logs.
+
+## User-Action Guard Clauses
+
+Guard clauses in user-action handlers (save, delete, submit) must never silently return. Always log with `[module-name]` prefix and set a user-facing error state (e.g., `setErrors()`, toast notification).
+
+```typescript
+// Bad
+const handleSave = () => {
+  if (!userId) return
+  // ...
+}
+
+// Good
+const handleSave = () => {
+  if (!userId) {
+    console.error('[my-module] Cannot save: no authenticated user')
+    setErrors((prev) => ({ ...prev, general: 'You must be signed in to save.' }))
+    return
+  }
+  // ...
+}
+```

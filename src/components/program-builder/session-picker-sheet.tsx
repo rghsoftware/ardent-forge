@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SessionTemplateForm } from '@/components/session-builder/session-template-form'
+import { EventTemplateForm } from '@/components/event-builder/event-template-form'
 import {
   useSessionTemplates,
   useTouchSessionTemplateLastAssigned,
@@ -56,6 +57,7 @@ export function SessionPickerSheet({
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<SessionType | 'ALL'>('ALL')
   const [showCreate, setShowCreate] = useState(false)
+  const [showCreateEvent, setShowCreateEvent] = useState(false)
 
   const isDefaultView = filter === 'ALL' && !search.trim()
 
@@ -87,16 +89,19 @@ export function SessionPickerSheet({
     return result
   }, [templates, filter, search])
 
+  const touchMutate = touchLastAssigned.mutate
+
   const handleSelect = useCallback(
     (template: SessionTemplate) => {
       onSelect(template.id, template.name, template.category)
-      touchLastAssigned.mutate(template.id)
+      touchMutate(template.id)
       onOpenChange(false)
       setSearch('')
       setFilter('ALL')
       setShowCreate(false)
+      setShowCreateEvent(false)
     },
-    [onSelect, onOpenChange, touchLastAssigned],
+    [onSelect, onOpenChange, touchMutate],
   )
 
   const handleCreated = useCallback(
@@ -107,12 +112,29 @@ export function SessionPickerSheet({
       setSearch('')
       setFilter('ALL')
       setShowCreate(false)
+      setShowCreateEvent(false)
     },
     [onSelect, onOpenChange],
   )
 
   const handleCancelCreate = useCallback(() => {
     setShowCreate(false)
+  }, [])
+
+  const handleEventCreated = useCallback(
+    (template: SessionTemplate) => {
+      onSelect(template.id, template.name, template.category)
+      onOpenChange(false)
+      setSearch('')
+      setFilter('ALL')
+      setShowCreate(false)
+      setShowCreateEvent(false)
+    },
+    [onSelect, onOpenChange],
+  )
+
+  const handleCancelCreateEvent = useCallback(() => {
+    setShowCreateEvent(false)
   }, [])
 
   return (
@@ -135,6 +157,23 @@ export function SessionPickerSheet({
           /* Inline template creation form */
           <div className="flex flex-1 flex-col overflow-y-auto pt-2">
             <SessionTemplateForm onSave={handleCreated} onCancel={handleCancelCreate} />
+            <div className="px-4 py-3">
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenChange(false)
+                  navigate({ to: '/library' })
+                }}
+                className="text-[11px] text-warm-ash/50 transition-colors hover:text-ember"
+              >
+                Want more options? Create in the Library
+              </button>
+            </div>
+          </div>
+        ) : showCreateEvent ? (
+          /* Inline event creation form */
+          <div className="flex flex-1 flex-col overflow-y-auto pt-2">
+            <EventTemplateForm onSave={handleEventCreated} onCancel={handleCancelCreateEvent} />
             <div className="px-4 py-3">
               <button
                 type="button"
@@ -227,8 +266,8 @@ export function SessionPickerSheet({
               )}
             </div>
 
-            {/* Create new template -- opens inline form directly */}
-            <div className="border-t border-warm-ash/10 px-4 py-3">
+            {/* Create new template / event -- opens inline form directly */}
+            <div className="flex flex-col gap-2 border-t border-warm-ash/10 px-4 py-3">
               <Button
                 type="button"
                 variant="secondary"
@@ -237,6 +276,15 @@ export function SessionPickerSheet({
               >
                 <Icon name="add" size={16} />
                 Create new template
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowCreateEvent(true)}
+                className="min-h-12 w-full text-xs"
+              >
+                <Icon name="flag" size={16} fill className="text-ember" />
+                Create new event
               </Button>
             </div>
           </>

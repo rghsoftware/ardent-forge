@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useId } from 'react'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { HelpTrigger } from '@/components/ui/help-trigger'
+import { SOURCE_HELP } from '@/components/builders/help-content'
 import { Icon } from '@/components/icon'
 import type { ProgramDraft } from './builder-state'
 import type { ProgramSource } from '@/domain/types'
@@ -30,6 +32,7 @@ interface ProgramFormProps {
 
 export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const detailsId = useId()
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,7 +47,9 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder="Program name"
           className={`w-full border-0 border-b bg-transparent py-3 font-display text-lg font-medium text-bone-white placeholder:text-warm-ash/40 focus:outline-none ${
-            error ? 'border-warning-flare focus:border-warning-flare' : 'border-warm-ash/30 focus:border-ember'
+            error
+              ? 'border-warning-flare focus:border-warning-flare'
+              : 'border-warm-ash/30 focus:border-ember'
           }`}
           aria-label="Program name"
           aria-invalid={!!error}
@@ -57,6 +62,8 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
         type="button"
         onClick={() => setDetailsOpen((prev) => !prev)}
         className="flex items-center gap-1 text-[11px] font-medium text-warm-ash/60 hover:text-warm-ash lg:hidden"
+        aria-expanded={detailsOpen}
+        aria-controls={detailsId}
       >
         <Icon name="tune" size={14} />
         {detailsOpen ? 'Hide details' : 'Show details'}
@@ -64,7 +71,7 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
       </button>
 
       {/* Details: always visible on lg+, toggled on mobile */}
-      <div className={`flex flex-col gap-6 ${detailsOpen ? '' : 'hidden lg:flex'}`}>
+      <div id={detailsId} className={`flex flex-col gap-6 ${detailsOpen ? '' : 'hidden lg:flex'}`}>
         <div>
           <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
             DESCRIPTION (OPTIONAL)
@@ -80,13 +87,30 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
         </div>
 
         <div>
-          <span className="mb-2 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
-            SOURCE
-          </span>
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
+              SOURCE
+            </span>
+            <HelpTrigger
+              title="Program Sources"
+              content={
+                <div className="space-y-3">
+                  {Object.values(SOURCE_HELP).map((source) => (
+                    <div key={source.label}>
+                      <p className="font-medium text-bone-white">{source.label}</p>
+                      <p>{source.description}</p>
+                    </div>
+                  ))}
+                </div>
+              }
+            />
+          </div>
           <ToggleGroup
             type="single"
             value={draft.source}
-            onValueChange={(v) => { if (v) onChange({ source: v as ProgramSource }) }}
+            onValueChange={(v) => {
+              if (v) onChange({ source: v as ProgramSource })
+            }}
             className="flex flex-wrap gap-1"
           >
             {PROGRAM_SOURCES.map((s) => (

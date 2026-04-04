@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,9 +21,10 @@ import {
   weeksMatch,
 } from './builder-state'
 import type { ProgramDraft, BlockDraft, SessionDraft, ValidationError } from './builder-state'
+import { BlockTypeSelector } from './block-type-selector'
 import type { BlockType } from '@/domain/types'
 import {
-  BLOCK_TYPES,
+  BLOCK_TYPE_STYLES,
   DAY_ABBREVIATIONS,
   DAY_ORDER,
   WEEKDAY_ORDER,
@@ -32,14 +32,6 @@ import {
   SESSION_TYPE_BADGE,
 } from './constants'
 import type { DayOfWeek } from './constants'
-
-const BLOCK_TYPE_STYLES: Record<string, string> = {
-  ACCUMULATION: 'bg-quenched/15 text-quenched',
-  INTENSIFICATION: 'bg-ember/15 text-ember',
-  REALIZATION: 'bg-forge/15 text-forge',
-  DELOAD: 'bg-arc/15 text-arc',
-  TEST: 'bg-warm-ash/15 text-warm-ash',
-}
 
 // ---------------------------------------------------------------------------
 // MobileBlockEditor
@@ -278,7 +270,9 @@ function MobileBlockCard({
                 }}
                 autoFocus
                 className={`min-w-0 flex-1 border-0 border-b bg-transparent py-1 font-display text-sm font-medium text-bone-white focus:outline-none ${
-                  nameError ? 'border-warning-flare focus:border-warning-flare' : 'border-warm-ash/30 focus:border-ember'
+                  nameError
+                    ? 'border-warning-flare focus:border-warning-flare'
+                    : 'border-warm-ash/30 focus:border-ember'
                 }`}
                 aria-label="Block name"
                 aria-invalid={!!nameError}
@@ -344,24 +338,7 @@ function MobileBlockCard({
           {/* Expanded content */}
           <CollapsibleContent className="overflow-hidden transition-all data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 duration-200">
             <div className="flex flex-col gap-4 px-3 pb-4">
-              <ToggleGroup
-                type="single"
-                value={block.blockType}
-                onValueChange={(v) => {
-                  if (v) handleBlockTypeChange(v as BlockType)
-                }}
-                className="flex flex-wrap gap-1"
-              >
-                {BLOCK_TYPES.map((bt) => (
-                  <ToggleGroupItem
-                    key={bt.value}
-                    value={bt.value}
-                    className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
-                  >
-                    {bt.label}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+              <BlockTypeSelector value={block.blockType} onChange={handleBlockTypeChange} />
 
               {block.weeks.map((week, weekIndex) => {
                 const isCollapsible = collapsibleWeeks.has(week.clientId)
@@ -393,7 +370,9 @@ function MobileBlockCard({
                       </div>
                       <button
                         type="button"
-                        onClick={() => setManuallyExpanded((prev) => new Set([...prev, week.clientId]))}
+                        onClick={() =>
+                          setManuallyExpanded((prev) => new Set([...prev, week.clientId]))
+                        }
                         className="min-h-10 p-1 text-warm-ash/40 active:text-bone-white"
                         aria-label={`Expand week ${weekIndex + 1}`}
                       >
@@ -588,7 +567,7 @@ function MobileDayRow({
   }, [weekClientId, dayOfWeek, onPickSession])
 
   const handleRemove = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent | React.KeyboardEvent) => {
       e.stopPropagation()
       if (session) {
         const previousDraft = draft
@@ -627,46 +606,46 @@ function MobileDayRow({
   const isEvent = session.sessionType === 'EVENT'
 
   return (
-    <button
-      type="button"
-      onClick={handleTap}
-      className={`flex min-h-12 items-center gap-3 px-3 py-2 text-left transition-colors ${
+    <div
+      className={`flex min-h-12 items-center gap-3 px-3 py-2 transition-colors ${
         isEvent
           ? 'border-l-2 border-ember bg-surface-iron hover:bg-surface-steel'
           : 'bg-surface-charcoal hover:bg-surface-steel'
       } ${SESSION_TINT[session.sessionType] ?? ''}`}
-      aria-label={`Session: ${session.templateName ?? 'Unnamed'} on ${DAY_ABBREVIATIONS[dayOfWeek]}`}
     >
-      <span className="w-8 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
-        {DAY_ABBREVIATIONS[dayOfWeek]}
-      </span>
-      {isEvent && <Icon name="flag" size={14} fill className="shrink-0 text-ember" />}
-      <span
-        className={`min-w-0 flex-1 truncate text-xs ${
-          isEvent ? 'font-display uppercase tracking-wider text-bone-white' : 'text-bone-white'
-        }`}
+      <button
+        type="button"
+        onClick={handleTap}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        aria-label={`Session: ${session.templateName ?? 'Unnamed'} on ${DAY_ABBREVIATIONS[dayOfWeek]}`}
       >
-        {session.templateName ?? 'Unnamed'}
-      </span>
-      <span
-        className={`px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
-          SESSION_TYPE_BADGE[session.sessionType] ?? 'bg-surface-steel text-warm-ash'
-        }`}
-      >
-        {session.sessionType}
-      </span>
-      <div
-        role="button"
-        tabIndex={0}
+        <span className="w-8 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
+          {DAY_ABBREVIATIONS[dayOfWeek]}
+        </span>
+        {isEvent && <Icon name="flag" size={14} fill className="shrink-0 text-ember" />}
+        <span
+          className={`min-w-0 flex-1 truncate text-xs ${
+            isEvent ? 'font-display uppercase tracking-wider text-bone-white' : 'text-bone-white'
+          }`}
+        >
+          {session.templateName ?? 'Unnamed'}
+        </span>
+        <span
+          className={`px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+            SESSION_TYPE_BADGE[session.sessionType] ?? 'bg-surface-steel text-warm-ash'
+          }`}
+        >
+          {session.sessionType}
+        </span>
+      </button>
+      <button
+        type="button"
         onClick={handleRemove}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') handleRemove(e as unknown as React.MouseEvent)
-        }}
-        className="min-h-10 min-w-10 flex items-center justify-center text-warm-ash/40 hover:text-warning-flare"
+        className="flex min-h-10 min-w-10 items-center justify-center text-warm-ash/40 hover:text-warning-flare"
         aria-label="Remove session"
       >
         <Icon name="close" size={14} />
-      </div>
-    </button>
+      </button>
+    </div>
   )
 }
