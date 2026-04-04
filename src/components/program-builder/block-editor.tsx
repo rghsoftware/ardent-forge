@@ -3,6 +3,12 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { WeekGrid } from './week-grid'
@@ -175,31 +181,38 @@ export function BlockEditor({
           )}
 
           <span
-            className={`px-2 py-1 text-[11px] font-medium uppercase tracking-wider ${BLOCK_TYPE_STYLES[block.blockType] ?? 'bg-surface-steel text-bone-white'}`}
+            className={`shrink-0 px-2 py-1 text-[11px] font-medium uppercase tracking-wider ${BLOCK_TYPE_STYLES[block.blockType] ?? 'bg-surface-steel text-bone-white'}`}
           >
             {block.blockType}
           </span>
 
-          <span className="text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
+          <span className="shrink-0 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
             {block.weeks.length} {block.weeks.length === 1 ? 'WEEK' : 'WEEKS'}
           </span>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleDelete()
-            }}
-            className="min-h-8 min-w-8 p-1 text-warm-ash/60 hover:text-warning-flare"
-            aria-label="Delete block"
-          >
-            <Icon name="delete" size={18} />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                className="flex min-h-8 min-w-8 items-center justify-center text-warm-ash/60 hover:text-bone-white"
+                aria-label="Block actions"
+              >
+                <Icon name="more_vert" size={18} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-40">
+              <DropdownMenuItem variant="destructive" onSelect={handleDelete}>
+                <Icon name="delete" size={16} />
+                Delete block
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Icon
             name={expanded ? 'expand_less' : 'expand_more'}
             size={18}
-            className="text-warm-ash/40"
+            className="shrink-0 text-warm-ash/40"
           />
         </div>
 

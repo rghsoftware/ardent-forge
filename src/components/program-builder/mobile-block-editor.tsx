@@ -1,6 +1,13 @@
 import { useState, useCallback, useEffect } from 'react'
-import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import {
@@ -189,6 +196,16 @@ function MobileBlockCard({
       style={isNew ? { animation: 'block-enter 0.3s ease-out both' } : undefined}
     >
       <div className="flex min-h-12 items-center gap-2 px-3 py-2">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex min-h-12 min-w-8 items-center justify-center text-warm-ash/40"
+            aria-label={expanded ? 'Collapse block' : 'Expand block'}
+          >
+            <Icon name={expanded ? 'expand_less' : 'expand_more'} size={18} />
+          </button>
+        </CollapsibleTrigger>
+
         {isEditingName ? (
           <input
             type="text"
@@ -212,51 +229,40 @@ function MobileBlockCard({
           </button>
         )}
 
-        <span className={`px-2 py-1 text-[11px] font-medium uppercase tracking-wider ${BLOCK_TYPE_STYLES[block.blockType] ?? 'bg-surface-steel text-bone-white'}`}>
+        <span className={`shrink-0 px-2 py-1 text-[11px] font-medium uppercase tracking-wider ${BLOCK_TYPE_STYLES[block.blockType] ?? 'bg-surface-steel text-bone-white'}`}>
           {block.blockType}
         </span>
 
-        <span className="text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
+        <span className="shrink-0 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
           {block.weeks.length} {block.weeks.length === 1 ? 'WK' : 'WKS'}
         </span>
 
-        <button
-          type="button"
-          onClick={handleMoveUp}
-          disabled={isFirst}
-          className="min-h-12 min-w-10 p-1 text-warm-ash/60 hover:text-bone-white disabled:opacity-30"
-          aria-label="Move block up"
-        >
-          <Icon name="arrow_upward" size={18} />
-        </button>
-
-        <button
-          type="button"
-          onClick={handleMoveDown}
-          disabled={isLast}
-          className="min-h-12 min-w-10 p-1 text-warm-ash/60 hover:text-bone-white disabled:opacity-30"
-          aria-label="Move block down"
-        >
-          <Icon name="arrow_downward" size={18} />
-        </button>
-
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="min-h-12 min-w-10 p-1 text-warm-ash/60 hover:text-warning-flare"
-          aria-label="Delete block"
-        >
-          <Icon name="delete" size={18} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setExpanded((prev) => !prev)}
-          className="min-h-12 min-w-10 p-1 text-warm-ash/40"
-          aria-label={expanded ? 'Collapse block' : 'Expand block'}
-        >
-          <Icon name={expanded ? 'expand_less' : 'expand_more'} size={18} />
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex min-h-12 min-w-10 items-center justify-center text-warm-ash/60 hover:text-bone-white"
+              aria-label="Block actions"
+            >
+              <Icon name="more_vert" size={18} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-40">
+            <DropdownMenuItem disabled={isFirst} onSelect={handleMoveUp}>
+              <Icon name="arrow_upward" size={16} />
+              Move up
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={isLast} onSelect={handleMoveDown}>
+              <Icon name="arrow_downward" size={16} />
+              Move down
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={handleDelete}>
+              <Icon name="delete" size={16} />
+              Delete block
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Expanded content */}
