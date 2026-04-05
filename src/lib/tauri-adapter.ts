@@ -2132,16 +2132,21 @@ export class TauriAdapter implements DataAdapter {
     // For direct conversations, fetch participants to check membership
     for (const conv of conversations) {
       if (conv.type !== 'direct') continue
-      const full = await invokeCommand<TauriConversationWithParticipants | null>(
-        'get_conversation',
-        { id: conv.id },
-      )
-      if (!full) continue
-      const participantUserIds = full.participants
-        .filter((p) => p.left_at == null)
-        .map((p) => p.user_id)
-      if (participantUserIds.includes(this.userId) && participantUserIds.includes(otherUserId)) {
-        return conv
+      try {
+        const full = await invokeCommand<TauriConversationWithParticipants | null>(
+          'get_conversation',
+          { id: conv.id },
+        )
+        if (!full) continue
+        const participantUserIds = full.participants
+          .filter((p) => p.left_at == null)
+          .map((p) => p.user_id)
+        if (participantUserIds.includes(this.userId) && participantUserIds.includes(otherUserId)) {
+          return conv
+        }
+      } catch (err) {
+        console.error(`[tauri-adapter] Failed to fetch conversation ${conv.id}, skipping:`, err)
+        continue
       }
     }
     return null
