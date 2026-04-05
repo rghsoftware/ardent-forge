@@ -308,47 +308,49 @@ function LibraryPage() {
           className="max-h-[95vh] overflow-y-auto bg-surface-anvil p-0"
           showCloseButton={false}
         >
-          <SheetHeader className="px-4 pt-4 pb-0">
-            <SheetTitle className="text-xs text-ember">
-              {sheetMode === 'event'
-                ? editingId
-                  ? 'Edit event'
-                  : 'New event'
-                : editingId
-                  ? 'Edit template'
-                  : 'New template'}
-            </SheetTitle>
-            <SheetDescription className="sr-only">
-              {sheetMode === 'event'
-                ? editingId
-                  ? 'Edit an existing event template'
-                  : 'Create a new event template'
-                : editingId
-                  ? 'Edit an existing session template'
-                  : 'Create a new session template'}
-            </SheetDescription>
-          </SheetHeader>
+          <div className="px-4 lg:px-12">
+            <SheetHeader className="px-4 pt-4 pb-0">
+              <SheetTitle className="text-xs text-ember">
+                {sheetMode === 'event'
+                  ? editingId
+                    ? 'Edit event'
+                    : 'New event'
+                  : editingId
+                    ? 'Edit template'
+                    : 'New template'}
+              </SheetTitle>
+              <SheetDescription className="sr-only">
+                {sheetMode === 'event'
+                  ? editingId
+                    ? 'Edit an existing event template'
+                    : 'Create a new event template'
+                  : editingId
+                    ? 'Edit an existing session template'
+                    : 'Create a new session template'}
+              </SheetDescription>
+            </SheetHeader>
 
-          <div className="pt-2">
-            {sheetMode === 'event' ? (
-              editingId ? (
-                <EditEventFormLoader
+            <div className="pt-2">
+              {sheetMode === 'event' ? (
+                editingId ? (
+                  <EditEventFormLoader
+                    templateId={editingId}
+                    onSave={handleSaved}
+                    onCancel={handleCancel}
+                  />
+                ) : (
+                  <EventTemplateForm onSave={handleSaved} onCancel={handleCancel} />
+                )
+              ) : editingId ? (
+                <EditTemplateFormLoader
                   templateId={editingId}
                   onSave={handleSaved}
                   onCancel={handleCancel}
                 />
               ) : (
-                <EventTemplateForm onSave={handleSaved} onCancel={handleCancel} />
-              )
-            ) : editingId ? (
-              <EditTemplateFormLoader
-                templateId={editingId}
-                onSave={handleSaved}
-                onCancel={handleCancel}
-              />
-            ) : (
-              <SessionTemplateForm onSave={handleSaved} onCancel={handleCancel} />
-            )}
+                <SessionTemplateForm onSave={handleSaved} onCancel={handleCancel} />
+              )}
+            </div>
           </div>
         </SheetContent>
       </Sheet>
