@@ -78,8 +78,8 @@ export function WeekGrid({
         <button
           type="button"
           onClick={() => setShowPreview((prev) => !prev)}
-          className={`flex items-center gap-1 px-1.5 py-1 text-[11px] font-medium transition-colors ${
-            showPreview ? 'text-forge' : 'text-warm-ash/40 hover:text-bone-white'
+          className={`flex items-center gap-1 px-1.5 py-1 text-xs font-medium transition-colors ${
+            showPreview ? 'text-forge' : 'text-warm-ash/70 hover:text-bone-white'
           }`}
           aria-label={
             showPreview
@@ -93,7 +93,7 @@ export function WeekGrid({
         <button
           type="button"
           onClick={handleCopy}
-          className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-medium text-warm-ash/40 hover:text-ember"
+          className="flex items-center gap-1 px-1.5 py-1 text-xs font-medium text-warm-ash/70 hover:text-ember"
           aria-label={`Copy week ${weekIndex + 1}`}
         >
           <Icon name="content_copy" size={16} />
@@ -102,7 +102,7 @@ export function WeekGrid({
         <button
           type="button"
           onClick={() => setShowWeekDeleteConfirm(true)}
-          className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-medium text-warm-ash/40 hover:text-warning-flare"
+          className="flex items-center gap-1 px-1.5 py-1 text-xs font-medium text-warm-ash/70 hover:text-warning-flare"
           aria-label={`Remove week ${weekIndex + 1}`}
         >
           <Icon name="delete" size={16} />
@@ -136,7 +136,7 @@ export function WeekGrid({
       </div>
 
       {weekendSessionCount > 0 && (
-        <p className="text-[10px] text-warm-ash/50">
+        <p className="text-[11px] text-warm-ash/50">
           +{weekendSessionCount} weekend {weekendSessionCount === 1 ? 'session' : 'sessions'}
         </p>
       )}

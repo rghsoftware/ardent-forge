@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { useAuth } from '@/lib/auth'
@@ -27,10 +27,10 @@ import {
 interface ProgramPreviewProps {
   draft: ProgramDraft
   open: boolean
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
 }
 
-export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
+export function ProgramPreview({ draft, open, onOpenChange }: ProgramPreviewProps) {
   const { user } = useAuth()
   const userId = user?.id ?? ''
   const { data: profile } = useUserProfile(userId)
@@ -60,18 +60,18 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
   const previewGridCols = showWeekends ? 'grid-cols-7' : 'grid-cols-5'
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent
-        className="max-w-none h-screen w-screen p-0 border-0 rounded-none bg-surface-anvil"
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-2xl p-0 border-0 bg-surface-anvil"
         showCloseButton={false}
-        onInteractOutside={(e) => e.preventDefault()}
       >
-        <div className="h-full overflow-y-auto">
-          <div className="flex items-center justify-between px-4 pt-6 pb-4">
+        <div className="flex h-full flex-col overflow-y-auto">
+          <SheetHeader className="flex-row items-center justify-between gap-2 px-4 pt-6 pb-4">
             <div className="flex-1">
-              <h1 className="font-display text-2xl font-medium text-bone-white">
+              <SheetTitle className="font-display text-2xl font-medium text-bone-white">
                 {draft.name || 'Untitled program'}
-              </h1>
+              </SheetTitle>
               <div className="mt-1 flex items-center gap-2">
                 <span className="bg-surface-steel px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider text-bone-white">
                   {SOURCE_LABELS[draft.source] ?? draft.source}
@@ -95,14 +95,14 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={onClose}
+                onClick={() => onOpenChange(false)}
                 className="min-h-10 text-xs text-warm-ash hover:text-bone-white"
               >
                 Close preview
                 <Icon name="close" size={16} />
               </Button>
             </div>
-          </div>
+          </SheetHeader>
 
           {draft.description && (
             <div className="px-4 pb-4">
@@ -136,7 +136,7 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                     return (
                       <div key={week.clientId} className="flex flex-col gap-2">
                         <span className="text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
-                          WEEK {weekIdx + 1}
+                          Week {weekIdx + 1}
                         </span>
 
                         {/* Day grid (5 or 7 columns) */}
@@ -352,7 +352,7 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
             ))}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }

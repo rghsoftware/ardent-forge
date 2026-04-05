@@ -44,8 +44,8 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
     <div className="flex flex-col gap-6">
       {/* Program name -- always visible */}
       <div>
-        <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
-          PROGRAM NAME
+        <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
+          Program Name
         </span>
         <input
           type="text"
@@ -67,7 +67,7 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
       <button
         type="button"
         onClick={() => setDetailsOpen((prev) => !prev)}
-        className="flex items-center gap-1 text-[11px] font-medium text-warm-ash/60 hover:text-warm-ash lg:hidden"
+        className="flex items-center gap-1 text-xs font-medium text-warm-ash/80 hover:text-bone-white lg:hidden"
         aria-expanded={detailsOpen}
         aria-controls={detailsId}
       >
@@ -80,8 +80,8 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
       <div id={detailsId} className={`flex flex-col gap-6 ${detailsOpen ? '' : 'hidden lg:flex'}`}>
         <div>
           <div className="mb-2 flex items-center gap-1.5">
-            <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
-              SOURCE
+            <span className="text-xs font-medium uppercase tracking-wider text-warm-ash/60">
+              Source
             </span>
             <HelpTrigger
               title="Program Sources"
@@ -115,8 +115,8 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
         </div>
 
         <div>
-          <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash/60">
-            DESCRIPTION (OPTIONAL)
+          <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
+            Description (optional)
           </span>
           <textarea
             value={draft.description}

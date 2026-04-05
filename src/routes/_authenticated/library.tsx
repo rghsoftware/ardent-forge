@@ -46,6 +46,7 @@ import {
 import { useExercises, useRecentlyUsedExercises } from '@/hooks/use-exercises'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useAuth } from '@/lib/auth'
+import { toast } from 'sonner'
 import type { Program, ExerciseCategory, MuscleGroup, MovementPattern } from '@/domain/types'
 
 export const Route = createFileRoute('/_authenticated/library')({
@@ -100,6 +101,7 @@ function LibraryPage() {
       await deleteMutation.mutateAsync(id)
     } catch (err) {
       console.error('[library] Failed to delete template:', err)
+      toast('Failed to delete template. Please try again.')
     }
   }
 
@@ -308,47 +310,49 @@ function LibraryPage() {
           className="max-h-[95vh] overflow-y-auto bg-surface-anvil p-0"
           showCloseButton={false}
         >
-          <SheetHeader className="px-4 pt-4 pb-0">
-            <SheetTitle className="text-xs text-ember">
-              {sheetMode === 'event'
-                ? editingId
-                  ? 'Edit event'
-                  : 'New event'
-                : editingId
-                  ? 'Edit template'
-                  : 'New template'}
-            </SheetTitle>
-            <SheetDescription className="sr-only">
-              {sheetMode === 'event'
-                ? editingId
-                  ? 'Edit an existing event template'
-                  : 'Create a new event template'
-                : editingId
-                  ? 'Edit an existing session template'
-                  : 'Create a new session template'}
-            </SheetDescription>
-          </SheetHeader>
+          <div className="px-4 lg:px-12">
+            <SheetHeader className="px-4 pt-4 pb-0">
+              <SheetTitle className="text-xs text-ember">
+                {sheetMode === 'event'
+                  ? editingId
+                    ? 'Edit event'
+                    : 'New event'
+                  : editingId
+                    ? 'Edit template'
+                    : 'New template'}
+              </SheetTitle>
+              <SheetDescription className="sr-only">
+                {sheetMode === 'event'
+                  ? editingId
+                    ? 'Edit an existing event template'
+                    : 'Create a new event template'
+                  : editingId
+                    ? 'Edit an existing session template'
+                    : 'Create a new session template'}
+              </SheetDescription>
+            </SheetHeader>
 
-          <div className="pt-2">
-            {sheetMode === 'event' ? (
-              editingId ? (
-                <EditEventFormLoader
+            <div className="pt-2">
+              {sheetMode === 'event' ? (
+                editingId ? (
+                  <EditEventFormLoader
+                    templateId={editingId}
+                    onSave={handleSaved}
+                    onCancel={handleCancel}
+                  />
+                ) : (
+                  <EventTemplateForm onSave={handleSaved} onCancel={handleCancel} />
+                )
+              ) : editingId ? (
+                <EditTemplateFormLoader
                   templateId={editingId}
                   onSave={handleSaved}
                   onCancel={handleCancel}
                 />
               ) : (
-                <EventTemplateForm onSave={handleSaved} onCancel={handleCancel} />
-              )
-            ) : editingId ? (
-              <EditTemplateFormLoader
-                templateId={editingId}
-                onSave={handleSaved}
-                onCancel={handleCancel}
-              />
-            ) : (
-              <SessionTemplateForm onSave={handleSaved} onCancel={handleCancel} />
-            )}
+                <SessionTemplateForm onSave={handleSaved} onCancel={handleCancel} />
+              )}
+            </div>
           </div>
         </SheetContent>
       </Sheet>
@@ -374,20 +378,30 @@ function ProgramList({ userId }: { userId: string | undefined }) {
   const programToDelete = programs.find((p) => p.id === confirmDeleteId)
 
   const handleActivate = async (programId: string) => {
-    if (!userId) return
+    if (!userId) {
+      console.error('[library] Cannot activate: no authenticated user')
+      toast('You must be signed in to activate a program.')
+      return
+    }
     try {
       await setActiveMutation.mutateAsync({ userId, programId })
     } catch (err) {
       console.error('[library] Failed to activate program:', err)
+      toast('Failed to activate program. Please try again.')
     }
   }
 
   const handleDeactivate = async () => {
-    if (!userId) return
+    if (!userId) {
+      console.error('[library] Cannot deactivate: no authenticated user')
+      toast('You must be signed in to deactivate a program.')
+      return
+    }
     try {
       await clearActiveMutation.mutateAsync(userId)
     } catch (err) {
       console.error('[library] Failed to deactivate program:', err)
+      toast('Failed to deactivate program. Please try again.')
     }
   }
 
@@ -400,6 +414,7 @@ function ProgramList({ userId }: { userId: string | undefined }) {
       await deleteProgramMutation.mutateAsync(id)
     } catch (err) {
       console.error('[library] Failed to delete program:', err)
+      toast('Failed to delete program. Please try again.')
     }
   }
 
