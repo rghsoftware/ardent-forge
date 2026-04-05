@@ -273,6 +273,7 @@ pub struct ScheduledSessionRow {
     pub session_type: String,
     pub session_template_id: String,
     pub notes: Option<String>,
+    pub overrides: Option<String>, // JSON per-instance activity overrides
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]

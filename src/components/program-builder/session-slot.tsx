@@ -25,6 +25,7 @@ interface SessionSlotProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onEditSession?: (weekClientId: string, session: SessionDraft) => void
 }
 
 export function SessionSlot({
@@ -34,6 +35,7 @@ export function SessionSlot({
   draft,
   onUpdate,
   onPickSession,
+  onEditSession,
 }: SessionSlotProps) {
   const [animating, setAnimating] = useState(false)
   const [prevSessionId, setPrevSessionId] = useState(session?.clientId)
@@ -69,8 +71,12 @@ export function SessionSlot({
   )
 
   const handleClick = useCallback(() => {
-    onPickSession(weekClientId, dayOfWeek)
-  }, [weekClientId, dayOfWeek, onPickSession])
+    if (session && onEditSession) {
+      onEditSession(weekClientId, session)
+    } else {
+      onPickSession(weekClientId, dayOfWeek)
+    }
+  }, [session, weekClientId, dayOfWeek, onPickSession, onEditSession])
 
   if (!session) {
     return (
@@ -93,6 +99,10 @@ export function SessionSlot({
   }
 
   const isEvent = session.sessionType === 'EVENT'
+  const hasCustomizations =
+    !!session.notes ||
+    (session.overrides?.activityOverrides &&
+      Object.keys(session.overrides.activityOverrides).length > 0)
 
   return (
     <div
@@ -135,13 +145,16 @@ export function SessionSlot({
         </span>
       </div>
 
-      <span
-        className={`mt-0.5 inline-block self-start px-1 py-px text-[9px] font-medium uppercase tracking-wider ${
-          SESSION_TYPE_BADGE[session.sessionType] ?? 'bg-surface-steel text-warm-ash'
-        }`}
-      >
-        {session.sessionType}
-      </span>
+      <div className="mt-0.5 flex items-center gap-1">
+        <span
+          className={`inline-block self-start px-1 py-px text-[9px] font-medium uppercase tracking-wider ${
+            SESSION_TYPE_BADGE[session.sessionType] ?? 'bg-surface-steel text-warm-ash'
+          }`}
+        >
+          {session.sessionType}
+        </span>
+        {hasCustomizations && <Icon name="edit_note" size={12} className="text-arc/70" />}
+      </div>
     </div>
   )
 }

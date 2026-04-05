@@ -11,6 +11,7 @@ import {
   assignSession,
   removeSession,
   copyWeek,
+  updateSession,
   validateDraft,
   buildSavePayload,
   hydrateDraft,
@@ -868,5 +869,288 @@ describe('hydrateDraft', () => {
     full.program = { ...full.program, description: undefined }
     const draft = hydrateDraft(full)
     expect(draft.description).toBe('')
+  })
+
+  it('maps notes from ScheduledSession to SessionDraft', () => {
+    const full = makeProgramFull()
+    full.scheduledSessions[0] = { ...full.scheduledSessions[0], notes: 'deload set 3' }
+    const draft = hydrateDraft(full)
+    expect(draft.blocks[0].weeks[0].sessions[0].notes).toBe('deload set 3')
+  })
+
+  it('maps overrides from ScheduledSession to SessionDraft', () => {
+    const full = makeProgramFull()
+    const overrides = { activityOverrides: { 'act-1': { exerciseId: 'new-ex-1' } } }
+    full.scheduledSessions[0] = { ...full.scheduledSessions[0], overrides }
+    const draft = hydrateDraft(full)
+    expect(draft.blocks[0].weeks[0].sessions[0].overrides).toEqual(overrides)
+  })
+
+  it('omits notes and overrides when not present on the ScheduledSession', () => {
+    const full = makeProgramFull()
+    // Default fixture has no notes or overrides
+    const draft = hydrateDraft(full)
+    const session = draft.blocks[0].weeks[0].sessions[0]
+    expect(session.notes).toBeUndefined()
+    expect(session.overrides).toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// assignSession -- notes + overrides behavior
+// ---------------------------------------------------------------------------
+
+describe('assignSession -- notes and overrides', () => {
+  it('clears overrides when assigning a different template', () => {
+    const existingSession = makeSession({
+      dayOfWeek: 1,
+      sessionTemplateId: 'tpl-old',
+      notes: 'keep this?',
+      overrides: { activityOverrides: { 'act-1': { exerciseId: 'new-ex-1' } } },
+    })
+    const week = makeWeek({ sessions: [existingSession] })
+    const block = makeBlock({ weeks: [week] })
+    const draft = makeProgramDraft({ blocks: [block] })
+
+    const result = assignSession(
+      draft,
+      week.clientId,
+      1 as DayOfWeek,
+      'tpl-new',
+      'New Template',
+      'STRENGTH',
+    )
+
+    const session = result.blocks[0].weeks[0].sessions[0]
+    expect(session.overrides).toBeUndefined()
+    expect(session.notes).toBeUndefined()
+  })
+
+  it('preserves notes when re-assigning the same template', () => {
+    const existingSession = makeSession({
+      dayOfWeek: 1,
+      sessionTemplateId: 'tpl-1',
+      notes: 'deload set 3',
+      overrides: { activityOverrides: { 'act-1': { exerciseId: 'new-ex-1' } } },
+    })
+    const week = makeWeek({ sessions: [existingSession] })
+    const block = makeBlock({ weeks: [week] })
+    const draft = makeProgramDraft({ blocks: [block] })
+
+    const result = assignSession(
+      draft,
+      week.clientId,
+      1 as DayOfWeek,
+      'tpl-1',
+      'Upper Body',
+      'STRENGTH',
+    )
+
+    const session = result.blocks[0].weeks[0].sessions[0]
+    expect(session.notes).toBe('deload set 3')
+    // Overrides are always cleared on assign (fresh start for the template)
+    expect(session.overrides).toBeUndefined()
+  })
+
+  it('does not carry notes when assigning to a day with no prior session', () => {
+    const week = makeWeek({ sessions: [] })
+    const block = makeBlock({ weeks: [week] })
+    const draft = makeProgramDraft({ blocks: [block] })
+
+    const result = assignSession(
+      draft,
+      week.clientId,
+      2 as DayOfWeek,
+      'tpl-1',
+      'Upper Body',
+      'STRENGTH',
+    )
+
+    const session = result.blocks[0].weeks[0].sessions[0]
+    expect(session.notes).toBeUndefined()
+    expect(session.overrides).toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildSavePayload -- notes + overrides in session payload
+// ---------------------------------------------------------------------------
+
+describe('buildSavePayload -- notes and overrides', () => {
+  it('includes notes in session payload when present', () => {
+    const session = makeSession({ dayOfWeek: 1, notes: 'deload set 3' })
+    const week = makeWeek({ weekNumber: 1, sessions: [session] })
+    const block = makeBlock({ weeks: [week] })
+    const draft = makeProgramDraft({ name: 'Test', blocks: [block] })
+
+    const payload = buildSavePayload(draft, 'user-1')
+    expect(payload.mode).toBe('create')
+    if (payload.mode === 'create') {
+      const sessionPayload = payload.blocks[0].weeks[0].sessions[0]
+      expect(sessionPayload.notes).toBe('deload set 3')
+    }
+  })
+
+  it('includes serialized overrides in session payload when present', () => {
+    const overrides = { activityOverrides: { 'act-1': { exerciseId: 'new-ex-1' } } }
+    const session = makeSession({ dayOfWeek: 1, overrides })
+    const week = makeWeek({ weekNumber: 1, sessions: [session] })
+    const block = makeBlock({ weeks: [week] })
+    const draft = makeProgramDraft({ name: 'Test', blocks: [block] })
+
+    const payload = buildSavePayload(draft, 'user-1')
+    expect(payload.mode).toBe('create')
+    if (payload.mode === 'create') {
+      const sessionPayload = payload.blocks[0].weeks[0].sessions[0]
+      expect(sessionPayload.overrides).toEqual(overrides)
+    }
+  })
+
+  it('omits notes from session payload when not present', () => {
+    const session = makeSession({ dayOfWeek: 1 })
+    const week = makeWeek({ weekNumber: 1, sessions: [session] })
+    const block = makeBlock({ weeks: [week] })
+    const draft = makeProgramDraft({ name: 'Test', blocks: [block] })
+
+    const payload = buildSavePayload(draft, 'user-1')
+    expect(payload.mode).toBe('create')
+    if (payload.mode === 'create') {
+      const sessionPayload = payload.blocks[0].weeks[0].sessions[0]
+      expect('notes' in sessionPayload).toBe(false)
+    }
+  })
+
+  it('omits overrides from session payload when not present', () => {
+    const session = makeSession({ dayOfWeek: 1 })
+    const week = makeWeek({ weekNumber: 1, sessions: [session] })
+    const block = makeBlock({ weeks: [week] })
+    const draft = makeProgramDraft({ name: 'Test', blocks: [block] })
+
+    const payload = buildSavePayload(draft, 'user-1')
+    expect(payload.mode).toBe('create')
+    if (payload.mode === 'create') {
+      const sessionPayload = payload.blocks[0].weeks[0].sessions[0]
+      expect('overrides' in sessionPayload).toBe(false)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// copyWeek -- notes + overrides propagation
+// ---------------------------------------------------------------------------
+
+describe('copyWeek -- notes and overrides propagation', () => {
+  it('propagates notes with copied sessions', () => {
+    const session = makeSession({ dayOfWeek: 1, notes: 'deload set 3' })
+    const sourceWeek = makeWeek({ weekNumber: 1, sessions: [session] })
+    const targetWeek = makeWeek({ weekNumber: 2, sessions: [] })
+    const block = makeBlock({ weeks: [sourceWeek, targetWeek] })
+    const draft = makeProgramDraft({ blocks: [block] })
+
+    const result = copyWeek(draft, sourceWeek.clientId, [targetWeek.clientId])
+    const copiedSession = result.blocks[0].weeks[1].sessions[0]
+    expect(copiedSession.notes).toBe('deload set 3')
+  })
+
+  it('propagates overrides with copied sessions', () => {
+    const overrides = { activityOverrides: { 'act-1': { exerciseId: 'new-ex-1' } } }
+    const session = makeSession({ dayOfWeek: 1, overrides })
+    const sourceWeek = makeWeek({ weekNumber: 1, sessions: [session] })
+    const targetWeek = makeWeek({ weekNumber: 2, sessions: [] })
+    const block = makeBlock({ weeks: [sourceWeek, targetWeek] })
+    const draft = makeProgramDraft({ blocks: [block] })
+
+    const result = copyWeek(draft, sourceWeek.clientId, [targetWeek.clientId])
+    const copiedSession = result.blocks[0].weeks[1].sessions[0]
+    expect(copiedSession.overrides).toEqual(overrides)
+  })
+
+  it('copied sessions get fresh clientIds but retain notes and overrides', () => {
+    const overrides = { activityOverrides: { 'act-1': { exerciseId: 'new-ex-1' } } }
+    const session = makeSession({ dayOfWeek: 3, notes: 'heavy day', overrides })
+    const sourceWeek = makeWeek({ weekNumber: 1, sessions: [session] })
+    const targetWeek = makeWeek({ weekNumber: 2, sessions: [] })
+    const block = makeBlock({ weeks: [sourceWeek, targetWeek] })
+    const draft = makeProgramDraft({ blocks: [block] })
+
+    const result = copyWeek(draft, sourceWeek.clientId, [targetWeek.clientId])
+    const copiedSession = result.blocks[0].weeks[1].sessions[0]
+
+    expect(copiedSession.clientId).not.toBe(session.clientId)
+    expect(copiedSession.notes).toBe('heavy day')
+    expect(copiedSession.overrides).toEqual(overrides)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// updateSession
+// ---------------------------------------------------------------------------
+
+describe('updateSession', () => {
+  it('replaces a session in the target week by clientId', () => {
+    const session = makeSession({ dayOfWeek: 1, templateName: 'Old Name' })
+    const week = makeWeek({ sessions: [session] })
+    const block = makeBlock({ weeks: [week] })
+    const draft = makeProgramDraft({ blocks: [block] })
+
+    const updated: SessionDraft = { ...session, templateName: 'New Name', notes: 'added note' }
+    const result = updateSession(draft, week.clientId, updated)
+
+    const resultSession = result.blocks[0].weeks[0].sessions[0]
+    expect(resultSession.templateName).toBe('New Name')
+    expect(resultSession.notes).toBe('added note')
+    expect(resultSession.clientId).toBe(session.clientId)
+  })
+
+  it('does not modify sessions in other weeks', () => {
+    const sessionA = makeSession({ dayOfWeek: 1 })
+    const sessionB = makeSession({ dayOfWeek: 2 })
+    const week1 = makeWeek({ weekNumber: 1, sessions: [sessionA] })
+    const week2 = makeWeek({ weekNumber: 2, sessions: [sessionB] })
+    const block = makeBlock({ weeks: [week1, week2] })
+    const draft = makeProgramDraft({ blocks: [block] })
+
+    const updated: SessionDraft = { ...sessionA, notes: 'updated' }
+    const result = updateSession(draft, week1.clientId, updated)
+
+    expect(result.blocks[0].weeks[0].sessions[0].notes).toBe('updated')
+    expect(result.blocks[0].weeks[1].sessions[0]).toEqual(sessionB)
+  })
+
+  it('does not mutate the input draft', () => {
+    const session = makeSession({ dayOfWeek: 1 })
+    const week = makeWeek({ sessions: [session] })
+    const block = makeBlock({ weeks: [week] })
+    const draft = makeProgramDraft({ blocks: [block] })
+
+    const updated: SessionDraft = { ...session, notes: 'changed' }
+    updateSession(draft, week.clientId, updated)
+
+    expect(draft.blocks[0].weeks[0].sessions[0].notes).toBeUndefined()
+  })
+
+  it('leaves sessions unchanged when clientId does not match any session', () => {
+    const session = makeSession({ dayOfWeek: 1 })
+    const week = makeWeek({ sessions: [session] })
+    const block = makeBlock({ weeks: [week] })
+    const draft = makeProgramDraft({ blocks: [block] })
+
+    const ghost: SessionDraft = { ...session, clientId: 'nonexistent-id', notes: 'nope' }
+    const result = updateSession(draft, week.clientId, ghost)
+
+    expect(result.blocks[0].weeks[0].sessions[0]).toEqual(session)
+  })
+
+  it('can add overrides to a session that had none', () => {
+    const session = makeSession({ dayOfWeek: 1 })
+    const week = makeWeek({ sessions: [session] })
+    const block = makeBlock({ weeks: [week] })
+    const draft = makeProgramDraft({ blocks: [block] })
+
+    const overrides = { activityOverrides: { 'act-1': { exerciseId: 'new-ex-1' } } }
+    const updated: SessionDraft = { ...session, overrides }
+    const result = updateSession(draft, week.clientId, updated)
+
+    expect(result.blocks[0].weeks[0].sessions[0].overrides).toEqual(overrides)
   })
 })

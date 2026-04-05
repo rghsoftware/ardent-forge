@@ -148,6 +148,7 @@ function TodayPage() {
           weekNumber: activation.currentWeekNumber,
           dayLabel: todayContext.session.dayLabel,
         },
+        todayContext.session.overrides,
       )
       navigate({ to: '/log/$workoutId', params: { workoutId: workoutLog.id } })
     } catch (err) {

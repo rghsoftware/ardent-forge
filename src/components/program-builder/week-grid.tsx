@@ -4,7 +4,7 @@ import { SessionSlot } from './session-slot'
 import { WeekInlinePreview } from './session-detail'
 import { ConfirmDeleteDialog } from './confirm-delete-dialog'
 import { removeWeekFromBlock } from './builder-state'
-import type { WeekDraft, ProgramDraft } from './builder-state'
+import type { WeekDraft, ProgramDraft, SessionDraft } from './builder-state'
 import { DAY_COLUMNS, WEEKDAY_COLUMNS } from './constants'
 import type { DayOfWeek } from './constants'
 
@@ -19,6 +19,7 @@ interface WeekGridProps {
   blockClientId: string
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onEditSession?: (weekClientId: string, session: SessionDraft) => void
   onCopyWeek: (sourceWeekClientId: string) => void
   showWeekends: boolean
   isNew?: boolean
@@ -31,6 +32,7 @@ export function WeekGrid({
   blockClientId,
   onUpdate,
   onPickSession,
+  onEditSession,
   onCopyWeek,
   showWeekends,
   isNew,
@@ -131,6 +133,7 @@ export function WeekGrid({
             draft={draft}
             onUpdate={onUpdate}
             onPickSession={onPickSession}
+            onEditSession={onEditSession}
           />
         ))}
       </div>

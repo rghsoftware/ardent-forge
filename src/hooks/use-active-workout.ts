@@ -19,6 +19,7 @@ import { getAdapter } from '@/lib/adapter'
 import { DEFAULT_REST_SECONDS } from '@/lib/workout-utils'
 import { computeNextProgramPosition } from '@/lib/program-advancement'
 import { resolveSessionTemplate } from '@/lib/prescription-resolver'
+import { applyOverrides } from '@/lib/override-merger'
 import type {
   Exercise,
   GroupType,
@@ -27,6 +28,7 @@ import type {
   LoggedActivityGroup,
   LoggedActivity,
   ProgramContext,
+  SessionOverrides,
 } from '@/domain/types'
 
 /**
@@ -153,6 +155,7 @@ export function useActiveWorkout() {
       userId: string,
       sessionTemplateId: string,
       programContext: ProgramContext,
+      overrides?: SessionOverrides | null,
     ): Promise<WorkoutLog> => {
       try {
         const adapter = getAdapter()
@@ -172,12 +175,19 @@ export function useActiveWorkout() {
         const maxReps = userProfile?.maxReps ?? {}
         const preferredUnit: 'lb' | 'kg' = userProfile?.preferredUnits === 'METRIC' ? 'kg' : 'lb'
 
-        const prefilledGroups = resolveSessionTemplate(
+        const resolvedGroups = resolveSessionTemplate(
           templateFull,
           exerciseMaxes,
           maxReps,
           preferredUnit,
         )
+
+        // 2b. Apply per-instance overrides (exercise swaps, set scheme changes)
+        const prefilledGroups = applyOverrides(resolvedGroups, overrides, {
+          exerciseMaxes,
+          maxReps,
+          preferredUnit,
+        })
 
         // 3. Create WorkoutLog in DB with template and program context
         const now = new Date().toISOString()

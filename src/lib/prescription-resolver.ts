@@ -27,6 +27,7 @@ import { calculateWorkingWeight } from '@/lib/plate-calculator'
 export type PrefilledSet = Omit<LoggedSet, 'id' | 'loggedActivityId'>
 
 export type PrefilledActivity = {
+  templateActivityId: string
   activity: Omit<LoggedActivity, 'id' | 'loggedGroupId'>
   sets: PrefilledSet[]
 }
@@ -374,7 +375,7 @@ function resolvePercentageOfMaxReps(
 // Main dispatcher: route each SetScheme variant to its resolver
 // ---------------------------------------------------------------------------
 
-function resolveSetsForActivity(
+export function resolveSetsForActivity(
   activity: Activity,
   exerciseMaxes: Record<string, OneRepMax>,
   maxReps: Record<string, number>,
@@ -454,6 +455,7 @@ export function resolveSessionTemplate(
     const prefilledActivities: PrefilledActivity[] = groupActivities.map((act) => {
       const sets = resolveSetsForActivity(act, exerciseMaxes, maxReps, preferredUnit)
       return {
+        templateActivityId: act.id,
         activity: {
           exerciseId: act.exerciseId,
           ordinal: act.ordinal,

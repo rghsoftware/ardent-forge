@@ -6,6 +6,7 @@ import type {
   Block,
   BlockWeek,
   ScheduledSession,
+  SessionOverrides,
 } from '@/domain/types'
 import type { ProgramFull } from '@/lib/data-adapter'
 import { DAY_LABELS } from './constants'
@@ -22,6 +23,8 @@ export type SessionDraft = {
   sessionType: SessionType
   sessionTemplateId: string
   templateName?: string // denormalized for display
+  notes?: string
+  overrides?: SessionOverrides
 }
 
 export type WeekDraft = {
@@ -166,22 +169,28 @@ export function assignSession(
   templateName: string,
   sessionType: SessionType,
 ): ProgramDraft {
-  const newSession: SessionDraft = {
-    clientId: crypto.randomUUID(),
-    dayOfWeek,
-    dayLabel: DAY_LABELS[dayOfWeek] ?? `Day ${dayOfWeek}`,
-    sessionType,
-    sessionTemplateId: templateId,
-    templateName,
-  }
-
   return {
     ...draft,
     blocks: draft.blocks.map((block) => ({
       ...block,
       weeks: block.weeks.map((week) => {
         if (week.clientId !== weekClientId) return week
-        // Replace existing session on the same day, or add new
+
+        const existing = week.sessions.find((s) => s.dayOfWeek === dayOfWeek)
+        const isSameTemplate = existing?.sessionTemplateId === templateId
+
+        const newSession: SessionDraft = {
+          clientId: crypto.randomUUID(),
+          dayOfWeek,
+          dayLabel: DAY_LABELS[dayOfWeek] ?? `Day ${dayOfWeek}`,
+          sessionType,
+          sessionTemplateId: templateId,
+          templateName,
+          // Preserve notes when re-assigning the same template; clear on new template
+          ...(isSameTemplate && existing?.notes ? { notes: existing.notes } : {}),
+          // Always clear overrides when assigning (fresh start for the template)
+        }
+
         const withoutDay = week.sessions.filter((s) => s.dayOfWeek !== dayOfWeek)
         return { ...week, sessions: [...withoutDay, newSession] }
       }),
@@ -242,6 +251,32 @@ export function copyWeek(
           clientId: crypto.randomUUID(),
         }))
         return { ...week, sessions: copiedSessions }
+      }),
+    })),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Update session -- replace a single session within a week by clientId
+// ---------------------------------------------------------------------------
+
+export function updateSession(
+  draft: ProgramDraft,
+  weekClientId: string,
+  updatedSession: SessionDraft,
+): ProgramDraft {
+  return {
+    ...draft,
+    blocks: draft.blocks.map((block) => ({
+      ...block,
+      weeks: block.weeks.map((week) => {
+        if (week.clientId !== weekClientId) return week
+        return {
+          ...week,
+          sessions: week.sessions.map((s) =>
+            s.clientId === updatedSession.clientId ? updatedSession : s,
+          ),
+        }
       }),
     })),
   }
@@ -343,6 +378,8 @@ function buildSessionsPayload(sessions: SessionDraft[]): SessionPayload[] {
     dayLabel: session.dayLabel,
     sessionType: session.sessionType,
     sessionTemplateId: session.sessionTemplateId,
+    ...(session.notes ? { notes: session.notes } : {}),
+    ...(session.overrides ? { overrides: session.overrides } : {}),
   }))
 }
 
@@ -471,6 +508,8 @@ export function hydrateDraft(programFull: ProgramFull): ProgramDraft {
               dayLabel: session.dayLabel,
               sessionType: session.sessionType,
               sessionTemplateId: session.sessionTemplateId,
+              ...(session.notes ? { notes: session.notes } : {}),
+              ...(session.overrides ? { overrides: session.overrides } : {}),
             }),
           )
 
