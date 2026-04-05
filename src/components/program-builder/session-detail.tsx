@@ -72,7 +72,7 @@ export function WeekInlinePreview({ sessions }: WeekInlinePreviewProps) {
               className="border-l-2 border-ember bg-surface-charcoal px-2 py-1.5"
             >
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-warm-ash/60">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
                   {dayLabel}
                 </span>
                 <Icon name="flag" size={10} fill className="shrink-0 text-ember" />
@@ -98,14 +98,14 @@ export function WeekInlinePreview({ sessions }: WeekInlinePreviewProps) {
         return (
           <div key={session.clientId} className="flex flex-col">
             <div className="flex items-center gap-1.5 bg-surface-charcoal px-2 py-1">
-              <span className="text-[10px] font-medium uppercase tracking-wider text-warm-ash/60">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
                 {dayLabel}
               </span>
               <span className="text-[11px] font-medium text-bone-white">
                 {session.templateName ?? 'Unnamed'}
               </span>
               <span
-                className={`px-1 py-px text-[9px] font-medium uppercase tracking-wider ${
+                className={`px-1 py-px text-[11px] font-medium uppercase tracking-wider ${
                   SESSION_TYPE_BADGE[session.sessionType] ?? 'bg-surface-steel text-warm-ash'
                 }`}
               >

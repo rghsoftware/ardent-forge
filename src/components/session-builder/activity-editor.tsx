@@ -25,6 +25,10 @@ interface ActivityEditorProps {
   onShowAllSchemeTypesChange: (v: boolean) => void
   onChange: (updated: ActivityData) => void
   onDelete: () => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
+  isFirst?: boolean
+  isLast?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -39,6 +43,10 @@ export function ActivityEditor({
   onShowAllSchemeTypesChange,
   onChange,
   onDelete,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
 }: ActivityEditorProps) {
   const [showExerciseSheet, setShowExerciseSheet] = useState(false)
   const [showNotes, setShowNotes] = useState(!!activity.notes)
@@ -59,7 +67,7 @@ export function ActivityEditor({
             <button
               type="button"
               onClick={() => setShowExerciseSheet(true)}
-              className="min-h-8 px-2 text-[11px] font-medium text-warm-ash/60 hover:text-bone-white"
+              className="min-h-8 px-2 text-xs font-medium text-warm-ash/60 hover:text-bone-white"
             >
               Change
             </button>
@@ -76,7 +84,29 @@ export function ActivityEditor({
           </Button>
         )}
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
+          {onMoveUp && (
+            <button
+              type="button"
+              onClick={onMoveUp}
+              disabled={isFirst}
+              className="flex min-h-10 min-w-8 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
+              aria-label="Move activity up"
+            >
+              <Icon name="keyboard_arrow_up" size={18} />
+            </button>
+          )}
+          {onMoveDown && (
+            <button
+              type="button"
+              onClick={onMoveDown}
+              disabled={isLast}
+              className="flex min-h-10 min-w-8 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
+              aria-label="Move activity down"
+            >
+              <Icon name="keyboard_arrow_down" size={18} />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowNotes(!showNotes)}
@@ -111,7 +141,7 @@ export function ActivityEditor({
       {/* Notes (collapsible) */}
       {showNotes && (
         <div className="border-t border-warm-ash/10 px-4 py-3">
-          <span className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+          <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
             NOTES
           </span>
           <textarea

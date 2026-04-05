@@ -1,4 +1,4 @@
-import type { BlockType, SessionType } from '@/domain/types'
+import type { BlockType, ProgramSource, SessionType } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // DayOfWeek type alias (0=Sun, 1=Mon, ..., 6=Sat -- JS convention)
@@ -80,20 +80,16 @@ export const DAY_ORDER: DayOfWeek[] = [1, 2, 3, 4, 5, 6, 0]
 export const WEEKDAY_ORDER: DayOfWeek[] = [1, 2, 3, 4, 5]
 
 // ---------------------------------------------------------------------------
-// Source labels for program source badges
+// Session type visual mappings (tint, badge colours, borders)
 // ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// Session type visual mappings (tint, badge colours)
-// ---------------------------------------------------------------------------
-
-export const SESSION_TINT: Record<string, string> = {
+export const SESSION_TINT = {
   STRENGTH: 'session-tint-strength',
   CONDITIONING: 'session-tint-conditioning',
   SE: 'session-tint-se',
   MIXED: 'session-tint-mixed',
   EVENT: 'session-tint-event',
-}
+} satisfies Record<SessionType, string>
 
 export const SESSION_TYPE_BADGE = {
   STRENGTH: 'bg-ember/10 text-ember',
@@ -115,7 +111,7 @@ export const BLOCK_TYPE_STYLES = {
   TEST: 'bg-warm-ash/15 text-warm-ash',
 } satisfies Record<BlockType, string>
 
-export const SOURCE_LABELS: Record<string, string> = {
+export const SOURCE_LABELS = {
   CUSTOM: 'CUSTOM',
   IMPORTED: 'IMPORTED',
   SHARED: 'SHARED',
@@ -123,4 +119,12 @@ export const SOURCE_LABELS: Record<string, string> = {
   AI_GENERATED: 'AI',
   COACH_ASSIGNED: 'COACH',
   TEMPLATE: 'TEMPLATE',
-}
+} satisfies Record<ProgramSource, string>
+
+export const SESSION_BORDER = {
+  STRENGTH: 'border-l-2 border-ember',
+  CONDITIONING: 'border-l-2 border-quenched',
+  SE: 'border-l-2 border-arc',
+  MIXED: 'border-l-2 border-bone-white/40',
+  EVENT: 'border-l-2 border-ember',
+} satisfies Record<SessionType, string>

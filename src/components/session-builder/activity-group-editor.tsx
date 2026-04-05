@@ -31,6 +31,10 @@ interface ActivityGroupEditorProps {
   onShowAllSchemeTypesChange: (v: boolean) => void
   onChange: (updated: ActivityGroupData) => void
   onDelete: () => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
+  isFirst?: boolean
+  isLast?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +78,10 @@ export function ActivityGroupEditor({
   onShowAllSchemeTypesChange,
   onChange,
   onDelete,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
 }: ActivityGroupEditorProps) {
   const isStage1 = group.groupType === null
   const visibility = group.groupType ? GROUP_FIELD_VISIBILITY[group.groupType] : null
@@ -113,19 +121,52 @@ export function ActivityGroupEditor({
   }
 
   const handleDeleteActivity = (index: number) => {
-    const activities = group.activities
+    const updated = group.activities
       .filter((_, i) => i !== index)
       .map((a, i) => ({ ...a, ordinal: i + 1 }))
-    onChange({ ...group, activities })
+    onChange({ ...group, activities: updated })
+  }
+
+  const handleMoveActivity = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= group.activities.length) return
+    const reordered = [...group.activities]
+    const [moved] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, moved)
+    onChange({ ...group, activities: reordered.map((a, i) => ({ ...a, ordinal: i + 1 })) })
   }
 
   return (
     <section className="bg-surface-charcoal" aria-label={`Activity group ${group.ordinal}`}>
       {/* Group header */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-2">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-forge font-display text-xs font-medium tabular-nums text-on-forge">
-          {group.ordinal}
-        </span>
+        {/* Reorder + ordinal */}
+        <div className="flex shrink-0 flex-col items-center gap-0.5">
+          {onMoveUp && (
+            <button
+              type="button"
+              onClick={onMoveUp}
+              disabled={isFirst}
+              className="flex h-5 w-8 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
+              aria-label="Move group up"
+            >
+              <Icon name="keyboard_arrow_up" size={16} />
+            </button>
+          )}
+          <span className="flex h-8 w-8 items-center justify-center bg-forge font-display text-xs font-medium tabular-nums text-on-forge">
+            {group.ordinal}
+          </span>
+          {onMoveDown && (
+            <button
+              type="button"
+              onClick={onMoveDown}
+              disabled={isLast}
+              className="flex h-5 w-8 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
+              aria-label="Move group down"
+            >
+              <Icon name="keyboard_arrow_down" size={16} />
+            </button>
+          )}
+        </div>
 
         {/* Group type selector */}
         <ToggleGroup
@@ -138,7 +179,7 @@ export function ActivityGroupEditor({
             <ToggleGroupItem
               key={gt.value}
               value={gt.value}
-              className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
+              className="min-h-8 px-2 py-1 text-xs font-medium uppercase tracking-wider"
             >
               {gt.label}
             </ToggleGroupItem>
@@ -167,7 +208,7 @@ export function ActivityGroupEditor({
             <div className="flex flex-wrap gap-4 px-4 pb-3">
               {visibility.rounds && (
                 <div className="flex flex-col gap-1">
-                  <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+                  <span className="text-xs font-medium uppercase tracking-wider text-warm-ash/60">
                     ROUNDS
                   </span>
                   <input
@@ -216,6 +257,10 @@ export function ActivityGroupEditor({
                 onShowAllSchemeTypesChange={onShowAllSchemeTypesChange}
                 onChange={(updated) => handleUpdateActivity(index, updated)}
                 onDelete={() => handleDeleteActivity(index)}
+                onMoveUp={() => handleMoveActivity(index, index - 1)}
+                onMoveDown={() => handleMoveActivity(index, index + 1)}
+                isFirst={index === 0}
+                isLast={index === group.activities.length - 1}
               />
             ))}
           </div>

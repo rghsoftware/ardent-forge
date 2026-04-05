@@ -1,4 +1,4 @@
-import { useState, useId, type ReactNode } from 'react'
+import { useState, useId, useRef, useEffect, type ReactNode } from 'react'
 import { Icon } from '@/components/icon'
 
 interface CollapsedFieldsRowProps {
@@ -14,6 +14,17 @@ export function CollapsedFieldsRow({
 }: CollapsedFieldsRowProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
   const contentId = useId()
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    if (expanded) {
+      el.style.maxHeight = `${el.scrollHeight}px`
+    } else {
+      el.style.maxHeight = '0px'
+    }
+  }, [expanded])
 
   return (
     <div>
@@ -29,7 +40,14 @@ export function CollapsedFieldsRow({
         </span>
         <Icon name={expanded ? 'expand_less' : 'expand_more'} size={20} />
       </button>
-      {expanded && <div id={contentId}>{children}</div>}
+      <div
+        ref={contentRef}
+        id={contentId}
+        className="overflow-hidden transition-[max-height] duration-200 ease-out"
+        style={{ maxHeight: defaultExpanded ? undefined : '0px' }}
+      >
+        {children}
+      </div>
     </div>
   )
 }
