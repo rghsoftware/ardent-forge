@@ -100,6 +100,7 @@ function ExerciseDetailPage() {
     },
   })
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const estimatedValue = watch('estimated')
 
   const [oneRmError, setOneRmError] = useState<string | null>(null)
