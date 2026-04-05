@@ -90,6 +90,9 @@ jobs:
             exit 1
           fi
 
+      - name: Compute version code
+        run: echo "ANDROID_VERSION_CODE=$(( ${{ github.run_number }} + 1100000 ))" >> "$GITHUB_ENV"
+
       - name: Build signed AAB
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
@@ -98,7 +101,6 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           ANDROID_VERSION_NAME: ${{ github.ref_name }}
-          ANDROID_VERSION_CODE: ${{ github.run_number + 1100000 }}
         run: bunx tauri android build --target aarch64 --aab
 
       - name: Upload AAB artifact
