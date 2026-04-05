@@ -61,7 +61,7 @@ function AuthenticatedLayout() {
   const isWorkoutRoute = pathname.startsWith('/log/')
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background pt-[var(--sai-top)]">
       {/* Large screen sidebar */}
       <div className="hidden lg:flex">
         <SidebarNav />

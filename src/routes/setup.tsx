@@ -147,7 +147,10 @@ function SetupPage() {
   const cancelRef = useRef<(() => Promise<void>) | null>(null)
 
   const handleScan = async () => {
-    if (!isTauri()) return
+    if (!isTauri()) {
+      console.error('[setup] QR scanning is only available in Tauri')
+      return
+    }
     try {
       const { scan, cancel, checkPermissions, requestPermissions, openAppSettings, Format } =
         await import('@tauri-apps/plugin-barcode-scanner')
@@ -163,14 +166,31 @@ function SetupPage() {
       }
 
       setScanning(true)
-      const result = await scan({ windowed: true, formats: [Format.QRCode] })
-      await cancel()
-      setScanning(false)
-      await processInviteLink(result.content)
+      document.documentElement.classList.add('scanner-active')
+
+      let content: string
+      try {
+        const result = await scan({ windowed: true, formats: [Format.QRCode] })
+        await cancel()
+        content = result.content
+      } catch (err) {
+        console.error('[setup] Barcode scan failed:', err)
+        toast('QR scan failed. Try pasting the invite link instead.')
+        return
+      } finally {
+        document.documentElement.classList.remove('scanner-active')
+        setScanning(false)
+      }
+
+      try {
+        await processInviteLink(content)
+      } catch (err) {
+        console.error('[setup] Failed to process scanned invite:', err)
+        toast('Could not process the scanned invite. The link may be invalid or expired.')
+      }
     } catch (err) {
-      console.error('[setup] QR scan failed:', err)
-      setScanning(false)
-      toast('QR scan failed. Try pasting the invite link instead.')
+      console.error('[setup] QR scan setup failed:', err)
+      toast('QR scanner is not available. Try pasting the invite link instead.')
     }
   }
 

@@ -138,8 +138,9 @@ function SignInPage() {
             variant="ghost"
             className="min-h-12 w-full text-warm-ash/60 hover:text-warm-ash"
             onClick={() => {
-              auth.continueAsGuest()
-              router.navigate({ to: '/' })
+              if (auth.continueAsGuest()) {
+                router.navigate({ to: '/' })
+              }
             }}
           >
             Continue as Guest

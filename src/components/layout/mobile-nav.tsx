@@ -19,7 +19,7 @@ export function MobileNav() {
   const totalUnread = unreadMap ? Array.from(unreadMap.values()).reduce((sum, n) => sum + n, 0) : 0
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 heat-blur border-t border-ghost-line/15">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 heat-blur border-t border-ghost-line/15 pb-[var(--sai-bottom)]">
       <div className="flex items-stretch bg-surface-pit/80">
         {navItems.map((item) => (
           <Link
