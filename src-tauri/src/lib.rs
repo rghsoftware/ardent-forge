@@ -136,6 +136,7 @@ pub fn run() {
             commands::chat::create_conversation,
             commands::chat::get_conversations,
             commands::chat::get_conversation,
+            commands::chat::find_direct_conversation,
             commands::chat::send_message,
             commands::chat::get_messages,
             commands::chat::get_messages_since,

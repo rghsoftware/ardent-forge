@@ -88,6 +88,15 @@ pub async fn get_conversation(
 }
 
 #[tauri::command]
+pub async fn find_direct_conversation(
+    pool: State<'_, SqlitePool>,
+    user_id: String,
+    other_user_id: String,
+) -> Result<Option<ConversationWithParticipants>, AppError> {
+    find_direct_conversation_inner(pool.inner(), user_id, other_user_id).await
+}
+
+#[tauri::command]
 pub async fn send_message(
     pool: State<'_, SqlitePool>,
     input: SendMessageInput,
@@ -332,6 +341,44 @@ pub(crate) async fn get_conversation_inner(
         "SELECT * FROM conversation_participants WHERE conversation_id = ?",
     )
     .bind(&id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(Some(ConversationWithParticipants {
+        conversation,
+        participants,
+    }))
+}
+
+pub(crate) async fn find_direct_conversation_inner(
+    pool: &SqlitePool,
+    user_id: String,
+    other_user_id: String,
+) -> Result<Option<ConversationWithParticipants>, AppError> {
+    let conversation = sqlx::query_as::<_, ConversationRow>(
+        "SELECT c.id, c.\"type\", c.title, c.group_id, c.created_at, c.updated_at \
+         FROM conversations c \
+         JOIN conversation_participants cp1 ON cp1.conversation_id = c.id \
+         JOIN conversation_participants cp2 ON cp2.conversation_id = c.id \
+         WHERE c.\"type\" = 'direct' \
+           AND cp1.user_id = ? AND cp1.left_at IS NULL \
+           AND cp2.user_id = ? AND cp2.left_at IS NULL \
+         LIMIT 1",
+    )
+    .bind(&user_id)
+    .bind(&other_user_id)
+    .fetch_optional(pool)
+    .await?;
+
+    let conversation = match conversation {
+        Some(c) => c,
+        None => return Ok(None),
+    };
+
+    let participants = sqlx::query_as::<_, ConversationParticipantRow>(
+        "SELECT * FROM conversation_participants WHERE conversation_id = ?",
+    )
+    .bind(&conversation.id)
     .fetch_all(pool)
     .await?;
 

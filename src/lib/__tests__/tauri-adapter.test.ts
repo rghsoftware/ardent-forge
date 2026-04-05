@@ -2278,17 +2278,6 @@ describe('Chat operations', () => {
 
   describe('findDirectConversation', () => {
     it('returns direct conversation matching other user', async () => {
-      // First call: getConversations
-      mockInvoke.mockResolvedValueOnce([
-        {
-          conversation: tauriConversationResponse,
-          participants: [
-            tauriConversationParticipantResponse,
-            tauriConversationParticipantResponse2,
-          ],
-        },
-      ])
-      // Second call: get_conversation for participant check
       mockInvoke.mockResolvedValueOnce({
         conversation: tauriConversationResponse,
         participants: [tauriConversationParticipantResponse, tauriConversationParticipantResponse2],
@@ -2296,14 +2285,26 @@ describe('Chat operations', () => {
 
       const result = await adapter.findDirectConversation('user-002')
 
+      expect(mockInvoke).toHaveBeenCalledWith('find_direct_conversation', {
+        user_id: 'user-001',
+        other_user_id: 'user-002',
+      })
       expect(result).not.toBeNull()
       expect(result!.id).toBe('conv-001')
     })
 
     it('returns null when no direct conversation with other user', async () => {
-      mockInvoke.mockResolvedValueOnce([]) // no conversations
+      mockInvoke.mockResolvedValueOnce(null)
 
       const result = await adapter.findDirectConversation('user-002')
+
+      expect(result).toBeNull()
+    })
+
+    it('returns null when other user has left the conversation', async () => {
+      mockInvoke.mockResolvedValueOnce(null) // Rust command handles left_at filtering
+
+      const result = await adapter.findDirectConversation('user-003')
 
       expect(result).toBeNull()
     })
