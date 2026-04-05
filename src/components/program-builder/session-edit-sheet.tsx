@@ -14,20 +14,9 @@ import { AddExerciseSheet } from '@/components/workout/add-exercise-sheet'
 import { useSessionTemplateFull } from '@/hooks/use-session-templates'
 import { useExercises } from '@/hooks/use-exercises'
 import { formatSetsReps, formatLoad, buildGroupedActivities } from './session-detail-utils'
+import { SESSION_TYPE_BADGE } from './constants'
 import type { SessionDraft } from './builder-state'
 import type { SetScheme, SessionOverrides, ActivityOverride } from '@/domain/types'
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const SESSION_TYPE_BADGE: Record<string, string> = {
-  STRENGTH: 'bg-ember/10 text-ember',
-  CONDITIONING: 'bg-quenched/10 text-quenched',
-  SE: 'bg-arc/10 text-arc',
-  MIXED: 'bg-bone-white/10 text-bone-white',
-  EVENT: 'bg-ember/15 text-ember',
-}
 
 // ---------------------------------------------------------------------------
 // Props

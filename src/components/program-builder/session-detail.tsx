@@ -3,7 +3,7 @@ import { Icon } from '@/components/icon'
 import { useAuth } from '@/lib/auth'
 import { useUserProfile } from '@/hooks/use-user-profile'
 import { useExercises } from '@/hooks/use-exercises'
-import { DAY_ABBREVIATIONS } from './constants'
+import { DAY_ABBREVIATIONS, SESSION_TYPE_BADGE } from './constants'
 import {
   formatSetsReps,
   formatLoad,
@@ -16,14 +16,6 @@ import type { SessionDraft } from './builder-state'
 // ---------------------------------------------------------------------------
 // Inline session type badge styles
 // ---------------------------------------------------------------------------
-
-const SESSION_TYPE_BADGE: Record<string, string> = {
-  STRENGTH: 'bg-ember/10 text-ember',
-  CONDITIONING: 'bg-quenched/10 text-quenched',
-  SE: 'bg-arc/10 text-arc',
-  MIXED: 'bg-bone-white/10 text-bone-white',
-  EVENT: 'bg-ember/15 text-ember',
-}
 
 // ---------------------------------------------------------------------------
 // WeekInlinePreview -- session exercise details rendered inline

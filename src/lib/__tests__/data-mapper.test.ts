@@ -1824,6 +1824,7 @@ const scheduledSessionRow: ScheduledSessionRow = {
   session_type: 'STRENGTH',
   session_template_id: 'st-upper-001',
   notes: 'Heavy day',
+  overrides: null,
   created_at: now,
   updated_at: now,
 }

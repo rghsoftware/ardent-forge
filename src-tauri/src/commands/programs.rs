@@ -284,6 +284,15 @@ pub async fn create_program_full(
             all_weeks.push(week_row);
 
             for session_input in &week_input.sessions {
+                if let Some(ref o) = session_input.overrides {
+                    if serde_json::from_str::<serde_json::Value>(o).is_err() {
+                        return Err(AppError::validation(
+                            "overrides",
+                            "[programs] Invalid overrides JSON",
+                        ));
+                    }
+                }
+
                 let session_id = session_input
                     .id
                     .as_ref()
@@ -459,6 +468,15 @@ pub async fn update_program_full(
             all_weeks.push(week_row);
 
             for session_input in &week_input.sessions {
+                if let Some(ref o) = session_input.overrides {
+                    if serde_json::from_str::<serde_json::Value>(o).is_err() {
+                        return Err(AppError::validation(
+                            "overrides",
+                            "[programs] Invalid overrides JSON",
+                        ));
+                    }
+                }
+
                 let session_id = session_input
                     .id
                     .as_ref()
