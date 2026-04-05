@@ -111,12 +111,9 @@ export function createRealtimeManager(
   }
 
   function clearAllTyping(): void {
-    for (const users of typingState.values()) {
-      for (const entry of users.values()) {
-        clearTimeout(entry.timeout)
-      }
+    for (const conversationId of [...typingState.keys()]) {
+      clearTypingForConversation(conversationId)
     }
-    typingState.clear()
   }
 
   // -- The manager object ---------------------------------------------------
@@ -292,7 +289,9 @@ export function createRealtimeManager(
           event: 'typing',
           payload: { user_id: userId, user_name: userName },
         })
-        .catch(() => {})
+        .catch((err) => {
+          console.error('[realtime-manager] broadcastTyping send failed:', err)
+        })
 
       lastTypingSent.set(conversationId, now)
     },
