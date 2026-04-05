@@ -1,4 +1,3 @@
-// src/lib/override-merger.ts
 // Pure function that merges per-instance session overrides into resolved
 // template groups (PrefilledGroup[]). Used between resolveSessionTemplate()
 // and workout log persistence to "bake in" user customizations.
@@ -25,7 +24,7 @@ export type ResolutionContext = {
  *
  * - No-op when overrides is null/undefined/empty
  * - Silently skips orphaned override keys (activity deleted from template)
- * - Returns a new array (does not mutate input)
+ * - Returns the original array when no overrides apply; returns a new array otherwise (never mutates input)
  *
  * @param prefilledGroups - Output of resolveSessionTemplate()
  * @param overrides - Per-instance overrides from ScheduledSession.overrides
@@ -41,6 +40,20 @@ export function applyOverrides(
   if (!overrides?.activityOverrides) return prefilledGroups
   const activityOverrides = overrides.activityOverrides
   if (Object.keys(activityOverrides).length === 0) return prefilledGroups
+
+  // Collect all template activity IDs to detect orphaned override keys
+  const templateActivityIds = new Set(
+    prefilledGroups.flatMap((g) => g.activities.map((pa) => pa.templateActivityId)),
+  )
+  for (const key of Object.keys(activityOverrides)) {
+    if (!templateActivityIds.has(key)) {
+      console.warn(
+        '[override-merger] Orphaned override key:',
+        key,
+        '-- activity no longer in template',
+      )
+    }
+  }
 
   return prefilledGroups.map((group) => {
     // Check if any activity in this group has an override before cloning
@@ -63,6 +76,13 @@ export function applyOverrides(
         }
 
         // Re-resolve sets if setScheme is overridden
+        if (override.setScheme && !resolutionCtx) {
+          console.warn(
+            '[override-merger] setScheme override exists for activity',
+            pa.templateActivityId,
+            'but no resolutionCtx provided -- skipping set scheme override',
+          )
+        }
         if (override.setScheme && resolutionCtx) {
           const effectiveExerciseId = newActivity.activity.exerciseId
           // Build a synthetic Activity to feed into the set resolver

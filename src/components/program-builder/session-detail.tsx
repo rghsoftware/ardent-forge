@@ -14,10 +14,6 @@ import type { DayOfWeek } from './constants'
 import type { SessionDraft } from './builder-state'
 
 // ---------------------------------------------------------------------------
-// Inline session type badge styles
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
 // WeekInlinePreview -- session exercise details rendered inline
 // ---------------------------------------------------------------------------
 

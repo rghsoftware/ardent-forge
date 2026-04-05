@@ -47,7 +47,11 @@ export function SessionEditSheet({
   onRemove,
   onChangeTemplate,
 }: SessionEditSheetProps) {
-  const { data: templateFull, isLoading } = useSessionTemplateFull(session.sessionTemplateId)
+  const {
+    data: templateFull,
+    isLoading,
+    isError: isTemplateError,
+  } = useSessionTemplateFull(session.sessionTemplateId)
   const { data: exercises = [] } = useExercises()
 
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null)
@@ -59,12 +63,14 @@ export function SessionEditSheet({
   // Build the flat activity list from the template
   const templateActivities = useMemo(() => {
     if (!templateFull) return []
-    return buildGroupedActivities(templateFull).map((a, idx) => ({
-      ...a,
-      // Use the activity id from the template's actual activities array
-      activityId: findActivityId(templateFull, idx),
-      ordinal: idx + 1,
-    }))
+    const grouped = buildGroupedActivities(templateFull)
+    const result: ((typeof grouped)[number] & { activityId: string; ordinal: number })[] = []
+    for (let idx = 0; idx < grouped.length; idx++) {
+      const activityId = findActivityId(templateFull, idx)
+      if (!activityId) continue
+      result.push({ ...grouped[idx], activityId, ordinal: idx + 1 })
+    }
+    return result
   }, [templateFull])
 
   // ---------------------------------------------------------------------------
@@ -236,6 +242,13 @@ export function SessionEditSheet({
                 <Skeleton className="h-14 w-full bg-surface-iron" />
                 <Skeleton className="h-14 w-full bg-surface-iron" />
               </div>
+            ) : isTemplateError ? (
+              <div className="flex flex-col items-center gap-2 py-8">
+                <Icon name="error" size={28} className="text-warning-flare/60" />
+                <p className="text-center text-xs text-warning-flare/80">
+                  Failed to load template activities
+                </p>
+              </div>
             ) : templateActivities.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-8">
                 <Icon name="fitness_center" size={28} className="text-warm-ash/30" />
@@ -393,7 +406,7 @@ export function SessionEditSheet({
 function findActivityId(
   templateFull: NonNullable<ReturnType<typeof useSessionTemplateFull>['data']>,
   flatIndex: number,
-): string {
+): string | null {
   const { groups, activities } = templateFull
   const sortedGroups = [...groups].sort((a, b) => a.ordinal - b.ordinal)
   let idx = 0
@@ -409,7 +422,6 @@ function findActivityId(
     }
   }
 
-  // Fallback -- should not happen if template data is consistent
   console.warn('[session-edit-sheet] Could not find activity ID for flat index', flatIndex)
-  return `unknown-${flatIndex}`
+  return null
 }

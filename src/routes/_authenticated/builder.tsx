@@ -179,6 +179,11 @@ function BuilderPage() {
     setEditState({ weekClientId, session })
   }, [])
 
+  const draftRef = useRef(draft)
+  useEffect(() => {
+    draftRef.current = draft
+  })
+
   const editStateRef = useRef(editState)
   useEffect(() => {
     editStateRef.current = editState
@@ -188,6 +193,7 @@ function BuilderPage() {
     const state = editStateRef.current
     if (!state) {
       console.error('[builder] Cannot update session: no active edit state')
+      toast.error('Cannot update session: no active edit state')
       return
     }
     setDraft((prev) => updateSession(prev, state.weekClientId, updatedSession))
@@ -198,9 +204,10 @@ function BuilderPage() {
     const state = editStateRef.current
     if (!state) {
       console.error('[builder] Cannot remove session: no active edit state')
+      toast.error('Cannot remove session: no active edit state')
       return
     }
-    const previousDraft = draft
+    const previousDraft = draftRef.current
     setDraft((prev) => removeSession(prev, state.weekClientId, state.session.clientId))
     setEditState(null)
     toast('Session removed', {
@@ -210,16 +217,18 @@ function BuilderPage() {
       },
       duration: 5000,
     })
-  }, [draft])
+  }, [])
 
   const handleEditChangeTemplate = useCallback(() => {
     const state = editStateRef.current
     if (!state) {
       console.error('[builder] Cannot change template: no active edit state')
+      toast.error('Cannot change template: no active edit state')
       return
     }
     if (state.session.dayOfWeek === null) {
       console.error('[builder] Cannot change template: session has no day assigned')
+      toast.error('Cannot change template: session has no day assigned')
       return
     }
     const dayOfWeek = state.session.dayOfWeek

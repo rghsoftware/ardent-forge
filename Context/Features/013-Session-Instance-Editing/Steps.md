@@ -141,6 +141,28 @@
 
 🏁 MILESTONE: Feature complete -- verify all assertions, full drift check
 
+### Phase 5: Review Findings
+
+- [ ] S013: Add data-mapper override tests -- valid JSON string (Tauri path), valid pre-parsed object (Supabase path), malformed JSON, schema-invalid JSON, and `fromScheduledSession` round-trip test for overrides. Currently tests only cover `overrides: null`.
+  - **Assigned:** domain-eng
+  - **Depends:** S005
+  - **Parallel:** true
+  - **Source:** PR review P10-010
+
+- [ ] S014: Add typed Rust validation for SessionOverrides JSON structure in `create_program_full` and `update_program_full` (`src-tauri/src/commands/programs.rs`). Currently validates JSON syntax but not schema conformance -- a payload like `{"garbage": true}` is accepted. Deserialize to a typed Rust struct for defense-in-depth.
+  - **Assigned:** schema-eng
+  - **Depends:** S001
+  - **Parallel:** true
+  - **Source:** PR review P10-011
+
+- [ ] S015-T: Add test for `applyOverrides` behavior when setScheme override exists but `resolutionCtx` is omitted -- verify the override is skipped and the original sets are preserved.
+  - **Assigned:** integration-eng
+  - **Depends:** S006
+  - **Parallel:** true
+  - **Source:** PR review P10-012
+
+🏁 MILESTONE: Review findings addressed
+
 ## Acceptance Criteria
 
 - [ ] All testable assertions from Spec.md verified (A-001 through A-011)
