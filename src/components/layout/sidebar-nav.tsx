@@ -10,11 +10,11 @@ const navItems = [
   { label: 'Forge', icon: 'hardware', to: '/' },
   { label: 'Tracker', icon: 'history', to: '/history' },
   { label: 'Builder', icon: 'construction', to: '/builder' },
-  { label: 'Vault', icon: 'monitoring', to: '/vault' },
-  { label: 'Comms', icon: 'chat', to: '/comms' },
   { label: 'Library', icon: 'library_books', to: '/library' },
+  { label: 'Vault', icon: 'monitoring', to: '/vault' },
   { label: 'Groups', icon: 'group', to: '/groups' },
   { label: 'Connections', icon: 'person_add', to: '/connections' },
+  { label: 'Comms', icon: 'chat', to: '/comms' },
 ] as const
 
 // Uses first and last name only (skips middle names) for two-letter initials
