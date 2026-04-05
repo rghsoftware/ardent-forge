@@ -36,8 +36,8 @@ export const mediaAttachmentSchema = syncableEntitySchema.extend({
   mimeType: z.string().optional(),
   thumbnailUrl: z.string().url().optional(),
   playbackUrl: z.string().url().optional(),
-  durationSeconds: z.number().int().optional(),
-  fileSizeBytes: z.number().int().optional(),
+  durationSeconds: z.number().int().nonnegative().optional(),
+  fileSizeBytes: z.number().int().nonnegative().optional(),
   status: mediaStatusSchema,
 })
 export type MediaAttachment = z.infer<typeof mediaAttachmentSchema>

@@ -90,11 +90,16 @@ export type WorkoutSnapshot = z.infer<typeof workoutSnapshotSchema>
 // Uses appendOnlyEntitySchema because messages are immutable: no UPDATE/DELETE.
 // ---------------------------------------------------------------------------
 
-export const messageSchema = appendOnlyEntitySchema.extend({
-  conversationId: entityId,
-  senderId: entityId.optional(),
-  messageType: messageTypeSchema,
-  content: z.string().optional(),
-  syncStatus: syncStatusSchema.optional(),
-})
+export const messageSchema = appendOnlyEntitySchema
+  .extend({
+    conversationId: entityId,
+    senderId: entityId.optional(),
+    messageType: messageTypeSchema,
+    content: z.string().optional(),
+    syncStatus: syncStatusSchema.optional(),
+  })
+  .refine((m) => m.messageType !== 'system' || m.senderId === undefined, {
+    message: 'System messages cannot have a senderId',
+    path: ['senderId'],
+  })
 export type Message = z.infer<typeof messageSchema>
