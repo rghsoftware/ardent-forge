@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useConversation, useRealtimeMessages, useToggleArchive, useUpdateLastRead } from '@/hooks/use-chat'
+import {
+  useConversation,
+  useRealtimeMessages,
+  useToggleArchive,
+  useUpdateLastRead,
+} from '@/hooks/use-chat'
 import { useAuth } from '@/lib/auth'
 import { useBlockedUsers } from '@/hooks/use-blocked-users'
 import { useUserProfile } from '@/hooks/use-user-profile'
@@ -96,11 +101,14 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
   }, [otherUserId, unblockUser])
 
   const handleArchive = useCallback(() => {
-    toggleArchive.mutateAsync(conversationId).then(() => {
-      navigate({ to: '/comms' })
-    }).catch((err) => {
-      console.error('[chat] Archive failed:', err)
-    })
+    toggleArchive
+      .mutateAsync(conversationId)
+      .then(() => {
+        navigate({ to: '/comms' })
+      })
+      .catch((err) => {
+        console.error('[chat] Archive failed:', err)
+      })
   }, [conversationId, navigate, toggleArchive])
 
   const handleLeave = useCallback(() => {
@@ -149,36 +157,38 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
-      {/* Header */}
-      <ConversationHeader
-        conversation={conversation}
-        displayName={displayName}
-        participantCount={isGroup ? conversation.participantUserIds.length : undefined}
-        onBack={handleBack}
-        onArchive={handleArchive}
-        onBlock={handleBlock}
-        onLeave={handleLeave}
-        onViewParticipants={handleViewParticipants}
-      />
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col">
+        {/* Header */}
+        <ConversationHeader
+          conversation={conversation}
+          displayName={displayName}
+          participantCount={isGroup ? conversation.participantUserIds.length : undefined}
+          onBack={handleBack}
+          onArchive={handleArchive}
+          onBlock={handleBlock}
+          onLeave={handleLeave}
+          onViewParticipants={handleViewParticipants}
+        />
 
-      {/* Message list */}
-      <MessageList
-        conversationId={conversationId}
-        conversationType={conversation.type}
-        blockedUserIds={blockedUserIds}
-        currentUserId={currentUserId}
-        onNewMessageAtBottom={handleNewMessageAtBottom}
-      />
+        {/* Message list */}
+        <MessageList
+          conversationId={conversationId}
+          conversationType={conversation.type}
+          blockedUserIds={blockedUserIds}
+          currentUserId={currentUserId}
+          onNewMessageAtBottom={handleNewMessageAtBottom}
+        />
 
-      {/* Typing indicator */}
-      {typingUsers.length > 0 && <TypingIndicator typingUsers={typingUsers} />}
+        {/* Typing indicator */}
+        {typingUsers.length > 0 && <TypingIndicator typingUsers={typingUsers} />}
 
-      {/* Compose bar or block banner */}
-      {conversation.type === 'direct' && isOtherBlocked ? (
-        <BlockBanner onUnblock={handleUnblock} />
-      ) : (
-        <ComposeBar conversationId={conversationId} onSend={handleNewMessageAtBottom} />
-      )}
+        {/* Compose bar or block banner */}
+        {conversation.type === 'direct' && isOtherBlocked ? (
+          <BlockBanner onUnblock={handleUnblock} />
+        ) : (
+          <ComposeBar conversationId={conversationId} onSend={handleNewMessageAtBottom} />
+        )}
+      </div>
 
       {/* Dialogs and sheets */}
       <BlockConfirmDialog

@@ -321,50 +321,54 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
-      {/* Header */}
-      <div className="px-4 pt-6 pb-2">
-        <button
-          type="button"
-          onClick={() => navigate({ to: '/groups' })}
-          className="flex items-center gap-1 text-xs text-warm-ash/60 hover:text-ember mb-3 min-h-8"
-        >
-          <Icon name="arrow_back" size={16} />
-          <span>Groups</span>
-        </button>
-        <h1 className="font-display text-xl font-medium text-bone-white">{group.name}</h1>
-        {group.description && <p className="mt-1 text-sm text-warm-ash/70">{group.description}</p>}
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="feed" className="flex-1">
-        <TabsList variant="line" className="px-4 w-full justify-start">
-          <TabsTrigger value="feed" className="min-h-10 text-xs uppercase tracking-wider">
-            Feed
-          </TabsTrigger>
-          <TabsTrigger value="members" className="min-h-10 text-xs uppercase tracking-wider">
-            Members
-          </TabsTrigger>
-          {isOwner && (
-            <TabsTrigger value="settings" className="min-h-10 text-xs uppercase tracking-wider">
-              Settings
-            </TabsTrigger>
+      <div className="mx-auto w-full max-w-5xl flex-1 flex flex-col">
+        {/* Header */}
+        <div className="px-4 pt-6 pb-2 md:px-6 lg:px-8">
+          <button
+            type="button"
+            onClick={() => navigate({ to: '/groups' })}
+            className="flex items-center gap-1 text-xs text-warm-ash/60 hover:text-ember mb-3 min-h-8"
+          >
+            <Icon name="arrow_back" size={16} />
+            <span>Groups</span>
+          </button>
+          <h1 className="font-display text-xl font-medium text-bone-white">{group.name}</h1>
+          {group.description && (
+            <p className="mt-1 text-sm text-warm-ash/70">{group.description}</p>
           )}
-        </TabsList>
+        </div>
 
-        <TabsContent value="feed">
-          <ActivityFeed groupId={groupId} />
-        </TabsContent>
+        {/* Tabs */}
+        <Tabs defaultValue="feed" className="flex-1">
+          <TabsList variant="line" className="px-4 md:px-6 lg:px-8 w-full justify-start">
+            <TabsTrigger value="feed" className="min-h-10 text-xs uppercase tracking-wider">
+              Feed
+            </TabsTrigger>
+            <TabsTrigger value="members" className="min-h-10 text-xs uppercase tracking-wider">
+              Members
+            </TabsTrigger>
+            {isOwner && (
+              <TabsTrigger value="settings" className="min-h-10 text-xs uppercase tracking-wider">
+                Settings
+              </TabsTrigger>
+            )}
+          </TabsList>
 
-        <TabsContent value="members">
-          <MembersTab groupId={groupId} isCoach={isCoach} currentUserId={currentUserId} />
-        </TabsContent>
-
-        {isOwner && (
-          <TabsContent value="settings">
-            <GroupSettings groupId={groupId} />
+          <TabsContent value="feed">
+            <ActivityFeed groupId={groupId} />
           </TabsContent>
-        )}
-      </Tabs>
+
+          <TabsContent value="members">
+            <MembersTab groupId={groupId} isCoach={isCoach} currentUserId={currentUserId} />
+          </TabsContent>
+
+          {isOwner && (
+            <TabsContent value="settings">
+              <GroupSettings groupId={groupId} />
+            </TabsContent>
+          )}
+        </Tabs>
+      </div>
     </div>
   )
 }
