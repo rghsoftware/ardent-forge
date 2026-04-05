@@ -47,13 +47,16 @@ Verify each item before proceeding. Stop and report any failures.
 
 ### Step 3: Bump versions
 
-Update the version string in all three files:
+Update the version string in all four files:
 
 1. `package.json` -- `"version": "X.Y.Z..."` field
 2. `src-tauri/tauri.conf.json` -- `"version": "X.Y.Z..."` field
 3. `src-tauri/Cargo.toml` -- `version = "X.Y.Z..."` field
+4. `src-tauri/gen/android/app/tauri.properties` -- bump `tauri.android.versionCode` and set `tauri.android.versionName`
 
-All three must contain the identical version string (without the `v` prefix).
+All three manifest files (1-3) must contain the identical version string (without the `v` prefix).
+
+**Version code (Android):** The `versionCode` in `tauri.properties` must be strictly greater than the previous value. Read the current value and increment by 1. CI will override this with `1000000 + github.run_number`, but the committed value serves as a floor and prevents conflicts if the CI formula ever resets. Never reuse or decrease a version code -- Play Store rejects uploads with duplicate or lower codes.
 
 ### Step 4: Update CHANGELOG.md
 
@@ -83,7 +86,7 @@ All three must contain the identical version string (without the `v` prefix).
 
 ### Step 5: Commit version bump
 
-1. Stage the three version files and `CHANGELOG.md`
+1. Stage the four version files (`package.json`, `tauri.conf.json`, `Cargo.toml`, `tauri.properties`) and `CHANGELOG.md`
 2. Commit with message: `chore(release): bump version to X.Y.Z`
 3. Do NOT push yet -- present the commit to the user for review
 
@@ -135,7 +138,7 @@ For stable releases, prompt the user about:
 
 - Never skip the pre-flight checklist
 - Never push a tag without user confirmation
-- All three version files must be updated atomically in a single commit
+- All four version files must be updated atomically in a single commit
 - Changelog entries must reference PR numbers where available
 - Pre-release tags must come from `develop`; stable tags from `main`
 - Do not amend the version bump commit after tagging -- if changes are needed, delete the tag, amend, re-tag
