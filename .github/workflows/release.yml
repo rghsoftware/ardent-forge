@@ -93,7 +93,7 @@ jobs:
       - name: Inject version
         run: |
           VERSION_NAME="${GITHUB_REF_NAME#v}"
-          VERSION_CODE=$(( 1000000 + ${{ github.run_number }} ))
+          VERSION_CODE=$(( $(date -u +%s) / 60 ))
           echo "tauri.android.versionName=$VERSION_NAME" > src-tauri/gen/android/app/tauri.properties
           echo "tauri.android.versionCode=$VERSION_CODE" >> src-tauri/gen/android/app/tauri.properties
 
