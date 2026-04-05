@@ -26,6 +26,10 @@ import { EventCard } from '@/components/event-builder/event-card'
 import { SessionTemplateForm } from '@/components/session-builder/session-template-form'
 import type { SessionTemplateFull } from '@/lib/data-adapter'
 import { EventTemplateForm } from '@/components/event-builder/event-template-form'
+import { ExerciseSearchInput } from '@/components/exercises/exercise-search-input'
+import { ExerciseFilterBar } from '@/components/exercises/exercise-filter-bar'
+import { ExerciseListItem } from '@/components/exercises/exercise-list-item'
+import { CreateExerciseSheet } from '@/components/exercises/create-exercise-sheet'
 import {
   useSessionTemplates,
   useSessionTemplateFull,
@@ -39,14 +43,16 @@ import {
   useClearActiveProgram,
   useDeleteProgram,
 } from '@/hooks/use-programs'
+import { useExercises, useRecentlyUsedExercises } from '@/hooks/use-exercises'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useAuth } from '@/lib/auth'
-import type { Program } from '@/domain/types'
+import type { Program, ExerciseCategory, MuscleGroup, MovementPattern } from '@/domain/types'
 
 export const Route = createFileRoute('/_authenticated/library')({
   component: LibraryPage,
 })
 
-type LibraryTab = 'templates' | 'programs'
+type LibraryTab = 'templates' | 'programs' | 'exercises'
 
 function LibraryPage() {
   const { user } = useAuth()
@@ -63,6 +69,7 @@ function LibraryPage() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [sheetMode, setSheetMode] = useState<'session' | 'event'>('session')
+  const [showCreateExercise, setShowCreateExercise] = useState(false)
 
   const handleCreate = () => {
     setEditingId(null)
@@ -137,6 +144,16 @@ function LibraryPage() {
             Create program
           </Button>
         )}
+        {activeTab === 'exercises' && (
+          <Button
+            variant="default"
+            onClick={() => setShowCreateExercise(true)}
+            className="min-h-12 text-xs"
+          >
+            <Icon name="add" size={16} />
+            New exercise
+          </Button>
+        )}
       </div>
 
       {/* Tab navigation */}
@@ -171,10 +188,25 @@ function LibraryPage() {
         >
           PROGRAMS
         </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-exercises"
+          aria-selected={activeTab === 'exercises'}
+          aria-controls="tabpanel-exercises"
+          onClick={() => setActiveTab('exercises')}
+          className={`min-h-12 px-4 pb-3 text-xs uppercase tracking-wider transition-colors ${
+            activeTab === 'exercises'
+              ? 'border-b-2 border-ember text-ember'
+              : 'text-warm-ash/60 hover:text-warm-ash'
+          }`}
+        >
+          EXERCISES
+        </button>
       </div>
 
       {/* Tab content */}
-      {activeTab === 'templates' ? (
+      {activeTab === 'templates' && (
         <div role="tabpanel" id="tabpanel-templates" aria-labelledby="tab-templates">
           <div className="flex flex-col gap-2 px-4 pt-4">
             {isLoading ? (
@@ -257,9 +289,15 @@ function LibraryPage() {
             )}
           </div>
         </div>
-      ) : (
+      )}
+      {activeTab === 'programs' && (
         <div role="tabpanel" id="tabpanel-programs" aria-labelledby="tab-programs">
           <ProgramList userId={userId || undefined} />
+        </div>
+      )}
+      {activeTab === 'exercises' && (
+        <div role="tabpanel" id="tabpanel-exercises" aria-labelledby="tab-exercises">
+          <ExerciseList userId={userId || undefined} />
         </div>
       )}
 
@@ -314,6 +352,8 @@ function LibraryPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <CreateExerciseSheet open={showCreateExercise} onOpenChange={setShowCreateExercise} />
     </div>
   )
 }
@@ -493,6 +533,127 @@ function ProgramList({ userId }: { userId: string | undefined }) {
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Exercise list panel
+// ---------------------------------------------------------------------------
+
+function ExerciseList({ userId }: { userId: string | undefined }) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState<ExerciseCategory | undefined>()
+  const [activeMuscleGroup, setActiveMuscleGroup] = useState<MuscleGroup | undefined>()
+  const [activeMovementPattern, setActiveMovementPattern] = useState<MovementPattern | undefined>()
+
+  const debouncedQuery = useDebouncedValue(searchQuery, 200)
+
+  const hasActiveFilters =
+    !!debouncedQuery || !!activeCategory || !!activeMuscleGroup || !!activeMovementPattern
+
+  const {
+    data: exercises,
+    isLoading: isLoadingExercises,
+    isError,
+  } = useExercises({
+    searchQuery: debouncedQuery || undefined,
+    category: activeCategory,
+    muscleGroup: activeMuscleGroup,
+    movementPattern: activeMovementPattern,
+  })
+
+  const { data: recentlyUsed, isLoading: isLoadingRecent } = useRecentlyUsedExercises(userId)
+
+  const isLoading = isLoadingExercises || (!hasActiveFilters && isLoadingRecent)
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-0 px-4 pt-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-3 border-b border-b-[rgba(91,64,57,0.15)] bg-surface-iron px-4 py-3"
+          >
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-40 rounded-none bg-surface-steel" />
+              <Skeleton className="h-3 w-24 rounded-none bg-surface-steel" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center gap-3 px-4 py-16">
+        <Icon name="error" size={48} className="text-destructive/60" />
+        <p className="text-center text-xs text-destructive">Failed to load exercises</p>
+        <p className="text-center text-xs text-warm-ash/40">Check your connection and try again.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col">
+      {/* Search */}
+      <div className="px-4 pt-4 pb-3">
+        <ExerciseSearchInput value={searchQuery} onChange={setSearchQuery} />
+      </div>
+
+      {/* Filters */}
+      <div className="px-4 pb-4">
+        <ExerciseFilterBar
+          activeCategory={activeCategory}
+          activeMuscleGroup={activeMuscleGroup}
+          activeMovementPattern={activeMovementPattern}
+          onCategoryChange={setActiveCategory}
+          onMuscleGroupChange={setActiveMuscleGroup}
+          onMovementPatternChange={setActiveMovementPattern}
+        />
+      </div>
+
+      {/* Exercise list */}
+      {hasActiveFilters ? (
+        exercises && exercises.length > 0 ? (
+          exercises.map((exercise) => <ExerciseListItem key={exercise.id} exercise={exercise} />)
+        ) : (
+          <div className="flex flex-col items-center gap-3 py-16">
+            <span className="material-symbols-outlined text-4xl text-warm-ash/40">search_off</span>
+            <p className="font-display text-sm text-warm-ash">No exercises found</p>
+          </div>
+        )
+      ) : (
+        <>
+          {recentlyUsed && recentlyUsed.length > 0 && (
+            <>
+              <div className="px-4 py-2">
+                <h2 className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
+                  RECENTLY USED
+                </h2>
+              </div>
+              {recentlyUsed.map((exercise) => (
+                <ExerciseListItem key={exercise.id} exercise={exercise} />
+              ))}
+              <div className="h-4" />
+            </>
+          )}
+
+          <div className="px-4 py-2">
+            <h2 className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
+              ALL EXERCISES
+            </h2>
+          </div>
+          {exercises && exercises.length > 0 ? (
+            exercises.map((exercise) => <ExerciseListItem key={exercise.id} exercise={exercise} />)
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-16">
+              <p className="font-display text-sm text-warm-ash">No exercises found</p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 
