@@ -514,6 +514,7 @@ async function invokeCommand<T>(cmd: string, args: Record<string, unknown>): Pro
   try {
     return await invoke<T>(cmd, args)
   } catch (e) {
+    console.error(`[tauri-adapter] invokeCommand(${cmd}) failed:`, e)
     if (isTauriAppError(e)) throw new AdapterError(e)
     throw e
   }
