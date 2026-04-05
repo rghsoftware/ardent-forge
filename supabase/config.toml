@@ -370,11 +370,9 @@ deno_version = 2
 
 # Cron-only function: broadcasts idle display state every minute.
 # verify_jwt disabled because this is invoked by Supabase cron, not browsers.
+# Schedule is configured via pg_cron in SQL, not config.toml.
 [functions.display-idle-snapshot]
 verify_jwt = false
-
-[functions.display-idle-snapshot.cron]
-schedule = "*/1 * * * *"
 
 [analytics]
 enabled = true
