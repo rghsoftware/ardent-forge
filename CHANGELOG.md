@@ -2,6 +2,26 @@
 
 All notable changes to Ardent Forge are documented in this file.
 
+## [1.0.0-beta.3] - 2026-04-05
+
+### Features
+
+- **Per-instance session editing** -- edit scheduled sessions individually within assigned programs (#74)
+- **Program and template builder redesign** -- overhauled builder UI with improved desktop layout and UX (#75)
+- **Exercises library tab** -- added Exercises tab to the Library page
+
+### Improvements
+
+- Improved desktop layout and UX for the program form
+- Release skill for versioning and Play Store deployment
+
+### Bug Fixes
+
+- Set workout title from template name when starting a programmed workout
+- Offset Android versionCode to prevent Play Store conflicts
+
+---
+
 ## [1.0.0-beta.2] - 2026-04-04
 
 ### Features
