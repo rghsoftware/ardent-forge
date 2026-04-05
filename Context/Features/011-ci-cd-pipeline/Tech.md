@@ -71,7 +71,7 @@ Each workflow installs tools in this dependency order:
 | Rust cache        | `Swatinem/rust-cache@v2`           | v2      |
 | Bun               | `oven-sh/setup-bun@v2`             | v2      |
 | Generic cache     | `actions/cache@v4`                 | v4      |
-| Supabase CLI      | `supabase/setup-cli@v1`            | v1      |
+| Supabase CLI      | `supabase/setup-cli@v2`            | v2      |
 | Play Store upload | `r0adkll/upload-google-play@v3`    | v3      |
 | GitHub Release    | `softprops/action-gh-release@v2`   | v2      |
 
