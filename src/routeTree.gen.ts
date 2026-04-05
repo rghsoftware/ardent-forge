@@ -32,6 +32,7 @@ import { Route as AuthenticatedLogWorkoutIdRouteImport } from './routes/_authent
 import { Route as AuthenticatedHistoryWorkoutIdRouteImport } from './routes/_authenticated/history/$workoutId'
 import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authenticated/groups.$groupId'
 import { Route as AuthenticatedExercisesExerciseIdRouteImport } from './routes/_authenticated/exercises/$exerciseId'
+import { Route as AuthenticatedEventsTemplateIdRouteImport } from './routes/_authenticated/events.$templateId'
 import { Route as AuthenticatedCommsConversationIdRouteImport } from './routes/_authenticated/comms.$conversationId'
 
 const SignUpRoute = SignUpRouteImport.update({
@@ -155,6 +156,12 @@ const AuthenticatedExercisesExerciseIdRoute =
     path: '/exercises/$exerciseId',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedEventsTemplateIdRoute =
+  AuthenticatedEventsTemplateIdRouteImport.update({
+    id: '/events/$templateId',
+    path: '/events/$templateId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedCommsConversationIdRoute =
   AuthenticatedCommsConversationIdRouteImport.update({
     id: '/$conversationId',
@@ -180,6 +187,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/s/$token': typeof STokenRoute
   '/comms/$conversationId': typeof AuthenticatedCommsConversationIdRoute
+  '/events/$templateId': typeof AuthenticatedEventsTemplateIdRoute
   '/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
@@ -205,6 +213,7 @@ export interface FileRoutesByTo {
   '/s/$token': typeof STokenRoute
   '/': typeof AuthenticatedIndexRoute
   '/comms/$conversationId': typeof AuthenticatedCommsConversationIdRoute
+  '/events/$templateId': typeof AuthenticatedEventsTemplateIdRoute
   '/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
@@ -232,6 +241,7 @@ export interface FileRoutesById {
   '/s/$token': typeof STokenRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/comms/$conversationId': typeof AuthenticatedCommsConversationIdRoute
+  '/_authenticated/events/$templateId': typeof AuthenticatedEventsTemplateIdRoute
   '/_authenticated/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
   '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/_authenticated/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/s/$token'
     | '/comms/$conversationId'
+    | '/events/$templateId'
     | '/exercises/$exerciseId'
     | '/groups/$groupId'
     | '/history/$workoutId'
@@ -284,6 +295,7 @@ export interface FileRouteTypes {
     | '/s/$token'
     | '/'
     | '/comms/$conversationId'
+    | '/events/$templateId'
     | '/exercises/$exerciseId'
     | '/groups/$groupId'
     | '/history/$workoutId'
@@ -310,6 +322,7 @@ export interface FileRouteTypes {
     | '/s/$token'
     | '/_authenticated/'
     | '/_authenticated/comms/$conversationId'
+    | '/_authenticated/events/$templateId'
     | '/_authenticated/exercises/$exerciseId'
     | '/_authenticated/groups/$groupId'
     | '/_authenticated/history/$workoutId'
@@ -493,6 +506,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExercisesExerciseIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/events/$templateId': {
+      id: '/_authenticated/events/$templateId'
+      path: '/events/$templateId'
+      fullPath: '/events/$templateId'
+      preLoaderRoute: typeof AuthenticatedEventsTemplateIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/comms/$conversationId': {
       id: '/_authenticated/comms/$conversationId'
       path: '/$conversationId'
@@ -534,6 +554,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedVaultRoute: typeof AuthenticatedVaultRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedEventsTemplateIdRoute: typeof AuthenticatedEventsTemplateIdRoute
   AuthenticatedExercisesExerciseIdRoute: typeof AuthenticatedExercisesExerciseIdRoute
   AuthenticatedHistoryWorkoutIdRoute: typeof AuthenticatedHistoryWorkoutIdRoute
   AuthenticatedLogWorkoutIdRoute: typeof AuthenticatedLogWorkoutIdRoute
@@ -550,6 +571,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedVaultRoute: AuthenticatedVaultRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedEventsTemplateIdRoute: AuthenticatedEventsTemplateIdRoute,
   AuthenticatedExercisesExerciseIdRoute: AuthenticatedExercisesExerciseIdRoute,
   AuthenticatedHistoryWorkoutIdRoute: AuthenticatedHistoryWorkoutIdRoute,
   AuthenticatedLogWorkoutIdRoute: AuthenticatedLogWorkoutIdRoute,
