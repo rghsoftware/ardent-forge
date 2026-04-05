@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use tauri::State;
@@ -8,6 +10,25 @@ use crate::models::{
     BlockRow, BlockWeekRow, ProgramActivationRow, ProgramFull, ProgramRow, ScheduledSessionRow,
 };
 use crate::utils::now_unix;
+
+// ---------------------------------------------------------------------------
+// Validation structs (deserialization-only, mirrors TS SessionOverrides)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+struct ActivityOverride {
+    exercise_id: Option<String>,
+    set_scheme: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+struct SessionOverrides {
+    activity_overrides: Option<HashMap<String, ActivityOverride>>,
+}
 
 // ---------------------------------------------------------------------------
 // Input structs
@@ -285,10 +306,10 @@ pub async fn create_program_full(
 
             for session_input in &week_input.sessions {
                 if let Some(ref o) = session_input.overrides {
-                    if serde_json::from_str::<serde_json::Value>(o).is_err() {
+                    if serde_json::from_str::<SessionOverrides>(o).is_err() {
                         return Err(AppError::validation(
                             "overrides",
-                            "[programs] Invalid overrides JSON",
+                            "[programs] Invalid overrides JSON: expected SessionOverrides shape",
                         ));
                     }
                 }
@@ -469,10 +490,10 @@ pub async fn update_program_full(
 
             for session_input in &week_input.sessions {
                 if let Some(ref o) = session_input.overrides {
-                    if serde_json::from_str::<serde_json::Value>(o).is_err() {
+                    if serde_json::from_str::<SessionOverrides>(o).is_err() {
                         return Err(AppError::validation(
                             "overrides",
-                            "[programs] Invalid overrides JSON",
+                            "[programs] Invalid overrides JSON: expected SessionOverrides shape",
                         ));
                     }
                 }

@@ -1,3 +1,4 @@
+import { vi } from 'vitest'
 import { applyOverrides } from '@/lib/override-merger'
 import type { ResolutionContext } from '@/lib/override-merger'
 import type { PrefilledGroup, PrefilledActivity, PrefilledSet } from '@/lib/prescription-resolver'
@@ -390,5 +391,103 @@ describe('applyOverrides', () => {
     // 75% of 300 lb = 225 lb (exact value depends on plate-calculator rounding)
     expect(result[0].activities[0].sets[0].prescribed?.weight).toBeDefined()
     expect(result[0].activities[0].sets[0].prescribed?.weight?.value).toBeGreaterThan(0)
+  })
+
+  // -----------------------------------------------------------------------
+  // setScheme override without resolutionCtx
+  // -----------------------------------------------------------------------
+
+  it('preserves original sets and warns when setScheme override exists but no resolutionCtx is provided', () => {
+    const originalSets = [makeSet(1), makeSet(2), makeSet(3)]
+    const groups = [
+      makePrefilledGroup([
+        makePrefilledActivity({
+          templateActivityId: 'act-1',
+          activity: { exerciseId: 'ex-squat', ordinal: 1 },
+          sets: originalSets,
+        }),
+      ]),
+    ]
+
+    const newScheme: SetScheme = {
+      type: 'fixedSets',
+      sets: 5,
+      reps: 8,
+      load: { type: 'unspecified' },
+    }
+
+    const overrides: SessionOverrides = {
+      activityOverrides: {
+        'act-1': { setScheme: newScheme },
+      },
+    }
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    try {
+      const result = applyOverrides(groups, overrides)
+
+      // Original sets preserved (still 3, not re-resolved to 5)
+      expect(result[0].activities[0].sets).toHaveLength(3)
+      expect(result[0].activities[0].sets[0].prescribed?.reps).toBe(5)
+      expect(result[0].activities[0].sets[0].prescribed?.weight?.value).toBe(135)
+
+      // Warning emitted
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[override-merger] setScheme override exists for activity',
+        'act-1',
+        'but no resolutionCtx provided -- skipping set scheme override',
+      )
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+
+  it('applies exerciseId override but skips setScheme when no resolutionCtx is provided', () => {
+    const originalSets = [makeSet(1), makeSet(2), makeSet(3)]
+    const groups = [
+      makePrefilledGroup([
+        makePrefilledActivity({
+          templateActivityId: 'act-1',
+          activity: { exerciseId: 'ex-squat', ordinal: 1 },
+          sets: originalSets,
+        }),
+      ]),
+    ]
+
+    const newScheme: SetScheme = {
+      type: 'fixedSets',
+      sets: 5,
+      reps: 8,
+      load: { type: 'unspecified' },
+    }
+
+    const overrides: SessionOverrides = {
+      activityOverrides: {
+        'act-1': { exerciseId: 'ex-front-squat', setScheme: newScheme },
+      },
+    }
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    try {
+      const result = applyOverrides(groups, overrides)
+
+      // exerciseId override is applied
+      expect(result[0].activities[0].activity.exerciseId).toBe('ex-front-squat')
+
+      // Sets preserved (setScheme skipped without resolutionCtx)
+      expect(result[0].activities[0].sets).toHaveLength(3)
+      expect(result[0].activities[0].sets[0].prescribed?.reps).toBe(5)
+
+      // Warning emitted for the skipped setScheme
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[override-merger] setScheme override exists for activity',
+        'act-1',
+        'but no resolutionCtx provided -- skipping set scheme override',
+      )
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })
