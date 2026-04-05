@@ -2093,29 +2093,33 @@ export class SupabaseAdapter implements DataAdapter {
     const counts = new Map<string, number>()
     if (!participations?.length) return counts
 
-    // For each participation, count messages created after last_read_at
+    // Fire all COUNT queries concurrently to avoid sequential N+1 round-trips
     // Exclude the user's own messages (consistent with Tauri adapter behavior)
-    for (const p of participations) {
-      let query = this.client
-        .from('messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('conversation_id', p.conversation_id)
-        .neq('sender_id', userId)
+    const results = await Promise.allSettled(
+      participations.map(async (p) => {
+        let query = this.client
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('conversation_id', p.conversation_id)
+          .neq('sender_id', userId)
 
-      if (p.last_read_at) {
-        query = query.gt('created_at', p.last_read_at)
-      }
-      // If last_read_at is null, all messages are unread -- no filter needed
+        if (p.last_read_at) {
+          query = query.gt('created_at', p.last_read_at)
+        }
+        // If last_read_at is null, all messages are unread -- no filter needed
 
-      const { count, error } = await query
-      if (error) {
-        console.warn(
-          `[getUnreadCounts] Failed for conversation ${p.conversation_id}:`,
-          error.message,
-        )
-        continue
+        const { count, error } = await query
+        if (error) throw error
+        return { conversationId: p.conversation_id, count: count ?? 0 }
+      }),
+    )
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        counts.set(result.value.conversationId, result.value.count)
+      } else {
+        console.warn('[supabase-adapter] getUnreadCounts query failed:', result.reason)
       }
-      counts.set(p.conversation_id, count ?? 0)
     }
 
     return counts
