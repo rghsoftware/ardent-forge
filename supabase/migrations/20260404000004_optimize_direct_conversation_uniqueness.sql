@@ -2,9 +2,11 @@
 -- Migration: Optimize Direct Conversation Uniqueness (CH-2)
 -- Description: Replaces the O(N) trigger scan in enforce_direct_conversation_uniqueness()
 --              with a materialized lookup table (direct_conversation_pairs) that uses a
---              UNIQUE index on pair_key. The trigger now does a single INSERT and lets
---              the unique constraint catch duplicates, reducing enforcement from O(N) to O(1).
---              Also adds cleanup logic for when a participant leaves (left_at set).
+--              UNIQUE index on pair_key. The trigger now does a single UPSERT (INSERT
+--              ... ON CONFLICT DO UPDATE) per conversation and lets the UNIQUE index on
+--              pair_key catch cross-conversation duplicates, reducing enforcement from
+--              O(N) to O(1). Also adds cleanup logic for when a participant leaves
+--              (left_at set).
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -16,6 +18,9 @@ create table if not exists direct_conversation_pairs (
 );
 
 comment on table direct_conversation_pairs is 'Lookup table for CH-2 uniqueness enforcement. Stores canonical user-pair keys for direct conversations.';
+
+-- RLS enabled with no user-facing policies; trigger functions run as table owner
+alter table direct_conversation_pairs enable row level security;
 
 -- Unique index on pair_key enforces that no two direct conversations share the same user pair
 create unique index if not exists idx_direct_conversation_pairs_pair_key
@@ -102,7 +107,8 @@ begin
         where conversation_id = new.conversation_id;
     end if;
 
-    return new;
+    -- Return value is ignored in AFTER triggers; NULL is conventional
+    return null;
 end;
 $$;
 

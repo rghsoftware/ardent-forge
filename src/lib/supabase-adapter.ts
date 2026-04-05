@@ -2093,7 +2093,8 @@ export class SupabaseAdapter implements DataAdapter {
     const counts = new Map<string, number>()
     if (!participations?.length) return counts
 
-    // Fire all COUNT queries concurrently to avoid sequential N+1 round-trips
+    // Fire all COUNT queries concurrently to minimize wall-clock latency
+    // (N queries execute in parallel instead of sequentially)
     // Exclude the user's own messages (consistent with Tauri adapter behavior)
     const results = await Promise.allSettled(
       participations.map(async (p) => {
@@ -2109,7 +2110,7 @@ export class SupabaseAdapter implements DataAdapter {
         // If last_read_at is null, all messages are unread -- no filter needed
 
         const { count, error } = await query
-        if (error) throw error
+        if (error) throw Object.assign(error, { conversationId: p.conversation_id })
         return { conversationId: p.conversation_id, count: count ?? 0 }
       }),
     )
@@ -2118,7 +2119,11 @@ export class SupabaseAdapter implements DataAdapter {
       if (result.status === 'fulfilled') {
         counts.set(result.value.conversationId, result.value.count)
       } else {
-        console.warn('[supabase-adapter] getUnreadCounts query failed:', result.reason)
+        console.warn(
+          '[supabase-adapter] getUnreadCounts query failed for conversation:',
+          result.reason?.conversationId ?? 'unknown',
+          result.reason,
+        )
       }
     }
 

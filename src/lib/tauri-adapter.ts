@@ -2129,9 +2129,10 @@ export class TauriAdapter implements DataAdapter {
   async findDirectConversation(otherUserId: string): Promise<Conversation | null> {
     // No dedicated Rust command -- filter client-side from user's conversations
     const conversations = await this.getConversations()
+    const directConvs = conversations.filter((c) => c.type === 'direct')
+    let failures = 0
     // For direct conversations, fetch participants to check membership
-    for (const conv of conversations) {
-      if (conv.type !== 'direct') continue
+    for (const conv of directConvs) {
       try {
         const full = await invokeCommand<TauriConversationWithParticipants | null>(
           'get_conversation',
@@ -2145,9 +2146,15 @@ export class TauriAdapter implements DataAdapter {
           return conv
         }
       } catch (err) {
+        failures++
         console.error(`[tauri-adapter] Failed to fetch conversation ${conv.id}, skipping:`, err)
         continue
       }
+    }
+    if (directConvs.length > 0 && failures === directConvs.length) {
+      throw new Error(
+        `[tauri-adapter] findDirectConversation: all ${failures} direct conversation fetches failed`,
+      )
     }
     return null
   }

@@ -38,7 +38,7 @@ export const conversationParticipantSchema = syncableEntitySchema
     joinedAt: isoDateTime,
     leftAt: isoDateTime.optional(),
   })
-  .refine((p) => !p.leftAt || p.leftAt > p.joinedAt, {
+  .refine((p) => !p.leftAt || new Date(p.leftAt) > new Date(p.joinedAt), {
     message: 'leftAt must be after joinedAt',
     path: ['leftAt'],
   })
