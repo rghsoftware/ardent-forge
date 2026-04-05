@@ -58,7 +58,7 @@ try {
   }
 
   process.exit(0)
-} catch (_err) {
+} catch {
   // Non-blocking -- don't fail the tool use
   process.exit(0)
 }
