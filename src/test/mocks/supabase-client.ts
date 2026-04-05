@@ -12,6 +12,10 @@ interface MockQueryBuilder {
   upsert: (data: unknown) => MockQueryBuilder
   eq: (column: string, value: unknown) => MockQueryBuilder
   neq: (column: string, value: unknown) => MockQueryBuilder
+  gt: (column: string, value: unknown) => MockQueryBuilder
+  gte: (column: string, value: unknown) => MockQueryBuilder
+  lt: (column: string, value: unknown) => MockQueryBuilder
+  lte: (column: string, value: unknown) => MockQueryBuilder
   not: (column: string, operator: string, value: unknown) => MockQueryBuilder
   is: (column: string, value: unknown) => MockQueryBuilder
   in: (column: string, values: unknown[]) => MockQueryBuilder
@@ -75,6 +79,10 @@ export function createMockSupabaseClient() {
       upsert: vi.fn((_data: unknown) => createQueryBuilder(table, 'upsert')),
       eq: vi.fn((_column: string, _value: unknown) => builder),
       neq: vi.fn((_column: string, _value: unknown) => builder),
+      gt: vi.fn((_column: string, _value: unknown) => builder),
+      gte: vi.fn((_column: string, _value: unknown) => builder),
+      lt: vi.fn((_column: string, _value: unknown) => builder),
+      lte: vi.fn((_column: string, _value: unknown) => builder),
       not: vi.fn((_column: string, _operator: string, _value: unknown) => builder),
       is: vi.fn((_column: string, _value: unknown) => builder),
       in: vi.fn((_column: string, _values: unknown[]) => builder),
