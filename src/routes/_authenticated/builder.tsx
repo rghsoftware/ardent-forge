@@ -272,9 +272,9 @@ function BuilderPage() {
         )}
       </div>
 
-      {/* Layout: independent scroll columns on desktop, stacked scroll on mobile */}
+      {/* Layout: independent scroll columns on large screens, stacked scroll on mobile */}
       <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[360px_1fr] lg:gap-6 lg:overflow-hidden lg:px-4">
-        {/* Sidebar: program metadata + block navigation (sticky on desktop) */}
+        {/* Sidebar: program metadata + block navigation (sticky on large screens) */}
         <aside className="px-4 pb-6 lg:overflow-y-auto lg:px-0 lg:pb-8">
           <h1 className="mb-6 hidden font-display text-2xl font-medium text-bone-white lg:block">
             Program Builder
@@ -291,7 +291,7 @@ function BuilderPage() {
             error={fieldErrors.find((e) => e.field === 'programName')?.message}
           />
 
-          {/* Block navigation rail (desktop only) */}
+          {/* Block navigation rail (large screen only) */}
           {draft.blocks.length > 0 && (
             <nav className="mt-8 hidden flex-col gap-1 lg:flex" aria-label="Block navigation">
               <span className="mb-1 text-xs font-medium uppercase tracking-wider text-warm-ash/60">
@@ -323,7 +323,7 @@ function BuilderPage() {
 
         {/* Workspace: block editors */}
         <div className="px-4 lg:overflow-y-auto lg:px-0 lg:pb-8">
-          {/* Weekend toggle (desktop only) */}
+          {/* Weekend toggle (large screen only) */}
           <div className="mb-3 hidden items-center justify-end md:flex">
             <button
               type="button"
@@ -340,7 +340,7 @@ function BuilderPage() {
             </button>
           </div>
 
-          {/* Desktop DnD builder */}
+          {/* Large screen DnD builder */}
           <div className="hidden md:block">
             <BlockList
               draft={draft}

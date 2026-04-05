@@ -91,7 +91,7 @@ stateDiagram-v2
 | --------------- | -------------------------------- | ------------------------ | -------------------------------- |
 | Android (Tauri) | Timer survives (Rust service)    | Timer survives           | Timer lost, restored on relaunch |
 | iOS (Tauri)     | Timer survives (background task) | Timer survives (limited) | Timer lost                       |
-| Desktop (Tauri) | N/A                              | Timer survives           | Timer lost                       |
+| Mobile (Tauri)  | Timer survives (Rust service)    | Timer survives           | Timer lost                       |
 | Browser         | Timer survives (Web Worker)      | Timer survives           | Timer lost                       |
 
 ---

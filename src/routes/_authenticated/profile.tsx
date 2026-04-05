@@ -108,7 +108,7 @@ function ProfilePage() {
           <h1 className="font-display text-3xl font-bold text-bone-white">Profile</h1>
         </div>
 
-        {/* Two-column on desktop, single column on mobile */}
+        {/* Two-column on large screens, single column on mobile */}
         <div className="lg:grid lg:grid-cols-2 lg:gap-12">
           {/* Left column: settings + account */}
           <div>
@@ -267,10 +267,7 @@ function ProfilePage() {
                       Show your active workout on the gym display
                     </p>
                   </div>
-                  <Switch
-                    checked={effectiveDisplayVisible}
-                    onCheckedChange={setDisplayVisible}
-                  />
+                  <Switch checked={effectiveDisplayVisible} onCheckedChange={setDisplayVisible} />
                 </label>
               </div>
             </section>

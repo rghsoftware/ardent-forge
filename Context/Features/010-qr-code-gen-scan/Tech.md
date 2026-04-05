@@ -30,7 +30,7 @@ A shared **invite link utility** (`src/lib/invite-link.ts`) handles URL construc
 
 **Choice:** Use the existing `isTauri()` check from `@tauri-apps/api/core`. No new dependency needed.
 
-**Why:** There is no desktop Tauri build -- the app runs as either mobile Tauri (Android) or web browser. `isTauri() === true` means Android, `isTauri() === false` means browser. This is the same pattern used throughout the codebase (config store, auth, sync bridge, etc.).
+**Why:** The app runs as either Tauri mobile (Android) or web browser. `isTauri() === true` means Android, `isTauri() === false` means browser. This is the same pattern used throughout the codebase (config store, auth, sync bridge, etc.).
 
 **Implementation:**
 

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 import { useUnreadCounts } from '@/hooks/use-chat'
 
-// Desktop sidebar shows all destinations including Builder (not suitable for mobile)
+// Large screen sidebar shows all destinations including Builder (not suitable for mobile)
 const navItems = [
   { label: 'Forge', icon: 'hardware', to: '/' },
   { label: 'Tracker', icon: 'history', to: '/history' },

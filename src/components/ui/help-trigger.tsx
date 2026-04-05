@@ -15,14 +15,14 @@ interface HelpTriggerProps {
 /**
  * Contextual help surface that adapts to the viewport.
  *
- * Renders a Popover on desktop (>=768px) and a Drawer on mobile (<768px).
+ * Renders a Popover on large screens (>=768px) and a Drawer on mobile (<768px).
  * The spec's `placement` prop was intentionally omitted -- responsive behavior
  * is automatic via the `useMediaQuery` hook, so callers never need to specify
  * where the help content appears.
  */
 export function HelpTrigger({ title, content }: HelpTriggerProps) {
   const [open, setOpen] = useState(false)
-  const isDesktop = useMediaQuery('(min-width: 768px)')
+  const isWideViewport = useMediaQuery('(min-width: 768px)')
 
   const triggerButton = (
     <button
@@ -34,7 +34,7 @@ export function HelpTrigger({ title, content }: HelpTriggerProps) {
     </button>
   )
 
-  if (isDesktop) {
+  if (isWideViewport) {
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>

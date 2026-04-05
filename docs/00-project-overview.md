@@ -32,7 +32,7 @@ mindmap
     Platform Lock-in
       iOS-only or Android-only
       No web companion
-      No desktop access
+      No web access
       Data trapped in one ecosystem
     One Methodology
       Bodybuilding only
@@ -43,16 +43,16 @@ mindmap
 
 ### Ardent Forge Differentiators
 
-| Differentiator     | Typical Apps              | Ardent Forgeroach                                      |
-| ------------------ | ------------------------- | ------------------------------------------------------ |
-| Prescription model | Sets × reps × weight      | 12+ distinct set scheme types                          |
-| Periodization      | Manual or absent          | First-class block/week/session structure               |
-| Loading            | Absolute weight only      | %1RM, RPE, bodyweight, percentage of max reps          |
-| Cardio             | Separate app or bolted on | Native cardio schemes (LSS, intervals, tempo)          |
-| Rucking            | Not supported             | Native ruck scheme (load, distance, pace)              |
-| Circuits           | Hack with supersets       | Native circuit/SE model with rounds and rest           |
-| Platform           | Single platform           | Tauri v2: Android, iOS, desktop, web from one codebase |
-| Data entry         | Phone only                | Web app for complex program building                   |
+| Differentiator     | Typical Apps              | Ardent Forgeroach                             |
+| ------------------ | ------------------------- | --------------------------------------------- |
+| Prescription model | Sets × reps × weight      | 12+ distinct set scheme types                 |
+| Periodization      | Manual or absent          | First-class block/week/session structure      |
+| Loading            | Absolute weight only      | %1RM, RPE, bodyweight, percentage of max reps |
+| Cardio             | Separate app or bolted on | Native cardio schemes (LSS, intervals, tempo) |
+| Rucking            | Not supported             | Native ruck scheme (load, distance, pace)     |
+| Circuits           | Hack with supersets       | Native circuit/SE model with rounds and rest  |
+| Platform           | Single platform           | Tauri v2: Android, iOS, web from one codebase |
+| Data entry         | Phone only                | Web app for complex program building          |
 
 ---
 
@@ -141,15 +141,15 @@ mindmap
 
 ### User Characteristics
 
-| Characteristic                      | Implication for Design                                    |
-| ----------------------------------- | --------------------------------------------------------- |
-| Trains multiple modalities          | Must support strength, cardio, SE, rucking in one session |
-| Uses percentage-based loading       | 1RM tracking and auto-calculation are essential           |
-| Follows multi-week programs         | Block/week/session hierarchy must be first class          |
-| Trains in gyms with poor signal     | Offline-first is non-negotiable                           |
-| Logs between sets with sweaty hands | Large touch targets, minimal data entry                   |
-| Wants program building on desktop   | Web app for complex data entry                            |
-| Values simplicity                   | Don't force program use; quick-log must work well         |
+| Characteristic                          | Implication for Design                                    |
+| --------------------------------------- | --------------------------------------------------------- |
+| Trains multiple modalities              | Must support strength, cardio, SE, rucking in one session |
+| Uses percentage-based loading           | 1RM tracking and auto-calculation are essential           |
+| Follows multi-week programs             | Block/week/session hierarchy must be first class          |
+| Trains in gyms with poor signal         | Offline-first is non-negotiable                           |
+| Logs between sets with sweaty hands     | Large touch targets, minimal data entry                   |
+| Wants program building on large screens | Web app for complex data entry                            |
+| Values simplicity                       | Don't force program use; quick-log must work well         |
 
 ---
 
@@ -165,7 +165,7 @@ flowchart LR
     subgraph Platforms["Platform Targets"]
         Android["Android<br/>Tauri v2 shell"]
         iOS["iOS<br/>Tauri v2 shell"]
-        Desktop["Desktop<br/>Tauri v2 shell"]
+        Mobile["Mobile<br/>Tauri v2 shell"]
         Web["Web Browser<br/>Direct access"]
     end
 
@@ -176,12 +176,12 @@ flowchart LR
 
     ReactApp --> Android
     ReactApp --> iOS
-    ReactApp --> Desktop
+    ReactApp --> Mobile
     ReactApp --> Web
 
     Android --> Rust
     iOS --> Rust
-    Desktop --> Rust
+    Mobile --> Rust
     Rust --> Supabase
     Web --> Supabase
 ```
@@ -190,14 +190,14 @@ flowchart LR
 
 **One React App, Every Platform**
 
-- Tauri v2 wraps the React app for mobile and desktop
+- Tauri v2 wraps the React app for mobile
 - Same codebase eliminates duplication between web and native
 - Rust backend provides SQLite, background sync, and platform APIs
 
 **Web as Power-User Interface**
 
 - Complex program building (drag-drop block/week/session editors) is painful on mobile
-- Analytics dashboards benefit from desktop screen real estate
+- Analytics dashboards benefit from large screen real estate
 - Web runs the same React app directly in the browser against Supabase
 
 **Mobile as Primary Logging Interface**

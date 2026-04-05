@@ -6,7 +6,7 @@
 
 ## Overview
 
-Add comprehensive unit test coverage for `TauriAdapter` (`src/lib/tauri-adapter.ts`, 2308 lines, 88 class methods + 30 standalone functions). This is the entire offline-first data path -- bugs here cause silent data loss for desktop users.
+Add comprehensive unit test coverage for `TauriAdapter` (`src/lib/tauri-adapter.ts`, 2308 lines, 88 class methods + 30 standalone functions). This is the entire offline-first data path -- bugs here cause silent data loss for mobile users.
 
 ## Problem Statement
 

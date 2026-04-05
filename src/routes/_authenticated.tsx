@@ -62,7 +62,7 @@ function AuthenticatedLayout() {
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Desktop sidebar */}
+      {/* Large screen sidebar */}
       <div className="hidden lg:flex">
         <SidebarNav />
       </div>

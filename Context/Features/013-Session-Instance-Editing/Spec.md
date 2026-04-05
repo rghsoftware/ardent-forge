@@ -25,7 +25,7 @@ Today, clicking a filled session slot in the program builder re-opens the templa
 - **M-4**: The edit sheet exposes a notes field that the user can fill in per-instance. Notes persist through save and reload.
 - **M-5**: The edit sheet provides a "Change template" action that opens the template picker to replace the session's underlying template.
 - **M-6**: The edit sheet provides a "Remove session" action that clears the slot (returning it to a rest day).
-- **M-7**: Both desktop (BlockList/WeekGrid) and mobile (MobileBlockEditor/MobileDayRow) views route clicks through the same conditional logic.
+- **M-7**: Both large screen (BlockList/WeekGrid) and mobile (MobileBlockEditor/MobileDayRow) views route clicks through the same conditional logic.
 
 - **M-8**: Per-instance activity overrides -- the user can override any combination of exercise, sets, reps, and load on individual activities within a specific scheduled session. Overrides are stored on the `SessionDraft`/`ScheduledSession` and applied when the workout is started from this program slot. Only changed fields are stored; unchanged fields inherit from the base template.
 - **M-9**: Visual indicator on a session slot when it has per-instance customizations (notes or activity overrides), so the user can tell at a glance which days deviate from the base template.
@@ -44,13 +44,13 @@ Today, clicking a filled session slot in the program builder re-opens the templa
 
 | ID    | Assertion                                                                                                               | Verification                                                                                         |
 | ----- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| A-001 | Clicking a filled session slot opens the session edit sheet, not the template picker.                                   | Manual: click a filled slot on desktop and mobile, verify edit sheet opens.                          |
+| A-001 | Clicking a filled session slot opens the session edit sheet, not the template picker.                                   | Manual: click a filled slot on large screen and mobile, verify edit sheet opens.                     |
 | A-002 | Clicking an empty session slot still opens the template picker.                                                         | Manual: click an empty slot, verify template picker opens as before.                                 |
 | A-003 | The edit sheet shows the template name, session type badge, and a read-only exercise list.                              | Manual: open edit sheet, compare displayed info against the template's actual content.               |
 | A-004 | User can enter/edit notes in the edit sheet and the value persists after saving and reloading the program.              | Manual: add notes, save program, navigate away, reopen program in builder, verify notes are present. |
 | A-005 | "Change template" in the edit sheet opens the template picker; selecting a new template updates the slot.               | Manual: use change template, pick a different template, verify slot updates.                         |
 | A-006 | "Remove session" in the edit sheet clears the slot and shows an undo toast.                                             | Manual: remove session, verify slot becomes empty rest day, verify undo toast appears and works.     |
-| A-007 | Desktop and mobile views both open the edit sheet for filled slots.                                                     | Manual: test on both desktop and mobile-width viewports.                                             |
+| A-007 | Large screen and mobile views both open the edit sheet for filled slots.                                                | Manual: test on both large screen and mobile-width viewports.                                        |
 | A-008 | User can override exercise, sets, reps, and/or load on an individual activity; overrides persist after save and reload. | Manual: change exercise + reps on one activity, save, reload, verify overrides are shown.            |
 | A-009 | Only changed fields are stored as overrides; unchanged fields still inherit from the base template.                     | Manual: override only reps, verify exercise name and load still come from template.                  |
 | A-010 | Session slots with per-instance customizations show a visual indicator (icon/badge).                                    | Manual: add a note or activity override, verify a visual cue appears on the slot in the grid.        |

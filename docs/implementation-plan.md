@@ -4,7 +4,7 @@
 
 **Key Constraint:** Solo developer using AI coding agents heavily. Steps are scoped so each is a self-contained prompt-friendly unit with clear inputs, outputs, and validation criteria.
 
-**Stack:** Tauri v2 + React + TypeScript + Rust + Supabase. One React app serves all platforms (Android, iOS, desktop, web browser). Bun as package manager and runtime.
+**Stack:** Tauri v2 + React + TypeScript + Rust + Supabase. One React app serves all platforms (Android, iOS, web browser). Bun as package manager and runtime.
 
 **Critical Architecture Decision:** Phase 0 builds a browser-only React app against Supabase. Phase 1 wraps it in Tauri and adds the Rust/SQLite backend. This means the React app must be designed from day one to work through a data adapter that can switch between Supabase (browser) and Tauri commands (native).
 
@@ -312,7 +312,7 @@ ardent-forge/
 - Material Symbols Outlined icon setup (alongside Lucide for shadcn internals)
 - Global style overrides: scrollbar, no-line rule, frosted glass utilities
 - shadcn component overrides: buttons, cards, inputs, badges, dialogs, navigation
-- Responsive layout shell: mobile bottom nav + desktop sidebar
+- Responsive layout shell: mobile bottom nav + wide viewport sidebar
 - All route shells for navigation targets
 
 ### 1.5a. Tailwind CSS 4 Theme Tokens
@@ -410,7 +410,7 @@ All: 0px radius, no shadows, no transitions. Active: `filter: brightness(1.25)`.
 
 Background: `surface-pit`. Active: `ember`. Touch targets ≥ 48px. Fixed bottom with heat-blur. Labels: ALL-CAPS `label-small`.
 
-**Desktop (≥ 1024px) — Left sidebar:**
+**Large screen (≥ 1024px) -- Left sidebar:**
 
 | Item            | Icon                      | Route       |
 | --------------- | ------------------------- | ----------- |
@@ -433,7 +433,7 @@ src/routes/
 ├── tracker.tsx         # Active workout (empty shell)
 ├── library.tsx         # Program library (empty shell)
 ├── vault.tsx           # Analytics / 1RM (empty shell)
-├── builder.tsx         # Program builder — desktop (empty shell)
+├── builder.tsx         # Program builder — wide viewport (empty shell)
 └── settings.tsx        # Settings (empty shell)
 ```
 
@@ -442,7 +442,7 @@ src/routes/
 - Scrollbar: 4px narrow, `surface-steel` thumb, `forge` hover
 - Heat-blur: `rgba(19,19,19,0.8)` + `backdrop-filter: blur(20px)` utility class
 - Molten gradient: `linear-gradient(135deg, #FFB59C 0%, #FB5C1C 100%)` utility class
-- Industrial grid: `radial-gradient(circle, #201f1f 1px, transparent 1px)` at 30px for desktop backgrounds
+- Industrial grid: `radial-gradient(circle, #201f1f 1px, transparent 1px)` at 30px for large screen backgrounds
 - Milled edge: `box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.05)` utility class
 - Hard tap: `button:active { filter: brightness(1.25) }` — no transitions
 
@@ -456,7 +456,7 @@ src/routes/
 - [x] Input fields use underline-only style (no boxed borders)
 - [x] Cards use tonal layering (no shadows, no line borders)
 - [x] Mobile: bottom nav renders with 4 tabs, active state highlights in ember
-- [x] Desktop: sidebar renders with 5 items, collapse/expand works
+- [x] Large screen: sidebar renders with 5 items, collapse/expand works
 - [x] Responsive breakpoint switches nav correctly (< 768px bottom, ≥ 1024px sidebar)
 - [x] Touch targets ≥ 48px on mobile nav
 - [x] Scrollbar styled (narrow, molten hover)
@@ -876,7 +876,7 @@ All existing TanStack Query hooks use the adapter — switching is transparent.
 
 ### Done
 
-- [x] React app renders inside Tauri WebView (desktop and Android)
+- [x] React app renders inside Tauri WebView (Android)
 - [x] Iron & Ember styling renders correctly in WebView (fonts, colors, heat-blur)
 - [x] SQLite database creates all tables on first launch
 - [x] All Tauri commands work: CRUD for workouts, exercises, profile
@@ -1062,11 +1062,11 @@ Pre-build session templates and program structures for common TB programs:
 
 **Dependencies:** Step 11 (program data structure exists)
 **Priority:** P1
-**Docs:** `10-user-flows.md` §Flow 7, `DESIGN.md` §5 Layout (Desktop)
+**Docs:** `10-user-flows.md` §Flow 7, `DESIGN.md` §5 Layout (Large screen)
 
 ### What was built
 
-Visual drag-and-drop program builder using dnd-kit. Desktop multi-column layout with sidebar block list. Mobile fallback with simplified list-based editor. Copy-week, session picker, and program preview with calculated weights.
+Visual drag-and-drop program builder using dnd-kit. Large screen multi-column layout with sidebar block list. Mobile fallback with simplified list-based editor. Copy-week, session picker, and program preview with calculated weights.
 
 ### 12a. Block editor
 
@@ -1100,7 +1100,7 @@ Visual drag-and-drop program builder using dnd-kit. Desktop multi-column layout 
 - [x] Program preview shows full structure with calculated weights
 - [x] Mobile: simplified list-based editor (no drag-drop)
 - [x] Saved programs appear in library
-- [x] Desktop layout uses sidebar + multi-column grid per DESIGN.md
+- [x] Large screen layout uses sidebar + multi-column grid per DESIGN.md
 
 ---
 
@@ -1330,7 +1330,7 @@ After workout completion, scan logged sets for new bests:
 - [x] PR detection runs after every workout completion
 - [x] PR notification fires for new bests
 - [x] PR history visible in exercise detail
-- [x] VAULT screen renders well on both mobile and desktop viewports
+- [x] VAULT screen renders well on all screen sizes
 - [x] No circular progress rings -- horizontal bars only
 
 ---
@@ -1517,14 +1517,14 @@ The operation is a cascade update of `user_id` on the program and all child reco
 
 **Adapter method:**
 
-| Method | Params | Behavior |
-|--------|--------|----------|
+| Method                  | Params                      | Behavior                                                                                                                                                                             |
+| ----------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `assignProgramToMember` | `programId`, `targetUserId` | Update `user_id` on program and all child records (blocks, weeks, session templates, scheduled sessions) from coach to member. Validate coach role in shared group before executing. |
 
 **Tauri command:**
 
-| Command | Params | Behavior |
-|---------|--------|----------|
+| Command                    | Params                         | Behavior                                                                                        |
+| -------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------- |
 | `assign_program_to_member` | `program_id`, `target_user_id` | Cascade update `user_id` within a single SQLite transaction. Validate group membership locally. |
 
 ### 18b. Coach session editing
@@ -1978,13 +1978,13 @@ The most time-intensive chat step. Conversation list, conversation detail with v
 
 ### 23a. Navigation: COMMS tab
 
-Add a fifth tab to the bottom navigation (mobile) and sidebar (desktop):
+Add a fifth tab to the bottom navigation (mobile) and sidebar (wide viewport):
 
 | Icon                     | Label | Route    |
 | ------------------------ | ----- | -------- |
 | `chat` (Material Symbol) | COMMS | `/comms` |
 
-Update the nav from 4 items to 5. Mobile bottom nav touch targets remain >= 48px. Desktop sidebar adds the item below VAULT.
+Update the nav from 4 items to 5. Mobile bottom nav touch targets remain >= 48px. Large screen sidebar adds the item below VAULT.
 
 ### 23b. Conversation list screen (`/comms`)
 
@@ -2056,7 +2056,7 @@ Triggered by the attachment button in the compose bar. Presents options relevant
 | Workout | `fitness_center` | Opens workout picker (from Step 24)                    |
 | File    | `description`    | Opens file picker for documents (<= 25 MB)             |
 
-The picker is a bottom sheet (mobile) or dropdown (desktop), styled with `surface-steel` cards.
+The picker is a bottom sheet (mobile) or dropdown (large screen), styled with `surface-steel` cards.
 
 ### 23f. Blocking UI
 
@@ -2075,7 +2075,7 @@ The picker is a bottom sheet (mobile) or dropdown (desktop), styled with `surfac
 
 ### Done when
 
-- [ ] COMMS tab appears in bottom nav (mobile) and sidebar (desktop) with `chat` icon
+- [ ] COMMS tab appears in bottom nav (mobile) and sidebar (wide viewport) with `chat` icon
 - [ ] Conversation list shows all conversations sorted by recency
 - [ ] Unread indicator (ember dot + bold) shows for conversations with new messages
 - [ ] Empty state renders when user has no conversations
@@ -2404,17 +2404,17 @@ Integrate snapshot publishing into the active workout Zustand store. On each sta
 
 Publishing triggers:
 
-| Action | Event Type | Notes |
-|--------|-----------|-------|
-| Workout started | `workout_snapshot` | Initial snapshot with first exercise |
-| Set confirmed | `workout_snapshot` | Updated set completion status |
-| Exercise transitioned | `workout_snapshot` | New current exercise and fresh set array |
-| Rest timer started | `workout_snapshot` | Timer state: running, remaining seconds, started_at |
-| Rest timer expired | `workout_snapshot` | Timer state: idle |
-| Workout completed | `session_ended` | Payload: `{ user_id }` only |
-| Workout abandoned | `session_ended` | Same as completed |
-| Focus requested | `focus` | Payload: `{ user_id }` |
-| Unfocus requested | `unfocus` | Payload: `{}` |
+| Action                | Event Type         | Notes                                               |
+| --------------------- | ------------------ | --------------------------------------------------- |
+| Workout started       | `workout_snapshot` | Initial snapshot with first exercise                |
+| Set confirmed         | `workout_snapshot` | Updated set completion status                       |
+| Exercise transitioned | `workout_snapshot` | New current exercise and fresh set array            |
+| Rest timer started    | `workout_snapshot` | Timer state: running, remaining seconds, started_at |
+| Rest timer expired    | `workout_snapshot` | Timer state: idle                                   |
+| Workout completed     | `session_ended`    | Payload: `{ user_id }` only                         |
+| Workout abandoned     | `session_ended`    | Same as completed                                   |
+| Focus requested       | `focus`            | Payload: `{ user_id }`                              |
+| Unfocus requested     | `unfocus`          | Payload: `{}`                                       |
 
 ### 27c. Display visibility setting
 
@@ -2422,8 +2422,8 @@ Add `display_visible` boolean to user profile (default: true). Add a toggle in t
 
 Adapter method:
 
-| Method | Description |
-|--------|-------------|
+| Method                                     | Description                                       |
+| ------------------------------------------ | ------------------------------------------------- |
 | `updateDisplayVisibility(userId, visible)` | Sets the display_visible flag on the user profile |
 
 ### 27d. Display Broadcast channel setup
@@ -2460,6 +2460,7 @@ The `/display` route: a full-viewport, no-chrome web page that subscribes to the
 Add `/display` route to TanStack Router. This route renders outside the main app layout — no navigation bar, no sidebar, no header. Full viewport, `surface-anvil` background, single status footer.
 
 The route:
+
 - Subscribes to the `display` Broadcast channel on mount
 - Maintains an in-memory map of active sessions (keyed by `user_id`)
 - Tracks current display mode: idle, board, or focused (and which user_id is focused)
@@ -2469,48 +2470,48 @@ The route:
 
 The display maintains a `Map<string, DisplaySnapshot>` in component state (or a dedicated Zustand store). Incoming `workout_snapshot` events upsert into this map. `session_ended` events remove the entry. The display mode is derived from this map:
 
-| Condition | Mode |
-|-----------|------|
-| Map is empty | Idle |
-| Map has entries + no focus command active | Board |
-| Focus command active + focused user in map | Focused |
+| Condition                                      | Mode                  |
+| ---------------------------------------------- | --------------------- |
+| Map is empty                                   | Idle                  |
+| Map has entries + no focus command active      | Board                 |
+| Focus command active + focused user in map     | Focused               |
 | Focus command active + focused user NOT in map | Board (focus cleared) |
 
 ### 28c. Board view
 
 Responsive grid of session cards. Grid columns adapt to session count:
 
-| Active Sessions | Grid Layout |
-|----------------|-------------|
-| 1 | Single card, centered, expanded |
-| 2 | 2 columns |
-| 3-4 | 2 columns, 2 rows |
-| 5+ | Pages of up to 4 cards, auto-cycling every 10 seconds |
+| Active Sessions | Grid Layout                                           |
+| --------------- | ----------------------------------------------------- |
+| 1               | Single card, centered, expanded                       |
+| 2               | 2 columns                                             |
+| 3-4             | 2 columns, 2 rows                                     |
+| 5+              | Pages of up to 4 cards, auto-cycling every 10 seconds |
 
 Each card renders on `surface-iron`, zero border-radius, containing:
 
-| Element | Typography | Color |
-|---------|-----------|-------|
-| Display name | Space Grotesk `text-label-large`, ALL-CAPS | `text-primary` |
-| Session type | Inter `label-medium`, ALL-CAPS | `text-secondary` |
-| Elapsed time | Space Grotesk monospace | `text-secondary` |
-| Current exercise | Inter `body-medium` | `text-primary` |
-| Exercise progress | Inter `label-small` | `text-secondary` |
-| Set progress | Compact: completed/total with `arc` checkmarks | — |
-| Rest timer | Space Grotesk, `ember` text, `surface-steel` background | `ember` |
+| Element           | Typography                                              | Color            |
+| ----------------- | ------------------------------------------------------- | ---------------- |
+| Display name      | Space Grotesk `text-label-large`, ALL-CAPS              | `text-primary`   |
+| Session type      | Inter `label-medium`, ALL-CAPS                          | `text-secondary` |
+| Elapsed time      | Space Grotesk monospace                                 | `text-secondary` |
+| Current exercise  | Inter `body-medium`                                     | `text-primary`   |
+| Exercise progress | Inter `label-small`                                     | `text-secondary` |
+| Set progress      | Compact: completed/total with `arc` checkmarks          | —                |
+| Rest timer        | Space Grotesk, `ember` text, `surface-steel` background | `ember`          |
 
 ### 28d. Focused view
 
 Full-screen workout display for a single user. Larger typography than board cards. Full set table with PRESCRIBED / ACTUAL / STATUS columns. Large rest timer countdown.
 
-| Element | Scale | Notes |
-|---------|-------|-------|
-| User name + session | Space Grotesk, 2rem+ | Header bar |
-| Current exercise | Space Grotesk, 2.5rem+ | Centered, prominent |
-| Set table | Inter `body-medium`, generous row height | Alternating `surface-charcoal` rows |
-| Current set row | `ember` left border | Visual indicator of active set |
-| Rest timer | Space Grotesk `text-readout` (3.5rem+) | `ember` text, centered, pulsing when < 10s |
-| Elapsed time | Space Grotesk, 1.5rem | Header, `text-secondary` |
+| Element             | Scale                                    | Notes                                      |
+| ------------------- | ---------------------------------------- | ------------------------------------------ |
+| User name + session | Space Grotesk, 2rem+                     | Header bar                                 |
+| Current exercise    | Space Grotesk, 2.5rem+                   | Centered, prominent                        |
+| Set table           | Inter `body-medium`, generous row height | Alternating `surface-charcoal` rows        |
+| Current set row     | `ember` left border                      | Visual indicator of active set             |
+| Rest timer          | Space Grotesk `text-readout` (3.5rem+)   | `ember` text, centered, pulsing when < 10s |
+| Elapsed time        | Space Grotesk, 1.5rem                    | Header, `text-secondary`                   |
 
 ### 28e. Timer interpolation
 
@@ -2521,6 +2522,7 @@ This produces a smooth countdown visual with zero additional Broadcast traffic.
 ### 28f. Reconnection behavior
 
 If the WebSocket disconnects, the display:
+
 1. Shows "Reconnecting..." in the status footer
 2. Attempts automatic reconnection (Supabase client handles this)
 3. On reconnection, publishes a `display_hello` event to the channel
@@ -2539,10 +2541,10 @@ The button publishes a `focus` event with the user's `user_id`. Tapping again pu
 
 Persistent footer at bottom of display viewport. `surface-pit` background, Inter `label-small`.
 
-| State | Display |
-|-------|---------|
-| Connected | `● Connected` (green dot) |
-| Reconnecting | `○ Reconnecting...` (amber dot, pulsing) |
+| State                 | Display                                  |
+| --------------------- | ---------------------------------------- |
+| Connected             | `● Connected` (green dot)                |
+| Reconnecting          | `○ Reconnecting...` (amber dot, pulsing) |
 | Active sessions count | `N active sessions` or `Focused: [Name]` |
 
 ### Done when
@@ -2578,14 +2580,14 @@ The ambient display state when no workouts are active. Clock, today's schedule, 
 
 Full-viewport idle display:
 
-| Element | Typography | Position |
-|---------|-----------|----------|
-| Clock | Space Grotesk, minimum 8rem, `text-primary` | Centered, upper half |
-| Date | Inter `body-large`, `text-secondary` | Below clock |
-| Schedule section header | Space Grotesk `text-label-large`, ALL-CAPS, "TODAY'S SESSIONS" | Left-aligned, lower section |
-| Schedule entries | Inter `body-medium`: display name, session type (ALL-CAPS), scheduled time | Rows in `surface-iron` cards |
-| Next-up countdown | Space Grotesk, `ember` text, `surface-steel` badge | Below schedule |
-| Status footer | Same as board/focused modes | Bottom |
+| Element                 | Typography                                                                 | Position                     |
+| ----------------------- | -------------------------------------------------------------------------- | ---------------------------- |
+| Clock                   | Space Grotesk, minimum 8rem, `text-primary`                                | Centered, upper half         |
+| Date                    | Inter `body-large`, `text-secondary`                                       | Below clock                  |
+| Schedule section header | Space Grotesk `text-label-large`, ALL-CAPS, "TODAY'S SESSIONS"             | Left-aligned, lower section  |
+| Schedule entries        | Inter `body-medium`: display name, session type (ALL-CAPS), scheduled time | Rows in `surface-iron` cards |
+| Next-up countdown       | Space Grotesk, `ember` text, `surface-steel` badge                         | Below schedule               |
+| Status footer           | Same as board/focused modes                                                | Bottom                       |
 
 Clock updates every second via local `setInterval`. No Broadcast event needed for clock ticking.
 
@@ -2594,6 +2596,7 @@ Clock updates every second via local `setInterval`. No Broadcast event needed fo
 A Supabase Edge Function runs on a cron schedule (every 60 seconds). It queries today's remaining scheduled sessions for all users and publishes an `idle_state` event to the `display` Broadcast channel. The Edge Function uses the service_role key (server-side only, never exposed to clients) to query across users.
 
 The Edge Function:
+
 - Runs via `pg_cron` or Supabase's scheduled function invocation
 - Queries `scheduled_sessions` joined with user profiles for today's date
 - Filters to sessions not yet completed
@@ -2602,20 +2605,20 @@ The Edge Function:
 
 ### 29c. Idle state event payload
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `server_time` | ISO timestamp | Current time for clock sync correction |
-| `scheduled_sessions` | Array | `{ display_name, session_name, session_type, scheduled_time }` for each remaining session today |
-| `next_session` | Object or null | The soonest upcoming session: `{ display_name, session_name, starts_in_seconds }` |
+| Field                | Type           | Description                                                                                     |
+| -------------------- | -------------- | ----------------------------------------------------------------------------------------------- |
+| `server_time`        | ISO timestamp  | Current time for clock sync correction                                                          |
+| `scheduled_sessions` | Array          | `{ display_name, session_name, session_type, scheduled_time }` for each remaining session today |
+| `next_session`       | Object or null | The soonest upcoming session: `{ display_name, session_name, starts_in_seconds }`               |
 
 ### 29d. Transition animations
 
-| Transition | Animation |
-|-----------|-----------|
-| Idle → Board | Fade clock out, fade cards in (300ms) |
-| Board → Idle | Fade cards out, fade clock in (300ms) |
+| Transition      | Animation                                                      |
+| --------------- | -------------------------------------------------------------- |
+| Idle → Board    | Fade clock out, fade cards in (300ms)                          |
+| Board → Idle    | Fade cards out, fade clock in (300ms)                          |
 | Board → Focused | Cards shrink to zero, focused view expands from center (400ms) |
-| Focused → Board | Reverse of above (400ms) |
+| Focused → Board | Reverse of above (400ms)                                       |
 
 Use CSS transitions or Framer Motion. Keep animations subtle — the display should feel calm, not flashy.
 

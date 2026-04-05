@@ -1,7 +1,7 @@
 # Tech Plan: Per-Instance Scheduled Session Editing
 
 **Spec:** Context/Features/013-Session-Instance-Editing/Spec.md
-**Stacks involved:** React/TypeScript (frontend), Rust/Tauri (desktop shell + SQLite), Supabase (remote Postgres)
+**Stacks involved:** React/TypeScript (frontend), Rust/Tauri (mobile shell + SQLite), Supabase (remote Postgres)
 
 ## Architecture Overview
 

@@ -157,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [isRestoredGuest])
 
-  // Deep-link listener for Tauri OAuth callback (mobile + desktop)
+  // Deep-link listener for Tauri OAuth callback
   useEffect(() => {
     const supabase = getSupabaseClient()
     if (!isTauri() || !supabase) return

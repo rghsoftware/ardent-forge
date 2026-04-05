@@ -68,7 +68,7 @@
 
 - **File:** src/hooks/use-media-query.ts, src/components/ui/help-trigger.tsx
 - **Severity:** Low
-- **Detail:** `useMediaQuery` has no comments -- worth explaining why `useSyncExternalStore` over `useState+useEffect` (avoids tearing in concurrent mode) and why `getServerSnapshot` returns `false`. `HelpTrigger` should note the Popover-on-desktop/Drawer-on-mobile strategy and that the spec's `placement` prop was intentionally omitted.
+- **Detail:** `useMediaQuery` has no comments -- worth explaining why `useSyncExternalStore` over `useState+useEffect` (avoids tearing in concurrent mode) and why `getServerSnapshot` returns `false`. `HelpTrigger` should note the Popover-on-large-screens/Drawer-on-mobile strategy and that the spec's `placement` prop was intentionally omitted.
 - **Status:** ✅ Fixed
 - **Resolution:** Added JSDoc to both useMediaQuery (useSyncExternalStore rationale) and HelpTrigger (responsive strategy, placement omission)
 

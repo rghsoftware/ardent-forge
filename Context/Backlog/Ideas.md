@@ -47,3 +47,17 @@ skill. Prioritize via the backlog-prioritize skill.
 **Added:** 2026-04-04
 **Source:** `Context/Reviews/0009-pr71-enhancement-batch-review.md`
 **Resolution:** TauriAdapter.getUnreadCounts already has 2 unit tests (happy path + empty). The `Promise.allSettled` batching was a suggestion for SupabaseAdapter that was never implemented (still sequential loop). No further action needed; re-open if batching is implemented.
+
+### Overhaul web responsiveness for larger screens
+
+**Added:** 2026-04-05
+**Context:** Pages are essentially wide versions of the mobile layout with no adaptation for larger viewports. Profile page is a single long column on web; other pages stretch without using the extra space meaningfully. Needs proper multi-column layouts, content width constraints, and web-native arrangements.
+**Related:** All page layouts, responsive design, Tailwind breakpoints
+**Priority:** Medium
+
+### Reorder nav items into logical groups
+
+**Added:** 2026-04-05
+**Context:** Navigation items are in an arbitrary order. Related sections like Comms, Groups, and Connections should be grouped together so the nav hierarchy reflects how features relate to each other.
+**Related:** Navigation component, sidebar/bottom nav
+**Priority:** Low

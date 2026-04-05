@@ -3,7 +3,7 @@ import { Icon } from '@/components/icon'
 import { useAuth } from '@/lib/auth'
 import { useUnreadCounts } from '@/hooks/use-chat'
 
-// Mobile nav omits Builder (requires desktop viewport) and adds "Me" profile tab
+// Mobile nav omits Builder (requires wide viewport) and adds "Me" profile tab
 const navItems = [
   { label: 'Forge', icon: 'hardware', to: '/' },
   { label: 'Tracker', icon: 'history', to: '/history' },
