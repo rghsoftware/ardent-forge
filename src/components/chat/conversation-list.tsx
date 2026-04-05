@@ -143,7 +143,10 @@ export function ConversationList() {
       <div className="mx-auto w-full max-w-5xl flex-1 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-6 pb-4 md:px-6 lg:px-8">
-          <h1 className="font-display text-xl font-medium text-bone-white">Comms</h1>
+          <div className="flex items-center gap-3">
+            <Icon name="chat" size={24} className="text-warm-ash" />
+            <h1 className="font-display text-2xl font-medium text-bone-white">Comms</h1>
+          </div>
           <Button variant="default" size="sm" onClick={handleNewConversation}>
             New
           </Button>

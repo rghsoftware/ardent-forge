@@ -263,7 +263,7 @@ function SetupPage() {
 
   return (
     <AuthPageShell>
-      <p className="text-sm text-warm-ash">Connect to Server</p>
+      <h1 className="font-display text-xl font-medium text-bone-white">Connect to server</h1>
 
       {showEnvWarning && (
         <p className="rounded-md bg-warning-flare/10 px-3 py-2 text-xs text-warning-flare">

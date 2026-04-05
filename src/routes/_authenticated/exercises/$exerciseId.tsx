@@ -204,7 +204,7 @@ function ExerciseDetailPage() {
           >
             <span className="material-symbols-outlined text-xl">arrow_back</span>
           </Link>
-          <h1 className="font-display text-xl font-medium text-bone-white">{exercise.name}</h1>
+          <h1 className="font-display text-2xl font-medium text-bone-white">{exercise.name}</h1>
         </div>
 
         {/* Tabs */}

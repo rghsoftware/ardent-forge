@@ -8,6 +8,7 @@ import { ExerciseSearchInput } from '@/components/exercises/exercise-search-inpu
 import { ExerciseFilterBar } from '@/components/exercises/exercise-filter-bar'
 import { ExerciseListItem } from '@/components/exercises/exercise-list-item'
 import { CreateExerciseSheet } from '@/components/exercises/create-exercise-sheet'
+import { Icon } from '@/components/icon'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 
@@ -66,8 +67,9 @@ function ExercisesPage() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
       {/* Header */}
-      <div className="px-4 pt-6 pb-4">
-        <h1 className="font-display text-xl font-medium text-bone-white">Exercise Library</h1>
+      <div className="flex items-center gap-3 px-4 pt-6 pb-4">
+        <Icon name="fitness_center" size={24} className="text-warm-ash" />
+        <h1 className="font-display text-2xl font-medium text-bone-white">Exercise Library</h1>
       </div>
 
       {/* Search */}

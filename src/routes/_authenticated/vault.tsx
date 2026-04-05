@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { VaultOverview } from '@/components/vault/vault-overview'
 import { VaultOneRmTab } from '@/components/vault/vault-one-rm-tab'
 import { VaultVolumeTab } from '@/components/vault/vault-volume-tab'
+import { Icon } from '@/components/icon'
 
 export const Route = createFileRoute('/_authenticated/vault')({
   component: VaultPage,
@@ -13,8 +14,8 @@ function VaultPage() {
     <div className="min-h-[100dvh] bg-surface-anvil">
       {/* Header */}
       <div className="mx-auto max-w-5xl flex items-center gap-3 px-4 pt-6 pb-4 md:px-6 lg:px-8">
-        <span className="material-symbols-outlined text-2xl text-warm-ash">monitoring</span>
-        <h1 className="font-display text-industrial text-2xl text-bone-white">VAULT</h1>
+        <Icon name="monitoring" size={24} className="text-warm-ash" />
+        <h1 className="font-display text-2xl font-medium text-bone-white">Vault</h1>
       </div>
 
       {/* Tabs */}

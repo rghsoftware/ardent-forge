@@ -233,58 +233,71 @@ function BuilderPage() {
   return (
     <div className="flex h-full flex-col bg-surface-anvil font-body text-bone-white">
       {/* Header bar */}
-      <div className="flex flex-shrink-0 items-center gap-3 px-4 pt-6 pb-4">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => navigate({ to: '/library' })}
-          className="min-h-10 text-xs text-warm-ash hover:text-bone-white"
-        >
-          <Icon name="arrow_back" size={16} />
-          Back to library
-        </Button>
-
-        <div className="flex-1" />
-
-        {error && <p className="text-xs text-warning-flare">{error}</p>}
-        {fieldErrors.some((e) => e.field === 'blocks') && (
-          <p className="text-xs text-warning-flare">
-            {fieldErrors.find((e) => e.field === 'blocks')!.message}
-          </p>
-        )}
-        <Button
-          type="button"
-          variant="default"
-          size="sm"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="bg-forge text-on-forge text-xs hover:brightness-110"
-        >
-          {isSaving ? 'Saving...' : 'Save program'}
-        </Button>
+      <div className="flex flex-shrink-0 items-center justify-between gap-3 px-4 pt-6 pb-4 lg:hidden">
+        <div>
+          <div className="flex items-center gap-3">
+            <Icon name="construction" size={24} className="text-warm-ash" />
+            <h1 className="font-display text-2xl font-medium text-bone-white">Program Builder</h1>
+          </div>
+          {programId && draft.name && (
+            <p className="mt-1 text-xs font-medium text-warm-ash/60">Editing: {draft.name}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          {error && <p className="text-xs text-warning-flare">{error}</p>}
+          {fieldErrors.some((e) => e.field === 'blocks') && (
+            <p className="text-xs text-warning-flare">
+              {fieldErrors.find((e) => e.field === 'blocks')!.message}
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-forge text-on-forge text-xs hover:brightness-110"
+          >
+            {isSaving ? 'Saving...' : 'Save program'}
+          </Button>
+        </div>
       </div>
 
-      {/* Mobile-only: title above stacked layout */}
-      <div className="flex-shrink-0 px-4 pb-4 lg:hidden">
-        <h1 className="font-display text-2xl font-medium text-bone-white">Program Builder</h1>
-        {programId && draft.name && (
-          <p className="mt-1 text-xs font-medium text-warm-ash/60">Editing: {draft.name}</p>
-        )}
+      {/* Large-screen header */}
+      <div className="hidden items-center justify-between px-4 pt-6 pb-4 lg:flex lg:px-8">
+        <div>
+          <div className="flex items-center gap-3">
+            <Icon name="construction" size={24} className="text-warm-ash" />
+            <h1 className="font-display text-2xl font-medium text-bone-white">Program Builder</h1>
+          </div>
+          {programId && draft.name && (
+            <p className="mt-1 text-xs font-medium text-warm-ash/60">Editing: {draft.name}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          {error && <p className="text-xs text-warning-flare">{error}</p>}
+          {fieldErrors.some((e) => e.field === 'blocks') && (
+            <p className="text-xs text-warning-flare">
+              {fieldErrors.find((e) => e.field === 'blocks')!.message}
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-forge text-on-forge text-xs hover:brightness-110"
+          >
+            {isSaving ? 'Saving...' : 'Save program'}
+          </Button>
+        </div>
       </div>
 
       {/* Layout: independent scroll columns on large screens, stacked scroll on mobile */}
       <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[360px_1fr] lg:gap-6 lg:overflow-hidden lg:px-4">
         {/* Sidebar: program metadata + block navigation (sticky on large screens) */}
         <aside className="px-4 pb-6 lg:overflow-y-auto lg:px-0 lg:pb-8">
-          <h1 className="mb-6 hidden font-display text-2xl font-medium text-bone-white lg:block">
-            Program Builder
-          </h1>
-          {programId && draft.name && (
-            <p className="-mt-5 mb-6 hidden text-xs font-medium text-warm-ash/60 lg:block">
-              Editing: {draft.name}
-            </p>
-          )}
-
           <ProgramForm
             draft={draft}
             onChange={handleDraftChange}

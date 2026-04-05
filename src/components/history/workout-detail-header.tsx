@@ -47,7 +47,7 @@ export function WorkoutDetailHeader({
         >
           <Icon name="arrow_back" size={20} />
         </Link>
-        <h1 className="font-heading text-xl font-medium text-bone-white">
+        <h1 className="font-display text-2xl font-medium text-bone-white">
           {log.title ?? dateLabel}
         </h1>
       </div>

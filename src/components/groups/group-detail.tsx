@@ -338,7 +338,7 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
             <Icon name="arrow_back" size={16} />
             <span>Groups</span>
           </button>
-          <h1 className="font-display text-xl font-medium text-bone-white">{group.name}</h1>
+          <h1 className="font-display text-2xl font-medium text-bone-white">{group.name}</h1>
           {group.description && (
             <p className="mt-1 text-sm text-warm-ash/70">{group.description}</p>
           )}

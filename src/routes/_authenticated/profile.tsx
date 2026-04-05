@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { BackendSettings } from '@/components/profile/backend-settings'
 import { NotificationSettings } from '@/components/profile/notification-settings'
 import type { PreferredUnits } from '@/domain/types'
+import { Icon } from '@/components/icon'
 
 export const Route = createFileRoute('/_authenticated/profile')({
   component: ProfilePage,
@@ -82,7 +83,7 @@ function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-full bg-surface-pit px-4 py-8 md:px-6 md:py-10 lg:px-8 lg:py-12">
+      <div className="min-h-[100dvh] bg-surface-anvil px-4 py-8 md:px-6 md:py-10 lg:px-8 lg:py-12">
         <Skeleton className="mb-8 h-8 w-32 rounded-none bg-surface-gunmetal" />
         {/* Simplified 2-col skeleton -- full 3-col layout loads with content */}
         <div className="md:grid md:grid-cols-2 md:gap-8 lg:gap-12">
@@ -102,7 +103,7 @@ function ProfilePage() {
 
   if (isError) {
     return (
-      <div className="flex min-h-full flex-col items-center justify-center bg-surface-pit px-4">
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
         <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
           cloud_off
         </span>
@@ -113,11 +114,12 @@ function ProfilePage() {
   }
 
   return (
-    <div className="min-h-full bg-surface-pit">
+    <div className="min-h-[100dvh] bg-surface-anvil">
       <div className="mx-auto max-w-5xl px-4 md:px-6 lg:px-8">
         {/* Page header */}
-        <div className="pt-8 pb-6 md:pt-10 lg:pt-12">
-          <h1 className="font-display text-3xl font-bold text-bone-white">Profile</h1>
+        <div className="flex items-center gap-3 pt-6 pb-4">
+          <Icon name="person" size={24} className="text-warm-ash" />
+          <h1 className="font-display text-2xl font-medium text-bone-white">Profile</h1>
         </div>
 
         {/* Responsive grid: 1 col mobile, 2 col md, 3 col lg */}

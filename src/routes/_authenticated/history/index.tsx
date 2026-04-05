@@ -6,6 +6,7 @@ import { useWorkoutLogsSummary } from '@/hooks/use-workout-logs'
 import { WorkoutHistoryCard } from '@/components/history/workout-history-card'
 import { GhostSessionPreview } from '@/components/shared/ghost-session-preview'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Icon } from '@/components/icon'
 
 export const Route = createFileRoute('/_authenticated/history/')({
   component: HistoryPage,
@@ -69,8 +70,9 @@ function HistoryPage() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
       {/* Header */}
-      <div className="mx-auto w-full max-w-5xl px-4 pt-6 pb-4 md:px-6 lg:px-8">
-        <h1 className="font-display text-xl font-medium text-bone-white">Tracker</h1>
+      <div className="mx-auto w-full max-w-5xl flex items-center gap-3 px-4 pt-6 pb-4 md:px-6 lg:px-8">
+        <Icon name="history" size={24} className="text-warm-ash" />
+        <h1 className="font-display text-2xl font-medium text-bone-white">Tracker</h1>
       </div>
 
       {/* Content */}

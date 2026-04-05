@@ -162,8 +162,9 @@ export function ConnectionList() {
       <div className="mx-auto w-full max-w-5xl flex-1 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-6 pb-4 md:px-6 lg:px-8">
-          <div className="flex items-center gap-2">
-            <h1 className="font-display text-xl font-medium text-bone-white">Connections</h1>
+          <div className="flex items-center gap-3">
+            <Icon name="person_add" size={24} className="text-warm-ash" />
+            <h1 className="font-display text-2xl font-medium text-bone-white">Connections</h1>
             {pendingCount > 0 && <Badge variant="default">{pendingCount} pending</Badge>}
           </div>
           <ConnectionRequestDialog />

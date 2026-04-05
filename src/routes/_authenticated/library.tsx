@@ -119,7 +119,10 @@ function LibraryPage() {
     <div className="min-h-[100dvh] bg-surface-anvil pb-20">
       {/* Header */}
       <div className="mx-auto max-w-5xl flex items-center justify-between px-4 pt-6 pb-4 md:px-6 lg:px-8">
-        <h1 className="font-display text-2xl font-medium text-bone-white">Library</h1>
+        <div className="flex items-center gap-3">
+          <Icon name="library_books" size={24} className="text-warm-ash" />
+          <h1 className="font-display text-2xl font-medium text-bone-white">Library</h1>
+        </div>
         {activeTab === 'templates' && (
           <div className="flex items-center gap-2">
             <Button variant="default" onClick={handleCreate} className="min-h-12 text-xs">

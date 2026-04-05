@@ -64,7 +64,7 @@ function SignInPage() {
         </p>
       )}
 
-      <p className="text-sm text-warm-ash">Sign in to your account</p>
+      <h1 className="font-display text-xl font-medium text-bone-white">Sign in</h1>
 
       {/* Google sign-in */}
       <Button
