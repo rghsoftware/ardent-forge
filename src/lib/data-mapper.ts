@@ -1,4 +1,14 @@
 import { z } from 'zod'
+
+/**
+ * Safely parse a value that may be a JSON string or an already-parsed object.
+ * Supabase PostgREST returns JSONB columns as objects, but the Tauri SQLite
+ * adapter returns them as strings. This handles both cases.
+ */
+function parseJsonOrValue(value: string | object): unknown {
+  return typeof value === 'string' ? JSON.parse(value) : value
+}
+
 import type {
   Exercise,
   WorkoutLog,
@@ -361,13 +371,14 @@ export function toSessionTemplate(row: SessionTemplateRow): SessionTemplate {
     category: sessionTypeSchema.parse(row.category),
     restBetweenGroups:
       row.rest_between_groups != null
-        ? durationSchema.parse(JSON.parse(row.rest_between_groups))
+        ? durationSchema.parse(parseJsonOrValue(row.rest_between_groups))
         : undefined,
-    timeCap: row.time_cap != null ? durationSchema.parse(JSON.parse(row.time_cap)) : undefined,
+    timeCap:
+      row.time_cap != null ? durationSchema.parse(parseJsonOrValue(row.time_cap)) : undefined,
     scoring: scoringTypeSchema.parse(row.scoring),
     eventMetadata:
       row.event_metadata != null
-        ? eventMetadataSchema.parse(JSON.parse(row.event_metadata))
+        ? eventMetadataSchema.parse(parseJsonOrValue(row.event_metadata))
         : undefined,
     lastAssignedAt: row.last_assigned_at ?? undefined,
   }
@@ -403,11 +414,11 @@ export function toActivityGroupFlat(row: ActivityGroupRow): Omit<ActivityGroup, 
     rounds: row.rounds ?? undefined,
     restBetweenRounds:
       row.rest_between_rounds != null
-        ? durationSchema.parse(JSON.parse(row.rest_between_rounds))
+        ? durationSchema.parse(parseJsonOrValue(row.rest_between_rounds))
         : undefined,
     restBetweenActivities:
       row.rest_between_activities != null
-        ? durationSchema.parse(JSON.parse(row.rest_between_activities))
+        ? durationSchema.parse(parseJsonOrValue(row.rest_between_activities))
         : undefined,
   }
 }
@@ -438,7 +449,7 @@ export function toActivity(row: ActivityRow): Activity {
     activityGroupId: row.activity_group_id,
     exerciseId: row.exercise_id,
     ordinal: row.ordinal,
-    setScheme: setSchemeSchema.parse(JSON.parse(row.set_scheme)),
+    setScheme: setSchemeSchema.parse(parseJsonOrValue(row.set_scheme)),
     notes: row.notes ?? undefined,
   }
 }
