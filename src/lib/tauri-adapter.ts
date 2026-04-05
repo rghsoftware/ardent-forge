@@ -474,7 +474,15 @@ interface TauriMediaAttachmentResponse {
 // ---------------------------------------------------------------------------
 
 interface TauriAppError {
-  kind: 'NOT_FOUND' | 'CONFLICT' | 'VALIDATION' | 'DATABASE' | 'INTERNAL'
+  kind:
+    | 'NOT_FOUND'
+    | 'CONFLICT'
+    | 'VALIDATION'
+    | 'DATABASE'
+    | 'INTERNAL'
+    | 'UNAUTHORIZED'
+    | 'SYNC'
+    | 'NETWORK'
   message: string
   field?: string
 }
