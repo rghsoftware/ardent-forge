@@ -180,7 +180,7 @@ export function NotificationSettings() {
             )}
             {isBrowser && (
               <p className="text-[11px] leading-relaxed text-warm-ash/60">
-                Session reminders require the desktop app
+                Session reminders require the mobile app
               </p>
             )}
           </div>

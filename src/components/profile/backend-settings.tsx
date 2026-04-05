@@ -38,6 +38,7 @@ export function BackendSettings() {
   const [message, setMessage] = useState('')
   const [copied, setCopied] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
 
   useEffect(() => {
     getConfigStore()
@@ -271,46 +272,61 @@ export function BackendSettings() {
 
       {/* Share this server */}
       {currentConfig && !editing && (
-        <div className="space-y-4 pt-4">
-          <div className="border-t border-surface-steel pb-2 pt-4">
-            <h3 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
-              Share this server
-            </h3>
-          </div>
-
-          <div className="flex flex-col items-center rounded-lg bg-surface-iron p-6">
-            <QRCodeSVG
-              value={buildInviteLink(currentConfig.supabaseUrl, currentConfig.supabaseKey)}
-              size={256}
-              level="M"
-              marginSize={4}
-              fgColor="#e5e2e1"
-              bgColor="#201f1f"
-              title="Scan to connect to this Ardent Forge server"
-            />
-          </div>
-
+        <div className="pt-4">
           <Button
             variant="outline"
             className="min-h-[48px] w-full border-surface-steel text-warm-ash hover:bg-surface-gunmetal"
-            onClick={async () => {
-              const link = buildInviteLink(currentConfig.supabaseUrl, currentConfig.supabaseKey)
-              try {
-                await navigator.clipboard.writeText(link)
-                toast('Invite link copied')
-              } catch (err) {
-                console.error('[backend-settings] Failed to copy invite link:', err)
-                toast('Failed to copy invite link')
-              }
-            }}
+            onClick={() => setShareOpen(true)}
           >
-            Copy invite link
+            Share this server
           </Button>
 
-          <p className="text-sm text-warm-ash/70">
-            Share this with anyone who wants to connect to this server. They will still need to
-            create an account.
-          </p>
+          <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+            <DialogContent className="bg-surface-iron">
+              <DialogHeader>
+                <DialogTitle className="text-bone-white">Share this server</DialogTitle>
+                <DialogDescription className="text-warm-ash">
+                  Share this with anyone who wants to connect to this server. They will still need
+                  to create an account.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex flex-col items-center rounded-lg bg-surface-pit p-6">
+                <QRCodeSVG
+                  value={buildInviteLink(currentConfig.supabaseUrl, currentConfig.supabaseKey)}
+                  size={200}
+                  level="M"
+                  marginSize={4}
+                  fgColor="#e5e2e1"
+                  bgColor="#201f1f"
+                  title="Scan to connect to this Ardent Forge server"
+                  className="h-auto w-full max-w-[256px]"
+                />
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  className="min-h-[48px] w-full border-surface-steel text-warm-ash hover:bg-surface-gunmetal"
+                  onClick={async () => {
+                    const link = buildInviteLink(
+                      currentConfig.supabaseUrl,
+                      currentConfig.supabaseKey,
+                    )
+                    try {
+                      await navigator.clipboard.writeText(link)
+                      toast('Invite link copied')
+                    } catch (err) {
+                      console.error('[backend-settings] Failed to copy invite link:', err)
+                      toast('Failed to copy invite link')
+                    }
+                  }}
+                >
+                  Copy invite link
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </div>
