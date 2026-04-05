@@ -11,30 +11,22 @@ High-priority bugs should be addressed before starting new features.
 **File:** `src/lib/tauri-adapter.ts:516`
 **Resolution:** Added `console.error('[tauri-adapter] invokeCommand(${cmd}) failed:', e)` before the re-throw. All 140 tauri-adapter tests pass.
 
-### B002: QR code scanner does not show live camera feed
+## ~~B002: QR code scanner does not show live camera feed~~ (Resolved 2026-04-05)
 
-**Added:** 2026-04-05
-**Context:** The QR code scanner in the mobile app doesn't display the camera's live video feed. Users see no visual feedback from the camera while scanning.
-**Related:** Mobile QR scanner feature, camera integration
-**Priority:** High
+**Severity:** High
+**Resolution:** Feature 014 (Mobile Bug Bash) -- S003: Added `.scanner-active` transparency class and scanner cleanup. Commit `d5c9fe9`.
 
-### B003: Google OAuth fails with "Failed to open the sign-in browser"
+## ~~B003: Google OAuth fails with "Failed to open the sign-in browser"~~ (Resolved 2026-04-05)
 
-**Added:** 2026-04-05
-**Context:** Tapping "Continue with Google" on the mobile app shows "Failed to open the sign-in browser" instead of launching the OAuth flow.
-**Related:** OAuth/auth flow, Tauri deep linking, mobile browser integration
-**Priority:** High
+**Severity:** High
+**Resolution:** Feature 014 (Mobile Bug Bash) -- S001: Added scoped `opener:allow-open-url` capability. Commit `d5c9fe9`.
 
-### B004: Guest mode shows failure errors on all screens
+## ~~B004: Guest mode shows failure errors on all screens~~ (Resolved 2026-04-05)
 
-**Added:** 2026-04-05
-**Context:** When using the mobile app in guest mode, every screen displays a "failed to ..." error message. Guest/unauthenticated users cannot browse the app at all.
-**Related:** Guest mode, auth guards, offline/anonymous access
-**Priority:** High
+**Severity:** High
+**Resolution:** Feature 014 (Mobile Bug Bash) -- S002: Added `isTauri()` guard to `continueAsGuest()`. Commit `d5c9fe9`.
 
-### B005: App content overlaps Android system chrome
+## ~~B005: App content overlaps Android system chrome~~ (Resolved 2026-04-05)
 
-**Added:** 2026-04-05
-**Context:** The mobile app does not account for Android system UI (status bar, navigation bar) or rounded display corners. Content needs safe area insets so it doesn't sit underneath the system chrome, and padding for curved screen edges -- e.g., on a Pixel 10 the "F" in "Forge" overflows into the corner radius.
-**Related:** Mobile layout, safe area insets, Tauri Android WebView
-**Priority:** High
+**Severity:** High
+**Resolution:** Feature 014 (Mobile Bug Bash) -- S004/S005: Safe area insets plugin + CSS custom properties. Commit `d5c9fe9`.
