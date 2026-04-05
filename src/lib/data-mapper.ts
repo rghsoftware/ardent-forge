@@ -56,9 +56,9 @@ import {
   shareableEntityTypeSchema,
   shareTokenSchema,
   eventMetadataSchema,
-  conversationTypeSchema,
-  messageTypeSchema,
-  syncStatusSchema,
+  conversationSchema,
+  conversationParticipantSchema,
+  messageSchema,
   mediaProviderSchema,
   mediaTypeSchema,
   mediaStatusSchema,
@@ -703,15 +703,15 @@ export function toConversation(
   participantUserIds: string[] = [],
 ): Conversation {
   try {
-    return {
+    return conversationSchema.parse({
       id: row.id,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      type: conversationTypeSchema.parse(row.type),
+      type: row.type,
       title: row.title ?? undefined,
       groupId: row.group_id ?? undefined,
       participantUserIds,
-    }
+    })
   } catch (err) {
     throw new Error(
       `Failed to map conversation (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
@@ -737,7 +737,7 @@ export function toConversationParticipant(
   row: ConversationParticipantRow,
 ): ConversationParticipant {
   try {
-    return {
+    return conversationParticipantSchema.parse({
       id: row.id,
       createdAt: row.joined_at,
       updatedAt: row.last_read_at ?? row.joined_at,
@@ -747,7 +747,7 @@ export function toConversationParticipant(
       isArchived: row.is_archived,
       joinedAt: row.joined_at,
       leftAt: row.left_at ?? undefined,
-    }
+    })
   } catch (err) {
     throw new Error(
       `Failed to map conversation participant (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
@@ -774,15 +774,15 @@ export function fromConversationParticipant(
 
 export function toMessage(row: MessageRow): Message {
   try {
-    return {
+    return messageSchema.parse({
       id: row.id,
       createdAt: row.created_at,
       conversationId: row.conversation_id,
       senderId: row.sender_id ?? undefined,
-      messageType: messageTypeSchema.parse(row.message_type),
+      messageType: row.message_type,
       content: row.content ?? undefined,
-      syncStatus: row.sync_status != null ? syncStatusSchema.parse(row.sync_status) : undefined,
-    }
+      syncStatus: row.sync_status ?? undefined,
+    })
   } catch (err) {
     throw new Error(
       `Failed to map message (${row.id}): ${err instanceof Error ? err.message : String(err)}`,

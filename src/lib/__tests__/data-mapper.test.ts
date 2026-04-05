@@ -2433,7 +2433,11 @@ describe('Chat Mappers', () => {
     it('accepts all valid message types', () => {
       const validTypes = ['text', 'workout', 'media', 'file', 'system']
       for (const msgType of validTypes) {
-        const result = toMessage({ ...messageRowFull, message_type: msgType })
+        const row =
+          msgType === 'system'
+            ? { ...messageRowFull, message_type: msgType, sender_id: null }
+            : { ...messageRowFull, message_type: msgType }
+        const result = toMessage(row)
         expect(result.messageType).toBe(msgType)
       }
     })
