@@ -183,6 +183,7 @@ export function useActiveWorkout() {
         const now = new Date().toISOString()
         const log = await createWorkoutLogMutation.mutateAsync({
           userId,
+          title: templateFull.template.name,
           startedAt: now,
           sessionTemplateId,
           programContext,
