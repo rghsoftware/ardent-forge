@@ -9,7 +9,7 @@ let mockShouldShowHint = true
 
 vi.mock('@/hooks/use-onboarding', () => ({
   useOnboarding: () => ({
-    shouldShowHint: () => mockShouldShowHint,
+    shouldShowHint: vi.fn(() => mockShouldShowHint),
     markHintSeen: mockMarkHintSeen,
   }),
 }))

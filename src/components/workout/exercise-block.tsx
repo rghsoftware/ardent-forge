@@ -40,7 +40,6 @@ export function ExerciseBlock({
 
   return (
     <section className="bg-surface-iron" aria-label={`${exerciseName} exercise`}>
-      {/* Exercise name header */}
       <div className="px-4 pt-4 pb-2">
         <h3 className="font-display text-xs font-medium text-ember">{exerciseName}</h3>
       </div>
@@ -85,7 +84,6 @@ export function ExerciseBlock({
         </OnboardingHint>
       )}
 
-      {/* Set rows */}
       <div className="flex flex-col gap-[0.4rem]">
         {sets.map((set) => (
           <SetRow

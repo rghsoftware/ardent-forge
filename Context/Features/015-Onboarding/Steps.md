@@ -206,6 +206,40 @@
 
 🏁 MILESTONE: Feature complete -- all assertions verified.
 
+### Phase 8: Review Remediation (PR #77 Review)
+
+- [ ] S021: Define `OnboardingHintKey` and `OnboardingRoute` domain union types in `src/domain/types/`. Replace `string` with these unions in `hintsSeenKeys` and `visitedRoutes` (store, hook, hint component). Ensures typos like `markHintSeen("libary-intro")` cause compile errors instead of silent failures.
+  - **Assigned:** foundation-eng
+  - **Depends:** S001
+  - **Parallel:** true
+
+- [ ] S022-T: Add `useOnboarding` hook tests (`src/hooks/__tests__/use-onboarding.test.ts`). Cover: (a) `initialize` called with user ID, (b) re-renders with same user don't re-initialize, (c) `isFirstRun`/`shouldShowHint`/`hasVisited` return correct values, (d) behavior when `user` is null.
+  - **Assigned:** foundation-eng
+  - **Depends:** S002
+  - **Parallel:** true
+
+- [ ] S023-T: Add WelcomeCard auto-dismiss test for existing users (`src/components/onboarding/__tests__/welcome-card.test.tsx`). Mock non-empty `useWorkoutLogs` data, verify the card does not render and `dismissWelcome` is called.
+  - **Assigned:** onboarding-ui-eng
+  - **Depends:** S009
+  - **Parallel:** true
+
+- [ ] S024-T: Test onboarding store mutation guards when called before `initialize` (`src/stores/__tests__/onboarding-store.test.ts`). Call each mutation method on a fresh store (no `initialize`), assert state remains default and `console.warn` fires.
+  - **Assigned:** foundation-eng
+  - **Depends:** S001-T
+  - **Parallel:** true
+
+- [ ] S025-T: Test `persistState` failure path (`src/stores/__tests__/onboarding-store.test.ts`). Mock `localStorage.setItem` to throw, call a mutation, verify in-memory state still updates and error is logged.
+  - **Assigned:** foundation-eng
+  - **Depends:** S001-T
+  - **Parallel:** true
+
+- [ ] S026-T: Test user-switching state isolation (`src/stores/__tests__/onboarding-store.test.ts`). Initialize user-A, make changes, initialize user-B, verify user-B gets defaults, re-initialize user-A, verify persisted state loads correctly.
+  - **Assigned:** foundation-eng
+  - **Depends:** S001-T
+  - **Parallel:** true
+
+🏁 MILESTONE: Phase 8 complete -- PR review remediation tasks done.
+
 ## Acceptance Criteria
 
 - [ ] All testable assertions from Spec.md verified (A-001 through A-019)

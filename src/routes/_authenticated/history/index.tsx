@@ -54,7 +54,7 @@ function HistoryPage() {
   const completedSummaries = summaries.filter((s) => !!s.log.completedAt)
 
   const parentRef = useRef<HTMLDivElement>(null)
-  // eslint-disable-next-line react-hooks/incompatible-library
+  // eslint-disable-next-line react-hooks/incompatible-library -- useVirtualizer manages its own deps
   const rowVirtualizer = useVirtualizer({
     count: completedSummaries.length,
     getScrollElement: () => parentRef.current,

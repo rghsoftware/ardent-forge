@@ -1,3 +1,10 @@
+/**
+ * Onboarding state store -- tracks first-run welcome, contextual hint dismissals,
+ * visited routes (for nav discovery dots), and first-workout completion.
+ *
+ * Persisted to localStorage with a per-user key (`onboarding-state-${userId}`).
+ * See ADR-010 for the localStorage-over-persist-middleware rationale.
+ */
 import { create } from 'zustand'
 
 // ---------------------------------------------------------------------------
@@ -75,6 +82,11 @@ interface OnboardingStore extends OnboardingState {
   resetOnboarding: () => void
 }
 
+function snapshotState(get: () => OnboardingStore): OnboardingState {
+  const { welcomeDismissed, hintsSeenKeys, visitedRoutes, firstWorkoutCompleted } = get()
+  return { welcomeDismissed, hintsSeenKeys, visitedRoutes, firstWorkoutCompleted }
+}
+
 export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   ...DEFAULTS,
   currentUserId: '',
@@ -94,71 +106,49 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   },
 
   dismissWelcome: () => {
-    const { currentUserId, hintsSeenKeys, visitedRoutes, firstWorkoutCompleted } = get()
+    const { currentUserId } = get()
     if (!currentUserId) {
       console.warn('[onboarding-store] dismissWelcome called before initialize')
       return
     }
-    const next: OnboardingState = {
-      welcomeDismissed: true,
-      hintsSeenKeys,
-      visitedRoutes,
-      firstWorkoutCompleted,
-    }
+    const next = { ...snapshotState(get), welcomeDismissed: true }
     persistState(currentUserId, next)
     set({ welcomeDismissed: true })
   },
 
   markHintSeen: (key: string) => {
-    const { currentUserId, welcomeDismissed, hintsSeenKeys, visitedRoutes, firstWorkoutCompleted } =
-      get()
+    const { currentUserId, hintsSeenKeys } = get()
     if (!currentUserId) {
       console.warn('[onboarding-store] markHintSeen called before initialize')
       return
     }
     if (hintsSeenKeys.includes(key)) return
     const nextKeys = [...hintsSeenKeys, key]
-    const next: OnboardingState = {
-      welcomeDismissed,
-      hintsSeenKeys: nextKeys,
-      visitedRoutes,
-      firstWorkoutCompleted,
-    }
+    const next = { ...snapshotState(get), hintsSeenKeys: nextKeys }
     persistState(currentUserId, next)
     set({ hintsSeenKeys: nextKeys })
   },
 
   markRouteVisited: (route: string) => {
-    const { currentUserId, welcomeDismissed, hintsSeenKeys, visitedRoutes, firstWorkoutCompleted } =
-      get()
+    const { currentUserId, visitedRoutes } = get()
     if (!currentUserId) {
       console.warn('[onboarding-store] markRouteVisited called before initialize')
       return
     }
     if (visitedRoutes.includes(route)) return
     const nextRoutes = [...visitedRoutes, route]
-    const next: OnboardingState = {
-      welcomeDismissed,
-      hintsSeenKeys,
-      visitedRoutes: nextRoutes,
-      firstWorkoutCompleted,
-    }
+    const next = { ...snapshotState(get), visitedRoutes: nextRoutes }
     persistState(currentUserId, next)
     set({ visitedRoutes: nextRoutes })
   },
 
   markFirstWorkoutCompleted: () => {
-    const { currentUserId, welcomeDismissed, hintsSeenKeys, visitedRoutes } = get()
+    const { currentUserId } = get()
     if (!currentUserId) {
       console.warn('[onboarding-store] markFirstWorkoutCompleted called before initialize')
       return
     }
-    const next: OnboardingState = {
-      welcomeDismissed,
-      hintsSeenKeys,
-      visitedRoutes,
-      firstWorkoutCompleted: true,
-    }
+    const next = { ...snapshotState(get), firstWorkoutCompleted: true }
     persistState(currentUserId, next)
     set({ firstWorkoutCompleted: true })
   },

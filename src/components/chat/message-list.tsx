@@ -228,7 +228,7 @@ export function MessageList({
   const didInitialScroll = useRef(false)
 
   // ---- Virtualizer ----
-  // eslint-disable-next-line react-hooks/incompatible-library
+  // eslint-disable-next-line react-hooks/incompatible-library -- useVirtualizer manages its own deps
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => parentRef.current,

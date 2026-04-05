@@ -6,7 +6,7 @@
  *
  * Modes:
  *   idle     - Sends an idle_snapshot with scheduled sessions (default after clearing)
- *   board    - Sends 2-5 workout_snapshot events (board view)
+ *   board    - Sends N workout_snapshot events (board view, default 3, max 5)
  *   focused  - Sends 1 workout_snapshot + a focus event (focused view)
  *   full     - Runs idle -> board -> focused -> unfocus -> end in sequence with delays
  *   clear    - Sends session_ended for all mock users

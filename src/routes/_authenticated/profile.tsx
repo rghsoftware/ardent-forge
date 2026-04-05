@@ -9,6 +9,7 @@ import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
+import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { BackendSettings } from '@/components/profile/backend-settings'
 import { NotificationSettings } from '@/components/profile/notification-settings'
 import type { PreferredUnits } from '@/domain/types'
@@ -127,12 +128,9 @@ function ProfilePage() {
 
         {/* First-visit hint: show when display name is not yet set */}
         {profile && !profile.displayName && (
-          <div className="mb-4 flex items-start gap-3 bg-surface-iron px-4 py-3">
-            <Icon name="info" size={20} className="mt-0.5 shrink-0 text-ember" />
-            <p className="text-xs leading-relaxed text-warm-ash">
-              Set your display name and preferred units below to personalize your experience.
-            </p>
-          </div>
+          <OnboardingHint hintKey="profile-display-name">
+            Set your display name and preferred units below to personalize your experience.
+          </OnboardingHint>
         )}
 
         {/* Responsive grid: 1 col mobile, 2 col md, 3 col lg */}

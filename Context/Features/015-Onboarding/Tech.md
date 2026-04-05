@@ -35,8 +35,8 @@ This feature adds three layers of onboarding infrastructure to the existing fron
 
 useOnboardingStore (Zustand + localStorage)
 ├── welcomeDismissed: boolean
-├── hintsSeenKeys: Set<string>
-├── visitedRoutes: Set<string>
+├── hintsSeenKeys: string[]
+├── visitedRoutes: string[]
 └── firstWorkoutCompleted: boolean
 ```
 

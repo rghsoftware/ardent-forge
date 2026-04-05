@@ -28,7 +28,7 @@ export function WelcomeCard() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const userId = user?.id ?? ''
-  const { data: workoutLogs } = useWorkoutLogs(userId, 1)
+  const { data: workoutLogs, isError } = useWorkoutLogs(userId, 1)
 
   const hasExistingWorkouts = (workoutLogs?.length ?? 0) > 0
 
@@ -39,7 +39,7 @@ export function WelcomeCard() {
     }
   }, [isFirstRun, hasExistingWorkouts, dismissWelcome])
 
-  if (!isFirstRun || hasExistingWorkouts) return null
+  if (!isFirstRun || hasExistingWorkouts || isError) return null
 
   const handlePathClick = (to: string) => {
     dismissWelcome()
@@ -51,7 +51,6 @@ export function WelcomeCard() {
       className="relative border-l-2 border-ember bg-surface-iron px-4 py-5 motion-safe:animate-[hint-fade-in_300ms_ease-out]"
       data-testid="welcome-card"
     >
-      {/* Close button */}
       <button
         type="button"
         onClick={() => dismissWelcome()}
@@ -61,14 +60,12 @@ export function WelcomeCard() {
         <Icon name="close" size={18} />
       </button>
 
-      {/* Content */}
       <div className="flex flex-col gap-4 pr-10">
         <div className="flex flex-col gap-1">
           <h2 className="font-heading text-sm text-bone-white">Welcome to Ardent Forge</h2>
           <p className="text-xs text-warm-ash/60">Choose where to start.</p>
         </div>
 
-        {/* Path buttons */}
         <div className="flex flex-col gap-2">
           {PATHS.map((path) => (
             <button

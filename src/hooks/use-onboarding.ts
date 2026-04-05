@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useAuth } from '@/lib/auth'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 
@@ -15,7 +16,9 @@ export function useOnboarding() {
   const markFirstWorkoutCompleted = useOnboardingStore((s) => s.markFirstWorkoutCompleted)
   const resetOnboarding = useOnboardingStore((s) => s.resetOnboarding)
 
-  initialize(userId)
+  useEffect(() => {
+    if (userId) initialize(userId)
+  }, [userId, initialize])
 
   return {
     isFirstRun: !welcomeDismissed,

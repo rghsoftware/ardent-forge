@@ -2,7 +2,8 @@ import { Link } from '@tanstack/react-router'
 import { Icon } from '@/components/icon'
 import { useAuth } from '@/lib/auth'
 import { useUnreadCounts } from '@/hooks/use-chat'
-import { useOnboarding } from '@/hooks/use-onboarding'
+import { useOnboardingStore } from '@/stores/onboarding-store'
+import { SKIP_DISCOVERY_ROUTES } from './nav-constants'
 
 // Mobile nav omits Builder (requires wide viewport) and adds "Me" profile tab
 const navItems = [
@@ -13,15 +14,13 @@ const navItems = [
   { label: 'Comms', icon: 'chat', to: '/comms' },
 ] as const
 
-// Routes that should never show a discovery dot
-const SKIP_DISCOVERY_ROUTES = new Set(['/', '/comms'])
-
 export function MobileNav() {
   const { user, isGuest } = useAuth()
   const initial = isGuest ? 'G' : (user?.email?.[0]?.toUpperCase() ?? '?')
   const { data: unreadMap } = useUnreadCounts()
   const totalUnread = unreadMap ? Array.from(unreadMap.values()).reduce((sum, n) => sum + n, 0) : 0
-  const { hasVisited } = useOnboarding()
+  const visitedRoutes = useOnboardingStore((s) => s.visitedRoutes)
+  const hasVisited = (route: string) => visitedRoutes.includes(route)
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 heat-blur border-t border-ghost-line/15 pb-[var(--sai-bottom)]">
