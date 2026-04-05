@@ -257,7 +257,7 @@ function BuilderPage() {
       </div>
 
       {/* Layout: sidebar + content on desktop, stacked on mobile */}
-      <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[320px_1fr] lg:gap-6 lg:px-4">
+      <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[400px_1fr] lg:gap-6 lg:px-4">
         {/* Sidebar: Program form */}
         <div className="px-4 pb-6 lg:px-0">
           <ProgramForm
@@ -312,7 +312,6 @@ function BuilderPage() {
         </div>
       </div>
 
-
       {/* Session picker sheet */}
       <SessionPickerSheet
         open={pickerState !== null}
@@ -335,7 +334,6 @@ function BuilderPage() {
           onCopy={handleCopyConfirm}
         />
       )}
-
     </div>
   )
 }

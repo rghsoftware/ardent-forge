@@ -106,7 +106,6 @@ export function WeekInlinePreview({ sessions }: WeekInlinePreviewProps) {
         }
 
         const activities = buildGroupedActivities(templateFull)
-        if (activities.length === 0) return null
 
         return (
           <div key={session.clientId} className="flex flex-col">
@@ -125,24 +124,30 @@ export function WeekInlinePreview({ sessions }: WeekInlinePreviewProps) {
                 {session.sessionType}
               </span>
             </div>
-            {activities.map((activity, idx) => (
-              <div
-                key={`${session.clientId}-${idx}`}
-                className={`grid grid-cols-[1fr_auto_auto] gap-2 px-2 py-1 ${
-                  idx % 2 === 0 ? 'bg-surface-gunmetal' : 'bg-surface-charcoal'
-                }`}
-              >
-                <span className="text-[11px] text-bone-white/80">
-                  {exerciseMap.get(activity.exerciseId) ?? 'Unknown'}
-                </span>
-                <span className="text-right font-display text-[11px] text-bone-white/80">
-                  {formatSetsReps(activity.setScheme)}
-                </span>
-                <span className="w-16 text-right font-display text-[11px] text-bone-white/60">
-                  {formatLoad(activity.setScheme, exerciseMaxes, activity.exerciseId)}
-                </span>
+            {activities.length === 0 ? (
+              <div className="px-2 py-1 bg-surface-gunmetal">
+                <span className="text-[10px] text-warm-ash/40">No exercises assigned</span>
               </div>
-            ))}
+            ) : (
+              activities.map((activity, idx) => (
+                <div
+                  key={`${session.clientId}-${idx}`}
+                  className={`grid grid-cols-[1fr_auto_auto] gap-2 px-2 py-1 ${
+                    idx % 2 === 0 ? 'bg-surface-gunmetal' : 'bg-surface-charcoal'
+                  }`}
+                >
+                  <span className="text-[11px] text-bone-white/80">
+                    {exerciseMap.get(activity.exerciseId) ?? 'Unknown'}
+                  </span>
+                  <span className="text-right font-display text-[11px] text-bone-white/80">
+                    {formatSetsReps(activity.setScheme)}
+                  </span>
+                  <span className="w-16 text-right font-display text-[11px] text-bone-white/60">
+                    {formatLoad(activity.setScheme, exerciseMaxes, activity.exerciseId)}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         )
       })}

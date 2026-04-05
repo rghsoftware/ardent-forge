@@ -78,7 +78,7 @@ export function WeekGrid({
         <button
           type="button"
           onClick={() => setShowPreview((prev) => !prev)}
-          className={`p-1 transition-colors ${
+          className={`flex items-center gap-1 px-1.5 py-1 text-[11px] font-medium transition-colors ${
             showPreview ? 'text-forge' : 'text-warm-ash/40 hover:text-bone-white'
           }`}
           aria-label={
@@ -87,23 +87,26 @@ export function WeekGrid({
               : `Show week ${weekIndex + 1} details`
           }
         >
-          <Icon name={showPreview ? 'visibility' : 'visibility_off'} size={14} />
+          <Icon name={showPreview ? 'visibility' : 'visibility_off'} size={16} />
+          {showPreview ? 'Hide' : 'Preview'}
         </button>
         <button
           type="button"
           onClick={handleCopy}
-          className="p-1 text-warm-ash/40 hover:text-ember"
+          className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-medium text-warm-ash/40 hover:text-ember"
           aria-label={`Copy week ${weekIndex + 1}`}
         >
-          <Icon name="content_copy" size={14} />
+          <Icon name="content_copy" size={16} />
+          Copy
         </button>
         <button
           type="button"
           onClick={() => setShowWeekDeleteConfirm(true)}
-          className="p-1 text-warm-ash/40 hover:text-warning-flare"
+          className="flex items-center gap-1 px-1.5 py-1 text-[11px] font-medium text-warm-ash/40 hover:text-warning-flare"
           aria-label={`Remove week ${weekIndex + 1}`}
         >
-          <Icon name="delete" size={14} />
+          <Icon name="delete" size={16} />
+          Delete
         </button>
       </div>
 

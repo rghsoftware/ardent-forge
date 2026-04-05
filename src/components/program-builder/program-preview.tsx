@@ -283,7 +283,6 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                             }
 
                             const groupedActivities = buildGroupedActivities(templateFull)
-                            if (groupedActivities.length === 0) return null
 
                             return (
                               <div key={session.clientId} className="flex flex-col gap-0">
@@ -295,40 +294,53 @@ export function ProgramPreview({ draft, open, onClose }: ProgramPreviewProps) {
                                   </div>
                                 </div>
 
-                                <div className="grid grid-cols-[1fr_auto_auto] gap-2 bg-surface-gunmetal px-2 py-1">
-                                  <span className="text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
-                                    EXERCISE
-                                  </span>
-                                  <span className="text-right text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
-                                    SETS x REPS
-                                  </span>
-                                  <span className="w-20 text-right text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
-                                    LOAD
-                                  </span>
-                                </div>
-
-                                {groupedActivities.map((activity, actIdx) => (
-                                  <div
-                                    key={`${session.clientId}-${actIdx}`}
-                                    className={`grid grid-cols-[1fr_auto_auto] gap-2 px-2 py-1.5 ${
-                                      actIdx % 2 === 0 ? 'bg-surface-steel' : 'bg-surface-charcoal'
-                                    }`}
-                                  >
-                                    <span className="text-xs text-bone-white">
-                                      {exerciseMap.get(activity.exerciseId) ?? 'Unknown Exercise'}
-                                    </span>
-                                    <span className="text-right font-display text-xs text-bone-white">
-                                      {formatSetsReps(activity.setScheme)}
-                                    </span>
-                                    <span className="w-20 text-right font-display text-xs text-bone-white">
-                                      {formatLoad(
-                                        activity.setScheme,
-                                        exerciseMaxes,
-                                        activity.exerciseId,
-                                      )}
+                                {groupedActivities.length === 0 ? (
+                                  <div className="bg-surface-gunmetal px-2 py-1.5">
+                                    <span className="text-[10px] text-warm-ash/40">
+                                      No exercises assigned
                                     </span>
                                   </div>
-                                ))}
+                                ) : (
+                                  <>
+                                    <div className="grid grid-cols-[1fr_auto_auto] gap-2 bg-surface-gunmetal px-2 py-1">
+                                      <span className="text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
+                                        EXERCISE
+                                      </span>
+                                      <span className="text-right text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
+                                        SETS x REPS
+                                      </span>
+                                      <span className="w-20 text-right text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
+                                        LOAD
+                                      </span>
+                                    </div>
+
+                                    {groupedActivities.map((activity, actIdx) => (
+                                      <div
+                                        key={`${session.clientId}-${actIdx}`}
+                                        className={`grid grid-cols-[1fr_auto_auto] gap-2 px-2 py-1.5 ${
+                                          actIdx % 2 === 0
+                                            ? 'bg-surface-steel'
+                                            : 'bg-surface-charcoal'
+                                        }`}
+                                      >
+                                        <span className="text-xs text-bone-white">
+                                          {exerciseMap.get(activity.exerciseId) ??
+                                            'Unknown Exercise'}
+                                        </span>
+                                        <span className="text-right font-display text-xs text-bone-white">
+                                          {formatSetsReps(activity.setScheme)}
+                                        </span>
+                                        <span className="w-20 text-right font-display text-xs text-bone-white">
+                                          {formatLoad(
+                                            activity.setScheme,
+                                            exerciseMaxes,
+                                            activity.exerciseId,
+                                          )}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </>
+                                )}
                               </div>
                             )
                           })}
