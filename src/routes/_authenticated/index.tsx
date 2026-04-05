@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/lib/auth'
 import { useWorkoutLogs } from '@/hooks/use-workout-logs'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
@@ -8,6 +8,10 @@ import { CrashRecoveryDialog } from '@/components/workout/crash-recovery-dialog'
 import { ProgramSessionCard } from '@/components/today/program-session-card'
 import { EventCountdownBadge } from '@/components/event-builder/event-countdown-badge'
 import { GhostSessionPreview } from '@/components/shared/ghost-session-preview'
+import { WelcomeCard } from '@/components/onboarding/welcome-card'
+import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
+import { useOnboarding } from '@/hooks/use-onboarding'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useNextUpcomingEvent } from '@/hooks/use-event-items'
@@ -75,8 +79,15 @@ function TodayPage() {
   const { startWorkout, startProgrammedWorkout, isStarting } = useActiveWorkout()
   const userId = user?.id ?? ''
 
+  const { markRouteVisited } = useOnboarding()
+  const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
+
   const { data: recentWorkouts = [], isError: isWorkoutsError } = useWorkoutLogs(userId, 5)
   const [startError, setStartError] = useState<string | null>(null)
+
+  useEffect(() => {
+    markRouteVisited('/')
+  }, [markRouteVisited])
 
   // Active program context
   const {
@@ -197,6 +208,15 @@ function TodayPage() {
           </div>
         )}
 
+        {/* First workout celebration hint */}
+        {firstWorkoutCompleted && (
+          <div className="pt-6">
+            <OnboardingHint hintKey="workout-complete-celebration">
+              First session logged. Your history and analytics are now building.
+            </OnboardingHint>
+          </div>
+        )}
+
         {/* Two-column grid at md+ when there are recent sessions to show in the right column.
            When no recent sessions exist, no grid wrapper is needed -- the left column
            fills the single-column layout naturally. */}
@@ -238,6 +258,7 @@ function TodayPage() {
             {/* Empty state -- only show when no program and no history */}
             {completedWorkouts.length === 0 && !hasActiveProgram && !isProgramLoading && (
               <div className="flex flex-1 flex-col gap-8 pt-6">
+                <WelcomeCard />
                 <GhostSessionPreview />
 
                 <div className="flex flex-col gap-2 text-center px-6">

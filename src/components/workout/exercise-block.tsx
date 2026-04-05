@@ -1,4 +1,6 @@
 import { SetRow } from '@/components/workout/set-row'
+import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 import type { SetType } from '@/domain/types'
 
 interface SetRowData {
@@ -32,7 +34,9 @@ export function ExerciseBlock({
   onConfirmSet,
   isConfirming = false,
 }: ExerciseBlockProps) {
+  const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
   const hasPrescribed = sets.some((s) => s.prescribedWeight != null || s.prescribedReps != null)
+  const noSetsConfirmed = !firstWorkoutCompleted && sets.every((s) => !s.confirmed)
 
   return (
     <section className="bg-surface-iron" aria-label={`${exerciseName} exercise`}>
@@ -72,6 +76,13 @@ export function ExerciseBlock({
             STATUS
           </span>
         </div>
+      )}
+
+      {/* First-set onboarding hint */}
+      {noSetsConfirmed && (
+        <OnboardingHint hintKey="workout-first-set" position="above" className="mx-4">
+          Enter weight and reps, then confirm your set.
+        </OnboardingHint>
       )}
 
       {/* Set rows */}

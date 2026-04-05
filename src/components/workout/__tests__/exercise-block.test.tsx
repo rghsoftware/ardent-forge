@@ -2,6 +2,15 @@
 import { render, screen } from '@testing-library/react'
 import { ExerciseBlock, type SetRowData } from '@/components/workout/exercise-block'
 
+// Mock onboarding store to avoid AuthProvider dependency
+vi.mock('@/stores/onboarding-store', () => ({
+  useOnboardingStore: () => false,
+}))
+
+vi.mock('@/components/onboarding/onboarding-hint', () => ({
+  OnboardingHint: () => null,
+}))
+
 // Mock SetRow to isolate ExerciseBlock logic
 vi.mock('@/components/workout/set-row', () => ({
   SetRow: ({

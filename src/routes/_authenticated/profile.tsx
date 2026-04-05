@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth'
 import { useUserProfile, useUpdateUserProfile } from '@/hooks/use-user-profile'
+import { useOnboarding } from '@/hooks/use-onboarding'
 import { Button } from '@/components/ui/button'
 import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -21,6 +23,7 @@ function ProfilePage() {
   const userId = auth.user?.id ?? ''
   const { data: profile, isLoading, isError } = useUserProfile(userId)
   const updateProfile = useUpdateUserProfile()
+  const { resetOnboarding } = useOnboarding()
 
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [bodyweight, setBodyweight] = useState<string | null>(null)
@@ -121,6 +124,16 @@ function ProfilePage() {
           <Icon name="person" size={24} className="text-warm-ash" />
           <h1 className="font-display text-2xl font-medium text-bone-white">Profile</h1>
         </div>
+
+        {/* First-visit hint: show when display name is not yet set */}
+        {profile && !profile.displayName && (
+          <div className="mb-4 flex items-start gap-3 bg-surface-iron px-4 py-3">
+            <Icon name="info" size={20} className="mt-0.5 shrink-0 text-ember" />
+            <p className="text-xs leading-relaxed text-warm-ash">
+              Set your display name and preferred units below to personalize your experience.
+            </p>
+          </div>
+        )}
 
         {/* Responsive grid: 1 col mobile, 2 col md, 3 col lg */}
         <div className="flex flex-col md:grid md:grid-cols-2 md:gap-8 lg:grid-cols-3 lg:gap-10">
@@ -280,7 +293,7 @@ function ProfilePage() {
             </section>
           </div>
 
-          {/* Column 3: Notifications */}
+          {/* Column 3: Notifications + Onboarding */}
           <div>
             {/* NOTIFICATIONS section */}
             <section className="pb-8">
@@ -290,6 +303,31 @@ function ProfilePage() {
                 </h2>
               </div>
               <NotificationSettings />
+            </section>
+
+            {/* ONBOARDING section */}
+            <section className="pb-8">
+              <div className="border-t border-surface-steel pb-2 pt-4">
+                <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
+                  ONBOARDING
+                </h2>
+              </div>
+
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetOnboarding()
+                    toast("Onboarding reset. You'll see guided hints again.")
+                  }}
+                  className="min-h-[48px] px-0 font-sans text-sm text-warm-ash underline underline-offset-4 hover:text-bone-white"
+                >
+                  Reset onboarding hints
+                </button>
+                <p className="mt-1 text-[11px] leading-relaxed text-warm-ash/60">
+                  Re-enables the welcome card and all guided hints throughout the app.
+                </p>
+              </div>
             </section>
           </div>
         </div>

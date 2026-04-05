@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useAuth } from '@/lib/auth'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
@@ -9,7 +9,9 @@ import { ExerciseFilterBar } from '@/components/exercises/exercise-filter-bar'
 import { ExerciseListItem } from '@/components/exercises/exercise-list-item'
 import { CreateExerciseSheet } from '@/components/exercises/create-exercise-sheet'
 import { Icon } from '@/components/icon'
+import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useOnboarding } from '@/hooks/use-onboarding'
 import { Button } from '@/components/ui/button'
 
 export const Route = createFileRoute('/_authenticated/exercises/')({
@@ -37,6 +39,11 @@ function ExerciseListSkeleton() {
 function ExercisesPage() {
   const { user } = useAuth()
   const userId = user?.id
+  const { markRouteVisited } = useOnboarding()
+
+  useEffect(() => {
+    markRouteVisited('/exercises')
+  }, [markRouteVisited])
 
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<ExerciseCategory | undefined>()
@@ -144,10 +151,11 @@ function ExercisesPage() {
                 <ExerciseListItem key={exercise.id} exercise={exercise} />
               ))
             ) : (
-              <div className="flex flex-col items-center justify-center gap-4 px-4 py-16 text-center">
-                <Icon name="fitness_center" size={48} className="text-warm-ash/30" />
-                <p className="text-sm font-heading text-warm-ash">No exercises found</p>
-              </div>
+              <EmptyState
+                icon="fitness_center"
+                heading="No exercises found"
+                subtext="Exercises will appear here after your first workout, or create a custom exercise below."
+              />
             )}
           </>
         )}

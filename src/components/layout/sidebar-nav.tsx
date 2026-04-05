@@ -4,6 +4,7 @@ import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 import { useUnreadCounts } from '@/hooks/use-chat'
+import { useOnboarding } from '@/hooks/use-onboarding'
 
 // Large screen sidebar shows all destinations including Builder (not suitable for mobile)
 const navItems = [
@@ -16,6 +17,9 @@ const navItems = [
   { label: 'Connections', icon: 'person_add', to: '/connections' },
   { label: 'Comms', icon: 'chat', to: '/comms' },
 ] as const
+
+// Routes that should never show a discovery dot
+const SKIP_DISCOVERY_ROUTES = new Set(['/', '/comms'])
 
 // Uses first and last name only (skips middle names) for two-letter initials
 function getInitials(
@@ -41,6 +45,7 @@ export function SidebarNav() {
   const { user, isGuest, signOut } = useAuth()
   const { data: unreadMap } = useUnreadCounts()
   const totalUnread = unreadMap ? Array.from(unreadMap.values()).reduce((sum, n) => sum + n, 0) : 0
+  const { hasVisited } = useOnboarding()
 
   useEffect(() => {
     if (!menuOpen) return
@@ -121,6 +126,11 @@ export function SidebarNav() {
                 {totalUnread > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-ember rounded-full" />
                 )}
+              </span>
+            ) : !SKIP_DISCOVERY_ROUTES.has(item.to) && !hasVisited(item.to) ? (
+              <span className="relative shrink-0">
+                <Icon name={item.icon} size={20} />
+                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-ember/60" />
               </span>
             ) : (
               <Icon name={item.icon} size={20} className="shrink-0" />

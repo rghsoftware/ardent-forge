@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -47,6 +47,8 @@ import { useExercises, useRecentlyUsedExercises } from '@/hooks/use-exercises'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useAuth } from '@/lib/auth'
 import { toast } from 'sonner'
+import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
+import { useOnboarding } from '@/hooks/use-onboarding'
 import type { Program, ExerciseCategory, MuscleGroup, MovementPattern } from '@/domain/types'
 
 export const Route = createFileRoute('/_authenticated/library')({
@@ -59,6 +61,12 @@ function LibraryPage() {
   const { user } = useAuth()
   const userId = user?.id ?? ''
   const navigate = useNavigate()
+
+  const { markRouteVisited } = useOnboarding()
+
+  useEffect(() => {
+    markRouteVisited('/library')
+  }, [markRouteVisited])
 
   const [activeTab, setActiveTab] = useState<LibraryTab>('templates')
 
@@ -159,6 +167,13 @@ function LibraryPage() {
             New exercise
           </Button>
         )}
+      </div>
+
+      {/* Onboarding hint */}
+      <div className="mx-auto max-w-5xl px-4 md:px-6 lg:px-8">
+        <OnboardingHint hintKey="library-intro">
+          Your templates and programs live here. Create a session template to start building.
+        </OnboardingHint>
       </div>
 
       {/* Tab navigation */}
