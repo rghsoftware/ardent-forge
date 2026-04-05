@@ -2,6 +2,14 @@
 
 All notable changes to Ardent Forge are documented in this file.
 
+## [1.0.0-beta.4] - 2026-04-05
+
+### Improvements
+
+- Changed VERSION_CODE calculation to use timestamp for deterministic builds
+
+---
+
 ## [1.0.0-beta.3] - 2026-04-05
 
 ### Features
