@@ -269,6 +269,7 @@ const userProfileRowFull: UserProfileRow = {
     },
   },
   max_reps: { 'ex-pullup-001': 20 },
+  display_visible: null,
   created_at: now,
   updated_at: now,
 }
@@ -281,6 +282,7 @@ const userProfileRowNulls: UserProfileRow = {
   training_age: null,
   exercise_maxes: null,
   max_reps: null,
+  display_visible: null,
   created_at: now,
   updated_at: now,
 }
@@ -1517,6 +1519,7 @@ const sessionTemplateRowFull: SessionTemplateRow = {
   time_cap: JSON.stringify({ seconds: 3600 }),
   scoring: 'NONE',
   event_metadata: null,
+  last_assigned_at: null,
   created_at: now,
   updated_at: now,
 }
@@ -1531,6 +1534,7 @@ const sessionTemplateRowNulls: SessionTemplateRow = {
   time_cap: null,
   scoring: 'FOR_TIME',
   event_metadata: null,
+  last_assigned_at: null,
   created_at: now,
   updated_at: now,
 }
@@ -2429,7 +2433,11 @@ describe('Chat Mappers', () => {
     it('accepts all valid message types', () => {
       const validTypes = ['text', 'workout', 'media', 'file', 'system']
       for (const msgType of validTypes) {
-        const result = toMessage({ ...messageRowFull, message_type: msgType })
+        const row =
+          msgType === 'system'
+            ? { ...messageRowFull, message_type: msgType, sender_id: null }
+            : { ...messageRowFull, message_type: msgType }
+        const result = toMessage(row)
         expect(result.messageType).toBe(msgType)
       }
     })

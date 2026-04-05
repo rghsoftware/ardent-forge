@@ -29,9 +29,22 @@ export async function handler(req: Request): Promise<Response> {
       });
     }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("Missing required environment configuration");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
+      supabaseUrl,
+      supabaseAnonKey,
       { global: { headers: { Authorization: authHeader } } },
     );
 
@@ -49,7 +62,18 @@ export async function handler(req: Request): Promise<Response> {
     // -----------------------------------------------------------------------
     // 2. Validate request body
     // -----------------------------------------------------------------------
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
     const parsed = uploadUrlRequestSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -68,31 +92,29 @@ export async function handler(req: Request): Promise<Response> {
     const { maxDurationSeconds } = parsed.data;
 
     // -----------------------------------------------------------------------
-    // 3. Read Cloudflare credentials
+    // 3. Read Cloudflare credentials from Supabase Vault
     // -----------------------------------------------------------------------
-    const accountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID");
-    if (!accountId) {
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceRoleKey) {
+      console.error("Missing required environment configuration");
       return new Response(
-        JSON.stringify({ error: "Cloudflare account not configured" }),
+        JSON.stringify({ error: "Server configuration error" }),
         {
-          status: 502,
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
     }
 
-    // Read API token from Supabase Vault
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: secrets, error: vaultError } = await supabaseAdmin.rpc(
-      "get_secret",
-      { secret_name: "cloudflare_stream_api_token" },
-    );
-    if (vaultError || !secrets) {
-      console.error("Vault error:", vaultError);
+    const [accountIdResult, tokenResult] = await Promise.all([
+      supabaseAdmin.rpc("get_secret", { secret_name: "CF_ACCOUNT_ID" }),
+      supabaseAdmin.rpc("get_secret", { secret_name: "CF_STREAM_TOKEN" }),
+    ]);
+
+    if (accountIdResult.error || tokenResult.error) {
+      console.error("Vault error:", accountIdResult.error ?? tokenResult.error);
       return new Response(
         JSON.stringify({ error: "Failed to retrieve Cloudflare credentials" }),
         {
@@ -102,12 +124,11 @@ export async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // The vault RPC returns the decrypted secret value
-    const apiToken =
-      typeof secrets === "string" ? secrets : secrets?.decrypted_secret;
-    if (!apiToken) {
+    const accountId = accountIdResult.data as string | null;
+    const apiToken = tokenResult.data as string | null;
+    if (!accountId || !apiToken) {
       return new Response(
-        JSON.stringify({ error: "Cloudflare API token not found in vault" }),
+        JSON.stringify({ error: "Cloudflare credentials not found in vault" }),
         {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -150,9 +171,7 @@ export async function handler(req: Request): Promise<Response> {
     const cfData = await cfResponse.json();
     // Cloudflare returns the TUS URL in the response header "location" for
     // direct creator uploads, and the stream UID in the result.
-    const tusUrl =
-      cfResponse.headers.get("location") ??
-      cfResponse.headers.get("stream-media-id");
+    const tusUrl = cfResponse.headers.get("location");
     const assetId = cfData.result?.uid;
 
     if (!tusUrl || !assetId) {

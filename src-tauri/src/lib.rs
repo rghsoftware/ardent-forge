@@ -27,6 +27,9 @@ pub fn run() {
             )?;
             app.handle().plugin(tauri_plugin_notification::init())?;
             app.handle().plugin(tauri_plugin_deep_link::init())?;
+            app.handle().plugin(tauri_plugin_opener::init())?;
+            #[cfg(mobile)]
+            app.handle().plugin(tauri_plugin_barcode_scanner::init())?;
 
             // Initialize the SQLite database and store the pool in managed state
             let pool = tauri::async_runtime::block_on(db::init_db(app))
@@ -74,6 +77,7 @@ pub fn run() {
             commands::session_templates::create_session_template_full,
             commands::session_templates::update_session_template_full,
             commands::session_templates::delete_session_template,
+            commands::session_templates::touch_session_template_last_assigned,
             // Programs
             commands::programs::get_programs,
             commands::programs::get_program_full,
@@ -132,6 +136,7 @@ pub fn run() {
             commands::chat::create_conversation,
             commands::chat::get_conversations,
             commands::chat::get_conversation,
+            commands::chat::find_direct_conversation,
             commands::chat::send_message,
             commands::chat::get_messages,
             commands::chat::get_messages_since,

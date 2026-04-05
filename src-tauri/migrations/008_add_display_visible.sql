@@ -1,0 +1,1 @@
+ALTER TABLE user_profiles ADD COLUMN display_visible INTEGER NOT NULL DEFAULT 1;

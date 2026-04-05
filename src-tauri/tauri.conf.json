@@ -1,18 +1,18 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "ardent-forge",
-  "version": "0.8.0",
+  "productName": "Ardent Forge",
+  "version": "1.0.0-beta.2",
   "identifier": "com.rghsoftware.ardentforge",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "bun dev",
-    "beforeBuildCommand": "bun build"
+    "beforeDevCommand": "bun run dev",
+    "beforeBuildCommand": "bun run build"
   },
   "app": {
     "windows": [
       {
-        "title": "ardent-forge",
+        "title": "Ardent Forge",
         "width": 800,
         "height": 600,
         "resizable": true,
@@ -36,10 +36,17 @@
   },
   "plugins": {
     "deep-link": {
+      "desktop": {
+        "schemes": ["ardentforge"]
+      },
       "mobile": [
         {
-          "scheme": "ardentforge",
+          "schemes": ["ardentforge"],
           "host": "auth"
+        },
+        {
+          "schemes": ["ardentforge"],
+          "host": "connect"
         }
       ]
     }

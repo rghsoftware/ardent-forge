@@ -1,11 +1,8 @@
-﻿import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from "fs";
+import { join } from "path";
 import { homedir } from "os";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const projectDir = join(__dirname, "..", "..");
+const projectDir = process.cwd();
 
 export interface TranscriptSummary {
   userRequests: string[];
@@ -23,6 +20,7 @@ interface BackupState {
   sessionId: string | null;
   currentBackupPath: string | null;
   lastUpdated: string | null;
+  lastBackupThreshold?: number | null;
 }
 
 function getStatePath(): string {
@@ -102,18 +100,18 @@ export function parseTranscript(transcriptPath: string): TranscriptSummary | nul
 }
 
 export function formatMarkdown(summary: TranscriptSummary, trigger: string, sessionId: string, contextPct?: number): string {
-  const lines: string[] = [# Session Backup, "", **Session ID:** , **Trigger:** ];
-  if (contextPct !== undefined) lines.push(**Context Remaining:** %);
-  lines.push(**Generated:** );
-  if (summary.sessionStart) lines.push(**Session Start:** );
+  const lines: string[] = [`# Session Backup`, "", `**Session ID:** ${sessionId}`, `**Trigger:** ${trigger}`];
+  if (contextPct !== undefined) lines.push(`**Context Remaining:** ${contextPct}%`);
+  lines.push(`**Generated:** ${new Date().toISOString()}`);
+  if (summary.sessionStart) lines.push(`**Session Start:** ${summary.sessionStart}`);
   lines.push("");
 
-  if (summary.userRequests.length) { lines.push("## User Requests"); summary.userRequests.forEach((r) => lines.push(- )); lines.push(""); }
-  if (summary.filesModified.length) { lines.push("## Files Modified"); summary.filesModified.forEach((f) => lines.push(- C:\Users\rhamilton\workspace\cortex\hooks\context-recovery\backup-core.ts)); lines.push(""); }
-  if (summary.tasksCreated.length) { lines.push("## Tasks Created"); summary.tasksCreated.forEach((t) => lines.push(- ****)); lines.push(""); }
-  if (summary.tasksCompleted.length) { lines.push(## Tasks Completed: ); lines.push(""); }
-  if (summary.subAgentCalls.length) { lines.push("## Sub-Agents Invoked"); summary.subAgentCalls.forEach((c) => lines.push(- ****: )); lines.push(""); }
-  if (summary.skillsLoaded.length) { lines.push("## Skills Loaded"); summary.skillsLoaded.forEach((s) => lines.push(- )); lines.push(""); }
+  if (summary.userRequests.length) { lines.push("## User Requests"); summary.userRequests.forEach((r) => lines.push(`- ${r}`)); lines.push(""); }
+  if (summary.filesModified.length) { lines.push("## Files Modified"); summary.filesModified.forEach((f) => lines.push(`- \`${f}\``)); lines.push(""); }
+  if (summary.tasksCreated.length) { lines.push("## Tasks Created"); summary.tasksCreated.forEach((t) => lines.push(`- **${t.subject}**: ${t.description}`)); lines.push(""); }
+  if (summary.tasksCompleted.length) { lines.push(`## Tasks Completed: ${summary.tasksCompleted.length}`); lines.push(""); }
+  if (summary.subAgentCalls.length) { lines.push("## Sub-Agents Invoked"); summary.subAgentCalls.forEach((c) => lines.push(`- **${c.agent}**: ${c.description}`)); lines.push(""); }
+  if (summary.skillsLoaded.length) { lines.push("## Skills Loaded"); summary.skillsLoaded.forEach((s) => lines.push(`- ${s}`)); lines.push(""); }
 
   // Include .cortex/session.md content if it exists
   const sessionFile = join(projectDir, ".cortex", "session.md");
@@ -133,7 +131,7 @@ export function formatMarkdown(summary: TranscriptSummary, trigger: string, sess
         if (existsSync(stepsPath)) {
           const content = readFileSync(stepsPath, "utf-8");
           if (content.includes("In progress")) {
-            lines.push(## Active Steps.md: );
+            lines.push(`## Active Steps.md: ${feat}`);
             const progressMatch = content.match(/## Progress[\s\S]*?(?=\n## )/);
             if (progressMatch) lines.push(progressMatch[0]);
             lines.push("");
@@ -157,7 +155,7 @@ function friendlyDate(d: Date): string {
   const day = d.getDate();
   let h = d.getHours(); const m = d.getMinutes().toString().padStart(2, "0");
   const ampm = h >= 12 ? "pm" : "am"; h = h % 12 || 12;
-  return ${day}----;
+  return `${months[d.getMonth()]} ${day}${getOrdinal(day)} ${h}:${m}${ampm}`;
 }
 
 export function saveBackup(markdown: string, existingPath?: string | null): { fullPath: string; relativePath: string } | null {
@@ -173,9 +171,9 @@ export function saveBackup(markdown: string, existingPath?: string | null): { fu
     const existing = existsSync(backupDir) ? readdirSync(backupDir).filter((f) => f.endsWith(".md") && /^\d+-/.test(f)) : [];
     const nums = existing.map((f) => parseInt(f.match(/^(\d+)-/)?.[1] ?? "0", 10));
     const next = nums.length ? Math.max(...nums) + 1 : 1;
-    const name = ${next}-backup-.md;
+    const name = `${next}-backup-${friendlyDate(new Date())}.md`;
     const fullPath = join(backupDir, name);
-    const relativePath = .cortex/backups/;
+    const relativePath = `.cortex/backups/${name}`;
 
     writeFileSync(fullPath, markdown);
     return { fullPath, relativePath };
@@ -187,7 +185,7 @@ export function findTranscript(sessionId: string): string | null {
     const claudeDir = join(homedir(), ".claude", "projects");
     if (!existsSync(claudeDir)) return null;
     for (const dir of readdirSync(claudeDir)) {
-      const p = join(claudeDir, dir, ${sessionId}.jsonl);
+      const p = join(claudeDir, dir, `${sessionId}.jsonl`);
       if (existsSync(p)) return p;
     }
     return null;

@@ -24,7 +24,7 @@ export type MediaStatus = z.infer<typeof mediaStatusSchema>
 
 // ---------------------------------------------------------------------------
 // MediaAttachment -- metadata for a media file attached to a message
-// Stores only metadata; binary data lives in the provider (CH-6, TA-12).
+// Stores only metadata; binary data lives in the external provider.
 // ---------------------------------------------------------------------------
 
 export const mediaAttachmentSchema = syncableEntitySchema.extend({
@@ -34,10 +34,10 @@ export const mediaAttachmentSchema = syncableEntitySchema.extend({
   mediaType: mediaTypeSchema,
   originalFilename: z.string().optional(),
   mimeType: z.string().optional(),
-  thumbnailUrl: z.url().optional(),
-  playbackUrl: z.url().optional(),
-  durationSeconds: z.number().int().optional(),
-  fileSizeBytes: z.number().int().optional(),
+  thumbnailUrl: z.string().url().optional(),
+  playbackUrl: z.string().url().optional(),
+  durationSeconds: z.number().int().nonnegative().optional(),
+  fileSizeBytes: z.number().int().nonnegative().optional(),
   status: mediaStatusSchema,
 })
 export type MediaAttachment = z.infer<typeof mediaAttachmentSchema>

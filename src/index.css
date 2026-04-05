@@ -227,6 +227,23 @@
     letter-spacing: 0.05em;
   }
 
+  /* Label large - medium-weight heading font for prominent labels */
+  .text-label-large {
+    font-family: var(--font-heading);
+    font-size: 0.875rem; /* 14px */
+    line-height: 1.25rem; /* 20px */
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  /* Body small - compact body text for secondary content */
+  .text-body-small {
+    font-family: var(--font-body);
+    font-size: 0.75rem; /* 12px */
+    line-height: 1rem; /* 16px */
+    font-weight: 400;
+  }
+
   /* Ghost border - accessibility-only subtle separator */
   .ghost-border {
     border-color: rgba(91, 64, 57, 0.15);
@@ -266,6 +283,30 @@
     }
   }
 
+  /* Block/week entrance -- slides up from below with fade for newly added blocks and weeks */
+  @keyframes block-enter {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Session slot fill -- subtle scale-up with fade when a session is assigned to an empty slot */
+  @keyframes slot-fill {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   /* Rest timer glow overlay -- duration controlled dynamically in rest-timer-overlay.tsx */
   @keyframes ember-pulse {
     0%,
@@ -275,5 +316,22 @@
     50% {
       filter: brightness(1.8);
     }
+  }
+
+  /* Session type tints -- subtle background coding for week grid slots */
+  .session-tint-strength {
+    background-color: rgba(255, 181, 156, 0.06);
+  }
+  .session-tint-conditioning {
+    background-color: rgba(177, 202, 215, 0.06);
+  }
+  .session-tint-se {
+    background-color: rgba(134, 207, 255, 0.06);
+  }
+  .session-tint-mixed {
+    background-color: rgba(228, 226, 225, 0.04);
+  }
+  .session-tint-event {
+    background-color: rgba(251, 92, 28, 0.08);
   }
 }

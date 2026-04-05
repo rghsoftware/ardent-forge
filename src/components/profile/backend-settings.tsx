@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { isTauri, invoke } from '@tauri-apps/api/core'
+import { QRCodeSVG } from 'qrcode.react'
+import { toast } from 'sonner'
 import { getConfigStore } from '@/lib/config-store'
+import { usePendingConnect } from '@/lib/pending-connect'
 import type { BackendConfig } from '@/lib/config-store'
 import { validateConnection } from '@/lib/connection-validator'
 import type { ConnectionUiStatus } from '@/lib/connection-validator'
 import { resetSupabaseClient, initSupabaseFromConfig } from '@/lib/supabase'
 import { resetAdapter } from '@/lib/adapter'
+import { buildInviteLink } from '@/lib/invite-link'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
@@ -23,10 +27,13 @@ export function BackendSettings() {
   const router = useRouter()
   const { signOut } = useAuth()
 
-  const [currentUrl, setCurrentUrl] = useState<string | null>(null)
-  const [editing, setEditing] = useState(false)
-  const [url, setUrl] = useState('')
-  const [key, setKey] = useState('')
+  // Read pending connect state once at initialization to pre-populate the form.
+  const initialPending = useRef(usePendingConnect.getState().pending)
+
+  const [currentConfig, setCurrentConfig] = useState<BackendConfig | null>(null)
+  const [editing, setEditing] = useState(() => !!initialPending.current)
+  const [url, setUrl] = useState(() => initialPending.current?.url ?? '')
+  const [key, setKey] = useState(() => initialPending.current?.key ?? '')
   const [status, setStatus] = useState<ConnectionUiStatus>('idle')
   const [message, setMessage] = useState('')
   const [copied, setCopied] = useState(false)
@@ -36,13 +43,19 @@ export function BackendSettings() {
     getConfigStore()
       .getConfig()
       .then((config) => {
-        if (config) setCurrentUrl(config.supabaseUrl)
+        if (config) setCurrentConfig(config)
       })
       .catch((err) => {
         console.error('[backend-settings] Failed to load config:', err)
       })
+
+    // Clear the consumed pending connect state after mount
+    if (initialPending.current) {
+      usePendingConnect.getState().clear()
+    }
   }, [])
 
+  const currentUrl = currentConfig?.supabaseUrl ?? null
   const truncatedUrl =
     currentUrl && currentUrl.length > 30 ? currentUrl.slice(0, 30) + '...' : currentUrl
 
@@ -50,11 +63,12 @@ export function BackendSettings() {
     if (!currentUrl) return
     try {
       await navigator.clipboard.writeText(currentUrl)
-    } catch {
-      // Copy is non-critical, swallow silently
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('[backend-settings] Failed to copy URL:', err)
+      toast('Failed to copy URL')
     }
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   const applyBackendChange = async (skipValidation = false) => {
@@ -254,6 +268,51 @@ export function BackendSettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Share this server */}
+      {currentConfig && !editing && (
+        <div className="space-y-4 pt-4">
+          <div className="border-t border-surface-steel pb-2 pt-4">
+            <h3 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
+              Share this server
+            </h3>
+          </div>
+
+          <div className="flex flex-col items-center rounded-lg bg-surface-iron p-6">
+            <QRCodeSVG
+              value={buildInviteLink(currentConfig.supabaseUrl, currentConfig.supabaseKey)}
+              size={256}
+              level="M"
+              marginSize={4}
+              fgColor="#e5e2e1"
+              bgColor="#201f1f"
+              title="Scan to connect to this Ardent Forge server"
+            />
+          </div>
+
+          <Button
+            variant="outline"
+            className="min-h-[48px] w-full border-surface-steel text-warm-ash hover:bg-surface-gunmetal"
+            onClick={async () => {
+              const link = buildInviteLink(currentConfig.supabaseUrl, currentConfig.supabaseKey)
+              try {
+                await navigator.clipboard.writeText(link)
+                toast('Invite link copied')
+              } catch (err) {
+                console.error('[backend-settings] Failed to copy invite link:', err)
+                toast('Failed to copy invite link')
+              }
+            }}
+          >
+            Copy invite link
+          </Button>
+
+          <p className="text-sm text-warm-ash/70">
+            Share this with anyone who wants to connect to this server. They will still need to
+            create an account.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

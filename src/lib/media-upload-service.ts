@@ -6,7 +6,7 @@ import { MEDIA_CONSTRAINTS, extractExtension } from '@/lib/media-constraints'
 
 // ---------------------------------------------------------------------------
 // UploadResult -- discriminated union on mediaType
-// Consumed by useMediaUpload (S010) and other hooks.
+// Consumed by useMediaUpload and other hooks.
 // ---------------------------------------------------------------------------
 
 interface UploadResultBase {
@@ -25,11 +25,13 @@ export interface VideoUploadResult extends UploadResultBase {
 export interface ImageUploadResult extends UploadResultBase {
   mediaType: 'image'
   status: 'ready'
+  playbackUrl?: string
 }
 
 export interface FileUploadResult extends UploadResultBase {
   mediaType: 'file'
   status: 'ready'
+  downloadUrl?: string
 }
 
 export type UploadResult = VideoUploadResult | ImageUploadResult | FileUploadResult
@@ -113,6 +115,15 @@ export class MediaUploadService {
 
     if (error) throw new Error(`Image upload failed: ${error.message}`)
 
+    // Generate a signed URL so the image can be displayed in chat
+    const { data: signedUrlData, error: signedUrlError } = await client.storage
+      .from('chat-images')
+      .createSignedUrl(path, 60 * 60) // 1 hour TTL
+
+    if (signedUrlError) {
+      console.error('Failed to generate signed URL for image:', signedUrlError)
+    }
+
     onProgress(1)
 
     return {
@@ -123,6 +134,7 @@ export class MediaUploadService {
       fileSizeBytes: file.size,
       originalFilename: file.name,
       mimeType: file.type,
+      ...(signedUrlData?.signedUrl ? { playbackUrl: signedUrlData.signedUrl } : {}),
     }
   }
 
@@ -148,6 +160,15 @@ export class MediaUploadService {
 
     if (error) throw new Error(`File upload failed: ${error.message}`)
 
+    // Generate a signed URL so the file can be downloaded in chat
+    const { data: signedUrlData, error: signedUrlError } = await client.storage
+      .from('chat-files')
+      .createSignedUrl(path, 60 * 60) // 1 hour TTL
+
+    if (signedUrlError) {
+      console.error('Failed to generate signed URL for file:', signedUrlError)
+    }
+
     onProgress(1)
 
     return {
@@ -158,6 +179,7 @@ export class MediaUploadService {
       fileSizeBytes: file.size,
       originalFilename: file.name,
       mimeType: file.type,
+      ...(signedUrlData?.signedUrl ? { downloadUrl: signedUrlData.signedUrl } : {}),
     }
   }
 
@@ -169,7 +191,7 @@ export class MediaUploadService {
     // Only TUS video uploads support true abort; Supabase Storage uploads
     // cannot be cancelled mid-flight.
     if (this.activeUpload) {
-      this.activeUpload.abort(true).catch(() => {})
+      this.activeUpload.abort(true).catch((err) => console.error('[media-upload] TUS abort failed:', err))
       this.activeUpload = null
     }
   }

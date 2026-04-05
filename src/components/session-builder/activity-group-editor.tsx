@@ -1,16 +1,21 @@
 import { Button } from '@/components/ui/button'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Icon } from '@/components/icon'
+import { HelpTrigger } from '@/components/ui/help-trigger'
+import { GROUP_TYPE_HELP } from '@/components/builders/help-content'
+import { GROUP_FIELD_VISIBILITY } from '@/components/builders/visibility-maps'
 import { ActivityEditor, type ActivityData } from './activity-editor'
 import { DurationInputCompact } from './duration-input-compact'
 import { defaultScheme } from './set-scheme-defaults'
-import type { GroupType, Duration, Exercise } from '@/domain/types'
+import type { GroupType, Duration, Exercise, SessionType } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface ActivityGroupData {
-  groupType: GroupType
+  clientId: string
+  groupType: GroupType | null
   ordinal: number
   rounds?: number
   restBetweenRounds?: Duration
@@ -21,6 +26,9 @@ export interface ActivityGroupData {
 interface ActivityGroupEditorProps {
   group: ActivityGroupData
   exercises: Exercise[]
+  sessionCategory: SessionType
+  showAllSchemeTypes: boolean
+  onShowAllSchemeTypesChange: (v: boolean) => void
   onChange: (updated: ActivityGroupData) => void
   onDelete: () => void
 }
@@ -39,7 +47,20 @@ const GROUP_TYPES: Array<{ value: GroupType; label: string }> = [
   { value: 'COUPLET', label: 'COUPLET' },
 ]
 
-const GROUP_TYPES_WITH_ROUNDS: GroupType[] = ['CIRCUIT', 'AMRAP', 'COUPLET']
+// ---------------------------------------------------------------------------
+// Help content for group types
+// ---------------------------------------------------------------------------
+
+const groupTypeHelpContent = (
+  <div className="flex flex-col gap-2">
+    {Object.values(GROUP_TYPE_HELP).map((item) => (
+      <div key={item.label}>
+        <span className="font-medium text-bone-white">{item.label}</span>
+        <p className="mt-0.5">{item.description}</p>
+      </div>
+    ))}
+  </div>
+)
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -48,13 +69,36 @@ const GROUP_TYPES_WITH_ROUNDS: GroupType[] = ['CIRCUIT', 'AMRAP', 'COUPLET']
 export function ActivityGroupEditor({
   group,
   exercises,
+  sessionCategory,
+  showAllSchemeTypes,
+  onShowAllSchemeTypesChange,
   onChange,
   onDelete,
 }: ActivityGroupEditorProps) {
-  const showRounds = GROUP_TYPES_WITH_ROUNDS.includes(group.groupType)
+  const isStage1 = group.groupType === null
+  const visibility = group.groupType ? GROUP_FIELD_VISIBILITY[group.groupType] : null
+
+  const handleTypeChange = (value: string) => {
+    if (!value) return
+    const newType = value as GroupType
+
+    // Changing type in Stage 2: reset rest/rounds fields, preserve exercises
+    if (group.groupType !== null) {
+      onChange({
+        ...group,
+        groupType: newType,
+        rounds: undefined,
+        restBetweenRounds: undefined,
+        restBetweenActivities: undefined,
+      })
+    } else {
+      onChange({ ...group, groupType: newType })
+    }
+  }
 
   const handleAddActivity = () => {
     const newActivity: ActivityData = {
+      clientId: crypto.randomUUID(),
       exerciseId: null,
       setScheme: defaultScheme('fixedSets'),
       ordinal: group.activities.length + 1,
@@ -84,22 +128,24 @@ export function ActivityGroupEditor({
         </span>
 
         {/* Group type selector */}
-        <div className="flex flex-1 flex-wrap gap-1">
+        <ToggleGroup
+          type="single"
+          value={group.groupType ?? ''}
+          onValueChange={handleTypeChange}
+          className="flex flex-1 flex-wrap gap-1"
+        >
           {GROUP_TYPES.map((gt) => (
-            <button
+            <ToggleGroupItem
               key={gt.value}
-              type="button"
-              onClick={() => onChange({ ...group, groupType: gt.value })}
-              className={`min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
-                group.groupType === gt.value
-                  ? 'bg-forge text-on-forge'
-                  : 'bg-surface-steel text-bone-white hover:bg-surface-slag'
-              }`}
+              value={gt.value}
+              className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
             >
               {gt.label}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
+
+        <HelpTrigger title="Group types" content={groupTypeHelpContent} />
 
         <button
           type="button"
@@ -111,68 +157,84 @@ export function ActivityGroupEditor({
         </button>
       </div>
 
-      {/* Group settings row */}
-      <div className="flex flex-wrap gap-4 px-4 pb-3">
-        {showRounds && (
-          <div className="flex flex-col gap-1">
-            <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-              ROUNDS
-            </span>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={group.rounds ?? ''}
-              onChange={(e) => {
-                const v = parseInt(e.target.value)
-                onChange({ ...group, rounds: isNaN(v) ? undefined : v })
-              }}
-              placeholder="--"
-              min={1}
-              className="min-h-10 w-16 border-0 border-b border-warm-ash/30 bg-transparent py-1 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
-              aria-label="Rounds"
-            />
+      {/* Stage 2: group settings and exercises (only after type is selected) */}
+      {!isStage1 && visibility && (
+        <>
+          {/* Group settings row */}
+          {(visibility.rounds ||
+            visibility.restBetweenRounds ||
+            visibility.restBetweenActivities) && (
+            <div className="flex flex-wrap gap-4 px-4 pb-3">
+              {visibility.rounds && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+                    ROUNDS
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={group.rounds ?? ''}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value)
+                      onChange({ ...group, rounds: isNaN(v) ? undefined : v })
+                    }}
+                    placeholder="--"
+                    min={1}
+                    className="min-h-10 w-16 border-0 border-b border-warm-ash/30 bg-transparent py-1 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
+                    aria-label="Rounds"
+                  />
+                </div>
+              )}
+
+              {visibility.restBetweenRounds && (
+                <DurationInputCompact
+                  value={group.restBetweenRounds}
+                  onChange={(d) => onChange({ ...group, restBetweenRounds: d })}
+                  label="REST / ROUNDS"
+                />
+              )}
+
+              {visibility.restBetweenActivities && (
+                <DurationInputCompact
+                  value={group.restBetweenActivities}
+                  onChange={(d) => onChange({ ...group, restBetweenActivities: d })}
+                  label="REST / EXERCISES"
+                />
+              )}
+            </div>
+          )}
+
+          {/* Activities */}
+          <div className="flex flex-col gap-2 px-2 pb-2">
+            {group.activities.map((activity, index) => (
+              <ActivityEditor
+                key={activity.clientId}
+                activity={activity}
+                exercises={exercises}
+                sessionCategory={sessionCategory}
+                showAllSchemeTypes={showAllSchemeTypes}
+                onShowAllSchemeTypesChange={onShowAllSchemeTypesChange}
+                onChange={(updated) => handleUpdateActivity(index, updated)}
+                onDelete={() => handleDeleteActivity(index)}
+              />
+            ))}
           </div>
-        )}
 
-        <DurationInputCompact
-          value={group.restBetweenRounds}
-          onChange={(d) => onChange({ ...group, restBetweenRounds: d })}
-          label="REST / ROUNDS"
-        />
-
-        <DurationInputCompact
-          value={group.restBetweenActivities}
-          onChange={(d) => onChange({ ...group, restBetweenActivities: d })}
-          label="REST / EXERCISES"
-        />
-      </div>
-
-      {/* Activities */}
-      <div className="flex flex-col gap-2 px-2 pb-2">
-        {group.activities.map((activity, index) => (
-          <ActivityEditor
-            key={index}
-            activity={activity}
-            exercises={exercises}
-            onChange={(updated) => handleUpdateActivity(index, updated)}
-            onDelete={() => handleDeleteActivity(index)}
-          />
-        ))}
-      </div>
-
-      {/* Add exercise button */}
-      <div className="px-4 pb-4">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={handleAddActivity}
-          className="w-full text-xs"
-        >
-          <Icon name="add" size={16} />
-          Add exercise
-        </Button>
-      </div>
+          {/* Add exercise button */}
+          <div className="px-4 pb-4">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={handleAddActivity}
+              className="w-full text-xs"
+            >
+              <Icon name="add" size={16} />
+              Select exercise
+            </Button>
+          </div>
+        </>
+      )}
     </section>
   )
 }

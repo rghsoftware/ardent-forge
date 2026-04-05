@@ -2,6 +2,43 @@
 
 All notable changes to Ardent Forge are documented in this file.
 
+## [1.0.0-beta.2] - 2026-04-04
+
+### Features
+
+- **Display system** -- gym TV display with board view, focused exercise view, and idle mode with Edge Function broadcast (#59, #60, #62)
+- **Discovery and onboarding** -- server URL discovery flow, QR code generation and scanning for device setup (#63, #64)
+- **Deep links** -- handle `ardentforge://connect` deep links for streamlined device pairing (#66)
+- **Android CI/CD** -- GitHub Actions pipeline for Android builds, signing, and Play Store deployment (#67)
+- **Progressive disclosure** -- contextual help and progressive disclosure in builders (Step 14.5)
+- **Program builder** -- responsive week grid layout for program builder UI (#58)
+- **Link previews** -- OG tags, Twitter Cards, and useMetadata hook for rich link previews (#53)
+- **Edge functions** -- Cloudflare video edge functions with Vault secrets and local JWT signing
+
+### Improvements
+
+- Updated app icons and branding assets
+- Chrome Custom Tabs for Google OAuth on Android
+- TauriAdapter unit tests and error kind sync
+- Chat domain type tests and IPC failure logging
+- Reviewer account seed script for Supabase
+- Batch enhancement issues cleanup (#71)
+
+### Bug Fixes
+
+- Chat Zod refinements in mappers and participant DELETE trigger
+- JSONB columns already parsed by Supabase PostgREST (#70)
+- Sync pull path HTTP status check and empty update_set guard (#70)
+- CI: upgrade supabase/setup-cli to v2 and pin CLI to v2.84.4
+- Invalid cron key in Supabase config.toml
+- RLS infinite recursion on group_members and conversation_participants (#56)
+- PKCE flow for OAuth sign-in (#55) and code race condition on callback (#54)
+- Display QA findings from PR review (#61)
+- Migration rename and auto-recreate DB on checksum mismatch
+- Event metadata column comment formatting
+
+---
+
 ## [0.8.0] - 2026-04-03
 
 ### Features

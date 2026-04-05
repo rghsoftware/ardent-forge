@@ -49,6 +49,7 @@ export function createMockAdapter(
     updateSessionTemplateFull: vi.fn().mockResolvedValue({}),
     deleteSessionTemplate: vi.fn().mockResolvedValue(undefined),
     cloneSessionTemplate: vi.fn().mockResolvedValue({}),
+    touchSessionTemplateLastAssigned: vi.fn().mockResolvedValue(undefined),
 
     // Event item operations
     getEventItems: vi.fn().mockResolvedValue([]),

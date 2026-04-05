@@ -20,6 +20,7 @@ export interface ExerciseRow {
 export interface UserProfileRow {
   id: string
   display_name: string | null
+  display_visible: boolean | null
   preferred_units: string
   bodyweight: unknown
   training_age: unknown
@@ -110,6 +111,7 @@ export interface SessionTemplateRow {
   time_cap: string | null
   scoring: string
   event_metadata: string | null
+  last_assigned_at: string | null
   created_at: string
   updated_at: string
 }

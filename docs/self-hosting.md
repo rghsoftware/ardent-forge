@@ -203,6 +203,28 @@ Then re-run `docker compose up -d` for a clean start.
 
 6. In the Supabase dashboard, go to Authentication > URL Configuration and add your deployed web app URL to the list of allowed redirect URLs.
 
+### Discovery Endpoint
+
+The discovery endpoint lets users connect to your instance by entering just the site URL in the app, instead of manually providing Supabase credentials. The app fetches `/.well-known/ardent-forge.json` automatically during setup.
+
+**Static host deployments** (Vercel, Netlify, Cloudflare Pages):
+
+Create a file at `public/.well-known/ardent-forge.json` in your project root:
+
+```json
+{
+  "version": "1",
+  "supabase_url": "https://<your-project-ref>.supabase.co",
+  "supabase_publishable_key": "<your-anon-key>"
+}
+```
+
+Replace `<your-project-ref>` and `<your-anon-key>` with the values from your Supabase dashboard (Settings > API). Your hosting provider will serve this file as a static asset alongside the rest of the build output.
+
+**Docker deployments**:
+
+The discovery endpoint is served automatically by Caddy using environment variables from your `.env` file. No manual setup is needed.
+
 ### Enabling Google OAuth
 
 **Docker path**: Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in your `.env` file. The auth container picks these up automatically and configures the redirect URI as `${SITE_URL}/auth/v1/callback`. In the Google Cloud Console, add that same URL as an authorized redirect URI for your OAuth client.
@@ -214,11 +236,10 @@ Then re-run `docker compose up -d` for a clean start.
 After deploying with either path:
 
 1. Open the Ardent Forge app.
-2. Go to Settings > Backend.
-3. Enter your Supabase URL and publishable (anon) key:
+2. On the setup screen, enter your server address (e.g., `forge.example.com`) and tap Connect. The app discovers the backend credentials automatically.
+3. If discovery is unavailable (e.g., the static hosting provider does not serve the discovery file), tap "Manual configuration" and enter the Supabase URL and publishable key directly:
    - **Docker path**: The Supabase URL is your `SITE_URL`. The anon key is the `ANON_KEY` value from your `.env` file.
    - **Supabase Cloud path**: Both values are in the Supabase dashboard under Settings > API.
-4. Save. The app validates the connection and then connects to your self-hosted instance.
 
 ## Architecture Overview
 
@@ -233,3 +254,40 @@ The Docker path runs a self-contained Supabase stack behind a Caddy reverse prox
 7. **Migration runner** is an init container that applies SQL migrations from the repository on startup, then exits. It uses the `SERVICE_ROLE_KEY` (which never leaves the Docker network) for DDL permissions.
 8. **Web app** is a multi-stage Docker build: the first stage runs `bun install && bun run build`, the second copies the static output into nginx. No Node.js runtime in production.
 9. **Supabase Studio** (optional) provides a web-based admin dashboard for inspecting and managing the database.
+
+## Remote Display
+
+The `/display` route provides a public, no-authentication TV display for gym environments. It shows a clock, today's scheduled sessions, and active workout progress.
+
+### Accessing the Display
+
+Navigate to `https://<your-domain>/display` on any browser (smart TV, tablet, etc.). No login is required.
+
+- **Default clock format:** 24-hour. Override with `?clock=12h` for 12-hour format.
+- **Example:** `https://your-app.example.com/display?clock=12h`
+
+### Edge Function: display-idle-snapshot
+
+The `display-idle-snapshot` Edge Function broadcasts scheduled session data to the display every 60 seconds. Without it, the display shows only a clock (no schedule information).
+
+The cron schedule is pre-configured in `supabase/config.toml`:
+
+```toml
+[functions.display-idle-snapshot]
+verify_jwt = false
+
+[functions.display-idle-snapshot.cron]
+schedule = "*/1 * * * *"
+```
+
+Deploy the function with:
+
+```bash
+bunx supabase functions deploy display-idle-snapshot
+```
+
+### Requirements
+
+- The Edge Function uses the `service_role` key (configured automatically via Supabase environment variables).
+- The `display-idle-snapshot` function must be deployed for schedule data to appear on the display.
+- No additional database migrations are required beyond the standard schema.

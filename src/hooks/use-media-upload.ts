@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { getAdapter } from '@/lib/adapter'
 import { validateFile } from '@/lib/media-constraints'
@@ -29,6 +29,17 @@ export function useMediaUpload(conversationId: string): UseMediaUploadReturn {
 
   const serviceRef = useRef<MediaUploadService | null>(null)
   const lastAttemptRef = useRef<{ file: File; type: MediaType } | null>(null)
+  const transcodingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Clear transcoding timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (transcodingTimerRef.current) {
+        clearTimeout(transcodingTimerRef.current)
+        transcodingTimerRef.current = null
+      }
+    }
+  }, [])
 
   const upload = useCallback(
     async (file: File, type: MediaType) => {
@@ -83,7 +94,7 @@ export function useMediaUpload(conversationId: string): UseMediaUploadReturn {
 
         // 6. For video: mark as failed if transcoding stalls past 5 min
         if (type === 'video' && message.id) {
-          setTimeout(async () => {
+          transcodingTimerRef.current = setTimeout(async () => {
             try {
               const adapter = getAdapter()
               const currentAttachments = await adapter.getMediaAttachments([message.id])
@@ -125,7 +136,7 @@ export function useMediaUpload(conversationId: string): UseMediaUploadReturn {
 
   const retry = useCallback(() => {
     if (lastAttemptRef.current) {
-      upload(lastAttemptRef.current.file, lastAttemptRef.current.type)
+      void upload(lastAttemptRef.current.file, lastAttemptRef.current.type)
     }
   }, [upload])
 

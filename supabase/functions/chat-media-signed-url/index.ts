@@ -12,6 +12,69 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// ---------------------------------------------------------------------------
+// RSA JWT signing utilities for Cloudflare Stream signed URLs
+// ---------------------------------------------------------------------------
+
+function base64UrlEncode(data: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < data.length; i++) {
+    binary += String.fromCharCode(data[i]!);
+  }
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+export async function importPemKey(pem: string): Promise<CryptoKey> {
+  const pemContents = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\s/g, "");
+  const binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+
+  return crypto.subtle.importKey(
+    "pkcs8",
+    binaryDer,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+}
+
+export async function signStreamToken(
+  videoId: string,
+  keyId: string,
+  privateKey: CryptoKey,
+  ttlSeconds: number,
+): Promise<string> {
+  const header = { alg: "RS256", kid: keyId };
+  const payload = {
+    sub: videoId,
+    kid: keyId,
+    exp: Math.floor(Date.now() / 1000) + ttlSeconds,
+  };
+
+  const encoder = new TextEncoder();
+  const headerB64 = base64UrlEncode(encoder.encode(JSON.stringify(header)));
+  const payloadB64 = base64UrlEncode(encoder.encode(JSON.stringify(payload)));
+  const signingInput = `${headerB64}.${payloadB64}`;
+
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    privateKey,
+    encoder.encode(signingInput),
+  );
+
+  const signatureB64 = base64UrlEncode(new Uint8Array(signature));
+  return `${signingInput}.${signatureB64}`;
+}
+
+// ---------------------------------------------------------------------------
+// Handler
+// ---------------------------------------------------------------------------
+
 export async function handler(req: Request): Promise<Response> {
   // CORS preflight
   if (req.method === "OPTIONS") {
@@ -30,9 +93,22 @@ export async function handler(req: Request): Promise<Response> {
       });
     }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("Missing required environment configuration");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
+      supabaseUrl,
+      supabaseAnonKey,
       { global: { headers: { Authorization: authHeader } } },
     );
 
@@ -50,7 +126,18 @@ export async function handler(req: Request): Promise<Response> {
     // -----------------------------------------------------------------------
     // 2. Validate request body
     // -----------------------------------------------------------------------
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid request body" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
     const parsed = signedUrlRequestSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -101,30 +188,33 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     // -----------------------------------------------------------------------
-    // 4. Read Cloudflare credentials
+    // 4. Read Cloudflare signing credentials from Supabase Vault
     // -----------------------------------------------------------------------
-    const accountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID");
-    if (!accountId) {
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceRoleKey) {
+      console.error("Missing required environment configuration");
       return new Response(
-        JSON.stringify({ error: "Cloudflare account not configured" }),
+        JSON.stringify({ error: "Server configuration error" }),
         {
-          status: 502,
+          status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: secrets, error: vaultError } = await supabaseAdmin.rpc(
-      "get_secret",
-      { secret_name: "cloudflare_stream_api_token" },
-    );
-    if (vaultError || !secrets) {
-      console.error("Vault error:", vaultError);
+    const [signingKeyResult, keyIdResult, subdomainResult] = await Promise.all([
+      supabaseAdmin.rpc("get_secret", { secret_name: "CF_SIGNING_KEY_PEM" }),
+      supabaseAdmin.rpc("get_secret", { secret_name: "CF_SIGNING_KEY_ID" }),
+      supabaseAdmin.rpc("get_secret", { secret_name: "CF_CUSTOMER_SUBDOMAIN" }),
+    ]);
+
+    if (signingKeyResult.error || keyIdResult.error || subdomainResult.error) {
+      console.error(
+        "Vault error:",
+        signingKeyResult.error ?? keyIdResult.error ?? subdomainResult.error,
+      );
       return new Response(
         JSON.stringify({ error: "Failed to retrieve Cloudflare credentials" }),
         {
@@ -134,11 +224,12 @@ export async function handler(req: Request): Promise<Response> {
       );
     }
 
-    const apiToken =
-      typeof secrets === "string" ? secrets : secrets?.decrypted_secret;
-    if (!apiToken) {
+    const signingKeyPem = signingKeyResult.data as string | null;
+    const signingKeyId = keyIdResult.data as string | null;
+    const customerSubdomain = subdomainResult.data as string | null;
+    if (!signingKeyPem || !signingKeyId || !customerSubdomain) {
       return new Response(
-        JSON.stringify({ error: "Cloudflare API token not found in vault" }),
+        JSON.stringify({ error: "Cloudflare credentials not found in vault" }),
         {
           status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -147,49 +238,17 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     // -----------------------------------------------------------------------
-    // 5. Request signed URL from Cloudflare Stream (1-hour TTL)
+    // 5. Sign a short-lived JWT for Cloudflare Stream playback (1-hour TTL)
     // -----------------------------------------------------------------------
     const ttlSeconds = 3600;
     const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
 
-    const cfResponse = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/${assetId}/token`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          // Token restrictions
-          exp: Math.floor(Date.now() / 1000) + ttlSeconds,
-          accessRules: [
-            // Allow any IP (can be restricted later)
-            { type: "any", action: "allow" },
-          ],
-        }),
-      },
-    );
-
-    if (!cfResponse.ok) {
-      const cfBody = await cfResponse.text();
-      console.error(
-        `Cloudflare token API error: ${cfResponse.status} ${cfBody}`,
-      );
-      return new Response(
-        JSON.stringify({ error: "Cloudflare token API error" }),
-        {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    const cfData = await cfResponse.json();
-    const token = cfData.result?.token;
-
-    if (!token) {
-      console.error("Unexpected Cloudflare token response:", JSON.stringify(cfData));
+    let token: string;
+    try {
+      const privateKey = await importPemKey(signingKeyPem);
+      token = await signStreamToken(assetId, signingKeyId, privateKey, ttlSeconds);
+    } catch (signErr) {
+      console.error("JWT signing error:", signErr);
       return new Response(
         JSON.stringify({ error: "Failed to generate signed URL" }),
         {
@@ -200,7 +259,7 @@ export async function handler(req: Request): Promise<Response> {
     }
 
     // Build the signed playback URL
-    const signedUrl = `https://customer-${accountId}.cloudflarestream.com/${token}/manifest/video.m3u8`;
+    const signedUrl = `https://customer-${customerSubdomain}.cloudflarestream.com/${token}/manifest/video.m3u8`;
 
     // -----------------------------------------------------------------------
     // 6. Return signed URL

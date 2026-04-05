@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { BlockEditor } from './block-editor'
 import { addBlock, reorderBlocks } from './builder-state'
-import type { ProgramDraft } from './builder-state'
+import type { ProgramDraft, ValidationError } from './builder-state'
 import type { DayOfWeek } from './constants'
 
 // ---------------------------------------------------------------------------
@@ -34,9 +34,20 @@ interface BlockListProps {
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
   onCopyWeek?: (sourceWeekClientId: string) => void
+  showWeekends: boolean
+  fieldErrors?: ValidationError[]
 }
 
-export function BlockList({ draft, onUpdate, onPickSession, onCopyWeek }: BlockListProps) {
+export function BlockList({
+  draft,
+  onUpdate,
+  onPickSession,
+  onCopyWeek,
+  showWeekends,
+  fieldErrors = [],
+}: BlockListProps) {
+  const [newBlockId, setNewBlockId] = useState<string | null>(null)
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -59,8 +70,18 @@ export function BlockList({ draft, onUpdate, onPickSession, onCopyWeek }: BlockL
   )
 
   const handleAddBlock = useCallback(() => {
-    onUpdate(addBlock(draft, 'ACCUMULATION'))
+    const updated = addBlock(draft, 'ACCUMULATION')
+    const newBlock = updated.blocks[updated.blocks.length - 1]
+    setNewBlockId(newBlock.clientId)
+    onUpdate(updated)
   }, [draft, onUpdate])
+
+  useEffect(() => {
+    if (newBlockId) {
+      const t = setTimeout(() => setNewBlockId(null), 350)
+      return () => clearTimeout(t)
+    }
+  }, [newBlockId])
 
   const blockIds = draft.blocks.map((b) => b.clientId)
 
@@ -81,10 +102,19 @@ export function BlockList({ draft, onUpdate, onPickSession, onCopyWeek }: BlockL
               onUpdate={onUpdate}
               onPickSession={onPickSession}
               onCopyWeek={onCopyWeek}
+              showWeekends={showWeekends}
+              isNew={block.clientId === newBlockId}
+              errors={fieldErrors.filter((e) => e.blockClientId === block.clientId)}
             />
           ))}
         </SortableContext>
       </DndContext>
+
+      {draft.blocks.length === 0 && (
+        <p className="py-8 text-center text-sm text-warm-ash/50">
+          Start by adding your first training block.
+        </p>
+      )}
 
       <Button
         type="button"

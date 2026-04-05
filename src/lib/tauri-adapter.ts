@@ -188,6 +188,7 @@ interface TauriLoggedSetResponse {
 interface TauriUserProfileResponse {
   id: string
   display_name: string | null
+  display_visible: number | null
   preferred_units: string | null
   bodyweight: string | null
   training_age: string | null
@@ -235,6 +236,7 @@ interface TauriSessionTemplateResponse {
   rest_between_groups: string | null
   time_cap: string | null
   scoring: string
+  last_assigned_at: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -472,7 +474,15 @@ interface TauriMediaAttachmentResponse {
 // ---------------------------------------------------------------------------
 
 interface TauriAppError {
-  kind: 'NOT_FOUND' | 'CONFLICT' | 'VALIDATION' | 'DATABASE' | 'INTERNAL'
+  kind:
+    | 'NOT_FOUND'
+    | 'CONFLICT'
+    | 'VALIDATION'
+    | 'DATABASE'
+    | 'INTERNAL'
+    | 'UNAUTHORIZED'
+    | 'SYNC'
+    | 'NETWORK'
   message: string
   field?: string
 }
@@ -504,6 +514,7 @@ async function invokeCommand<T>(cmd: string, args: Record<string, unknown>): Pro
   try {
     return await invoke<T>(cmd, args)
   } catch (e) {
+    console.error(`[tauri-adapter] invokeCommand(${cmd}) failed:`, e)
     if (isTauriAppError(e)) throw new AdapterError(e)
     throw e
   }
@@ -654,6 +665,7 @@ function toUserProfileRow(r: TauriUserProfileResponse): UserProfileRow {
   return {
     id: r.id,
     display_name: r.display_name,
+    display_visible: r.display_visible != null ? intToBool(r.display_visible) : null,
     preferred_units: r.preferred_units ?? 'IMPERIAL',
     bodyweight: parseJson(r.bodyweight, 'bodyweight'),
     training_age: parseJson(r.training_age, 'training_age'),
@@ -689,6 +701,7 @@ function toSessionTemplateRowFromTauri(r: TauriSessionTemplateResponse): Session
     time_cap: r.time_cap,
     scoring: r.scoring,
     event_metadata: null, // Event features deferred for Tauri offline mode (W-8)
+    last_assigned_at: r.last_assigned_at ?? null,
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -1203,6 +1216,7 @@ export class TauriAdapter implements DataAdapter {
     const input = {
       id: partial.id!,
       display_name: partial.display_name ?? null,
+      display_visible: partial.display_visible ?? null,
       preferred_units: partial.preferred_units ?? null,
       bodyweight: partial.bodyweight != null ? JSON.stringify(partial.bodyweight) : null,
       training_age: partial.training_age != null ? JSON.stringify(partial.training_age) : null,
@@ -1494,6 +1508,10 @@ export class TauriAdapter implements DataAdapter {
 
   async deleteSessionTemplate(id: string): Promise<void> {
     await invokeCommand<void>('delete_session_template', { id })
+  }
+
+  async touchSessionTemplateLastAssigned(id: string): Promise<void> {
+    await invokeCommand<void>('touch_session_template_last_assigned', { id })
   }
 
   async cloneSessionTemplate(_id: string, _userId: string): Promise<SessionTemplateFull> {
@@ -2118,24 +2136,13 @@ export class TauriAdapter implements DataAdapter {
   }
 
   async findDirectConversation(otherUserId: string): Promise<Conversation | null> {
-    // No dedicated Rust command -- filter client-side from user's conversations
-    const conversations = await this.getConversations()
-    // For direct conversations, fetch participants to check membership
-    for (const conv of conversations) {
-      if (conv.type !== 'direct') continue
-      const full = await invokeCommand<TauriConversationWithParticipants | null>(
-        'get_conversation',
-        { id: conv.id },
-      )
-      if (!full) continue
-      const participantUserIds = full.participants
-        .filter((p) => p.left_at == null)
-        .map((p) => p.user_id)
-      if (participantUserIds.includes(this.userId) && participantUserIds.includes(otherUserId)) {
-        return conv
-      }
-    }
-    return null
+    const result = await invokeCommand<TauriConversationWithParticipants | null>(
+      'find_direct_conversation',
+      { user_id: this.userId, other_user_id: otherUserId },
+    )
+    if (!result) return null
+    const userIds = result.participants.filter((p) => p.left_at == null).map((p) => p.user_id)
+    return toConversation(toConversationRowFromTauri(result.conversation), userIds)
   }
 
   async sendMessage(

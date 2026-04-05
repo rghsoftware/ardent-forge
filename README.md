@@ -7,6 +7,8 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/rghsoftware/ardent-forge/actions/workflows/ci.yml"><img src="https://github.com/rghsoftware/ardent-forge/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/rghsoftware/ardent-forge/actions/workflows/release.yml"><img src="https://github.com/rghsoftware/ardent-forge/actions/workflows/release.yml/badge.svg" alt="Release" /></a>
   <img src="https://img.shields.io/badge/React-19-blue" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-5.9-blue" alt="TypeScript 5.9" />
   <img src="https://img.shields.io/badge/Tauri-v2-orange" alt="Tauri v2" />

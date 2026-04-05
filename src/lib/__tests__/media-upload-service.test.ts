@@ -53,12 +53,17 @@ vi.mock('@/lib/media-provider', () => ({
 // ---------------------------------------------------------------------------
 
 const mockStorageUpload = vi.fn().mockResolvedValue({ data: { path: 'test-path' }, error: null })
+const mockCreateSignedUrl = vi.fn().mockResolvedValue({
+  data: { signedUrl: 'https://example.com/signed-url' },
+  error: null,
+})
 
 vi.mock('@/lib/supabase', () => ({
   getSupabaseClient: () => ({
     storage: {
       from: () => ({
         upload: mockStorageUpload,
+        createSignedUrl: mockCreateSignedUrl,
       }),
     },
   }),

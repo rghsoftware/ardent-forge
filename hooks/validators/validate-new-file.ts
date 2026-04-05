@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Stop hook validator: Ensures a new file was created in the expected directory.
  * Used by /blueprint to verify Spec.md, Tech.md, or Steps.md was written.
  *
@@ -20,7 +20,7 @@ if (!directory) {
 }
 
 if (!existsSync(directory)) {
-  console.error(Directory does not exist: );
+  console.error(`Directory does not exist: ${directory}`);
   process.exit(2);
 }
 
@@ -46,7 +46,7 @@ function scanDir(dir: string): void {
 scanDir(directory);
 
 if (!found) {
-  console.error(No new  file was created in . The plan command must produce output files.);
+  console.error(`No new ${extension} file was created in ${directory}. The plan command must produce output files.`);
   process.exit(2);
 }
 

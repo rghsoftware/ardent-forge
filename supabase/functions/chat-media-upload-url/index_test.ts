@@ -10,6 +10,24 @@ import {
 import { handler } from "./index.ts";
 
 // ---------------------------------------------------------------------------
+// Helper: set up vault mocks for CF secrets
+// ---------------------------------------------------------------------------
+
+function mockVaultSecrets(overrides?: Partial<Record<string, string | null>>) {
+  const defaults: Record<string, string> = {
+    CF_ACCOUNT_ID: "test-cf-account",
+    CF_STREAM_TOKEN: "cf-api-token",
+  };
+  const merged = { ...defaults, ...overrides };
+  for (const [name, value] of Object.entries(merged)) {
+    mockState.rpcResults.set(`get_secret:${name}`, {
+      data: value,
+      error: null,
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // chat-media-upload-url
 // ---------------------------------------------------------------------------
 
@@ -111,36 +129,30 @@ Deno.test("chat-media-upload-url", async (t) => {
   });
 
   // -------------------------------------------------------------------------
-  // Cloudflare config
+  // Vault config errors
   // -------------------------------------------------------------------------
 
-  await t.step("returns 502 when CLOUDFLARE_ACCOUNT_ID missing", async () => {
-    const { CLOUDFLARE_ACCOUNT_ID: _, ...envWithout } = STANDARD_ENV;
-    setup(envWithout);
-    // Override env to exclude CLOUDFLARE_ACCOUNT_ID
-    restoreEnv?.();
-    restoreEnv = mockEnv(envWithout);
-
+  await t.step("returns 502 when vault secret retrieval fails", async () => {
+    setup();
     mockState.user = { id: "u1" };
+    mockState.rpcResults.set("get_secret:CF_ACCOUNT_ID", {
+      data: null,
+      error: { message: "vault error" },
+    });
     const res = await handler(
       buildRequest({
         body: { maxDurationSeconds: 30 },
         authHeader: "Bearer ok",
       }),
     );
-    const { status, body } = await parseJson(res);
-    assertEquals(status, 502);
-    assertEquals(body.error, "Cloudflare account not configured");
+    assertEquals(res.status, 502);
     teardown();
   });
 
-  await t.step("returns 502 when vault secret retrieval fails", async () => {
+  await t.step("returns 502 when vault secrets are empty", async () => {
     setup();
     mockState.user = { id: "u1" };
-    mockState.rpcResults.set("get_secret", {
-      data: null,
-      error: { message: "vault error" },
-    });
+    // RPC returns null data (secret not found)
     const res = await handler(
       buildRequest({
         body: { maxDurationSeconds: 30 },
@@ -158,10 +170,7 @@ Deno.test("chat-media-upload-url", async (t) => {
   await t.step("returns 502 when Cloudflare Stream API errors", async () => {
     setup();
     mockState.user = { id: "u1" };
-    mockState.rpcResults.set("get_secret", {
-      data: "cf-api-token",
-      error: null,
-    });
+    mockVaultSecrets();
     restoreFetch?.();
     restoreFetch = mockFetch(async () =>
       new Response("rate limited", { status: 429 })
@@ -183,10 +192,7 @@ Deno.test("chat-media-upload-url", async (t) => {
   await t.step("returns 200 with tusUrl and assetId on success", async () => {
     setup();
     mockState.user = { id: "u1" };
-    mockState.rpcResults.set("get_secret", {
-      data: "cf-api-token",
-      error: null,
-    });
+    mockVaultSecrets();
     restoreFetch?.();
     restoreFetch = mockFetch(async () =>
       new Response(JSON.stringify({ result: { uid: "cf-vid-abc" } }), {

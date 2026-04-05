@@ -1,4 +1,4 @@
-﻿/**
+/**
  * PreCompact hook: Backup session state before context compaction.
  * Triggered by Claude Code before auto-compact or manual /compact.
  */
@@ -16,7 +16,7 @@ try {
 
   const result = runBackup(
     data.session_id,
-    precompact_,
+    `precompact_${data.trigger}`,
     data.transcript_path
   );
 
@@ -25,7 +25,7 @@ try {
     const output = {
       hookSpecificOutput: {
         hookEventName: "PreCompact",
-        additionalContext: Session backup saved to . After compaction, read this file to restore context.,
+        additionalContext: `Session backup saved to ${result}. After compaction, read this file to restore context.`,
       },
     };
     console.log(JSON.stringify(output));

@@ -45,7 +45,13 @@ This command routes to a lower-cost model tier for rapid planning:
 ### Step 3: Review with user
 1. Present the quick plan
 2. Confirm or adjust approach
-3. If approved, user can proceed with implementation
 
-### Step 4: Clean up
+### Step 4: Suggest execution command
+ALWAYS end by recommending the most appropriate execution command:
+- `/impl` -- default for most quick tasks (hub-and-spoke sub-agent orchestration)
+- `/team-impl` -- when the task spans multiple stacks with tight integration points (peer-to-peer Agent Teams)
+
+Quick plans typically use `/impl` since they are smaller in scope.
+
+### Step 5: Clean up
 When task is complete, move quick plan to `Context/Backlog/Done/` for reference, or delete if not needed.

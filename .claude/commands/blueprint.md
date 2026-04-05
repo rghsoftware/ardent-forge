@@ -54,13 +54,15 @@ Present all three documents for review:
 - Spec.md summary: key requirements and assertions
 - Tech.md summary: architecture decisions and ADRs created
 - Steps.md summary: task count, team composition, wave structure
-- Estimated execution approach: `/impl` vs `/team-impl`
 
 Confirm or adjust before proceeding to implementation.
 
-Suggest next step:
-- `/impl NNN` to execute via sub-agents
-- `/team-impl NNN` to execute via Agent Teams (if cross-domain coordination needed)
+### Step 6: Suggest execution command
+ALWAYS end by recommending the most appropriate execution command with the feature number:
+- `/impl NNN` -- default for most features (hub-and-spoke sub-agent orchestration)
+- `/team-impl NNN` -- when cross-domain coordination is needed (peer-to-peer Agent Teams)
+
+Choose based on the Steps.md content: if tasks span multiple stacks with tight integration points, recommend `/team-impl`. Otherwise recommend `/impl`.
 
 ## Rules
 - Each phase requires user approval before proceeding to the next

@@ -115,7 +115,7 @@ function LibraryPage() {
           <div className="flex items-center gap-2">
             <Button variant="default" onClick={handleCreate} className="min-h-12 text-xs">
               <Icon name="add" size={16} />
-              NEW SESSION
+              New session
             </Button>
             <Button
               variant="default"
@@ -123,7 +123,7 @@ function LibraryPage() {
               className="min-h-12 border-l-2 border-ember bg-surface-iron text-xs text-bone-white hover:bg-surface-gunmetal"
             >
               <Icon name="flag" size={16} className="text-ember" />
-              NEW EVENT
+              New event
             </Button>
           </div>
         )}
@@ -274,8 +274,8 @@ function LibraryPage() {
             <SheetTitle className="text-xs text-ember">
               {sheetMode === 'event'
                 ? editingId
-                  ? 'EDIT EVENT'
-                  : 'NEW EVENT'
+                  ? 'Edit event'
+                  : 'New event'
                 : editingId
                   ? 'Edit template'
                   : 'New template'}

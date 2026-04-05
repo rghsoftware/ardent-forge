@@ -1,7 +1,7 @@
 import type { MediaType } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
-// Centralized media validation constraints (CH-6)
+// Centralized media validation constraints
 // ---------------------------------------------------------------------------
 
 export const MEDIA_CONSTRAINTS = {

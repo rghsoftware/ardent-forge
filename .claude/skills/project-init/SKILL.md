@@ -1,7 +1,7 @@
 # Skill: Project Initialization Templates
 
 ## Purpose
-Provides all template content needed by the `/setup` command.
+Provides all template content needed by the `/context-engine:init` command.
 This skill is not invoked directly — it's a reference library.
 
 ## Templates
@@ -560,6 +560,20 @@ exit 0
         ]
       }
     ]
+  }
+}
+```
+
+---
+
+### .cortex/config.json
+
+Created during scaffolding if it does not already exist. Stores project-level Cortex configuration.
+
+```json
+{
+  "issueTracker": {
+    "type": "backlog"
   }
 }
 ```

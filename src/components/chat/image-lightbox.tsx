@@ -23,7 +23,6 @@ export function ImageLightbox({ imageUrl, onClose }: ImageLightboxProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-surface-pit/90"
       onClick={handleBackdropClick}
     >
-      {/* Close button */}
       <button
         type="button"
         onClick={onClose}

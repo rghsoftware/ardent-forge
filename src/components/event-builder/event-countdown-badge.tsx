@@ -11,13 +11,11 @@ interface EventCountdownBadgeProps {
 export function EventCountdownBadge({
   eventName,
   daysUntil,
-  templateId: _templateId,
+  templateId,
 }: EventCountdownBadgeProps) {
   const navigate = useNavigate()
 
-  // Navigate to library where the event template can be viewed/edited
-  // TODO: navigate to dedicated event route once available
-  const handleNavigate = () => navigate({ to: '/library' })
+  const handleNavigate = () => navigate({ to: '/events/$templateId', params: { templateId } })
 
   return (
     <button

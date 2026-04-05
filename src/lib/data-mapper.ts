@@ -1,4 +1,14 @@
 import { z } from 'zod'
+
+/**
+ * Safely parse a value that may be a JSON string or an already-parsed object.
+ * Supabase PostgREST returns JSONB columns as objects, but the Tauri SQLite
+ * adapter returns them as strings. This handles both cases.
+ */
+function parseJsonOrValue(value: string | object): unknown {
+  return typeof value === 'string' ? JSON.parse(value) : value
+}
+
 import type {
   Exercise,
   WorkoutLog,
@@ -46,9 +56,9 @@ import {
   shareableEntityTypeSchema,
   shareTokenSchema,
   eventMetadataSchema,
-  conversationTypeSchema,
-  messageTypeSchema,
-  syncStatusSchema,
+  conversationSchema,
+  conversationParticipantSchema,
+  messageSchema,
   mediaProviderSchema,
   mediaTypeSchema,
   mediaStatusSchema,
@@ -287,6 +297,7 @@ export function toUserProfile(row: UserProfileRow): UserProfile {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     displayName: row.display_name ?? undefined,
+    displayVisible: row.display_visible ?? undefined,
     preferredUnits: preferredUnitsSchema.parse(row.preferred_units),
     bodyweight: row.bodyweight != null ? weightSchema.parse(row.bodyweight) : undefined,
     trainingAge: row.training_age != null ? durationSchema.parse(row.training_age) : undefined,
@@ -307,6 +318,7 @@ export function fromUserProfile(
   const row: Partial<UserProfileRow> = { id: profile.id }
 
   if (profile.displayName !== undefined) row.display_name = profile.displayName ?? null
+  if (profile.displayVisible !== undefined) row.display_visible = profile.displayVisible ?? null
   if (profile.preferredUnits !== undefined) row.preferred_units = profile.preferredUnits
   if (profile.bodyweight !== undefined) row.bodyweight = profile.bodyweight ?? null
   if (profile.trainingAge !== undefined) row.training_age = profile.trainingAge ?? null
@@ -359,14 +371,16 @@ export function toSessionTemplate(row: SessionTemplateRow): SessionTemplate {
     category: sessionTypeSchema.parse(row.category),
     restBetweenGroups:
       row.rest_between_groups != null
-        ? durationSchema.parse(JSON.parse(row.rest_between_groups))
+        ? durationSchema.parse(parseJsonOrValue(row.rest_between_groups))
         : undefined,
-    timeCap: row.time_cap != null ? durationSchema.parse(JSON.parse(row.time_cap)) : undefined,
+    timeCap:
+      row.time_cap != null ? durationSchema.parse(parseJsonOrValue(row.time_cap)) : undefined,
     scoring: scoringTypeSchema.parse(row.scoring),
     eventMetadata:
       row.event_metadata != null
-        ? eventMetadataSchema.parse(JSON.parse(row.event_metadata))
+        ? eventMetadataSchema.parse(parseJsonOrValue(row.event_metadata))
         : undefined,
+    lastAssignedAt: row.last_assigned_at ?? undefined,
   }
 }
 
@@ -400,11 +414,11 @@ export function toActivityGroupFlat(row: ActivityGroupRow): Omit<ActivityGroup, 
     rounds: row.rounds ?? undefined,
     restBetweenRounds:
       row.rest_between_rounds != null
-        ? durationSchema.parse(JSON.parse(row.rest_between_rounds))
+        ? durationSchema.parse(parseJsonOrValue(row.rest_between_rounds))
         : undefined,
     restBetweenActivities:
       row.rest_between_activities != null
-        ? durationSchema.parse(JSON.parse(row.rest_between_activities))
+        ? durationSchema.parse(parseJsonOrValue(row.rest_between_activities))
         : undefined,
   }
 }
@@ -435,7 +449,7 @@ export function toActivity(row: ActivityRow): Activity {
     activityGroupId: row.activity_group_id,
     exerciseId: row.exercise_id,
     ordinal: row.ordinal,
-    setScheme: setSchemeSchema.parse(JSON.parse(row.set_scheme)),
+    setScheme: setSchemeSchema.parse(parseJsonOrValue(row.set_scheme)),
     notes: row.notes ?? undefined,
   }
 }
@@ -689,15 +703,15 @@ export function toConversation(
   participantUserIds: string[] = [],
 ): Conversation {
   try {
-    return {
+    return conversationSchema.parse({
       id: row.id,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      type: conversationTypeSchema.parse(row.type),
+      type: row.type,
       title: row.title ?? undefined,
       groupId: row.group_id ?? undefined,
       participantUserIds,
-    }
+    })
   } catch (err) {
     throw new Error(
       `Failed to map conversation (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
@@ -723,7 +737,7 @@ export function toConversationParticipant(
   row: ConversationParticipantRow,
 ): ConversationParticipant {
   try {
-    return {
+    return conversationParticipantSchema.parse({
       id: row.id,
       createdAt: row.joined_at,
       updatedAt: row.last_read_at ?? row.joined_at,
@@ -733,7 +747,7 @@ export function toConversationParticipant(
       isArchived: row.is_archived,
       joinedAt: row.joined_at,
       leftAt: row.left_at ?? undefined,
-    }
+    })
   } catch (err) {
     throw new Error(
       `Failed to map conversation participant (${row.id}): ${err instanceof Error ? err.message : String(err)}`,
@@ -760,15 +774,15 @@ export function fromConversationParticipant(
 
 export function toMessage(row: MessageRow): Message {
   try {
-    return {
+    return messageSchema.parse({
       id: row.id,
       createdAt: row.created_at,
       conversationId: row.conversation_id,
       senderId: row.sender_id ?? undefined,
-      messageType: messageTypeSchema.parse(row.message_type),
+      messageType: row.message_type,
       content: row.content ?? undefined,
-      syncStatus: row.sync_status != null ? syncStatusSchema.parse(row.sync_status) : undefined,
-    }
+      syncStatus: row.sync_status ?? undefined,
+    })
   } catch (err) {
     throw new Error(
       `Failed to map message (${row.id}): ${err instanceof Error ? err.message : String(err)}`,

@@ -275,6 +275,7 @@ services:
         condition: service_healthy
     environment:
       SITE_URL: ${SITE_URL}
+      ANON_KEY: ${ANON_KEY}
     healthcheck:
       test:
         [

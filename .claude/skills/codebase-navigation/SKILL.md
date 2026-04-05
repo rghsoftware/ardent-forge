@@ -5,7 +5,7 @@ description: Codebase structure and efficient navigation tips
 
 # Directory Structure
 
-## 🏗️ Framework Organization
+## 🏗️ Claude Fast Framework Organization
 
 ```
 .claude/

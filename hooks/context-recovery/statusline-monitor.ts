@@ -1,15 +1,9 @@
-﻿/**
+/**
  * StatusLine hook: Monitors context usage and triggers backup at thresholds.
  * Runs on every status line update from Claude Code.
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
-import { homedir } from "os";
+import { readFileSync } from "fs";
 import { runBackup, readState, writeState } from "./backup-core.ts";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 interface StatusInput {
   session_id: string;
@@ -42,21 +36,21 @@ try {
   if (shouldBackup && crossedThreshold !== null) {
     const result = runBackup(
       data.session_id,
-      crossed_pct,
+      `crossed_${crossedThreshold}pct`,
       data.transcript_path,
       contextPct
     );
 
     if (result) {
       const updatedState = readState();
-      (updatedState as any).lastBackupThreshold = crossedThreshold;
+      updatedState.lastBackupThreshold = crossedThreshold;
       writeState(updatedState);
     }
   }
 
   // Output status line content
   const icon = contextPct <= 5 ? "!!" : contextPct <= 15 ? "!" : "";
-  console.log(Cortex %);
+  console.log(`Cortex ${icon} ${contextPct}%`);
 
   process.exit(0);
 } catch (err) {

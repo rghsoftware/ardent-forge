@@ -18,6 +18,10 @@ import type {
   BlockWeekRow,
   ScheduledSessionRow,
   ProgramActivationRow,
+  ConversationRow,
+  ConversationParticipantRow,
+  MessageRow,
+  MediaAttachmentRow,
 } from '../database.types'
 
 // ===========================================================================
@@ -132,6 +136,7 @@ const userProfileRow: UserProfileRow = {
     },
   },
   max_reps: { 'ex-pullup-001': 20 },
+  display_visible: null,
   created_at: now,
   updated_at: now,
 }
@@ -156,6 +161,7 @@ const sessionTemplateRow: SessionTemplateRow = {
   time_cap: null,
   scoring: 'NONE',
   event_metadata: null,
+  last_assigned_at: null,
   created_at: now,
   updated_at: now,
 }
@@ -1323,6 +1329,511 @@ describe('Utility operations', () => {
       // Both activities are in the same workout, so grouped together
       expect(result).toHaveLength(1)
       expect(result[0].sets).toHaveLength(2)
+    })
+  })
+})
+
+// ===========================================================================
+// Chat row fixtures
+// ===========================================================================
+
+const conversationRow: ConversationRow = {
+  id: 'conv-001',
+  type: 'direct',
+  title: null,
+  group_id: null,
+  created_at: now,
+  updated_at: now,
+}
+
+const participantRow: ConversationParticipantRow = {
+  id: 'cp-001',
+  conversation_id: 'conv-001',
+  user_id: 'user-001',
+  last_read_at: now,
+  is_archived: false,
+  joined_at: now,
+  left_at: null,
+}
+
+const participantRow2: ConversationParticipantRow = {
+  ...participantRow,
+  id: 'cp-002',
+  user_id: 'user-002',
+}
+
+const messageRow: MessageRow = {
+  id: 'msg-001',
+  conversation_id: 'conv-001',
+  sender_id: 'user-001',
+  message_type: 'text',
+  content: 'Hello there',
+  created_at: now,
+  updated_at: now,
+}
+
+const messageRow2: MessageRow = {
+  ...messageRow,
+  id: 'msg-002',
+  sender_id: 'user-002',
+  content: 'Hey!',
+  created_at: later,
+  updated_at: later,
+}
+
+const mediaAttachmentRow: MediaAttachmentRow = {
+  id: 'ma-001',
+  message_id: 'msg-001',
+  provider: 'cloudflare_stream',
+  provider_asset_id: 'asset-001',
+  media_type: 'video',
+  original_filename: 'workout.mp4',
+  mime_type: 'video/mp4',
+  thumbnail_url: 'https://cdn.example.com/thumb.jpg',
+  playback_url: 'https://cdn.example.com/play.m3u8',
+  duration_seconds: 120,
+  file_size_bytes: 5242880,
+  status: 'ready',
+  created_at: now,
+  updated_at: now,
+}
+
+// ===========================================================================
+// Chat operations
+// ===========================================================================
+
+describe('Chat operations', () => {
+  // -------------------------------------------------------------------------
+  // Conversations
+  // -------------------------------------------------------------------------
+
+  describe('createConversation', () => {
+    it('inserts conversation and participant rows, returns mapped conversation', async () => {
+      mockClient.mockResponse('conversations', 'insert', [conversationRow])
+      mockClient.mockResponse('conversation_participants', 'insert', [participantRow])
+
+      const result = await adapter.createConversation('direct', ['user-002'])
+
+      expect(mockClient.from).toHaveBeenCalledWith('conversations')
+      expect(mockClient.from).toHaveBeenCalledWith('conversation_participants')
+      expect(result.id).toBe('conv-001')
+      expect(result.type).toBe('direct')
+      expect(result.participantUserIds).toContain('user-001')
+      expect(result.participantUserIds).toContain('user-002')
+    })
+
+    it('throws on conversation insert error', async () => {
+      mockClient.mockResponse('conversations', 'insert', null, { message: 'Insert failed' })
+
+      await expect(adapter.createConversation('direct', ['user-002'])).rejects.toEqual({
+        message: 'Insert failed',
+      })
+    })
+  })
+
+  describe('getConversations', () => {
+    it('returns conversations for the current user', async () => {
+      // Mock returns participant rows (used for both participant queries)
+      mockClient.mockResponse('conversation_participants', 'select', [
+        { conversation_id: 'conv-001', user_id: 'user-001' },
+        { conversation_id: 'conv-001', user_id: 'user-002' },
+      ])
+      mockClient.mockResponse('conversations', 'select', [conversationRow])
+
+      const result = await adapter.getConversations()
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe('conv-001')
+      expect(result[0].participantUserIds).toContain('user-001')
+    })
+
+    it('returns empty array when user has no conversations', async () => {
+      mockClient.mockResponse('conversation_participants', 'select', [])
+
+      const result = await adapter.getConversations()
+
+      expect(result).toEqual([])
+    })
+
+    it('throws on participant query error', async () => {
+      mockClient.mockResponse('conversation_participants', 'select', null, {
+        message: 'DB error',
+      })
+
+      await expect(adapter.getConversations()).rejects.toEqual({ message: 'DB error' })
+    })
+  })
+
+  describe('getConversation', () => {
+    it('returns mapped conversation with participants', async () => {
+      mockClient.mockResponse('conversations', 'select', [conversationRow])
+      mockClient.mockResponse('conversation_participants', 'select', [
+        { user_id: 'user-001' },
+        { user_id: 'user-002' },
+      ])
+
+      const result = await adapter.getConversation('conv-001')
+
+      expect(result).not.toBeNull()
+      expect(result!.id).toBe('conv-001')
+      expect(result!.participantUserIds).toEqual(['user-001', 'user-002'])
+    })
+
+    it('returns null when conversation not found', async () => {
+      mockClient.mockResponse('conversations', 'select', [])
+      mockClient.mockResponse('conversation_participants', 'select', [])
+
+      const result = await adapter.getConversation('conv-999')
+
+      expect(result).toBeNull()
+    })
+
+    it('throws on query error', async () => {
+      mockClient.mockResponse('conversations', 'select', null, { message: 'Not found' })
+
+      await expect(adapter.getConversation('conv-001')).rejects.toEqual({
+        message: 'Not found',
+      })
+    })
+  })
+
+  describe('findDirectConversation', () => {
+    it('returns null when user has no conversations', async () => {
+      mockClient.mockResponse('conversation_participants', 'select', [])
+
+      const result = await adapter.findDirectConversation('user-002')
+
+      expect(result).toBeNull()
+    })
+
+    it('returns null when no direct conversations exist', async () => {
+      mockClient.mockResponse('conversation_participants', 'select', [
+        { conversation_id: 'conv-001' },
+      ])
+      mockClient.mockResponse('conversations', 'select', [])
+
+      const result = await adapter.findDirectConversation('user-002')
+
+      expect(result).toBeNull()
+    })
+
+    it('throws on participant query error', async () => {
+      mockClient.mockResponse('conversation_participants', 'select', null, {
+        message: 'DB error',
+      })
+
+      await expect(adapter.findDirectConversation('user-002')).rejects.toEqual({
+        message: 'DB error',
+      })
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Messages
+  // -------------------------------------------------------------------------
+
+  describe('sendMessage', () => {
+    it('inserts message and returns mapped result', async () => {
+      mockClient.mockResponse('messages', 'insert', [messageRow])
+
+      const result = await adapter.sendMessage('conv-001', 'text', 'Hello there')
+
+      expect(mockClient.from).toHaveBeenCalledWith('messages')
+      expect(result.id).toBe('msg-001')
+      expect(result.conversationId).toBe('conv-001')
+      expect(result.senderId).toBe('user-001')
+      expect(result.messageType).toBe('text')
+      expect(result.content).toBe('Hello there')
+    })
+
+    it('throws on insert error', async () => {
+      mockClient.mockResponse('messages', 'insert', null, { message: 'Insert failed' })
+
+      await expect(adapter.sendMessage('conv-001', 'text', 'Hello')).rejects.toEqual({
+        message: 'Insert failed',
+      })
+    })
+  })
+
+  describe('getMessages', () => {
+    it('returns mapped messages in chronological order', async () => {
+      mockClient.mockResponse('messages', 'select', [messageRow2, messageRow])
+
+      const result = await adapter.getMessages('conv-001', { limit: 50 })
+
+      expect(result).toHaveLength(2)
+      // .reverse() is called on the result, so input [msg-002, msg-001] becomes [msg-001, msg-002]
+      expect(result[0].id).toBe('msg-001')
+      expect(result[1].id).toBe('msg-002')
+    })
+
+    it('returns empty array when no messages', async () => {
+      mockClient.mockResponse('messages', 'select', [])
+
+      const result = await adapter.getMessages('conv-001', { limit: 50 })
+
+      expect(result).toEqual([])
+    })
+
+    it('throws on query error', async () => {
+      mockClient.mockResponse('messages', 'select', null, { message: 'Query failed' })
+
+      await expect(adapter.getMessages('conv-001', { limit: 50 })).rejects.toEqual({
+        message: 'Query failed',
+      })
+    })
+  })
+
+  describe('getMessagesSince', () => {
+    it('returns messages after the given timestamp', async () => {
+      mockClient.mockResponse('messages', 'select', [messageRow2])
+
+      const result = await adapter.getMessagesSince('conv-001', now)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe('msg-002')
+    })
+
+    it('throws on query error', async () => {
+      mockClient.mockResponse('messages', 'select', null, { message: 'Query failed' })
+
+      await expect(adapter.getMessagesSince('conv-001', now)).rejects.toEqual({
+        message: 'Query failed',
+      })
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Participants
+  // -------------------------------------------------------------------------
+
+  describe('updateLastRead', () => {
+    it('updates last_read_at for the current user', async () => {
+      mockClient.mockResponse('conversation_participants', 'update', [])
+
+      await adapter.updateLastRead('conv-001')
+
+      expect(mockClient.from).toHaveBeenCalledWith('conversation_participants')
+    })
+
+    it('throws on update error', async () => {
+      mockClient.mockResponse('conversation_participants', 'update', null, {
+        message: 'Update failed',
+      })
+
+      await expect(adapter.updateLastRead('conv-001')).rejects.toEqual({
+        message: 'Update failed',
+      })
+    })
+  })
+
+  describe('getUnreadCounts', () => {
+    it('returns empty map when user has no active participations', async () => {
+      mockClient.mockResponse('conversation_participants', 'select', [])
+
+      const result = await adapter.getUnreadCounts()
+
+      expect(result).toBeInstanceOf(Map)
+      expect(result.size).toBe(0)
+    })
+
+    it('returns unread counts for conversations with messages after last_read_at', async () => {
+      mockClient.mockResponse('conversation_participants', 'select', [
+        { conversation_id: 'conv-001', last_read_at: now },
+        { conversation_id: 'conv-002', last_read_at: null },
+      ])
+      // The mock returns the same response for all messages:select calls,
+      // so both conversations will report the same count.
+      mockClient.mockResponse('messages', 'select', [], undefined, { count: 3 })
+
+      const result = await adapter.getUnreadCounts()
+
+      expect(result).toBeInstanceOf(Map)
+      expect(result.size).toBe(2)
+      expect(result.get('conv-001')).toBe(3)
+      expect(result.get('conv-002')).toBe(3)
+    })
+
+    it('throws on participation query error', async () => {
+      mockClient.mockResponse('conversation_participants', 'select', null, {
+        message: 'DB error',
+      })
+
+      await expect(adapter.getUnreadCounts()).rejects.toEqual({ message: 'DB error' })
+    })
+  })
+
+  describe('addParticipant', () => {
+    it('inserts participant and returns mapped result', async () => {
+      mockClient.mockResponse('conversation_participants', 'insert', [participantRow2])
+
+      const result = await adapter.addParticipant('conv-001', 'user-002')
+
+      expect(mockClient.from).toHaveBeenCalledWith('conversation_participants')
+      expect(result.conversationId).toBe('conv-001')
+      expect(result.userId).toBe('user-002')
+    })
+
+    it('throws on insert error', async () => {
+      mockClient.mockResponse('conversation_participants', 'insert', null, {
+        message: 'Duplicate',
+      })
+
+      await expect(adapter.addParticipant('conv-001', 'user-002')).rejects.toEqual({
+        message: 'Duplicate',
+      })
+    })
+  })
+
+  describe('leaveConversation', () => {
+    it('sets left_at for the current user', async () => {
+      mockClient.mockResponse('conversation_participants', 'update', [])
+
+      await adapter.leaveConversation('conv-001')
+
+      expect(mockClient.from).toHaveBeenCalledWith('conversation_participants')
+    })
+
+    it('throws on update error', async () => {
+      mockClient.mockResponse('conversation_participants', 'update', null, {
+        message: 'Update failed',
+      })
+
+      await expect(adapter.leaveConversation('conv-001')).rejects.toEqual({
+        message: 'Update failed',
+      })
+    })
+  })
+
+  describe('toggleArchive', () => {
+    it('reads current is_archived and toggles it', async () => {
+      mockClient.mockResponse('conversation_participants', 'select', [{ is_archived: false }])
+      mockClient.mockResponse('conversation_participants', 'update', [])
+
+      await adapter.toggleArchive('conv-001')
+
+      expect(mockClient.from).toHaveBeenCalledWith('conversation_participants')
+    })
+
+    it('throws on read error', async () => {
+      mockClient.mockResponse('conversation_participants', 'select', null, {
+        message: 'Fetch failed',
+      })
+
+      await expect(adapter.toggleArchive('conv-001')).rejects.toEqual({
+        message: 'Fetch failed',
+      })
+    })
+
+    it('throws on update error', async () => {
+      mockClient.mockResponse('conversation_participants', 'select', [{ is_archived: true }])
+      mockClient.mockResponse('conversation_participants', 'update', null, {
+        message: 'Update failed',
+      })
+
+      await expect(adapter.toggleArchive('conv-001')).rejects.toEqual({
+        message: 'Update failed',
+      })
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Media attachments
+  // -------------------------------------------------------------------------
+
+  describe('saveMediaAttachment', () => {
+    it('inserts attachment and returns mapped result', async () => {
+      mockClient.mockResponse('media_attachments', 'insert', [mediaAttachmentRow])
+
+      const result = await adapter.saveMediaAttachment('msg-001', {
+        messageId: 'msg-001',
+        provider: 'cloudflare_stream',
+        mediaType: 'video',
+        status: 'ready',
+        originalFilename: 'workout.mp4',
+        mimeType: 'video/mp4',
+      })
+
+      expect(mockClient.from).toHaveBeenCalledWith('media_attachments')
+      expect(result.id).toBe('ma-001')
+      expect(result.messageId).toBe('msg-001')
+      expect(result.provider).toBe('cloudflare_stream')
+      expect(result.mediaType).toBe('video')
+      expect(result.status).toBe('ready')
+    })
+
+    it('throws on insert error', async () => {
+      mockClient.mockResponse('media_attachments', 'insert', null, {
+        message: 'Insert failed',
+      })
+
+      await expect(
+        adapter.saveMediaAttachment('msg-001', {
+          messageId: 'msg-001',
+          provider: 'cloudflare_stream',
+          mediaType: 'video',
+          status: 'processing',
+        }),
+      ).rejects.toEqual({ message: 'Insert failed' })
+    })
+  })
+
+  describe('getMediaAttachments', () => {
+    it('returns mapped attachments for given message IDs', async () => {
+      mockClient.mockResponse('media_attachments', 'select', [mediaAttachmentRow])
+
+      const result = await adapter.getMediaAttachments(['msg-001'])
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe('ma-001')
+      expect(result[0].originalFilename).toBe('workout.mp4')
+    })
+
+    it('returns empty array for empty message IDs', async () => {
+      const result = await adapter.getMediaAttachments([])
+
+      expect(result).toEqual([])
+    })
+
+    it('throws on query error', async () => {
+      mockClient.mockResponse('media_attachments', 'select', null, {
+        message: 'Query failed',
+      })
+
+      await expect(adapter.getMediaAttachments(['msg-001'])).rejects.toEqual({
+        message: 'Query failed',
+      })
+    })
+  })
+
+  describe('updateMediaAttachment', () => {
+    it('updates specified fields and returns mapped result', async () => {
+      const updatedRow = {
+        ...mediaAttachmentRow,
+        status: 'processing',
+        thumbnail_url: 'https://cdn.example.com/new-thumb.jpg',
+      }
+      mockClient.mockResponse('media_attachments', 'update', [updatedRow])
+
+      const result = await adapter.updateMediaAttachment('ma-001', {
+        status: 'processing',
+        thumbnailUrl: 'https://cdn.example.com/new-thumb.jpg',
+      })
+
+      expect(mockClient.from).toHaveBeenCalledWith('media_attachments')
+      expect(result.id).toBe('ma-001')
+      expect(result.status).toBe('processing')
+      expect(result.thumbnailUrl).toBe('https://cdn.example.com/new-thumb.jpg')
+    })
+
+    it('throws on update error', async () => {
+      mockClient.mockResponse('media_attachments', 'update', null, {
+        message: 'Update failed',
+      })
+
+      await expect(adapter.updateMediaAttachment('ma-001', { status: 'failed' })).rejects.toEqual({
+        message: 'Update failed',
+      })
     })
   })
 })

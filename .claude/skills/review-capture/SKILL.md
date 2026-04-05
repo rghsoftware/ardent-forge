@@ -29,25 +29,29 @@ from a GitLab MR), ask them to paste or describe the findings.
 3. If no match, ask the user which feature this review belongs to
 4. Load `Spec.md` and `Steps.md` from the feature directory for cross-referencing
 
-### Step 3: Triage each finding
+### Step 3: Triage errors and warnings
 
-Categorize every finding into exactly one of four categories:
+Separate the review output into two groups:
+- **Errors and warnings** -- triage automatically (this step)
+- **Suggestions** -- triage interactively with the user (Step 4)
 
-**[FIX] Fix-now** — Code quality issues, convention violations, missing error handling,
+For errors and warnings, categorize each into exactly one of four categories:
+
+**[FIX] Fix-now** -- Code quality issues, convention violations, missing error handling,
 typos, formatting. These get fixed inline during the resolution pass. No planning
 artifacts needed.
 
 Signals: linter warnings, style violations, missing null checks, bare excepts,
 unused imports, wrong function signatures, off-by-one errors.
 
-**[TASK] Missing task** — Work that should have been in Steps.md but wasn't. Needs a
+**[TASK] Missing task** -- Work that should have been in Steps.md but wasn't. Needs a
 new S### task number so it gets tracked and verified. This includes missing tests,
 undocumented endpoints, edge cases the plan didn't anticipate.
 
 Signals: "no test for X", "this case isn't handled", "docs not updated for Y",
 missing accessibility, missing validation on an input the spec didn't mention.
 
-**[ADR] Architectural concern** — Design problems that require a decision. Wrong
+**[ADR] Architectural concern** -- Design problems that require a decision. Wrong
 abstraction, missing separation of concerns, security gaps, performance anti-patterns,
 dependency issues. These warrant an ADR because they change the technical approach.
 
@@ -55,21 +59,97 @@ Signals: "this should be a separate service", "you're coupling X to Y", "this wo
 scale past N", "this auth approach has a vulnerability", "the spec assumed X but
 the implementation does Y".
 
-**[RULE] Convention gap** — A pattern the reviewer flagged repeatedly that the current
+**[RULE] Convention gap** -- A pattern the reviewer flagged repeatedly that the current
 rules don't catch. The finding should become a rule update so future code gets it
 right automatically.
 
 Signals: same issue in 3+ files, reviewer says "we should always do X", pattern not
 mentioned in any `.claude/rules/*.md` file, the post-edit hook doesn't catch it.
 
-### Step 4: Assign finding IDs
+### Step 4: Triage suggestions interactively
+
+If the review source produced suggestions (common with pr-review-toolkit), present
+them to the user for interactive triage. Errors and warnings skip this step -- they
+were already categorized in Step 3.
+
+**CRITICAL:** Never silently drop, auto-classify, or skip suggestions. Every
+suggestion must get an explicit user decision.
+
+#### Step 4a: Bulk triage
+
+List all suggestions with their titles so the user can see what they are deciding on:
+
+```
+## Suggestions from pr-review (N total)
+
+  1. Consider extracting auth logic into a shared middleware
+  2. Database queries could use connection pooling
+  3. Error messages should include request IDs for tracing
+  4. The retry logic could benefit from exponential backoff
+  5. Unused CSS variables in theme.css
+
+  Bulk actions:
+    a. Capture all -- add all to review file (Claude assigns categories)
+    b. Dismiss all -- drop everything
+    c. Skip -- go straight to individual triage
+
+  Choose, or type "done" for individual triage:
+```
+
+If the user picks "Capture all", Claude assigns a category ([FIX], [TASK], [ADR],
+[RULE]) to each suggestion and adds them to the findings list. Update the review
+file on disk as a batch.
+
+If the user picks "Dismiss all", drop all suggestions. No reason required for bulk.
+
+#### Step 4b: Individual triage
+
+For each remaining suggestion that was not handled in bulk, present:
+
+```
+Suggestion X of Y: "Consider extracting auth logic into a shared middleware"
+  File: src/routes/api/users.ts:45
+  Detail: Auth check is duplicated across 4 route handlers
+
+  Recommended: Capture as [TASK] -- tracked refactoring work, not an immediate fix
+
+  Actions:
+    1. Capture (as [TASK], or specify: fix/task/adr/rule)
+    2. Backlog
+    3. Dismiss
+
+  Choose [1-3]:
+```
+
+**Action handling:**
+
+- **1 (Capture):** Accept Claude's recommended category. The user can override by
+  responding "1 fix", "1 adr", etc. The suggestion becomes a finding with the chosen
+  category and enters the normal flow (gets an ID in Step 5).
+
+- **2 (Backlog):** Append an entry to `Context/Backlog/Ideas.md`:
+  ```markdown
+  ### [Suggestion title]
+  **Added:** YYYY-MM-DD
+  **Context:** [suggestion detail from pr-review]
+  **Related:** [file path from suggestion]
+  **Priority:** Low
+  ```
+  The suggestion is NOT added to the review file.
+
+- **3 (Dismiss):** Drop the suggestion. Not captured anywhere.
+
+After each individual decision, update the review file (or backlog file) on disk
+immediately. This ensures progress survives context loss.
+
+### Step 5: Assign finding IDs
 
 Each finding gets a unique ID within the review: `P{review-number}-{sequence}`.
 The review number increments based on existing files in `Context/Reviews/`.
 
 Example: First review in the project → P1-001, P1-002, P1-003...
 
-### Step 5: Cross-reference with planning artifacts
+### Step 6: Cross-reference with planning artifacts
 
 For each finding:
 - Check if it relates to a Testable Assertion in Spec.md (note the assertion ID)
@@ -77,7 +157,7 @@ For each finding:
 - Check if an existing ADR already covers the concern
 - Note these references in the finding entry
 
-### Step 6: Write the review file
+### Step 7: Write the review file
 
 Create `Context/Reviews/PR-{branch-short-name}-{YYYY-MM-DD}.md` with the
 following structure:
@@ -143,7 +223,7 @@ following structure:
 - [ ] Review verified by review-verify agent
 ```
 
-### Step 7: Present summary to user
+### Step 8: Present summary to user
 
 After writing the file, present:
 - Total findings by category

@@ -503,6 +503,41 @@
 
 ---
 
+### S024-T: Unit tests -- CloudflareStreamProvider (media-provider.ts)
+
+**Agent:** quality-engineer
+**Files:** `src/lib/__tests__/media-provider.test.ts`
+**Depends on:** S003
+**Parallel:** Yes (parallel with S023-T, S025-T)
+**Added by:** PR #59 review (T1, criticality 8/10)
+
+- [ ] `isExpired` TTL logic: cached URL before expiry returns cache hit
+- [ ] Cache miss on expiry: expired URL triggers new fetch
+- [ ] Null client throws meaningful error
+- [ ] Zod rejects malformed Cloudflare API response
+- [ ] Signed URL cache hit: second call with same assetId returns cached URL without API call
+
+**Acceptance:** CloudflareStreamProvider edge cases covered, especially signed URL caching with TTL
+
+---
+
+### S025-T: Unit tests -- transcoding timeout behavior (use-media-upload.ts)
+
+**Agent:** quality-engineer
+**Files:** `src/hooks/__tests__/use-media-upload.test.ts`
+**Depends on:** S010
+**Parallel:** Yes (parallel with S023-T, S024-T)
+**Added by:** PR #59 review (T2, criticality 8/10)
+
+- [ ] With fake timers: 5-minute timeout marks processing attachment as `failed`
+- [ ] Ready attachment is unaffected by timeout
+- [ ] Query cache invalidated after timeout fires
+- [ ] Timer cleared on unmount (no stale invalidations)
+
+**Acceptance:** Transcoding timeout logic fully covered including cleanup on unmount
+
+---
+
 ## Milestone Summary
 
 | Wave | Tasks | Parallel | Description |
@@ -512,9 +547,9 @@
 | Wave 3 | S009-S011 | S009->S010 sequential, S011 parallel | Upload pipeline: service, upload hook, attachments hook (runs parallel with Waves 2 and 4) |
 | Wave 4 | S012-S017 | S012-S014 parallel, S015 after S012+S013, S016-S017 after S015 | Rendering: status indicator, file card, progress, media content, video, lightbox (runs parallel with Waves 2-3) |
 | Wave 5 | S018-S021 | All 4 parallel | Integration: realtime, attachment picker, compose bar, message routing |
-| Wave 6 | S022-T, S023-T | Sequential | Validation: end-to-end + unit tests |
+| Wave 6 | S022-T, S023-T, S024-T, S025-T | S022-T sequential, S023-T/S024-T/S025-T parallel | Validation: end-to-end + unit tests |
 
-**Totals:** 21 implementation tasks + 2 validation tasks = 23 tasks
+**Totals:** 21 implementation tasks + 4 validation tasks = 25 tasks
 **Agents:** 3 frontend specialists + 1 backend specialist + 1 quality engineer = 5 agents
 **Execution mode:** `/build` (agents work on isolated vertical slices with shared contracts below)
 

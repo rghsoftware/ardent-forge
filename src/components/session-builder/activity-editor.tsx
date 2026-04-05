@@ -3,13 +3,14 @@ import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { SetSchemeEditor } from './set-scheme-editor'
 import { AddExerciseSheet } from '@/components/workout/add-exercise-sheet'
-import type { SetScheme, Exercise } from '@/domain/types'
+import type { SetScheme, Exercise, SessionType } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface ActivityData {
+  clientId: string
   exerciseId: string | null
   setScheme: SetScheme
   notes?: string
@@ -19,6 +20,9 @@ export interface ActivityData {
 interface ActivityEditorProps {
   activity: ActivityData
   exercises: Exercise[]
+  sessionCategory: SessionType
+  showAllSchemeTypes: boolean
+  onShowAllSchemeTypesChange: (v: boolean) => void
   onChange: (updated: ActivityData) => void
   onDelete: () => void
 }
@@ -27,7 +31,15 @@ interface ActivityEditorProps {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ActivityEditor({ activity, exercises, onChange, onDelete }: ActivityEditorProps) {
+export function ActivityEditor({
+  activity,
+  exercises,
+  sessionCategory,
+  showAllSchemeTypes,
+  onShowAllSchemeTypesChange,
+  onChange,
+  onDelete,
+}: ActivityEditorProps) {
   const [showExerciseSheet, setShowExerciseSheet] = useState(false)
   const [showNotes, setShowNotes] = useState(!!activity.notes)
 
@@ -90,6 +102,9 @@ export function ActivityEditor({ activity, exercises, onChange, onDelete }: Acti
           value={activity.setScheme}
           onChange={(scheme) => onChange({ ...activity, setScheme: scheme })}
           exerciseSupports1RM={exercise?.supports1RM}
+          sessionCategory={sessionCategory}
+          showAllTypes={showAllSchemeTypes}
+          onShowAllTypesChange={onShowAllSchemeTypesChange}
         />
       </div>
 

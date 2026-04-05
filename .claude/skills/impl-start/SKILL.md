@@ -66,7 +66,7 @@ For quick plans (single-file plan, no team orchestration):
 - Mark tasks complete as they are done
 
 ### Step 6: Handle completion
-- If all tasks complete: update Status to "Complete", suggest `/qa` and `/review`
+- If all tasks complete: update Status to "Complete", suggest `/qa` and `/review-capture`
 - If context window filling: save progress to Steps.md and `.cortex/session.md`, tell user to start a new session
 - If plan is wrong: pause, discuss with user, create ADR or update Spec.md
 

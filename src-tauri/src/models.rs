@@ -106,6 +106,7 @@ pub struct UserProfileRow {
     pub training_age: Option<String>,    // JSON Duration
     pub exercise_maxes: Option<String>,  // JSON map
     pub max_reps: Option<String>,        // JSON map
+    pub display_visible: Option<i32>,    // boolean 0/1, default 1
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
@@ -169,6 +170,8 @@ pub struct SessionTemplateRow {
     pub rest_between_groups: Option<String>, // JSON Duration
     pub time_cap: Option<String>,            // JSON Duration
     pub scoring: String,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub last_assigned_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]

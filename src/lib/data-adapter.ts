@@ -194,6 +194,7 @@ export interface DataAdapter {
   ): Promise<SessionTemplateFull>
   cloneSessionTemplate(id: string, userId: string): Promise<SessionTemplateFull>
   deleteSessionTemplate(id: string): Promise<void>
+  touchSessionTemplateLastAssigned(id: string): Promise<void>
 
   // Event item operations
   getEventItems(parentId: string, parentType: 'template' | 'log'): Promise<EventItem[]>

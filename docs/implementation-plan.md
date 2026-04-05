@@ -175,7 +175,32 @@
   ══════════════════════════╪═══════════════╪════
    Phase 6 Complete         │   Chat & Media working
   ══════════════════════════════════════════════
+                            │
+                     ┌──────────────┐
+                     │ STEP 27:     │
+                     │ Display      │
+                     │ Broadcast    │
+                     │ Infra        │
+                     └──────┬───────┘
+                            │
+                     ┌──────────────┐
+                     │ STEP 28:     │
+                     │ Display      │
+                     │ Route +      │
+                     │ Board/Focus  │
+                     └──────┬───────┘
+                            │
+                     ┌──────────────┐
+                     │ STEP 29:     │
+                     │ Idle Mode    │
+                     └──────────────┘
+
+  ══════════════════════════════════════════════════
+   Phase 7 Complete         Remote Display working
+  ══════════════════════════════════════════════════
 ```
+
+> **Note on ordering:** Steps 27–29 are shown after Phase 6 for dependency graph clarity, but the remote display has no dependency on chat (Phase 6). The only hard dependencies are Step 6 (active workout logging) and Step 11 (program structure for idle mode schedule). The display could be built as early as Phase 2 completion if desired. Broadcast channel setup is independent between chat and display — they use separate channel names.
 
 > **Note on ordering:** Step 19 and Step 20 are shown after Phase 3-4 for dependency graph clarity, but Step 19 can be executed at any point after Phase 1 (Step 9). It modifies the Supabase client initialization and adds a settings screen — both of which exist by Step 9. Step 20 (Docker) can be done at any point after Step 3 (Supabase schema exists). Neither step depends on Steps 10-18. The only hard requirement is that Step 19 must be complete before any Play Store or public distribution.
 
@@ -2355,6 +2380,266 @@ Add a brief explanation in Settings → Data section: "Chat messages are automat
 
 ---
 
+## ═══ PHASE 7: Remote Display ═══
+
+## STEP 27: Display Broadcast Infrastructure (~2 days)
+
+**Dependencies:** Step 6 (active workout logging), Step 1.5 (Iron & Ember design system)
+**Priority:** P2
+**Docs:** `13-prd-remote-display.md` §Broadcast Channel Design + §Snapshot Publishing
+
+### What to build
+
+The data pipeline: workout snapshot construction, Broadcast channel publishing from the phone, and the display route's subscription and state management.
+
+### 27a. Workout snapshot type
+
+Define a `DisplaySnapshot` type (Zod schema) containing all fields from `13-prd-remote-display.md` §What Gets Pushed. This is a projection of the active workout state — not the full workout log. It includes user_id, display_name, session metadata, current exercise, set array for the current exercise, and rest timer state.
+
+Add `is_visible` to the Zod schema. This field is checked before publishing; if false, no snapshot is emitted.
+
+### 27b. Snapshot publisher
+
+Integrate snapshot publishing into the active workout Zustand store. On each state-changing action (set confirmed, exercise transitioned, rest timer started, rest timer expired, workout started, workout completed), build a `DisplaySnapshot` from the current store state and publish it to the `display` Broadcast channel.
+
+Publishing triggers:
+
+| Action | Event Type | Notes |
+|--------|-----------|-------|
+| Workout started | `workout_snapshot` | Initial snapshot with first exercise |
+| Set confirmed | `workout_snapshot` | Updated set completion status |
+| Exercise transitioned | `workout_snapshot` | New current exercise and fresh set array |
+| Rest timer started | `workout_snapshot` | Timer state: running, remaining seconds, started_at |
+| Rest timer expired | `workout_snapshot` | Timer state: idle |
+| Workout completed | `session_ended` | Payload: `{ user_id }` only |
+| Workout abandoned | `session_ended` | Same as completed |
+| Focus requested | `focus` | Payload: `{ user_id }` |
+| Unfocus requested | `unfocus` | Payload: `{}` |
+
+### 27c. Display visibility setting
+
+Add `display_visible` boolean to user profile (default: true). Add a toggle in the Settings screen under a "Remote Display" section. When false, the snapshot publisher skips all Broadcast publishes.
+
+Adapter method:
+
+| Method | Description |
+|--------|-------------|
+| `updateDisplayVisibility(userId, visible)` | Sets the display_visible flag on the user profile |
+
+### 27d. Display Broadcast channel setup
+
+The channel name is `display`. All phone clients publish to this single channel. All display clients subscribe to this single channel. Events are discriminated by `event` type (`workout_snapshot`, `session_ended`, `focus`, `unfocus`) and by `user_id` within the payload.
+
+No RLS applies to Broadcast channels — they are ephemeral pub/sub. The privacy boundary is enforced at the publisher (phone checks `display_visible` before emitting).
+
+### Done when
+
+- [ ] `DisplaySnapshot` Zod schema validates all required fields
+- [ ] Active workout store publishes snapshot on every state-changing action
+- [ ] `session_ended` event fires on workout completion and abandonment
+- [ ] `focus` and `unfocus` events publish from phone
+- [ ] Display visibility toggle exists in Settings
+- [ ] Opted-out users produce zero Broadcast events
+- [ ] Snapshot includes correct timer state (running with started_at, or idle)
+- [ ] Publishing does not degrade active workout UI performance (async, fire-and-forget)
+
+---
+
+## STEP 28: Display Route + Board and Focused Views (~3 days)
+
+**Dependencies:** Step 27 (Broadcast publishing working)
+**Priority:** P2
+**Docs:** `13-prd-remote-display.md` §Display Modes + §Display UI + §Iron & Ember Design Callouts
+
+### What to build
+
+The `/display` route: a full-viewport, no-chrome web page that subscribes to the display Broadcast channel and renders active workout sessions. This is the most visually demanding step — the display must be readable from across a gym on a 1080p TV.
+
+### 28a. Display route shell
+
+Add `/display` route to TanStack Router. This route renders outside the main app layout — no navigation bar, no sidebar, no header. Full viewport, `surface-anvil` background, single status footer.
+
+The route:
+- Subscribes to the `display` Broadcast channel on mount
+- Maintains an in-memory map of active sessions (keyed by `user_id`)
+- Tracks current display mode: idle, board, or focused (and which user_id is focused)
+- Cleans up subscription on unmount
+
+### 28b. Session state management
+
+The display maintains a `Map<string, DisplaySnapshot>` in component state (or a dedicated Zustand store). Incoming `workout_snapshot` events upsert into this map. `session_ended` events remove the entry. The display mode is derived from this map:
+
+| Condition | Mode |
+|-----------|------|
+| Map is empty | Idle |
+| Map has entries + no focus command active | Board |
+| Focus command active + focused user in map | Focused |
+| Focus command active + focused user NOT in map | Board (focus cleared) |
+
+### 28c. Board view
+
+Responsive grid of session cards. Grid columns adapt to session count:
+
+| Active Sessions | Grid Layout |
+|----------------|-------------|
+| 1 | Single card, centered, expanded |
+| 2 | 2 columns |
+| 3-4 | 2 columns, 2 rows |
+| 5+ | Pages of up to 4 cards, auto-cycling every 10 seconds |
+
+Each card renders on `surface-iron`, zero border-radius, containing:
+
+| Element | Typography | Color |
+|---------|-----------|-------|
+| Display name | Space Grotesk `text-label-large`, ALL-CAPS | `text-primary` |
+| Session type | Inter `label-medium`, ALL-CAPS | `text-secondary` |
+| Elapsed time | Space Grotesk monospace | `text-secondary` |
+| Current exercise | Inter `body-medium` | `text-primary` |
+| Exercise progress | Inter `label-small` | `text-secondary` |
+| Set progress | Compact: completed/total with `arc` checkmarks | — |
+| Rest timer | Space Grotesk, `ember` text, `surface-steel` background | `ember` |
+
+### 28d. Focused view
+
+Full-screen workout display for a single user. Larger typography than board cards. Full set table with PRESCRIBED / ACTUAL / STATUS columns. Large rest timer countdown.
+
+| Element | Scale | Notes |
+|---------|-------|-------|
+| User name + session | Space Grotesk, 2rem+ | Header bar |
+| Current exercise | Space Grotesk, 2.5rem+ | Centered, prominent |
+| Set table | Inter `body-medium`, generous row height | Alternating `surface-charcoal` rows |
+| Current set row | `ember` left border | Visual indicator of active set |
+| Rest timer | Space Grotesk `text-readout` (3.5rem+) | `ember` text, centered, pulsing when < 10s |
+| Elapsed time | Space Grotesk, 1.5rem | Header, `text-secondary` |
+
+### 28e. Timer interpolation
+
+The display does not receive per-second timer updates. When a snapshot arrives with `rest_timer.state = 'running'`, the display calculates remaining time from `rest_timer.started_at` and `rest_timer.total_seconds`, then runs a local `setInterval` (or `requestAnimationFrame`) countdown. When a snapshot arrives with `rest_timer.state = 'idle'`, the display clears the local timer.
+
+This produces a smooth countdown visual with zero additional Broadcast traffic.
+
+### 28f. Reconnection behavior
+
+If the WebSocket disconnects, the display:
+1. Shows "Reconnecting..." in the status footer
+2. Attempts automatic reconnection (Supabase client handles this)
+3. On reconnection, publishes a `display_hello` event to the channel
+4. Active phones respond by re-publishing their current snapshot
+5. Display rebuilds its session map from incoming snapshots
+
+The `display_hello` → re-publish pattern ensures the display catches up after any disconnection without requiring server-side state persistence.
+
+### 28g. "Push to Display" button
+
+Add a button to the active workout screen (phone). Placement: in the workout header or action menu. Material Symbol: `cast` or `tv`. Label: "PUSH TO DISPLAY" / "RETURN TO BOARD".
+
+The button publishes a `focus` event with the user's `user_id`. Tapping again publishes an `unfocus` event. Button state reflects whether the user is currently focused.
+
+### 28h. Connection status footer
+
+Persistent footer at bottom of display viewport. `surface-pit` background, Inter `label-small`.
+
+| State | Display |
+|-------|---------|
+| Connected | `● Connected` (green dot) |
+| Reconnecting | `○ Reconnecting...` (amber dot, pulsing) |
+| Active sessions count | `N active sessions` or `Focused: [Name]` |
+
+### Done when
+
+- [ ] `/display` route renders full-viewport with no app chrome
+- [ ] Display subscribes to `display` Broadcast channel on mount
+- [ ] Board view shows cards for all active visible sessions
+- [ ] Grid layout adapts from 1 to 4 sessions per page
+- [ ] Board auto-cycles through pages when 5+ sessions active (10-second interval)
+- [ ] Focused view renders full set table and large timer
+- [ ] Focus/unfocus triggered from phone updates display mode
+- [ ] Timer interpolation produces smooth countdown (± 1 second accuracy)
+- [ ] Display auto-reconnects and rebuilds state after network drop
+- [ ] "Push to Display" button exists in active workout UI
+- [ ] Connection status footer shows current state
+- [ ] All typography readable at 3+ meters on 1080p display
+- [ ] Iron & Ember design tokens applied throughout (zero border-radius, tonal surfaces, dual fonts)
+- [ ] No database queries from the display route
+
+---
+
+## STEP 29: Idle Mode + Edge Function (~1.5 days)
+
+**Dependencies:** Step 28 (display route working), Step 11 (program structure for schedule data), Step 3 (Supabase project for Edge Function deployment)
+**Priority:** P2
+**Docs:** `13-prd-remote-display.md` §Idle Mode + §Idle Mode Data
+
+### What to build
+
+The ambient display state when no workouts are active. Clock, today's schedule, and countdown to next session.
+
+### 29a. Idle mode layout
+
+Full-viewport idle display:
+
+| Element | Typography | Position |
+|---------|-----------|----------|
+| Clock | Space Grotesk, minimum 8rem, `text-primary` | Centered, upper half |
+| Date | Inter `body-large`, `text-secondary` | Below clock |
+| Schedule section header | Space Grotesk `text-label-large`, ALL-CAPS, "TODAY'S SESSIONS" | Left-aligned, lower section |
+| Schedule entries | Inter `body-medium`: display name, session type (ALL-CAPS), scheduled time | Rows in `surface-iron` cards |
+| Next-up countdown | Space Grotesk, `ember` text, `surface-steel` badge | Below schedule |
+| Status footer | Same as board/focused modes | Bottom |
+
+Clock updates every second via local `setInterval`. No Broadcast event needed for clock ticking.
+
+### 29b. Idle state Edge Function
+
+A Supabase Edge Function runs on a cron schedule (every 60 seconds). It queries today's remaining scheduled sessions for all users and publishes an `idle_state` event to the `display` Broadcast channel. The Edge Function uses the service_role key (server-side only, never exposed to clients) to query across users.
+
+The Edge Function:
+- Runs via `pg_cron` or Supabase's scheduled function invocation
+- Queries `scheduled_sessions` joined with user profiles for today's date
+- Filters to sessions not yet completed
+- Publishes the `idle_state` event payload to the `display` channel
+- Runs independently of any client being connected
+
+### 29c. Idle state event payload
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `server_time` | ISO timestamp | Current time for clock sync correction |
+| `scheduled_sessions` | Array | `{ display_name, session_name, session_type, scheduled_time }` for each remaining session today |
+| `next_session` | Object or null | The soonest upcoming session: `{ display_name, session_name, starts_in_seconds }` |
+
+### 29d. Transition animations
+
+| Transition | Animation |
+|-----------|-----------|
+| Idle → Board | Fade clock out, fade cards in (300ms) |
+| Board → Idle | Fade cards out, fade clock in (300ms) |
+| Board → Focused | Cards shrink to zero, focused view expands from center (400ms) |
+| Focused → Board | Reverse of above (400ms) |
+
+Use CSS transitions or Framer Motion. Keep animations subtle — the display should feel calm, not flashy.
+
+### Done when
+
+- [ ] Idle mode renders large clock updating every second
+- [ ] Today's scheduled sessions displayed when idle state data available
+- [ ] Next-session countdown badge renders with `ember` accent
+- [ ] Idle mode transitions to board when first session starts
+- [ ] Board transitions to idle when last session ends
+- [ ] Idle state published by Edge Function on 60-second cron interval
+- [ ] Edge Function queries today's remaining sessions across all users
+- [ ] Clock is readable from 5+ meters on 1080p
+- [ ] Transitions between modes are smooth (300-400ms)
+- [ ] Display remains stable for hours without memory leaks or drift
+
+---
+
+## ═══ PHASE 7 COMPLETE ═══
+
+**Checkpoint:** A full-viewport `/display` route runs on any browser-capable screen in the gym. Active workout sessions appear as cards (board mode) or expand to full-screen (focused mode) with live set tracking and smooth rest timer countdowns. The idle screen shows the clock and today's scheduled sessions. The display requires no authentication and no database queries — pure Broadcast subscription.
+
+---
+
 ## Integration Testing Milestones
 
 ### Milestone 1: First Workout in Browser (after Steps 5 + 6)
@@ -2438,7 +2723,11 @@ Add a brief explanation in Settings → Data section: "Chat messages are automat
 | 25. Video + Image Sharing             | P2       | 4 days         | 24                                            |
 | 26. Message Retention + Archiving     | P3       | 1 day          | 22, 23, 24, 25                                |
 | **Phase 6 subtotal**                  |          | **~17 days**   |                                               |
-| **Total**                             |          | **~63 days**   |                                               |
+| 27. Display Broadcast Infrastructure  | P2       | 2 days         | Step 6                                        |
+| 28. Display Route + Board/Focused     | P2       | 3 days         | Step 27                                       |
+| 29. Idle Mode + Edge Function         | P2       | 1.5 days       | Step 28, Step 11                              |
+| **Phase 7 subtotal**                  |          | **~6.5 days**  |                                               |
+| **Total**                             |          | **~69.5 days** |                                               |
 
 > **Critical path to browser MVP:** Steps 1 → 1.5 → 2/3 → 4 → 5 → 6 → 7 = ~13 days
 > **Critical path to Tauri GO/NO-GO:** + Steps 8 → 9 = ~18.5 days
@@ -2447,6 +2736,8 @@ Add a brief explanation in Settings → Data section: "Chat messages are automat
 > **Critical path to text chat MVP:** + Steps 21 → 22 → 23 = ~36 days
 > **Critical path to full chat with video:** + Steps 24 + 25 = ~42 days (24 and 25 can parallel)
 > **Retention can ship any time after Step 21.**
+> **Critical path to remote display:** Steps 1–13 + Step 27 → 28 → 29 = ~6 additional days after Phase 2
+> **Can be parallelized with:** Phase 3-4 (analytics, notifications, sharing), Phase 5 (hosting), Phase 6 (chat)
 
 ---
 

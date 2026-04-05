@@ -90,6 +90,17 @@ export function useCloneSessionTemplate() {
   })
 }
 
+export function useTouchSessionTemplateLastAssigned() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => getAdapter().touchSessionTemplateLastAssigned(id),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['session-templates'] })
+    },
+  })
+}
+
 export function useDeleteSessionTemplate() {
   const queryClient = useQueryClient()
 

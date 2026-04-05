@@ -11,6 +11,9 @@ import type {
   GroupType,
 } from '@/domain/types'
 import { UNDO_WINDOW_MS } from '@/lib/workout-utils'
+import type { SnapshotContext } from '@/lib/display-snapshot'
+import { buildDisplaySnapshot } from '@/lib/display-snapshot'
+import { publishDisplaySnapshot, publishSessionEnded } from '@/lib/display-publisher'
 
 // ---------------------------------------------------------------------------
 // Nested state: groups contain activities, activities contain sets
@@ -79,6 +82,31 @@ function _cleanupTauriRestListeners(): void {
   _unlistenTick = null
   _unlistenExpired?.()
   _unlistenExpired = null
+}
+
+// ---------------------------------------------------------------------------
+// Display broadcast -- snapshot context and publish helper
+// ---------------------------------------------------------------------------
+
+let _snapshotContext: SnapshotContext | null = null
+
+export function setSnapshotContext(ctx: SnapshotContext | null): void {
+  _snapshotContext = ctx
+}
+
+function _publishCurrentState(): void {
+  if (!_snapshotContext) return
+  const state = useActiveWorkoutStore.getState()
+  if (!state.workoutLog) return
+  try {
+    publishDisplaySnapshot(buildDisplaySnapshot(state, _snapshotContext))
+  } catch (err) {
+    console.error('[display-broadcast] Failed to publish snapshot:', err)
+  }
+}
+
+export function republishCurrentState(): void {
+  _publishCurrentState()
 }
 
 // ---------------------------------------------------------------------------
@@ -164,6 +192,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         restTimer: null,
         undoAction: null,
       })
+      _publishCurrentState()
     },
 
     startProgrammedWorkout(workoutLog: WorkoutLog, groups: LoggedActivityGroupWithActivities[]) {
@@ -190,6 +219,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         restTimer: null,
         undoAction: null,
       })
+      _publishCurrentState()
     },
 
     resumeWorkout(
@@ -225,6 +255,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         _restInterval = null
       }
       _cleanupTauriRestListeners()
+      if (_snapshotContext) publishSessionEnded(_snapshotContext.userId)
       set({ ...initialState })
     },
 
@@ -238,6 +269,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         _restInterval = null
       }
       _cleanupTauriRestListeners()
+      if (_snapshotContext) publishSessionEnded(_snapshotContext.userId)
       set({ ...initialState })
     },
 
@@ -265,6 +297,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
           },
         ],
       }))
+      _publishCurrentState()
     },
 
     // ------------------------------------------------------------------
@@ -293,6 +326,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
           },
         }
       })
+      _publishCurrentState()
     },
 
     updateSetInPlace(loggedActivityId: string, updatedSet: LoggedSet) {
@@ -356,6 +390,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       set({
         restTimer: { remaining: seconds, total: seconds },
       })
+      _publishCurrentState()
 
       if (isTauri()) {
         // Rust-backed timer: register listeners BEFORE invoking the command
@@ -374,6 +409,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
           listen<void>('timer_expired', () => {
             _cleanupTauriRestListeners()
             set({ restTimer: null })
+            _publishCurrentState()
           }).then((fn) => {
             _unlistenExpired = fn
           }),
@@ -414,6 +450,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         }
       }
       set({ restTimer: null })
+      _publishCurrentState()
     },
 
     adjustRest(delta: number) {
@@ -438,6 +475,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
           },
         }
       })
+      _publishCurrentState()
     },
 
     // ------------------------------------------------------------------
@@ -461,6 +499,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
           _restInterval = null
         }
         set({ restTimer: null })
+        _publishCurrentState()
         return
       }
 
