@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { BlockEditor } from './block-editor'
 import { addBlock, reorderBlocks } from './builder-state'
-import type { ProgramDraft, SessionDraft, ValidationError } from './builder-state'
+import type { ProgramDraft, ValidationError } from './builder-state'
 import type { DayOfWeek } from './constants'
 
 // ---------------------------------------------------------------------------
@@ -33,7 +33,6 @@ interface BlockListProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
-  onEditSession?: (weekClientId: string, session: SessionDraft) => void
   onCopyWeek?: (sourceWeekClientId: string) => void
   showWeekends: boolean
   fieldErrors?: ValidationError[]
@@ -43,7 +42,6 @@ export function BlockList({
   draft,
   onUpdate,
   onPickSession,
-  onEditSession,
   onCopyWeek,
   showWeekends,
   fieldErrors = [],
@@ -103,7 +101,6 @@ export function BlockList({
               draft={draft}
               onUpdate={onUpdate}
               onPickSession={onPickSession}
-              onEditSession={onEditSession}
               onCopyWeek={onCopyWeek}
               showWeekends={showWeekends}
               isNew={block.clientId === newBlockId}

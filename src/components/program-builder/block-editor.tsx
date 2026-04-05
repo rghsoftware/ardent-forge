@@ -14,7 +14,7 @@ import { BlockTypeSelector } from './block-type-selector'
 import { WeekGrid } from './week-grid'
 import { ConfirmDeleteDialog } from './confirm-delete-dialog'
 import { removeBlock, addWeekToBlock, weeksMatch } from './builder-state'
-import type { BlockDraft, ProgramDraft, SessionDraft, ValidationError } from './builder-state'
+import type { BlockDraft, ProgramDraft, ValidationError } from './builder-state'
 import type { BlockType } from '@/domain/types'
 import { BLOCK_TYPE_STYLES, SESSION_TYPE_BADGE } from './constants'
 import type { DayOfWeek } from './constants'
@@ -28,7 +28,6 @@ interface BlockEditorProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
-  onEditSession?: (weekClientId: string, session: SessionDraft) => void
   onCopyWeek?: (sourceWeekClientId: string) => void
   showWeekends: boolean
   isNew?: boolean
@@ -40,7 +39,6 @@ export function BlockEditor({
   draft,
   onUpdate,
   onPickSession,
-  onEditSession,
   onCopyWeek,
   showWeekends,
   isNew,
@@ -317,7 +315,6 @@ export function BlockEditor({
                     blockClientId={block.clientId}
                     onUpdate={onUpdate}
                     onPickSession={onPickSession}
-                    onEditSession={onEditSession}
                     onCopyWeek={handleCopyWeek}
                     showWeekends={showWeekends}
                     isNew={week.clientId === newWeekId}

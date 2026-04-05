@@ -25,7 +25,6 @@ interface SessionSlotProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
-  onEditSession?: (weekClientId: string, session: SessionDraft) => void
 }
 
 export function SessionSlot({
@@ -35,7 +34,6 @@ export function SessionSlot({
   draft,
   onUpdate,
   onPickSession,
-  onEditSession,
 }: SessionSlotProps) {
   const [animating, setAnimating] = useState(false)
   const [prevSessionId, setPrevSessionId] = useState(session?.clientId)
@@ -71,12 +69,10 @@ export function SessionSlot({
   )
 
   const handleClick = useCallback(() => {
-    if (session && onEditSession) {
-      onEditSession(weekClientId, session)
-    } else {
+    if (!session) {
       onPickSession(weekClientId, dayOfWeek)
     }
-  }, [session, weekClientId, dayOfWeek, onPickSession, onEditSession])
+  }, [session, weekClientId, dayOfWeek, onPickSession])
 
   if (!session) {
     return (
@@ -99,27 +95,15 @@ export function SessionSlot({
   }
 
   const isEvent = session.sessionType === 'EVENT'
-  const hasCustomizations =
-    !!session.notes ||
-    (session.overrides?.activityOverrides &&
-      Object.keys(session.overrides.activityOverrides).length > 0)
 
   return (
     <div
-      className={`relative flex min-h-[56px] cursor-pointer flex-col justify-center p-1.5 transition-colors ${
+      className={`relative flex min-h-[56px] flex-col justify-center p-1.5 ${
         SESSION_BORDER[session.sessionType] ?? ''
       } ${
-        isEvent
-          ? 'bg-surface-iron hover:bg-surface-steel'
-          : 'bg-surface-charcoal hover:bg-surface-iron'
+        isEvent ? 'bg-surface-iron' : 'bg-surface-charcoal'
       } ${SESSION_TINT[session.sessionType] ?? ''}`}
       style={animating ? { animation: 'slot-fill 0.2s ease-out both' } : undefined}
-      onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') handleClick()
-      }}
       aria-label={`Session: ${session.templateName ?? 'Unnamed'}`}
       title={session.templateName ?? 'Unnamed'}
     >
@@ -153,7 +137,6 @@ export function SessionSlot({
         >
           {session.sessionType}
         </span>
-        {hasCustomizations && <Icon name="edit_note" size={12} className="text-arc/70" />}
       </div>
     </div>
   )
