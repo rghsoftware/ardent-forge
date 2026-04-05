@@ -6,20 +6,25 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { ProgramForm } from '@/components/program-builder/program-form'
+import { toast } from 'sonner'
 import { BlockList } from '@/components/program-builder/block-list'
 import { MobileBlockEditor } from '@/components/program-builder/mobile-block-editor'
 import { SessionPickerSheet } from '@/components/program-builder/session-picker-sheet'
+import { SessionEditSheet } from '@/components/program-builder/session-edit-sheet'
 import { CopyWeekDialog } from '@/components/program-builder/copy-week-dialog'
 import {
   createEmptyDraft,
   hydrateDraft,
   assignSession,
+  removeSession,
+  updateSession,
   copyWeek,
   validateDraft,
   buildSavePayload,
 } from '@/components/program-builder/builder-state'
 import type {
   ProgramDraft,
+  SessionDraft,
   WeekDraft,
   ValidationError,
 } from '@/components/program-builder/builder-state'
@@ -59,6 +64,12 @@ function BuilderPage() {
   const [copyWeekState, setCopyWeekState] = useState<{
     sourceWeek: WeekDraft
     allWeeks: WeekDraft[]
+  } | null>(null)
+
+  // Session edit sheet state
+  const [editState, setEditState] = useState<{
+    weekClientId: string
+    session: SessionDraft
   } | null>(null)
 
   // Error state: fieldErrors for inline validation, error for server/auth failures
@@ -159,6 +170,50 @@ function BuilderPage() {
     },
     [copyWeekState],
   )
+
+  // ---------------------------------------------------------------------------
+  // Session edit handlers
+  // ---------------------------------------------------------------------------
+
+  const handleEditSession = useCallback((weekClientId: string, session: SessionDraft) => {
+    setEditState({ weekClientId, session })
+  }, [])
+
+  const editStateRef = useRef(editState)
+  useEffect(() => {
+    editStateRef.current = editState
+  })
+
+  const handleEditUpdate = useCallback((updatedSession: SessionDraft) => {
+    const state = editStateRef.current
+    if (!state) return
+    setDraft((prev) => updateSession(prev, state.weekClientId, updatedSession))
+    setEditState((prev) => (prev ? { ...prev, session: updatedSession } : null))
+  }, [])
+
+  const handleEditRemove = useCallback(() => {
+    const state = editStateRef.current
+    if (!state) return
+    const previousDraft = draft
+    setDraft((prev) => removeSession(prev, state.weekClientId, state.session.clientId))
+    setEditState(null)
+    toast('Session removed', {
+      action: {
+        label: 'Undo',
+        onClick: () => setDraft(previousDraft),
+      },
+      duration: 5000,
+    })
+  }, [draft])
+
+  const handleEditChangeTemplate = useCallback(() => {
+    const state = editStateRef.current
+    if (!state || state.session.dayOfWeek === null) return
+    const dayOfWeek = state.session.dayOfWeek
+    const weekClientId = state.weekClientId
+    setEditState(null)
+    setPickerState({ weekClientId, dayOfWeek })
+  }, [])
 
   const handleSave = useCallback(async () => {
     const errors = validateDraft(draft)
@@ -292,6 +347,7 @@ function BuilderPage() {
               draft={draft}
               onUpdate={handleUpdateDraft}
               onPickSession={handlePickSession}
+              onEditSession={handleEditSession}
               onCopyWeek={handleCopyWeek}
               showWeekends={showWeekends}
               fieldErrors={fieldErrors}
@@ -303,6 +359,7 @@ function BuilderPage() {
               draft={draft}
               onUpdate={handleUpdateDraft}
               onPickSession={handlePickSession}
+              onEditSession={handleEditSession}
               onCopyWeek={handleCopyWeek}
               showWeekends={showWeekends}
               onToggleWeekends={() => setShowWeekends((prev) => !prev)}
@@ -321,6 +378,22 @@ function BuilderPage() {
         onSelect={handleSessionSelected}
         userId={userId}
       />
+
+      {/* Session edit sheet */}
+      {editState && (
+        <SessionEditSheet
+          open={editState !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditState(null)
+          }}
+          session={editState.session}
+          weekClientId={editState.weekClientId}
+          userId={userId}
+          onUpdate={handleEditUpdate}
+          onRemove={handleEditRemove}
+          onChangeTemplate={handleEditChangeTemplate}
+        />
+      )}
 
       {/* Copy week dialog */}
       {copyWeekState && (

@@ -41,6 +41,7 @@ interface MobileBlockEditorProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onEditSession?: (weekClientId: string, session: SessionDraft) => void
   onCopyWeek: (sourceWeekClientId: string) => void
   showWeekends: boolean
   onToggleWeekends: () => void
@@ -51,6 +52,7 @@ export function MobileBlockEditor({
   draft,
   onUpdate,
   onPickSession,
+  onEditSession,
   onCopyWeek,
   showWeekends,
   onToggleWeekends,
@@ -98,6 +100,7 @@ export function MobileBlockEditor({
           draft={draft}
           onUpdate={onUpdate}
           onPickSession={onPickSession}
+          onEditSession={onEditSession}
           onCopyWeek={onCopyWeek}
           showWeekends={showWeekends}
           isNew={block.clientId === newBlockId}
@@ -134,6 +137,7 @@ interface MobileBlockCardProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onEditSession?: (weekClientId: string, session: SessionDraft) => void
   onCopyWeek: (sourceWeekClientId: string) => void
   showWeekends: boolean
   isNew?: boolean
@@ -146,6 +150,7 @@ function MobileBlockCard({
   draft,
   onUpdate,
   onPickSession,
+  onEditSession,
   onCopyWeek,
   showWeekends,
   isNew,
@@ -392,6 +397,7 @@ function MobileBlockCard({
                     blockClientId={block.clientId}
                     onUpdate={onUpdate}
                     onPickSession={onPickSession}
+                    onEditSession={onEditSession}
                     onCopyWeek={onCopyWeek}
                     showWeekends={showWeekends}
                     isNew={week.clientId === newWeekId}
@@ -436,6 +442,7 @@ interface MobileWeekSectionProps {
   blockClientId: string
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onEditSession?: (weekClientId: string, session: SessionDraft) => void
   onCopyWeek: (sourceWeekClientId: string) => void
   showWeekends: boolean
   isNew?: boolean
@@ -449,6 +456,7 @@ function MobileWeekSection({
   blockClientId,
   onUpdate,
   onPickSession,
+  onEditSession,
   onCopyWeek,
   showWeekends,
   isNew,
@@ -519,6 +527,7 @@ function MobileWeekSection({
               draft={draft}
               onUpdate={onUpdate}
               onPickSession={onPickSession}
+              onEditSession={onEditSession}
             />
           )
         })}
@@ -552,6 +561,7 @@ interface MobileDayRowProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onEditSession?: (weekClientId: string, session: SessionDraft) => void
 }
 
 function MobileDayRow({
@@ -561,10 +571,15 @@ function MobileDayRow({
   draft,
   onUpdate,
   onPickSession,
+  onEditSession,
 }: MobileDayRowProps) {
   const handleTap = useCallback(() => {
-    onPickSession(weekClientId, dayOfWeek)
-  }, [weekClientId, dayOfWeek, onPickSession])
+    if (session && onEditSession) {
+      onEditSession(weekClientId, session)
+    } else {
+      onPickSession(weekClientId, dayOfWeek)
+    }
+  }, [weekClientId, dayOfWeek, session, onPickSession, onEditSession])
 
   const handleRemove = useCallback(
     (e: React.MouseEvent | React.KeyboardEvent) => {
@@ -604,6 +619,10 @@ function MobileDayRow({
   }
 
   const isEvent = session.sessionType === 'EVENT'
+  const isCustomized =
+    !!session.notes ||
+    (session.overrides?.activityOverrides &&
+      Object.keys(session.overrides.activityOverrides).length > 0)
 
   return (
     <div
@@ -617,7 +636,7 @@ function MobileDayRow({
         type="button"
         onClick={handleTap}
         className="flex min-w-0 flex-1 items-center gap-3 text-left"
-        aria-label={`Session: ${session.templateName ?? 'Unnamed'} on ${DAY_ABBREVIATIONS[dayOfWeek]}`}
+        aria-label={`${isCustomized ? 'Edit customized session' : 'Edit session'}: ${session.templateName ?? 'Unnamed'} on ${DAY_ABBREVIATIONS[dayOfWeek]}`}
       >
         <span className="w-8 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
           {DAY_ABBREVIATIONS[dayOfWeek]}
@@ -630,6 +649,14 @@ function MobileDayRow({
         >
           {session.templateName ?? 'Unnamed'}
         </span>
+        {isCustomized && (
+          <Icon
+            name="edit_note"
+            size={14}
+            className="shrink-0 text-ember/70"
+            aria-label="Session has customizations"
+          />
+        )}
         <span
           className={`px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
             SESSION_TYPE_BADGE[session.sessionType] ?? 'bg-surface-steel text-warm-ash'

@@ -21,6 +21,7 @@ pub struct CreateScheduledSessionInput {
     pub session_type: String,
     pub session_template_id: String,
     pub notes: Option<String>,
+    pub overrides: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -293,8 +294,8 @@ pub async fn create_program_full(
                 sqlx::query(
                     "INSERT INTO scheduled_sessions \
                      (id, block_week_id, day_of_week, day_label, session_type, \
-                      session_template_id, notes, created_at, updated_at) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                      session_template_id, notes, overrides, created_at, updated_at) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 )
                 .bind(&session_id)
                 .bind(&week_id)
@@ -303,6 +304,7 @@ pub async fn create_program_full(
                 .bind(&session_input.session_type)
                 .bind(&session_input.session_template_id)
                 .bind(&session_input.notes)
+                .bind(&session_input.overrides)
                 .bind(now)
                 .bind(now)
                 .execute(&mut *tx)
@@ -467,8 +469,8 @@ pub async fn update_program_full(
                 sqlx::query(
                     "INSERT INTO scheduled_sessions \
                      (id, block_week_id, day_of_week, day_label, session_type, \
-                      session_template_id, notes, created_at, updated_at) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                      session_template_id, notes, overrides, created_at, updated_at) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 )
                 .bind(&session_id)
                 .bind(&week_id)
@@ -477,6 +479,7 @@ pub async fn update_program_full(
                 .bind(&session_input.session_type)
                 .bind(&session_input.session_template_id)
                 .bind(&session_input.notes)
+                .bind(&session_input.overrides)
                 .bind(now)
                 .bind(now)
                 .execute(&mut *tx)

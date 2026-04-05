@@ -53,6 +53,8 @@ export {
   blockTypeSchema,
   blockSchema,
   blockWeekSchema,
+  activityOverrideSchema,
+  sessionOverridesSchema,
   scheduledSessionSchema,
   programActivationSchema,
 } from './program'
@@ -62,6 +64,8 @@ export type {
   BlockType,
   Block,
   BlockWeek,
+  ActivityOverride,
+  SessionOverrides,
   ScheduledSession,
   ProgramActivation,
 } from './program'
