@@ -164,10 +164,25 @@ export const getDisplayMode = (state: DisplayState): DisplayMode => {
   return 'board'
 }
 
+let _pageSessCache: {
+  sessions: Map<string, SessionEntry>
+  page: number
+  result: DisplaySnapshot[]
+} = {
+  sessions: new Map(),
+  page: 0,
+  result: [],
+}
+
 export const getPageSessions = (state: DisplayState): DisplaySnapshot[] => {
+  if (state.sessions === _pageSessCache.sessions && state.currentPage === _pageSessCache.page) {
+    return _pageSessCache.result
+  }
   const all = Array.from(state.sessions.values()).map((e) => e.snapshot)
   const start = state.currentPage * SESSIONS_PER_PAGE
-  return all.slice(start, start + SESSIONS_PER_PAGE)
+  const result = all.slice(start, start + SESSIONS_PER_PAGE)
+  _pageSessCache = { sessions: state.sessions, page: state.currentPage, result }
+  return result
 }
 
 export const getTotalPages = (state: DisplayState): number => {
