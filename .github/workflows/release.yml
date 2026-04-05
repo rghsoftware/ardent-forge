@@ -180,7 +180,7 @@ jobs:
           packageName: com.rghsoftware.ardentforge
           releaseFiles: artifacts/**/*.aab
           track: internal
-          status: completed
+          status: draft
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
