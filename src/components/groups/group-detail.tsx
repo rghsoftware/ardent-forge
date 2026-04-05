@@ -257,15 +257,19 @@ function MembersTab({
 
       {/* Members list */}
       <div className="flex flex-col">
-        {members.map((member) => (
-          <MemberCard
-            key={member.id}
-            member={member}
-            isCoach={isCoach}
-            currentUserId={currentUserId}
-            groupId={groupId}
-          />
-        ))}
+        {members.length === 0 ? (
+          <p className="py-8 text-center text-xs text-warm-ash/40">No members found.</p>
+        ) : (
+          members.map((member) => (
+            <MemberCard
+              key={member.id}
+              member={member}
+              isCoach={isCoach}
+              currentUserId={currentUserId}
+              groupId={groupId}
+            />
+          ))
+        )}
       </div>
     </div>
   )

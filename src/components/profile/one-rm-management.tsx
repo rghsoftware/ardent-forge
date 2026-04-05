@@ -3,6 +3,7 @@ import { useExercises } from '@/hooks/use-exercises'
 import { useSaveOneRepMax, useUpdateUserProfile } from '@/hooks/use-user-profile'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Icon } from '@/components/icon'
 import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
 import {
   Dialog,
@@ -101,11 +102,12 @@ export function OneRmManagement({ userId, exerciseMaxes, preferredUnits }: OneRm
   // Empty state
   if (maxEntries.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <p className="font-display text-lg font-bold text-bone-white">No maxes recorded</p>
-        <p className="mt-2 text-sm text-warm-ash">
-          Add your first 1RM from an exercise detail page
-        </p>
+      <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+        <Icon name="trophy" size={48} className="text-warm-ash/30" />
+        <div className="flex flex-col gap-1">
+          <p className="font-display text-lg font-bold text-bone-white">No maxes recorded</p>
+          <p className="text-sm text-warm-ash">Add your first 1RM from an exercise detail page</p>
+        </div>
       </div>
     )
   }

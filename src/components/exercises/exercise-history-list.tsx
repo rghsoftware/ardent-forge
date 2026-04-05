@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 import { formatDuration } from '@/lib/format-duration'
 import { VolumeLoadBar } from '@/components/history/volume-load-bar'
@@ -85,8 +86,12 @@ export function ExerciseHistoryList({ history }: ExerciseHistoryListProps) {
 
   if (!history || history.length === 0) {
     return (
-      <div className="flex items-center justify-center px-4 py-16">
-        <p className="font-display text-sm text-warm-ash">No workout history</p>
+      <div className="flex flex-col items-center justify-center gap-4 px-4 py-16 text-center">
+        <Icon name="history" size={48} className="text-warm-ash/30" />
+        <p className="text-sm font-heading text-warm-ash">No workout history</p>
+        <p className="text-xs text-warm-ash/50">
+          Log a session with this exercise and it will appear here.
+        </p>
       </div>
     )
   }

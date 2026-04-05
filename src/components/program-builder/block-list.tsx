@@ -111,9 +111,12 @@ export function BlockList({
       </DndContext>
 
       {draft.blocks.length === 0 && (
-        <p className="py-8 text-center text-sm text-warm-ash/50">
-          Start by adding your first training block.
-        </p>
+        <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+          <Icon name="dashboard_customize" size={48} className="text-warm-ash/30" />
+          <p className="text-sm font-heading text-warm-ash">
+            Start by adding your first training block.
+          </p>
+        </div>
       )}
 
       <Button

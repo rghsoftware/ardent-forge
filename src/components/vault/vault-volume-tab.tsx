@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '@/lib/auth'
 import { useExercises } from '@/hooks/use-exercises'
 import { useWeeklyVolume } from '@/hooks/use-analytics'
+import { Icon } from '@/components/icon'
 import { VolumeLoadBar } from '@/components/history/volume-load-bar'
 import {
   Select,
@@ -89,8 +90,12 @@ export function VaultVolumeTab() {
       )}
 
       {selectedExerciseId && !isLoadingVolume && (!volumeData || volumeData.length === 0) && (
-        <div className="flex items-center justify-center bg-surface-iron p-8">
-          <p className="font-display text-sm text-warm-ash">No volume history for this exercise</p>
+        <div className="flex flex-col items-center justify-center gap-4 bg-surface-iron p-8 text-center">
+          <Icon name="bar_chart" size={48} className="text-warm-ash/30" />
+          <p className="text-sm font-heading text-warm-ash">No volume history for this exercise</p>
+          <p className="text-xs text-warm-ash/50">
+            Log sessions with this exercise to see volume trends.
+          </p>
         </div>
       )}
     </div>

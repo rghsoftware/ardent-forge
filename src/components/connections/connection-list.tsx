@@ -189,6 +189,7 @@ export function ConnectionList() {
             <p className="text-xs text-warm-ash/50 leading-relaxed">
               Connect with other athletes to see their workouts.
             </p>
+            <ConnectionRequestDialog />
           </div>
         ) : (
           <div className="flex-1">

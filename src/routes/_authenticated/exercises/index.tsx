@@ -144,8 +144,9 @@ function ExercisesPage() {
                 <ExerciseListItem key={exercise.id} exercise={exercise} />
               ))
             ) : (
-              <div className="flex flex-col items-center justify-center px-4 py-16">
-                <p className="font-display text-sm text-warm-ash">No exercises found</p>
+              <div className="flex flex-col items-center justify-center gap-4 px-4 py-16 text-center">
+                <Icon name="fitness_center" size={48} className="text-warm-ash/30" />
+                <p className="text-sm font-heading text-warm-ash">No exercises found</p>
               </div>
             )}
           </>

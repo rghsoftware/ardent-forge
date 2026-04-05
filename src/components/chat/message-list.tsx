@@ -315,6 +315,15 @@ export function MessageList({
     )
   }
 
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
+        <Icon name="chat_bubble_outline" size={36} className="text-warm-ash/20" />
+        <p className="text-xs text-warm-ash/40">No messages yet</p>
+      </div>
+    )
+  }
+
   return (
     <div className="relative flex-1 overflow-hidden">
       <div ref={parentRef} className="h-full overflow-y-auto">
