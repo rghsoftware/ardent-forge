@@ -19,7 +19,7 @@ skill. Prioritize via the backlog-prioritize skill.
 | S-3 | `media.ts`         | Add `.nonnegative()` to `durationSeconds` and `fileSizeBytes`                                   | Done (PR #71) |
 | S-4 | `conversation.ts`  | Add temporal ordering refinement (`leftAt > joinedAt`)                                          | Done (PR #71) |
 | S-5 | Supabase migration | CH-2 uniqueness trigger is O(N) per participant INSERT -- consider materialized lookup          | Done (PR #71) |
-| S-6 | `tauri-adapter.ts` | `findDirectConversation` is N+1; error handling added (PR #71), batch requires new Rust command | Deferred      |
+| S-6 | `tauri-adapter.ts` | `findDirectConversation` is N+1; error handling added (PR #71), batch requires new Rust command | Done          |
 
 ## ~~P9-010: Domain type tests for conversation, message, media~~ (Resolved 2026-04-04)
 

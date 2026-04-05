@@ -129,9 +129,7 @@ pub async fn pull_table(
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            return Err(
-                format!("Pull from {table} failed: HTTP {status} - {body}").into(),
-            );
+            return Err(format!("Pull from {table} failed: HTTP {status} - {body}").into());
         }
 
         let rows: Vec<Value> = response.json().await?;
