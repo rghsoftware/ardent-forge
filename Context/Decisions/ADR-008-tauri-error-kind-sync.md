@@ -1,6 +1,6 @@
 # ADR-008: Synchronize TypeScript TauriAppError Kind Union with Rust ErrorKind
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-04-04
 **Context:** PR #72 review finding P9-009
 
@@ -14,24 +14,22 @@ If Rust returns `UNAUTHORIZED`, `SYNC`, or `NETWORK`, TypeScript code doing exha
 
 ## Decision
 
-**To be decided.** Two options:
+**Option A: Sync the TypeScript union to match Rust.**
 
-### Option A: Sync the TypeScript union to match Rust
+Add `UNAUTHORIZED | SYNC | NETWORK` to the TypeScript `TauriAppError['kind']` type.
 
-Add `UNAUTHORIZED | SYNC | NETWORK` to the TypeScript `TauriAppError['kind']` type. Update any switch/case or conditional logic to handle these new kinds.
+**Why:**
 
-**Pros:** Full type safety, exhaustive matching, no silent fallthrough.
-**Cons:** Requires updating all error-handling callsites.
+- `UNAUTHORIZED` and `SYNC` are already used in Rust production code. The frontend will need to distinguish these for auth redirects and retry logic.
+- `NETWORK` is declared in Rust (currently `#[allow(dead_code)]`) but Serde will serialize it if constructed. Including it prevents a runtime/type mismatch.
+- The `isTauriAppError` type guard only checks `typeof kind === 'string'`, so Rust can already return any variant and pass the guard. The TS union was simply lying about what values were possible.
+- Mapping unknown kinds to `INTERNAL` (Option B) hides the error's nature and prevents appropriate handling (e.g., redirecting to login on `UNAUTHORIZED`).
+- New Rust `ErrorKind` variants are rare and should cause a compile-time type mismatch in TypeScript, which is the desired failure mode.
 
-### Option B: Handle unknown kinds with a fallback
-
-Keep the TypeScript union as-is but add a default/fallback case in error handling that maps unknown kinds to `INTERNAL`.
-
-**Pros:** Minimal change, forward-compatible with future Rust variants.
-**Cons:** Loses specificity for `UNAUTHORIZED`/`SYNC`/`NETWORK` errors.
+**Option B rejected:** Silent fallback to `INTERNAL` actively hides error semantics.
 
 ## Consequences
 
-- If Option A: every new Rust `ErrorKind` variant requires a corresponding TypeScript update
-- If Option B: new Rust variants are silently treated as INTERNAL until explicitly added
-- Either way, the current gap should be documented and tracked
+- Every new Rust `ErrorKind` variant requires a corresponding TypeScript update. This is intentional -- loud failures at compile time are better than silent mishandling at runtime.
+- No production callers currently switch on `kind`, so no existing code needs changes beyond the type definition.
+- Aligns with the project's `typescript-conventions.md` rule: domain-keyed types must use the union, not `string`.
