@@ -41,7 +41,9 @@ function SetupPage() {
 
   const envUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? ''
   const envKey = import.meta.env.VITE_SUPABASE_PUB_KEY?.trim() ?? ''
-  const hasEnvVars = Boolean(envUrl && envKey)
+  // Build-time env vars only apply to web builds -- on Tauri (mobile)
+  // they point to the dev machine's localhost and are not reachable.
+  const hasEnvVars = !isTauri() && Boolean(envUrl && envKey)
 
   // Form input state (controlled inputs)
   const [serverUrl, setServerUrl] = useState('')
