@@ -1,6 +1,6 @@
 # Feature 012: TauriAdapter Unit Tests -- Implementation Steps
 
-**Status:** Draft
+**Status:** Done
 **Created:** 2026-04-04
 
 ## Team Composition
@@ -259,6 +259,87 @@ This is a focused, single-file task. No cross-domain coordination needed, so a s
 4. Verify no existing tests are broken
 
 **Validates:** TA8
+
+---
+
+### Wave 5: Review Follow-ups
+
+#### S010: Add malformed JSON handling tests for parseJson
+
+**Agent:** test-writer
+**Files:** `src/lib/__tests__/tauri-adapter.test.ts`
+**Depends on:** S009-T
+
+**Tasks:**
+
+1. Add tests verifying behavior when Rust returns malformed JSON in fields like `aliases`, `muscle_groups`, `equipment_required`
+2. Test with values like `"not-valid-json{"` to catch regressions in the conversion layer
+3. Verify silent `undefined` propagation does not occur
+
+**Review ref:** P9-004
+
+---
+
+#### S011: Add DATABASE and INTERNAL error kind tests
+
+**Agent:** test-writer
+**Files:** `src/lib/__tests__/tauri-adapter.test.ts`
+**Depends on:** S009-T
+
+**Tasks:**
+
+1. Add error handling tests for DATABASE error kind (most common production IPC failure)
+2. Add error handling tests for INTERNAL error kind
+3. Verify `AdapterError` correctly wraps these error shapes
+
+**Review ref:** P9-005
+
+---
+
+#### S012: Add Supabase getUnreadCounts happy path test
+
+**Agent:** test-writer
+**Files:** `src/lib/__tests__/supabase-adapter.test.ts`
+**Depends on:** S009-T
+
+**Tasks:**
+
+1. Add happy path test for `getUnreadCounts` where participations exist with actual unread messages
+2. Verify the returned Map contains correct conversation IDs and counts
+
+**Review ref:** P9-006
+
+---
+
+#### S013: Add isoToUnixSeconds edge case tests
+
+**Agent:** test-writer
+**Files:** `src/lib/__tests__/tauri-adapter.test.ts`
+**Depends on:** S009-T
+
+**Tasks:**
+
+1. Add tests for `isoToUnixSeconds` with invalid ISO strings, empty strings, and null timestamps
+2. Verify `NaN` is not silently propagated (could cause data corruption)
+3. Test indirectly via adapter methods that use timestamp conversion
+
+**Review ref:** P9-007
+
+---
+
+#### S014: Restore .bind() position comments in chat.rs INSERT OR REPLACE
+
+**Agent:** test-writer
+**Files:** `src-tauri/src/commands/chat.rs`
+**Depends on:** S009-T
+
+**Tasks:**
+
+1. Locate the INSERT OR REPLACE query in chat.rs (~line 640 area)
+2. Add position-numbered comments to each `.bind()` call matching the SQL parameter positions
+3. Verify comments match the actual SQL column order
+
+**Review ref:** P9-008
 
 ---
 

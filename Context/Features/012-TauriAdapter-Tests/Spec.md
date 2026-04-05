@@ -1,6 +1,6 @@
 # Feature 012: TauriAdapter Unit Tests
 
-**Status:** Draft
+**Status:** Done
 **Issue:** [#16](https://github.com/rghsoftware/ardent-forge/issues/16)
 **Created:** 2026-04-04
 

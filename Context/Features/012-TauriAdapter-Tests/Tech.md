@@ -1,6 +1,6 @@
 # Feature 012: TauriAdapter Unit Tests -- Technical Plan
 
-**Status:** Draft
+**Status:** Done
 **Created:** 2026-04-04
 
 ## Architecture Overview
@@ -51,7 +51,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 **Why:** These functions are not exported from `tauri-adapter.ts`. Rather than exporting them solely for testing:
 
 - Conversion helpers are exercised through row mapper assertions (verify the returned object has booleans, parsed objects, etc.)
-- `invokeCommand` is exercised through every adapter method (it's the only path to `invoke`)
+- `invokeCommand` is exercised through every adapter method that delegates to Rust (not-implemented stubs throw errors without going through `invokeCommand`)
 - `isTauriAppError` + `AdapterError` are exercised through error-path tests where `invoke` rejects with a `TauriAppError`-shaped object
 
 If any helper has edge cases that can't be reached through public API (e.g., `parseJson` with malformed JSON), we can test that by having `invoke` return a response with an invalid JSON string field.
@@ -95,9 +95,9 @@ describe('TauriAdapter')
   describe('Not-implemented stubs')
 ```
 
-### KD5: Standalone Helpers Are Exported
+### KD5: Standalone Helpers Are Not Exported
 
-**Decision:** `getMonday` and `formatWeekLabel` are standalone functions at the end of the file. We need to verify whether they are exported. If not exported, they will be tested indirectly through `getWeeklyVolume` which uses both.
+**Decision:** `getMonday` and `formatWeekLabel` are standalone functions at the end of the file. They are NOT exported and are tested indirectly through `getWeeklyVolume`, which uses both.
 
 ### KD6: beforeEach Pattern
 
