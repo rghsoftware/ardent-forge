@@ -30,11 +30,11 @@ skill. Prioritize via the backlog-prioritize skill.
 | #       | File(s)                      | Task                                                                                                                                              | Status         |
 | ------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
 | P10-008 | `scheme-fields/*.tsx`        | Narrow `onChange` in all 12 scheme-fields to specific variant type (e.g., `SetScheme & { type: 'fixedSets' }`) to prevent cross-variant emissions | Done (f067a63) |
-| P10-025 | `load-spec-editor.tsx`       | Add tests for `useEffect` auto-reset when load type becomes disallowed and `handleTypeChange` 7-branch defaults                                   | Pending        |
-| P10-026 | `duration-input.tsx`         | Add tests for compact/clearable mode `undefined` emission (currently mocked in session-template-form tests)                                       | Pending        |
-| P10-027 | `descending-reps-fields.tsx` | Add tests for rep ladder parsing edge cases: single number rejected, negatives filtered, comma+space splitting                                    | Pending        |
-| P10-028 | `set-scheme-editor.tsx`      | Add tests for `sessionCategory` prop filtering of visible scheme types and "Show all types" toggle                                                | Pending        |
-| P10-029 | `fixed-sets-fields.tsx`      | Add tests for range vs scalar branching (`typeof value.sets === 'object'`); existing test only covers the scalar path                             | Pending        |
+| P10-025 | `load-spec-editor.tsx`       | Add tests for `useEffect` auto-reset when load type becomes disallowed and `handleTypeChange` 7-branch defaults                                   | Done (cb9930a) |
+| P10-026 | `duration-input.tsx`         | Add tests for compact/clearable mode `undefined` emission (currently mocked in session-template-form tests)                                       | Done (cb9930a) |
+| P10-027 | `descending-reps-fields.tsx` | Add tests for rep ladder parsing edge cases: single number rejected, negatives filtered, comma+space splitting                                    | Done (cb9930a) |
+| P10-028 | `set-scheme-editor.tsx`      | Add tests for `sessionCategory` prop filtering of visible scheme types and "Show all types" toggle                                                | Done (cb9930a) |
+| P10-029 | `fixed-sets-fields.tsx`      | Add tests for range vs scalar branching (`typeof value.sets === 'object'`); existing test only covers the scalar path                             | Done (cb9930a) |
 
 ## ~~P9-010: Domain type tests for conversation, message, media~~ (Resolved 2026-04-04)
 
@@ -55,9 +55,7 @@ skill. Prioritize via the backlog-prioritize skill.
 **Related:** All page layouts, responsive design, Tailwind breakpoints
 **Priority:** Medium
 
-### Reorder nav items into logical groups
+### ~~Reorder nav items into logical groups~~ (Resolved 2026-04-05)
 
 **Added:** 2026-04-05
-**Context:** Navigation items are in an arbitrary order. Related sections like Comms, Groups, and Connections should be grouped together so the nav hierarchy reflects how features relate to each other.
-**Related:** Navigation component, sidebar/bottom nav
-**Priority:** Low
+**Resolution:** Reordered sidebar nav into logical groups: core tools, reference, social. Commit `1b359d2`.
