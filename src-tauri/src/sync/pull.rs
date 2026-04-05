@@ -126,6 +126,14 @@ pub async fn pull_table(
             .send()
             .await?;
 
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(
+                format!("Pull from {table} failed: HTTP {status} - {body}").into(),
+            );
+        }
+
         let rows: Vec<Value> = response.json().await?;
         let row_count = rows.len();
 
@@ -404,12 +412,20 @@ async fn upsert_row(pool: &SqlitePool, table: &str, record: &Value) -> Result<()
         .map(|name| format!("{name}=excluded.{name}"))
         .collect();
 
-    let sql = format!(
-        "INSERT INTO {table} ({cols}) VALUES ({vals}) ON CONFLICT(id) DO UPDATE SET {sets}",
-        cols = col_names.join(", "),
-        vals = placeholders.join(", "),
-        sets = update_set.join(", "),
-    );
+    let sql = if update_set.is_empty() {
+        format!(
+            "INSERT OR IGNORE INTO {table} ({cols}) VALUES ({vals})",
+            cols = col_names.join(", "),
+            vals = placeholders.join(", "),
+        )
+    } else {
+        format!(
+            "INSERT INTO {table} ({cols}) VALUES ({vals}) ON CONFLICT(id) DO UPDATE SET {sets}",
+            cols = col_names.join(", "),
+            vals = placeholders.join(", "),
+            sets = update_set.join(", "),
+        )
+    };
 
     // Bind each coerced value
     let mut query = sqlx::query(&sql);
