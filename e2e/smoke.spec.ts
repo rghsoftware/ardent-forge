@@ -6,6 +6,6 @@ test('app loads without crashing', async ({ page }) => {
 })
 
 test('auth page renders', async ({ page }) => {
-  await page.goto('/login')
+  await page.goto('/sign-in')
   await expect(page.locator('form')).toBeVisible()
 })
