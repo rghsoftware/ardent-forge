@@ -5,7 +5,7 @@ skill. Prioritize via the backlog-prioritize skill.
 
 <!-- Add new ideas below this line -->
 
-## Chat Data Layer Refinements (PR #33 review suggestions)
+## ~~Chat Data Layer Refinements (PR #33 review suggestions)~~ (Resolved 2026-04-05)
 
 **Added:** 2026-04-02
 **Updated:** 2026-04-04 -- S-1 through S-5 resolved in PR #71; S-6 partially addressed (error context added, N+1 remains)

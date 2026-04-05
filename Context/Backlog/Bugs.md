@@ -37,4 +37,4 @@ High-priority bugs should be addressed before starting new features.
 **Added:** 2026-04-05
 **Context:** The mobile app does not account for Android system UI (status bar, navigation bar) or rounded display corners. Content needs safe area insets so it doesn't sit underneath the system chrome, and padding for curved screen edges -- e.g., on a Pixel 10 the "F" in "Forge" overflows into the corner radius.
 **Related:** Mobile layout, safe area insets, Tauri Android WebView
-**Priority:** Medium
+**Priority:** High
