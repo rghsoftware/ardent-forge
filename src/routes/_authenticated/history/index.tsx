@@ -69,15 +69,17 @@ function HistoryPage() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
       {/* Header */}
-      <div className="px-4 pt-6 pb-4">
+      <div className="mx-auto w-full max-w-5xl px-4 pt-6 pb-4 md:px-6 lg:px-8">
         <h1 className="font-display text-xl font-medium text-bone-white">Tracker</h1>
       </div>
 
       {/* Content */}
       {isLoading ? (
-        <HistoryListSkeleton />
+        <div className="mx-auto w-full max-w-5xl md:px-6 lg:px-8">
+          <HistoryListSkeleton />
+        </div>
       ) : isError ? (
-        <div className="flex flex-col items-center justify-center px-4 py-16">
+        <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center px-4 py-16 md:px-6 lg:px-8">
           <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
             cloud_off
           </span>
@@ -85,11 +87,10 @@ function HistoryPage() {
           <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
         </div>
       ) : completedSummaries.length === 0 ? (
-        <div className="flex flex-1 flex-col">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col md:px-6 lg:px-8">
           {/* Ghost preview: mirrors real history row layout */}
           <GhostSessionPreview />
 
-          {/* Value description + CTA */}
           <div className="flex flex-col items-center gap-4 px-8 py-10 text-center">
             <p className="text-sm font-heading text-warm-ash">Your training history starts here.</p>
             <p className="text-xs text-warm-ash/50 leading-relaxed">
@@ -97,6 +98,7 @@ function HistoryPage() {
               indicators.
             </p>
             <button
+              type="button"
               onClick={() => navigate({ to: '/' })}
               className="text-xs text-ember uppercase tracking-wider hover:underline"
             >
@@ -125,13 +127,17 @@ function HistoryPage() {
                     width: '100%',
                     height: `${virtualItem.size}px`,
                     transform: `translateY(${virtualItem.start}px)`,
+                    display: 'flex',
+                    justifyContent: 'center',
                   }}
                 >
-                  <WorkoutHistoryCard
-                    summary={summary}
-                    index={virtualItem.index}
-                    onClick={() => handleCardClick(summary.log.id)}
-                  />
+                  <div className="w-full max-w-5xl md:px-6 lg:px-8">
+                    <WorkoutHistoryCard
+                      summary={summary}
+                      index={virtualItem.index}
+                      onClick={() => handleCardClick(summary.log.id)}
+                    />
+                  </div>
                 </div>
               )
             })}

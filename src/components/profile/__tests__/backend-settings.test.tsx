@@ -80,9 +80,10 @@ describe('BackendSettings - Share this server', () => {
 
     renderWithProviders(<BackendSettings />)
 
-    await screen.findByText('Share this server')
+    const shareBtn = await screen.findByText('Share this server')
+    fireEvent.click(shareBtn)
 
-    const qr = screen.getByTestId('qr-code')
+    const qr = await screen.findByTestId('qr-code')
     expect(qr).toBeInTheDocument()
     expect(qr.getAttribute('data-value')).toBe(EXPECTED_LINK)
   })
@@ -106,6 +107,9 @@ describe('BackendSettings - Share this server', () => {
 
     renderWithProviders(<BackendSettings />)
 
+    const shareBtn = await screen.findByText('Share this server')
+    fireEvent.click(shareBtn)
+
     const copyBtn = await screen.findByText('Copy invite link')
     fireEvent.click(copyBtn)
 
@@ -120,6 +124,9 @@ describe('BackendSettings - Share this server', () => {
     writeTextSpy.mockRejectedValue(new Error('Clipboard denied'))
 
     renderWithProviders(<BackendSettings />)
+
+    const shareBtn = await screen.findByText('Share this server')
+    fireEvent.click(shareBtn)
 
     const copyBtn = await screen.findByText('Copy invite link')
     fireEvent.click(copyBtn)

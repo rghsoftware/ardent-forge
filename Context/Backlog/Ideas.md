@@ -42,18 +42,31 @@ skill. Prioritize via the backlog-prioritize skill.
 **Source:** `Context/Reviews/0009-pr71-enhancement-batch-review.md`
 **Resolution:** Created `src/domain/types/__tests__/chat.test.ts` with 18 tests covering all refinements (conversationSchema, conversationParticipantSchema, messageSchema, mediaAttachmentSchema). All pass.
 
+### Browser notifications for rest timers and session reminders
+
+**Added:** 2026-04-05
+**Context:** Rest timer alerts and session reminders currently require the Tauri mobile app for native notifications. The web app should use the Web Notifications API (or Push API) so browser users get the same reminder experience without needing the native app.
+**Related:** `src/components/profile/notification-settings.tsx`, rest timer system, session reminder scheduler
+**Priority:** Medium
+
 ## ~~P9-011: Test for getUnreadCounts batching behavior~~ (Resolved 2026-04-04)
 
 **Added:** 2026-04-04
 **Source:** `Context/Reviews/0009-pr71-enhancement-batch-review.md`
 **Resolution:** TauriAdapter.getUnreadCounts already has 2 unit tests (happy path + empty). The `Promise.allSettled` batching was a suggestion for SupabaseAdapter that was never implemented (still sequential loop). No further action needed; re-open if batching is implemented.
 
-### Overhaul web responsiveness for larger screens
+## Aggregated 1RM View
 
 **Added:** 2026-04-05
-**Context:** Pages are essentially wide versions of the mobile layout with no adaptation for larger viewports. Profile page is a single long column on web; other pages stretch without using the extra space meaningfully. Needs proper multi-column layouts, content width constraints, and web-native arrangements.
-**Related:** All page layouts, responsive design, Tailwind breakpoints
+**Source:** `Context/Reviews/0011-pr76-web-responsiveness-review.md` (P11-012)
 **Priority:** Medium
+
+The `OneRmManagement` component was removed from the profile page during the responsiveness overhaul. The per-exercise 1RM management is still accessible on each exercise detail page (`/exercises/$exerciseId`), but the aggregated cross-exercise 1RM view no longer exists. Consider adding an aggregated 1RM summary to the library exercises tab or a dedicated stats/progress page.
+
+### ~~Overhaul web responsiveness for larger screens~~ (Resolved 2026-04-05)
+
+**Added:** 2026-04-05
+**Resolution:** Implemented in PR #76. Added max-width constraints, responsive padding, multi-column layouts across all authenticated pages.
 
 ### ~~Reorder nav items into logical groups~~ (Resolved 2026-04-05)
 

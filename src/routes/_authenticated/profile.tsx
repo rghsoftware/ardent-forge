@@ -7,7 +7,6 @@ import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
-import { OneRmManagement } from '@/components/profile/one-rm-management'
 import { BackendSettings } from '@/components/profile/backend-settings'
 import { NotificationSettings } from '@/components/profile/notification-settings'
 import type { PreferredUnits } from '@/domain/types'
@@ -35,8 +34,13 @@ function ProfilePage() {
   const bodyweightUnit = effectiveUnits === 'IMPERIAL' ? 'lb' : 'kg'
   const effectiveDisplayVisible = displayVisible ?? profile?.displayVisible ?? true
 
+  const [saveError, setSaveError] = useState<string | null>(null)
+
   const handleSaveSettings = async () => {
-    if (!profile) return
+    if (!profile) {
+      console.error('[profile] Cannot save settings: no profile loaded')
+      return
+    }
 
     const bodyweightValue = parseFloat(effectiveBodyweight)
     const updates: Parameters<typeof updateProfile.mutateAsync>[0] = {
@@ -63,6 +67,7 @@ function ProfilePage() {
       setDisplayVisible(null)
     } catch (err) {
       console.error('[profile] Failed to save settings:', err)
+      setSaveError('Failed to save settings. Please try again.')
     }
   }
 
@@ -77,12 +82,19 @@ function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-full bg-surface-pit px-4 py-8 lg:px-8 lg:py-12">
+      <div className="min-h-full bg-surface-pit px-4 py-8 md:px-6 md:py-10 lg:px-8 lg:py-12">
         <Skeleton className="mb-8 h-8 w-32 rounded-none bg-surface-gunmetal" />
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
-          <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
-          <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+        {/* Simplified 2-col skeleton -- full 3-col layout loads with content */}
+        <div className="md:grid md:grid-cols-2 md:gap-8 lg:gap-12">
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+            <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+            <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+          </div>
+          <div className="mt-6 space-y-4 md:mt-0">
+            <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+            <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+          </div>
         </div>
       </div>
     )
@@ -102,15 +114,15 @@ function ProfilePage() {
 
   return (
     <div className="min-h-full bg-surface-pit">
-      <div className="mx-auto max-w-5xl px-4 lg:px-8">
+      <div className="mx-auto max-w-5xl px-4 md:px-6 lg:px-8">
         {/* Page header */}
-        <div className="pt-8 pb-6 lg:pt-12">
+        <div className="pt-8 pb-6 md:pt-10 lg:pt-12">
           <h1 className="font-display text-3xl font-bold text-bone-white">Profile</h1>
         </div>
 
-        {/* Two-column on large screens, single column on mobile */}
-        <div className="lg:grid lg:grid-cols-2 lg:gap-12">
-          {/* Left column: settings + account */}
+        {/* Responsive grid: 1 col mobile, 2 col md, 3 col lg */}
+        <div className="flex flex-col md:grid md:grid-cols-2 md:gap-8 lg:grid-cols-3 lg:gap-10">
+          {/* Column 1: Settings + Account */}
           <div>
             {/* SETTINGS section */}
             <section className="pb-8">
@@ -186,9 +198,9 @@ function ProfilePage() {
                 >
                   {updateProfile.isPending ? 'Saving...' : 'Save settings'}
                 </Button>
-                {updateProfile.isError && (
+                {(updateProfile.isError || saveError) && (
                   <p className="mt-2 text-xs text-warning-flare">
-                    Failed to save settings. Please try again.
+                    {saveError ?? 'Failed to save settings. Please try again.'}
                   </p>
                 )}
               </div>
@@ -230,7 +242,10 @@ function ProfilePage() {
                 )}
               </div>
             </section>
+          </div>
 
+          {/* Column 2: Backend + Remote Display */}
+          <div>
             {/* BACKEND section */}
             <section className="pb-8">
               <div className="border-t border-surface-steel pb-2 pt-4">
@@ -241,18 +256,8 @@ function ProfilePage() {
               <BackendSettings />
             </section>
 
-            {/* NOTIFICATIONS section */}
-            <section className="pb-8">
-              <div className="border-t border-surface-steel pb-2 pt-4">
-                <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
-                  NOTIFICATIONS
-                </h2>
-              </div>
-              <NotificationSettings />
-            </section>
-
             {/* REMOTE DISPLAY section */}
-            <section className="pb-12">
+            <section className="pb-8">
               <div className="border-t border-surface-steel pb-2 pt-4">
                 <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
                   REMOTE DISPLAY
@@ -273,22 +278,16 @@ function ProfilePage() {
             </section>
           </div>
 
-          {/* Right column: current maxes */}
+          {/* Column 3: Notifications */}
           <div>
+            {/* NOTIFICATIONS section */}
             <section className="pb-8">
               <div className="border-t border-surface-steel pb-2 pt-4">
                 <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
-                  CURRENT MAXES
+                  NOTIFICATIONS
                 </h2>
               </div>
-
-              <div className="mt-4">
-                <OneRmManagement
-                  userId={userId}
-                  exerciseMaxes={profile?.exerciseMaxes ?? {}}
-                  preferredUnits={profile?.preferredUnits ?? 'IMPERIAL'}
-                />
-              </div>
+              <NotificationSettings />
             </section>
           </div>
         </div>

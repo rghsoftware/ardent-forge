@@ -116,9 +116,9 @@ function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-anvil pb-20">
+    <div className="min-h-[100dvh] bg-surface-anvil pb-20">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-6 pb-4">
+      <div className="mx-auto max-w-5xl flex items-center justify-between px-4 pt-6 pb-4 md:px-6 lg:px-8">
         <h1 className="font-display text-2xl font-medium text-bone-white">Library</h1>
         {activeTab === 'templates' && (
           <div className="flex items-center gap-2">
@@ -159,7 +159,10 @@ function LibraryPage() {
       </div>
 
       {/* Tab navigation */}
-      <div className="flex border-b border-warm-ash/10 px-4" role="tablist">
+      <div
+        className="mx-auto max-w-5xl flex border-b border-warm-ash/10 px-4 md:px-6 lg:px-8"
+        role="tablist"
+      >
         <button
           type="button"
           role="tab"
@@ -210,7 +213,7 @@ function LibraryPage() {
       {/* Tab content */}
       {activeTab === 'templates' && (
         <div role="tabpanel" id="tabpanel-templates" aria-labelledby="tab-templates">
-          <div className="flex flex-col gap-2 px-4 pt-4">
+          <div className="mx-auto max-w-5xl flex flex-col gap-2 px-4 pt-4 md:px-6 lg:px-8">
             {isLoading ? (
               <>
                 <Skeleton className="h-16 w-full bg-surface-iron" />
@@ -293,12 +296,22 @@ function LibraryPage() {
         </div>
       )}
       {activeTab === 'programs' && (
-        <div role="tabpanel" id="tabpanel-programs" aria-labelledby="tab-programs">
+        <div
+          role="tabpanel"
+          id="tabpanel-programs"
+          aria-labelledby="tab-programs"
+          className="mx-auto max-w-5xl md:px-6 lg:px-8"
+        >
           <ProgramList userId={userId || undefined} />
         </div>
       )}
       {activeTab === 'exercises' && (
-        <div role="tabpanel" id="tabpanel-exercises" aria-labelledby="tab-exercises">
+        <div
+          role="tabpanel"
+          id="tabpanel-exercises"
+          aria-labelledby="tab-exercises"
+          className="mx-auto max-w-5xl md:px-6 lg:px-8"
+        >
           <ExerciseList userId={userId || undefined} />
         </div>
       )}

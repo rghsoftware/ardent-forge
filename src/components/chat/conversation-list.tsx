@@ -140,43 +140,45 @@ export function ConversationList() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-6 pb-4">
-        <h1 className="font-heading text-sm uppercase tracking-wider text-bone-white">Comms</h1>
-        <Button variant="default" size="sm" onClick={handleNewConversation}>
-          New
-        </Button>
-      </div>
+      <div className="mx-auto w-full max-w-5xl flex-1 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pt-6 pb-4 md:px-6 lg:px-8">
+          <h1 className="font-display text-xl font-medium text-bone-white">Comms</h1>
+          <Button variant="default" size="sm" onClick={handleNewConversation}>
+            New
+          </Button>
+        </div>
 
-      {/* Content */}
-      {isLoading ? (
-        <ConversationListSkeleton />
-      ) : isError ? (
-        <div className="flex flex-col items-center justify-center px-4 py-16">
-          <Icon name="cloud_off" size={36} className="mb-3 text-warm-ash/60" />
-          <p className="font-heading text-sm text-bone-white">Failed to load conversations</p>
-          <p className="mt-2 text-xs text-warm-ash/50">Check your connection and try again.</p>
-        </div>
-      ) : !conversations || conversations.length === 0 ? (
-        <ConversationEmptyState onStartConversation={handleNewConversation} />
-      ) : (
-        <div className="flex-1">
-          {conversations.map((conversation, i) => (
-            <ConversationRow
-              key={conversation.id}
-              conversation={conversation}
-              index={i}
-              unreadCount={unreadCounts?.get(conversation.id) ?? 0}
-              onClick={() =>
-                navigate({
-                  to: '/comms/$conversationId',
-                  params: { conversationId: conversation.id },
-                })
-              }
-            />
-          ))}
-        </div>
-      )}
+        {/* Content */}
+        {isLoading ? (
+          <ConversationListSkeleton />
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center px-4 py-16">
+            <Icon name="cloud_off" size={36} className="mb-3 text-warm-ash/60" />
+            <p className="font-display text-sm text-warning-flare">Failed to load conversations</p>
+            <p className="mt-2 text-xs text-warm-ash/50">Check your connection and try again.</p>
+          </div>
+        ) : !conversations || conversations.length === 0 ? (
+          <ConversationEmptyState onStartConversation={handleNewConversation} />
+        ) : (
+          <div className="flex-1">
+            {conversations.map((conversation, i) => (
+              <ConversationRow
+                key={conversation.id}
+                conversation={conversation}
+                index={i}
+                unreadCount={unreadCounts?.get(conversation.id) ?? 0}
+                onClick={() =>
+                  navigate({
+                    to: '/comms/$conversationId',
+                    params: { conversationId: conversation.id },
+                  })
+                }
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* NewConversationSheet */}
       <NewConversationSheet

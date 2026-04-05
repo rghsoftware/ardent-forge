@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useConversation, useRealtimeMessages, useToggleArchive, useUpdateLastRead } from '@/hooks/use-chat'
+import {
+  useConversation,
+  useRealtimeMessages,
+  useToggleArchive,
+  useUpdateLastRead,
+} from '@/hooks/use-chat'
 import { useAuth } from '@/lib/auth'
 import { useBlockedUsers } from '@/hooks/use-blocked-users'
 import { useUserProfile } from '@/hooks/use-user-profile'
@@ -13,6 +18,7 @@ import { LeaveDialog } from './leave-dialog'
 import { ParticipantSheet } from './participant-sheet'
 import { Icon } from '@/components/icon'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -84,23 +90,37 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
 
   const handleConfirmBlock = useCallback(() => {
     if (otherUserId) {
-      blockUser(otherUserId)
+      try {
+        blockUser(otherUserId)
+      } catch (err) {
+        console.error('[chat] Failed to block user:', err)
+        toast('Failed to block user. Please try again.')
+      }
     }
     setBlockDialogOpen(false)
   }, [otherUserId, blockUser])
 
   const handleUnblock = useCallback(() => {
     if (otherUserId) {
-      unblockUser(otherUserId)
+      try {
+        unblockUser(otherUserId)
+      } catch (err) {
+        console.error('[chat] Failed to unblock user:', err)
+        toast('Failed to unblock user. Please try again.')
+      }
     }
   }, [otherUserId, unblockUser])
 
   const handleArchive = useCallback(() => {
-    toggleArchive.mutateAsync(conversationId).then(() => {
-      navigate({ to: '/comms' })
-    }).catch((err) => {
-      console.error('[chat] Archive failed:', err)
-    })
+    toggleArchive
+      .mutateAsync(conversationId)
+      .then(() => {
+        navigate({ to: '/comms' })
+      })
+      .catch((err) => {
+        console.error('[chat] Archive failed:', err)
+        toast('Failed to archive conversation. Please try again.')
+      })
   }, [conversationId, navigate, toggleArchive])
 
   const handleLeave = useCallback(() => {
@@ -119,28 +139,54 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
   if (isLoading) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
-        <div className="flex items-center gap-3 border-b border-ghost-line/15 bg-surface-anvil px-4 py-3">
-          <Skeleton className="h-6 w-6 bg-surface-steel" />
-          <Skeleton className="h-4 w-32 bg-surface-steel" />
+        <div className="mx-auto w-full max-w-5xl">
+          <div className="flex items-center gap-3 border-b border-ghost-line/15 bg-surface-anvil px-4 py-3 md:px-6 lg:px-8">
+            <Skeleton className="h-6 w-6 bg-surface-steel" />
+            <Skeleton className="h-4 w-32 bg-surface-steel" />
+          </div>
         </div>
         <div className="flex-1" />
       </div>
     )
   }
 
-  // Not found / error state
-  if (isError || !conversation) {
+  // Error state
+  if (isError) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil">
-        <Icon name="forum" size={36} className="mb-3 text-warm-ash/30" />
-        <p className="font-heading text-sm text-bone-white">Conversation not found</p>
-        <button
-          type="button"
-          onClick={handleBack}
-          className="mt-4 text-sm text-ember hover:underline"
-        >
-          Back to Comms
-        </button>
+      <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 md:px-6 lg:px-8">
+          <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
+            cloud_off
+          </span>
+          <p className="font-display text-sm text-warning-flare">Failed to load conversation</p>
+          <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
+          <button
+            type="button"
+            onClick={handleBack}
+            className="mt-4 text-sm text-ember hover:underline"
+          >
+            Back to Comms
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Not found state
+  if (!conversation) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 md:px-6 lg:px-8">
+          <Icon name="forum" size={36} className="mb-3 text-warm-ash/30" />
+          <p className="font-display text-sm text-bone-white">Conversation not found</p>
+          <button
+            type="button"
+            onClick={handleBack}
+            className="mt-4 text-sm text-ember hover:underline"
+          >
+            Back to Comms
+          </button>
+        </div>
       </div>
     )
   }
@@ -149,36 +195,38 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
-      {/* Header */}
-      <ConversationHeader
-        conversation={conversation}
-        displayName={displayName}
-        participantCount={isGroup ? conversation.participantUserIds.length : undefined}
-        onBack={handleBack}
-        onArchive={handleArchive}
-        onBlock={handleBlock}
-        onLeave={handleLeave}
-        onViewParticipants={handleViewParticipants}
-      />
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col">
+        {/* Header */}
+        <ConversationHeader
+          conversation={conversation}
+          displayName={displayName}
+          participantCount={isGroup ? conversation.participantUserIds.length : undefined}
+          onBack={handleBack}
+          onArchive={handleArchive}
+          onBlock={handleBlock}
+          onLeave={handleLeave}
+          onViewParticipants={handleViewParticipants}
+        />
 
-      {/* Message list */}
-      <MessageList
-        conversationId={conversationId}
-        conversationType={conversation.type}
-        blockedUserIds={blockedUserIds}
-        currentUserId={currentUserId}
-        onNewMessageAtBottom={handleNewMessageAtBottom}
-      />
+        {/* Message list */}
+        <MessageList
+          conversationId={conversationId}
+          conversationType={conversation.type}
+          blockedUserIds={blockedUserIds}
+          currentUserId={currentUserId}
+          onNewMessageAtBottom={handleNewMessageAtBottom}
+        />
 
-      {/* Typing indicator */}
-      {typingUsers.length > 0 && <TypingIndicator typingUsers={typingUsers} />}
+        {/* Typing indicator */}
+        {typingUsers.length > 0 && <TypingIndicator typingUsers={typingUsers} />}
 
-      {/* Compose bar or block banner */}
-      {conversation.type === 'direct' && isOtherBlocked ? (
-        <BlockBanner onUnblock={handleUnblock} />
-      ) : (
-        <ComposeBar conversationId={conversationId} onSend={handleNewMessageAtBottom} />
-      )}
+        {/* Compose bar or block banner */}
+        {conversation.type === 'direct' && isOtherBlocked ? (
+          <BlockBanner onUnblock={handleUnblock} />
+        ) : (
+          <ComposeBar conversationId={conversationId} onSend={handleNewMessageAtBottom} />
+        )}
+      </div>
 
       {/* Dialogs and sheets */}
       <BlockConfirmDialog
