@@ -64,7 +64,9 @@ jobs:
             ${{ runner.os }}-bun-
 
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v2
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.84.4
 
       - name: Install dependencies
         run: bun install
