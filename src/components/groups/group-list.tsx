@@ -82,56 +82,58 @@ export function GroupList() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-6 pb-4">
-        <h1 className="font-display text-xl font-medium text-bone-white">Groups</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setJoinOpen(true)}>
-            Join
-          </Button>
-          <Button variant="default" size="sm" onClick={() => setCreateOpen(true)}>
-            Create
-          </Button>
-        </div>
-      </div>
-
-      {/* Content */}
-      {isLoading ? (
-        <GroupListSkeleton />
-      ) : isError ? (
-        <div className="flex flex-col items-center justify-center px-4 py-16">
-          <Icon name="cloud_off" size={36} className="mb-3 text-warning-flare" />
-          <p className="font-display text-sm text-warning-flare">Failed to load groups</p>
-          <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
-        </div>
-      ) : groups.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 py-16 text-center">
-          <Icon name="groups" size={48} className="text-warm-ash/30" />
-          <p className="text-sm font-heading text-warm-ash">You're not in any groups yet.</p>
-          <p className="text-xs text-warm-ash/50 leading-relaxed">
-            Create a group to train with friends, or join one with an invite code.
-          </p>
-          <div className="flex items-center gap-3 mt-2">
-            <Button variant="outline" size="sm" onClick={() => setJoinOpen(true)}>
-              Join group
+      <div className="mx-auto w-full max-w-5xl flex-1 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pt-6 pb-4 md:px-6 lg:px-8">
+          <h1 className="font-display text-xl font-medium text-bone-white">Groups</h1>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setJoinOpen(true)}>
+              Join
             </Button>
             <Button variant="default" size="sm" onClick={() => setCreateOpen(true)}>
-              Create group
+              Create
             </Button>
           </div>
         </div>
-      ) : (
-        <div className="flex-1">
-          {groups.map((group, i) => (
-            <GroupCard
-              key={group.id}
-              group={group}
-              index={i}
-              onClick={() => navigate({ to: '/groups/$groupId', params: { groupId: group.id } })}
-            />
-          ))}
-        </div>
-      )}
+
+        {/* Content */}
+        {isLoading ? (
+          <GroupListSkeleton />
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center px-4 py-16">
+            <Icon name="cloud_off" size={36} className="mb-3 text-warning-flare" />
+            <p className="font-display text-sm text-warning-flare">Failed to load groups</p>
+            <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
+          </div>
+        ) : groups.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 py-16 text-center">
+            <Icon name="groups" size={48} className="text-warm-ash/30" />
+            <p className="text-sm font-heading text-warm-ash">You're not in any groups yet.</p>
+            <p className="text-xs text-warm-ash/50 leading-relaxed">
+              Create a group to train with friends, or join one with an invite code.
+            </p>
+            <div className="flex items-center gap-3 mt-2">
+              <Button variant="outline" size="sm" onClick={() => setJoinOpen(true)}>
+                Join group
+              </Button>
+              <Button variant="default" size="sm" onClick={() => setCreateOpen(true)}>
+                Create group
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1">
+            {groups.map((group, i) => (
+              <GroupCard
+                key={group.id}
+                group={group}
+                index={i}
+                onClick={() => navigate({ to: '/groups/$groupId', params: { groupId: group.id } })}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Dialogs */}
       <GroupCreateDialog open={createOpen} onOpenChange={setCreateOpen} />

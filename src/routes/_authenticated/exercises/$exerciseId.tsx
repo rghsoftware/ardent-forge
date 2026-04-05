@@ -184,8 +184,9 @@ function ExerciseDetailPage() {
 
   return (
     <div className="min-h-[100dvh] bg-surface-anvil">
+      <div className="mx-auto max-w-5xl">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-6 pb-4">
+      <div className="flex items-center gap-3 px-4 pt-6 pb-4 md:px-6 lg:px-8">
         <Link
           to="/exercises"
           className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash"
@@ -199,7 +200,7 @@ function ExerciseDetailPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="details" className="px-4">
+      <Tabs defaultValue="details" className="px-4 md:px-6 lg:px-8">
         <TabsList
           variant="line"
           className="w-full justify-start border-b border-b-[rgba(91,64,57,0.15)]"
@@ -358,6 +359,7 @@ function ExerciseDetailPage() {
           <ExerciseHistoryList history={workoutHistory ?? []} />
         </TabsContent>
       </Tabs>
+      </div>
 
       {/* 1RM Update Dialog */}
       <Dialog open={showOneRmDialog} onOpenChange={setShowOneRmDialog}>

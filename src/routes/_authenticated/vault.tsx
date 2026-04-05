@@ -12,13 +12,13 @@ function VaultPage() {
   return (
     <div className="min-h-[100dvh] bg-surface-anvil">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-6 pb-4">
+      <div className="mx-auto max-w-5xl flex items-center gap-3 px-4 pt-6 pb-4 md:px-6 lg:px-8">
         <span className="material-symbols-outlined text-2xl text-warm-ash">monitoring</span>
         <h1 className="font-display text-industrial text-2xl text-bone-white">VAULT</h1>
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="px-4">
+      <Tabs defaultValue="overview" className="mx-auto max-w-5xl px-4 md:px-6 lg:px-8">
         <TabsList
           variant="line"
           className="w-full justify-start border-b border-b-[rgba(91,64,57,0.15)]"

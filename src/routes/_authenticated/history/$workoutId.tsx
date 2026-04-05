@@ -121,6 +121,50 @@ function WorkoutDetailPage() {
   if (log.eventMetadata) {
     return (
       <div className="min-h-[100dvh] bg-surface-anvil">
+        <div className="mx-auto max-w-5xl md:px-6 lg:px-8">
+          <WorkoutDetailHeader
+            log={log}
+            allSets={sets}
+            onDelete={() => setShowDeleteDialog(true)}
+            shareAction={
+              <ShareDialog
+                entityType="WORKOUT_LOG"
+                entityId={workoutId}
+                trigger={
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 min-h-10 text-xs uppercase tracking-wider"
+                  >
+                    <Icon name="share" size={16} />
+                    Share
+                  </Button>
+                }
+              />
+            }
+          />
+
+          <EventDetail
+            workoutLogId={workoutId}
+            eventMetadata={log.eventMetadata}
+            interactive={false}
+          />
+        </div>
+
+        {/* Delete dialog */}
+        <DeleteWorkoutDialog
+          workoutId={workoutId}
+          open={showDeleteDialog}
+          onClose={() => setShowDeleteDialog(false)}
+          onSuccess={handleDeleteSuccess}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-[100dvh] bg-surface-anvil">
+      <div className="mx-auto max-w-5xl md:px-6 lg:px-8">
         <WorkoutDetailHeader
           log={log}
           allSets={sets}
@@ -143,54 +187,14 @@ function WorkoutDetailPage() {
           }
         />
 
-        <EventDetail
-          workoutLogId={workoutId}
-          eventMetadata={log.eventMetadata}
-          interactive={false}
-        />
-
-        {/* Delete dialog */}
-        <DeleteWorkoutDialog
-          workoutId={workoutId}
-          open={showDeleteDialog}
-          onClose={() => setShowDeleteDialog(false)}
-          onSuccess={handleDeleteSuccess}
+        {/* Exercise breakdown */}
+        <WorkoutDetailExercises
+          groups={groups}
+          activities={activities}
+          sets={sets}
+          exercises={exercises}
         />
       </div>
-    )
-  }
-
-  return (
-    <div className="min-h-[100dvh] bg-surface-anvil">
-      <WorkoutDetailHeader
-        log={log}
-        allSets={sets}
-        onDelete={() => setShowDeleteDialog(true)}
-        shareAction={
-          <ShareDialog
-            entityType="WORKOUT_LOG"
-            entityId={workoutId}
-            trigger={
-              <Button
-                variant="secondary"
-                size="sm"
-                className="flex-1 min-h-10 text-xs uppercase tracking-wider"
-              >
-                <Icon name="share" size={16} />
-                Share
-              </Button>
-            }
-          />
-        }
-      />
-
-      {/* Exercise breakdown */}
-      <WorkoutDetailExercises
-        groups={groups}
-        activities={activities}
-        sets={sets}
-        exercises={exercises}
-      />
 
       {/* Delete dialog */}
       <DeleteWorkoutDialog
