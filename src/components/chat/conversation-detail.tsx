@@ -127,9 +127,11 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
   if (isLoading) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
-        <div className="flex items-center gap-3 border-b border-ghost-line/15 bg-surface-anvil px-4 py-3">
-          <Skeleton className="h-6 w-6 bg-surface-steel" />
-          <Skeleton className="h-4 w-32 bg-surface-steel" />
+        <div className="mx-auto w-full max-w-5xl">
+          <div className="flex items-center gap-3 border-b border-ghost-line/15 bg-surface-anvil px-4 py-3 md:px-6 lg:px-8">
+            <Skeleton className="h-6 w-6 bg-surface-steel" />
+            <Skeleton className="h-4 w-32 bg-surface-steel" />
+          </div>
         </div>
         <div className="flex-1" />
       </div>
@@ -139,16 +141,18 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
   // Not found / error state
   if (isError || !conversation) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil">
-        <Icon name="forum" size={36} className="mb-3 text-warm-ash/30" />
-        <p className="font-heading text-sm text-bone-white">Conversation not found</p>
-        <button
-          type="button"
-          onClick={handleBack}
-          className="mt-4 text-sm text-ember hover:underline"
-        >
-          Back to Comms
-        </button>
+      <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 md:px-6 lg:px-8">
+          <Icon name="forum" size={36} className="mb-3 text-warm-ash/30" />
+          <p className="font-display text-sm text-bone-white">Conversation not found</p>
+          <button
+            type="button"
+            onClick={handleBack}
+            className="mt-4 text-sm text-ember hover:underline"
+          >
+            Back to Comms
+          </button>
+        </div>
       </div>
     )
   }

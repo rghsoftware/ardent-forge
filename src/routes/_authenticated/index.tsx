@@ -158,7 +158,7 @@ function TodayPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-anvil px-4 pb-6 md:px-6 lg:px-8">
+    <div className="flex min-h-[100dvh] flex-col bg-surface-anvil px-4 pb-6 md:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-5xl">
         {/* Crash recovery check */}
         <CrashRecoveryDialog userId={userId} />

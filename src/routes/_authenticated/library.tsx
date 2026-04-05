@@ -116,7 +116,7 @@ function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-anvil pb-20">
+    <div className="min-h-[100dvh] bg-surface-anvil pb-20">
       {/* Header */}
       <div className="mx-auto max-w-5xl flex items-center justify-between px-4 pt-6 pb-4 md:px-6 lg:px-8">
         <h1 className="font-display text-2xl font-medium text-bone-white">Library</h1>

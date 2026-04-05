@@ -26,17 +26,19 @@ interface GroupDetailProps {
 function DetailSkeleton() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
-      <div className="px-4 pt-6 pb-4">
-        <Skeleton className="h-6 w-48 rounded-none bg-surface-steel" />
-        <Skeleton className="mt-2 h-4 w-72 rounded-none bg-surface-steel" />
-      </div>
-      <div className="px-4 py-2">
-        <Skeleton className="h-9 w-64 rounded-none bg-surface-steel" />
-      </div>
-      <div className="px-4 py-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="mt-3 h-12 w-full rounded-none bg-surface-steel" />
-        ))}
+      <div className="mx-auto w-full max-w-5xl">
+        <div className="px-4 pt-6 pb-4 md:px-6 lg:px-8">
+          <Skeleton className="h-6 w-48 rounded-none bg-surface-steel" />
+          <Skeleton className="mt-2 h-4 w-72 rounded-none bg-surface-steel" />
+        </div>
+        <div className="px-4 py-2 md:px-6 lg:px-8">
+          <Skeleton className="h-9 w-64 rounded-none bg-surface-steel" />
+        </div>
+        <div className="px-4 py-4 md:px-6 lg:px-8">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="mt-3 h-12 w-full rounded-none bg-surface-steel" />
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -287,34 +289,38 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
 
   if (isError) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
-        <Icon name="error" size={36} className="mb-3 text-warning-flare" />
-        <p className="font-display text-sm text-warning-flare">Failed to load group</p>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-4"
-          onClick={() => navigate({ to: `/groups/${groupId}` })}
-        >
-          Retry
-        </Button>
+      <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 md:px-6 lg:px-8">
+          <Icon name="error" size={36} className="mb-3 text-warning-flare" />
+          <p className="font-display text-sm text-warning-flare">Failed to load group</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-4"
+            onClick={() => navigate({ to: `/groups/${groupId}` })}
+          >
+            Retry
+          </Button>
+        </div>
       </div>
     )
   }
 
   if (!group) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
-        <Icon name="search_off" size={36} className="mb-3 text-warm-ash/50" />
-        <p className="font-display text-sm text-warm-ash">Group not found</p>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-4"
-          onClick={() => navigate({ to: '/groups' })}
-        >
-          Back to groups
-        </Button>
+      <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 md:px-6 lg:px-8">
+          <Icon name="search_off" size={36} className="mb-3 text-warm-ash/50" />
+          <p className="font-display text-sm text-warm-ash">Group not found</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-4"
+            onClick={() => navigate({ to: '/groups' })}
+          >
+            Back to groups
+          </Button>
+        </div>
       </div>
     )
   }

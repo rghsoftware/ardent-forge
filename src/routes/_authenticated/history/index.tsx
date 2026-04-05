@@ -79,7 +79,7 @@ function HistoryPage() {
           <HistoryListSkeleton />
         </div>
       ) : isError ? (
-        <div className="flex flex-col items-center justify-center px-4 py-16">
+        <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-center px-4 py-16 md:px-6 lg:px-8">
           <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
             cloud_off
           </span>
@@ -97,6 +97,7 @@ function HistoryPage() {
               indicators.
             </p>
             <button
+              type="button"
               onClick={() => navigate({ to: '/' })}
               className="text-xs text-ember uppercase tracking-wider hover:underline"
             >

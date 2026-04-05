@@ -107,7 +107,7 @@ function ProfilePage() {
 
   return (
     <div className="min-h-full bg-surface-pit">
-      <div className="mx-auto max-w-6xl px-4 md:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl px-4 md:px-6 lg:px-8">
         {/* Page header */}
         <div className="pt-8 pb-6 md:pt-10 lg:pt-12">
           <h1 className="font-display text-3xl font-bold text-bone-white">Profile</h1>
