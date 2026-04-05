@@ -45,7 +45,7 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
       {/* Program name -- always visible */}
       <div>
         <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
-          PROGRAM NAME
+          Program Name
         </span>
         <input
           type="text"
@@ -81,7 +81,7 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
         <div>
           <div className="mb-2 flex items-center gap-1.5">
             <span className="text-xs font-medium uppercase tracking-wider text-warm-ash/60">
-              SOURCE
+              Source
             </span>
             <HelpTrigger
               title="Program Sources"
@@ -116,7 +116,7 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
 
         <div>
           <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
-            DESCRIPTION (OPTIONAL)
+            Description (optional)
           </span>
           <textarea
             value={draft.description}

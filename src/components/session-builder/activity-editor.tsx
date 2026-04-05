@@ -142,7 +142,7 @@ export function ActivityEditor({
       {showNotes && (
         <div className="border-t border-warm-ash/10 px-4 py-3">
           <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
-            NOTES
+            Notes
           </span>
           <textarea
             value={activity.notes ?? ''}

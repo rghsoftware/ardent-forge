@@ -11,11 +11,11 @@ export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6
 // ---------------------------------------------------------------------------
 
 export const BLOCK_TYPES: Array<{ value: BlockType; label: string }> = [
-  { value: 'ACCUMULATION', label: 'ACCUMULATION' },
-  { value: 'INTENSIFICATION', label: 'INTENSIFICATION' },
-  { value: 'REALIZATION', label: 'REALIZATION' },
-  { value: 'DELOAD', label: 'DELOAD' },
-  { value: 'TEST', label: 'TEST' },
+  { value: 'ACCUMULATION', label: 'Accumulation' },
+  { value: 'INTENSIFICATION', label: 'Intensification' },
+  { value: 'REALIZATION', label: 'Realization' },
+  { value: 'DELOAD', label: 'Deload' },
+  { value: 'TEST', label: 'Test' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -112,13 +112,13 @@ export const BLOCK_TYPE_STYLES = {
 } satisfies Record<BlockType, string>
 
 export const SOURCE_LABELS = {
-  CUSTOM: 'CUSTOM',
-  IMPORTED: 'IMPORTED',
-  SHARED: 'SHARED',
-  MARKETPLACE: 'MARKETPLACE',
+  CUSTOM: 'Custom',
+  IMPORTED: 'Imported',
+  SHARED: 'Shared',
+  MARKETPLACE: 'Marketplace',
   AI_GENERATED: 'AI',
-  COACH_ASSIGNED: 'COACH',
-  TEMPLATE: 'TEMPLATE',
+  COACH_ASSIGNED: 'Coach',
+  TEMPLATE: 'Template',
 } satisfies Record<ProgramSource, string>
 
 export const SESSION_BORDER = {

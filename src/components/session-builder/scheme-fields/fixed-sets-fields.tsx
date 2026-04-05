@@ -2,7 +2,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { Icon } from '@/components/icon'
 import { UnderlineNumberInput, NumberRangeInput, DurationInput, LoadSpecEditor } from '../inputs'
-import type { SetScheme, NumberRange } from '@/domain/types'
+import type { Duration, SetScheme, NumberRange } from '@/domain/types'
 
 interface FixedSetsFieldsProps {
   value: SetScheme & { type: 'fixedSets' }
@@ -67,7 +67,7 @@ export function FixedSetsFields({ value, onChange, exerciseSupports1RM }: FixedS
           <div className="flex flex-col gap-4 pt-2">
             <DurationInput
               value={value.restBetweenSets}
-              onChange={(d) => onChange({ ...value, restBetweenSets: d })}
+              onChange={(d: Duration) => onChange({ ...value, restBetweenSets: d })}
               label="REST BETWEEN SETS"
             />
 

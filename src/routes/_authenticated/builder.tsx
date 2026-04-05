@@ -33,7 +33,7 @@ import type { SessionType } from '@/domain/types'
 
 export const Route = createFileRoute('/_authenticated/builder')({
   validateSearch: (search: Record<string, unknown>) => ({
-    programId: search['programId'] as string | undefined,
+    programId: typeof search['programId'] === 'string' ? search['programId'] : undefined,
   }),
   component: BuilderPage,
 })
@@ -117,12 +117,15 @@ function BuilderPage() {
   const pickerStateRef = useRef(pickerState)
   useEffect(() => {
     pickerStateRef.current = pickerState
-  })
+  }, [pickerState])
 
   const handleSessionSelected = useCallback(
     (templateId: string, templateName: string, sessionType: SessionType) => {
       const state = pickerStateRef.current
-      if (!state) return
+      if (!state) {
+        console.warn('[builder] handleSessionSelected called with no active picker state')
+        return
+      }
       setDraft((prev) =>
         assignSession(
           prev,
@@ -169,6 +172,7 @@ function BuilderPage() {
     }
 
     if (!userId) {
+      console.error('[builder] Cannot save: no authenticated user')
       setError('You must be signed in to save a program')
       return
     }

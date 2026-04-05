@@ -34,10 +34,8 @@ vi.mock('@/components/session-builder/activity-group-editor', () => ({
   ActivityGroupEditor: () => <div data-testid="activity-group-editor">Group Editor</div>,
 }))
 
-vi.mock('@/components/session-builder/duration-input-compact', () => ({
-  DurationInputCompact: ({ label }: { label: string }) => (
-    <div data-testid="duration-input">{label}</div>
-  ),
+vi.mock('@/components/session-builder/inputs/duration-input', () => ({
+  DurationInput: ({ label }: { label: string }) => <div data-testid="duration-input">{label}</div>,
 }))
 
 describe('SessionTemplateForm', () => {
@@ -48,11 +46,11 @@ describe('SessionTemplateForm', () => {
 
   it('renders category selector with all options', () => {
     renderWithProviders(<SessionTemplateForm />)
-    expect(screen.getByText('CATEGORY')).toBeInTheDocument()
-    expect(screen.getByText('STRENGTH')).toBeInTheDocument()
-    expect(screen.getByText('CONDITIONING')).toBeInTheDocument()
+    expect(screen.getByText('Category')).toBeInTheDocument()
+    expect(screen.getByText('Strength')).toBeInTheDocument()
+    expect(screen.getByText('Conditioning')).toBeInTheDocument()
     expect(screen.getByText('SE')).toBeInTheDocument()
-    expect(screen.getByText('MIXED')).toBeInTheDocument()
+    expect(screen.getByText('Mixed')).toBeInTheDocument()
   })
 
   it('renders description textarea', () => {
@@ -65,8 +63,8 @@ describe('SessionTemplateForm', () => {
     renderWithProviders(<SessionTemplateForm />)
 
     // Default category is STRENGTH which collapses scoring. Switch to CONDITIONING.
-    await user.click(screen.getByText('CONDITIONING'))
-    expect(screen.getByText('SCORING')).toBeInTheDocument()
+    await user.click(screen.getByText('Conditioning'))
+    expect(screen.getByText('Scoring')).toBeInTheDocument()
   })
 
   it('renders Save template button', () => {

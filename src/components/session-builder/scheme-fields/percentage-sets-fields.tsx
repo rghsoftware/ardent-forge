@@ -2,7 +2,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { Icon } from '@/components/icon'
 import { UnderlineNumberInput, DurationInput } from '../inputs'
-import type { SetScheme } from '@/domain/types'
+import type { Duration, SetScheme } from '@/domain/types'
 
 interface PercentageSetsFieldsProps {
   value: SetScheme & { type: 'percentageSets' }
@@ -50,7 +50,7 @@ export function PercentageSetsFields({ value, onChange }: PercentageSetsFieldsPr
           <div className="flex flex-col gap-4 pt-2">
             <DurationInput
               value={value.restBetweenSets}
-              onChange={(d) => onChange({ ...value, restBetweenSets: d })}
+              onChange={(d: Duration) => onChange({ ...value, restBetweenSets: d })}
               label="REST BETWEEN SETS"
             />
 

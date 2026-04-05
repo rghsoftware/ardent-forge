@@ -136,7 +136,7 @@ export function ProgramPreview({ draft, open, onOpenChange }: ProgramPreviewProp
                     return (
                       <div key={week.clientId} className="flex flex-col gap-2">
                         <span className="text-xs font-semibold uppercase tracking-widest text-warm-ash/60">
-                          WEEK {weekIdx + 1}
+                          Week {weekIdx + 1}
                         </span>
 
                         {/* Day grid (5 or 7 columns) */}

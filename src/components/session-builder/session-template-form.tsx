@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select'
 import { ActivityGroupEditor, type ActivityGroupData } from './activity-group-editor'
 import { CollapsedFieldsRow } from './collapsed-fields-row'
-import { DurationInputCompact } from './duration-input-compact'
+import { DurationInput } from './inputs/duration-input'
 import { CATEGORY_FIELD_VISIBILITY } from '@/components/builders/visibility-maps'
 import { useExercises } from '@/hooks/use-exercises'
 import { useCreateSessionTemplate, useUpdateSessionTemplate } from '@/hooks/use-session-templates'
@@ -46,10 +46,10 @@ interface SessionTemplateFormProps {
 // ---------------------------------------------------------------------------
 
 const SESSION_CATEGORIES: Array<{ value: SessionType; label: string }> = [
-  { value: 'STRENGTH', label: 'STRENGTH' },
-  { value: 'CONDITIONING', label: 'CONDITIONING' },
+  { value: 'STRENGTH', label: 'Strength' },
+  { value: 'CONDITIONING', label: 'Conditioning' },
   { value: 'SE', label: 'SE' },
-  { value: 'MIXED', label: 'MIXED' },
+  { value: 'MIXED', label: 'Mixed' },
 ]
 
 const SCORING_TYPES: Array<{ value: ScoringType; label: string }> = [
@@ -287,7 +287,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
         {/* Category selector */}
         <div className="px-4 lg:px-0">
           <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
-            CATEGORY
+            Category
           </span>
           <ToggleGroup
             type="single"
@@ -312,7 +312,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
         {/* Description */}
         <div className="px-4 lg:px-0">
           <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
-            DESCRIPTION (OPTIONAL)
+            Description (optional)
           </span>
           <textarea
             value={description}
@@ -329,7 +329,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
           const scoringField = (
             <div className="px-4 lg:px-0">
               <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
-                SCORING
+                Scoring
               </span>
               <Select value={scoring} onValueChange={(v) => setScoring(v as ScoringType)}>
                 <SelectTrigger className="min-h-12 border-0 border-b border-warm-ash/30 bg-transparent text-xs uppercase tracking-wider text-bone-white">
@@ -348,10 +348,11 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
           const timeCapField = (
             <div className="px-4 lg:px-0">
-              <DurationInputCompact
+              <DurationInput
+                size="compact"
                 value={timeCap}
                 onChange={setTimeCap}
-                label="TIME CAP (OPTIONAL)"
+                label="Time Cap (optional)"
               />
             </div>
           )
@@ -389,10 +390,11 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
         {/* Rest between groups -- always visible */}
         <div className="px-4 lg:px-0">
-          <DurationInputCompact
+          <DurationInput
+            size="compact"
             value={restBetweenGroups}
             onChange={setRestBetweenGroups}
-            label="REST BETWEEN GROUPS (OPTIONAL)"
+            label="Rest Between Groups (optional)"
           />
         </div>
       </div>
@@ -401,7 +403,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
       <div className="flex flex-col gap-3">
         <div className="px-4 lg:px-0">
           <span className="text-xs font-medium uppercase tracking-wider text-warm-ash/60">
-            ACTIVITY GROUPS
+            Activity Groups
           </span>
         </div>
 

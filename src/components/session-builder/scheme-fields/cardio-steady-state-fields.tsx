@@ -1,5 +1,5 @@
 import { DurationInput, DistanceInput, CardioModalitySelect } from '../inputs'
-import type { SetScheme } from '@/domain/types'
+import type { Duration, SetScheme } from '@/domain/types'
 
 interface CardioSteadyStateFieldsProps {
   value: SetScheme & { type: 'cardioSteadyState' }
@@ -11,7 +11,7 @@ export function CardioSteadyStateFields({ value, onChange }: CardioSteadyStateFi
     <div className="flex flex-col gap-4">
       <DurationInput
         value={value.duration}
-        onChange={(d) => onChange({ ...value, duration: d })}
+        onChange={(d: Duration) => onChange({ ...value, duration: d })}
         label="DURATION (OPTIONAL)"
       />
       <DistanceInput

@@ -1,5 +1,5 @@
 import { DurationInput, UnderlineNumberInput } from '../inputs'
-import type { SetScheme } from '@/domain/types'
+import type { Duration, SetScheme } from '@/domain/types'
 
 interface TimedHoldFieldsProps {
   value: SetScheme & { type: 'timedHold' }
@@ -11,7 +11,7 @@ export function TimedHoldFields({ value, onChange }: TimedHoldFieldsProps) {
     <div className="flex flex-col gap-4">
       <DurationInput
         value={value.duration}
-        onChange={(d) => onChange({ ...value, duration: d })}
+        onChange={(d: Duration) => onChange({ ...value, duration: d })}
         label="HOLD DURATION"
       />
       <UnderlineNumberInput
@@ -22,7 +22,7 @@ export function TimedHoldFields({ value, onChange }: TimedHoldFieldsProps) {
       />
       <DurationInput
         value={value.restBetweenSets}
-        onChange={(d) => onChange({ ...value, restBetweenSets: d })}
+        onChange={(d: Duration) => onChange({ ...value, restBetweenSets: d })}
         label="REST BETWEEN SETS"
       />
     </div>

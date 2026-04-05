@@ -5,7 +5,7 @@ import { HelpTrigger } from '@/components/ui/help-trigger'
 import { GROUP_TYPE_HELP } from '@/components/builders/help-content'
 import { GROUP_FIELD_VISIBILITY } from '@/components/builders/visibility-maps'
 import { ActivityEditor, type ActivityData } from './activity-editor'
-import { DurationInputCompact } from './duration-input-compact'
+import { DurationInput } from './inputs/duration-input'
 import { defaultScheme } from './set-scheme-defaults'
 import type { GroupType, Duration, Exercise, SessionType } from '@/domain/types'
 
@@ -209,7 +209,7 @@ export function ActivityGroupEditor({
               {visibility.rounds && (
                 <div className="flex flex-col gap-1">
                   <span className="text-xs font-medium uppercase tracking-wider text-warm-ash/60">
-                    ROUNDS
+                    Rounds
                   </span>
                   <input
                     type="number"
@@ -228,18 +228,24 @@ export function ActivityGroupEditor({
               )}
 
               {visibility.restBetweenRounds && (
-                <DurationInputCompact
+                <DurationInput
+                  size="compact"
                   value={group.restBetweenRounds}
-                  onChange={(d) => onChange({ ...group, restBetweenRounds: d })}
-                  label="REST / ROUNDS"
+                  onChange={(d: Duration | undefined) =>
+                    onChange({ ...group, restBetweenRounds: d })
+                  }
+                  label="Rest / Rounds"
                 />
               )}
 
               {visibility.restBetweenActivities && (
-                <DurationInputCompact
+                <DurationInput
+                  size="compact"
                   value={group.restBetweenActivities}
-                  onChange={(d) => onChange({ ...group, restBetweenActivities: d })}
-                  label="REST / EXERCISES"
+                  onChange={(d: Duration | undefined) =>
+                    onChange({ ...group, restBetweenActivities: d })
+                  }
+                  label="Rest / Exercises"
                 />
               )}
             </div>

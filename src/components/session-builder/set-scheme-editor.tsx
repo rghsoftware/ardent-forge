@@ -75,13 +75,35 @@ const SCHEME_GROUPS = [
 
 type SetSchemeType = SetScheme['type']
 
-const SCHEME_GROUP_FOR_TYPE = Object.fromEntries(
-  SCHEME_GROUPS.flatMap((group) => group.types.map((t) => [t.value, group.label])),
-) as Record<SetSchemeType, string>
+const SCHEME_GROUP_FOR_TYPE = {
+  fixedSets: 'STRENGTH',
+  percentageSets: 'STRENGTH',
+  workToMax: 'STRENGTH',
+  forReps: 'ENDURANCE',
+  timedHold: 'ENDURANCE',
+  percentageOfMaxReps: 'ENDURANCE',
+  cardioSteadyState: 'CARDIO',
+  cardioInterval: 'CARDIO',
+  ruckMarch: 'CARDIO',
+  emom: 'METCON',
+  amrapTimed: 'METCON',
+  descendingReps: 'METCON',
+} satisfies Record<SetSchemeType, string>
 
-const SCHEME_TYPE_LABELS = Object.fromEntries(
-  SCHEME_GROUPS.flatMap((group) => group.types.map((t) => [t.value, t.label])),
-) as Record<SetSchemeType, string>
+const SCHEME_TYPE_LABELS = {
+  fixedSets: 'Fixed',
+  percentageSets: '% 1RM',
+  workToMax: 'Max',
+  forReps: 'Reps',
+  timedHold: 'Hold',
+  percentageOfMaxReps: '% Reps',
+  cardioSteadyState: 'Steady',
+  cardioInterval: 'Interval',
+  ruckMarch: 'Ruck',
+  emom: 'EMOM',
+  amrapTimed: 'AMRAP',
+  descendingReps: 'Descend',
+} satisfies Record<SetSchemeType, string>
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -120,10 +142,10 @@ export function SetSchemeEditor({
   const handleTypeChange = useCallback(
     (newType: SetSchemeType) => {
       if (newType === value.type) return
-      const next = defaultScheme(newType)
+      let next = defaultScheme(newType)
       // Preserve rest if available on both old and new
       if ('restBetweenSets' in value && 'restBetweenSets' in next && value.restBetweenSets) {
-        ;(next as Record<string, unknown>).restBetweenSets = value.restBetweenSets
+        next = { ...next, restBetweenSets: value.restBetweenSets }
       }
       // Update selected group to match the new type's group
       const newGroup = SCHEME_GROUPS.find((g) => g.types.some((t) => t.value === newType))?.label

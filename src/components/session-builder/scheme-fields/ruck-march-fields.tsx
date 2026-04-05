@@ -5,7 +5,7 @@ import {
   PaceInput,
   CardioModalitySelect,
 } from '../inputs'
-import type { SetScheme } from '@/domain/types'
+import type { Duration, SetScheme } from '@/domain/types'
 
 interface RuckMarchFieldsProps {
   value: SetScheme & { type: 'ruckMarch' }
@@ -22,7 +22,7 @@ export function RuckMarchFields({ value, onChange }: RuckMarchFieldsProps) {
       />
       <DurationInput
         value={value.duration}
-        onChange={(d) => onChange({ ...value, duration: d })}
+        onChange={(d: Duration) => onChange({ ...value, duration: d })}
         label="DURATION (OPTIONAL)"
       />
       <DistanceInput

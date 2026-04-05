@@ -1,5 +1,5 @@
 import { DurationInput, DistanceInput, UnderlineNumberInput, CardioModalitySelect } from '../inputs'
-import type { SetScheme } from '@/domain/types'
+import type { Duration, SetScheme } from '@/domain/types'
 
 interface CardioIntervalFieldsProps {
   value: SetScheme & { type: 'cardioInterval' }
@@ -11,7 +11,7 @@ export function CardioIntervalFields({ value, onChange }: CardioIntervalFieldsPr
     <div className="flex flex-col gap-4">
       <DurationInput
         value={value.workDuration}
-        onChange={(d) => onChange({ ...value, workDuration: d })}
+        onChange={(d: Duration) => onChange({ ...value, workDuration: d })}
         label="WORK DURATION"
       />
       <DistanceInput
@@ -21,7 +21,7 @@ export function CardioIntervalFields({ value, onChange }: CardioIntervalFieldsPr
       />
       <DurationInput
         value={value.rest}
-        onChange={(d) => onChange({ ...value, rest: d })}
+        onChange={(d: Duration) => onChange({ ...value, rest: d })}
         label="REST"
       />
       <UnderlineNumberInput

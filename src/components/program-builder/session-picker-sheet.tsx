@@ -24,12 +24,12 @@ import type { SessionType, SessionTemplate } from '@/domain/types'
 // ---------------------------------------------------------------------------
 
 const SESSION_FILTERS: Array<{ value: SessionType | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'ALL' },
-  { value: 'STRENGTH', label: 'STRENGTH' },
-  { value: 'CONDITIONING', label: 'CONDITIONING' },
+  { value: 'ALL', label: 'All' },
+  { value: 'STRENGTH', label: 'Strength' },
+  { value: 'CONDITIONING', label: 'Conditioning' },
   { value: 'SE', label: 'SE' },
-  { value: 'MIXED', label: 'MIXED' },
-  { value: 'EVENT', label: 'EVENT' },
+  { value: 'MIXED', label: 'Mixed' },
+  { value: 'EVENT', label: 'Event' },
 ]
 
 // ---------------------------------------------------------------------------
