@@ -208,12 +208,12 @@ pub(crate) async fn create_conversation_inner(
          (id, \"type\", title, group_id, created_at, updated_at) \
          VALUES (?, ?, ?, ?, ?, ?)",
     )
-    .bind(&conversation_id)
-    .bind(&input.conversation_type)
-    .bind(&input.title)
-    .bind(&input.group_id)
-    .bind(now)
-    .bind(now)
+    .bind(&conversation_id) // 1: id
+    .bind(&input.conversation_type) // 2: type
+    .bind(&input.title) // 3: title
+    .bind(&input.group_id) // 4: group_id
+    .bind(now) // 5: created_at
+    .bind(now) // 6: updated_at
     .execute(&mut *tx)
     .await?;
 
@@ -225,10 +225,10 @@ pub(crate) async fn create_conversation_inner(
              (id, conversation_id, user_id, is_archived, joined_at) \
              VALUES (?, ?, ?, 0, ?)",
         )
-        .bind(&participant_id)
-        .bind(&conversation_id)
-        .bind(user_id)
-        .bind(now)
+        .bind(&participant_id) // 1: id
+        .bind(&conversation_id) // 2: conversation_id
+        .bind(user_id) // 3: user_id
+        .bind(now) // 4: joined_at
         .execute(&mut *tx)
         .await?;
 
@@ -385,13 +385,13 @@ pub(crate) async fn send_message_inner(
           created_at, updated_at, sync_status) \
          VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')",
     )
-    .bind(&id)
-    .bind(&input.conversation_id)
-    .bind(&input.sender_id)
-    .bind(&input.message_type)
-    .bind(&input.content)
-    .bind(now)
-    .bind(now)
+    .bind(&id) // 1: id
+    .bind(&input.conversation_id) // 2: conversation_id
+    .bind(&input.sender_id) // 3: sender_id
+    .bind(&input.message_type) // 4: message_type
+    .bind(&input.content) // 5: content
+    .bind(now) // 6: created_at
+    .bind(now) // 7: updated_at
     .execute(&mut *tx)
     .await?;
 
@@ -628,21 +628,21 @@ pub(crate) async fn save_media_attachment_inner(
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
                  COALESCE((SELECT created_at FROM media_attachments WHERE id = ?), ?), ?)",
     )
-    .bind(&id)
-    .bind(&input.message_id)
-    .bind(&input.provider)
-    .bind(&input.provider_asset_id)
-    .bind(&input.media_type)
-    .bind(&input.original_filename)
-    .bind(&input.mime_type)
-    .bind(&input.thumbnail_url)
-    .bind(&input.playback_url)
-    .bind(input.duration_seconds)
-    .bind(input.file_size_bytes)
-    .bind(&input.status)
-    .bind(&id)
-    .bind(now)
-    .bind(now)
+    .bind(&id) //  1: id
+    .bind(&input.message_id) //  2: message_id
+    .bind(&input.provider) //  3: provider
+    .bind(&input.provider_asset_id) //  4: provider_asset_id
+    .bind(&input.media_type) //  5: media_type
+    .bind(&input.original_filename) //  6: original_filename
+    .bind(&input.mime_type) //  7: mime_type
+    .bind(&input.thumbnail_url) //  8: thumbnail_url
+    .bind(&input.playback_url) //  9: playback_url
+    .bind(input.duration_seconds) // 10: duration_seconds
+    .bind(input.file_size_bytes) // 11: file_size_bytes
+    .bind(&input.status) // 12: status
+    .bind(&id) // 13: id (COALESCE subquery)
+    .bind(now) // 14: created_at (fallback)
+    .bind(now) // 15: updated_at
     .execute(pool)
     .await?;
 

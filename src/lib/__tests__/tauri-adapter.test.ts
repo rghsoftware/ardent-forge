@@ -448,6 +448,98 @@ describe('Error handling', () => {
         expect(err).toBe('some string error')
       }
     })
+
+    it('wraps DATABASE errors into AdapterError', async () => {
+      const appError = { kind: 'DATABASE', message: 'disk I/O error' }
+      mockInvoke.mockRejectedValue(appError)
+
+      try {
+        await adapter.getExercises()
+        expect.fail('Should have thrown')
+      } catch (err) {
+        expect(err).toBeInstanceOf(AdapterError)
+        const ae = err as AdapterError
+        expect(ae.kind).toBe('DATABASE')
+        expect(ae.message).toBe('disk I/O error')
+        expect(ae.name).toBe('AdapterError')
+      }
+    })
+
+    it('wraps INTERNAL errors into AdapterError', async () => {
+      const appError = { kind: 'INTERNAL', message: 'unexpected state' }
+      mockInvoke.mockRejectedValue(appError)
+
+      try {
+        await adapter.getExercise('ex-001')
+        expect.fail('Should have thrown')
+      } catch (err) {
+        expect(err).toBeInstanceOf(AdapterError)
+        const ae = err as AdapterError
+        expect(ae.kind).toBe('INTERNAL')
+        expect(ae.message).toBe('unexpected state')
+        expect(ae.name).toBe('AdapterError')
+      }
+    })
+  })
+})
+
+// ===========================================================================
+// Malformed JSON handling (parseJson edge cases)
+// ===========================================================================
+
+describe('Malformed JSON handling', () => {
+  it('throws when aliases contains malformed JSON', async () => {
+    const badResponse = { ...tauriExerciseResponse, aliases: 'not-valid-json{' }
+    mockInvoke.mockResolvedValue([badResponse])
+
+    await expect(adapter.getExercises()).rejects.toThrow('Invalid JSON in column "aliases"')
+  })
+
+  it('throws when muscle_groups contains malformed JSON', async () => {
+    const badResponse = { ...tauriExerciseResponse, muscle_groups: '{broken' }
+    mockInvoke.mockResolvedValue(badResponse)
+
+    await expect(adapter.getExercise('ex-001')).rejects.toThrow(
+      'Invalid JSON in column "muscle_groups"',
+    )
+  })
+
+  it('throws when equipment_required contains malformed JSON', async () => {
+    const badResponse = { ...tauriExerciseResponse, equipment_required: '[not,json' }
+    mockInvoke.mockResolvedValue([badResponse])
+
+    await expect(adapter.getExercises()).rejects.toThrow(
+      'Invalid JSON in column "equipment_required"',
+    )
+  })
+
+  it('propagates downstream errors when parseJson returns null for null input', async () => {
+    const nullFieldsResponse = {
+      ...tauriExerciseResponse,
+      aliases: null,
+    }
+    mockInvoke.mockResolvedValue([nullFieldsResponse])
+
+    // parseJson returns null for null input, but the downstream Zod schema
+    // in toExercise expects an array, so it throws a validation error
+    await expect(adapter.getExercises()).rejects.toThrow()
+  })
+
+  it('includes raw value preview in error message for malformed JSON', async () => {
+    const longBadJson = 'x'.repeat(200)
+    const badResponse = { ...tauriExerciseResponse, aliases: longBadJson }
+    mockInvoke.mockResolvedValue(badResponse)
+
+    try {
+      await adapter.getExercise('ex-001')
+      expect.fail('Should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(Error)
+      const msg = (err as Error).message
+      // parseJson truncates raw value to first 100 chars
+      expect(msg).toContain('Raw value (first 100 chars)')
+      expect(msg).toContain('x'.repeat(100))
+    }
   })
 })
 
@@ -752,6 +844,70 @@ describe('Workout log operations', () => {
       }
       expect(callArgs.log.started_at).toBe(Math.floor(new Date(now).getTime() / 1000))
       expect(callArgs.log.completed_at).toBe(Math.floor(new Date(later).getTime() / 1000))
+    })
+  })
+
+  describe('isoToUnixSeconds edge cases', () => {
+    it('converts date-only ISO string to correct unix seconds', async () => {
+      mockInvoke.mockResolvedValue(tauriWorkoutLogResponse)
+
+      await adapter.createWorkoutLog({
+        userId: 'user-001',
+        startedAt: '2025-01-01T00:00:00Z',
+      })
+
+      const callArgs = mockInvoke.mock.calls[0][1] as {
+        log: { started_at: number }
+      }
+      // 2025-01-01T00:00:00Z = 1735689600 unix seconds
+      expect(callArgs.log.started_at).toBe(1735689600)
+    })
+
+    it('passes null completed_at when not provided', async () => {
+      mockInvoke.mockResolvedValue(tauriWorkoutLogResponse)
+
+      await adapter.createWorkoutLog({
+        userId: 'user-001',
+        startedAt: now,
+      })
+
+      const callArgs = mockInvoke.mock.calls[0][1] as {
+        log: { completed_at: number | null }
+      }
+      expect(callArgs.log.completed_at).toBeNull()
+    })
+
+    it('converts timezone-offset ISO strings correctly', async () => {
+      mockInvoke.mockResolvedValue(tauriWorkoutLogResponse)
+
+      // +05:00 offset means 5 hours earlier in UTC
+      await adapter.createWorkoutLog({
+        userId: 'user-001',
+        startedAt: '2025-06-15T15:00:00+05:00',
+      })
+
+      const callArgs = mockInvoke.mock.calls[0][1] as {
+        log: { started_at: number }
+      }
+      // 2025-06-15T15:00:00+05:00 = 2025-06-15T10:00:00Z
+      expect(callArgs.log.started_at).toBe(
+        Math.floor(new Date('2025-06-15T10:00:00Z').getTime() / 1000),
+      )
+    })
+
+    it('produces NaN for invalid date strings (documents current behavior)', async () => {
+      mockInvoke.mockResolvedValue(tauriWorkoutLogResponse)
+
+      await adapter.createWorkoutLog({
+        userId: 'user-001',
+        startedAt: 'not-a-date',
+      })
+
+      const callArgs = mockInvoke.mock.calls[0][1] as {
+        log: { started_at: number }
+      }
+      // isoToUnixSeconds does not validate: new Date('not-a-date') => NaN
+      expect(callArgs.log.started_at).toBeNaN()
     })
   })
 

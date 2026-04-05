@@ -1,8 +1,8 @@
 import { vi } from 'vitest'
 
 type SupabaseResponse<T = unknown> =
-  | { data: T; error: null }
-  | { data: null; error: { message: string } }
+  | { data: T; error: null; count?: number | null }
+  | { data: null; error: { message: string }; count?: number | null }
 
 interface MockQueryBuilder {
   select: (columns?: string) => MockQueryBuilder
@@ -138,12 +138,13 @@ export function createMockSupabaseClient() {
       operation: MockResponseConfig['operation'],
       data: unknown,
       error?: { message: string } | null,
+      options?: { count?: number | null },
     ): void {
       const key = makeKey(table, operation)
       if (error) {
-        responses.set(key, { data: null, error })
+        responses.set(key, { data: null, error, count: options?.count })
       } else {
-        responses.set(key, { data, error: null })
+        responses.set(key, { data, error: null, count: options?.count })
       }
     },
 

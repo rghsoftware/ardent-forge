@@ -1637,6 +1637,23 @@ describe('Chat operations', () => {
       expect(result.size).toBe(0)
     })
 
+    it('returns unread counts for conversations with messages after last_read_at', async () => {
+      mockClient.mockResponse('conversation_participants', 'select', [
+        { conversation_id: 'conv-001', last_read_at: now },
+        { conversation_id: 'conv-002', last_read_at: null },
+      ])
+      // The mock returns the same response for all messages:select calls,
+      // so both conversations will report the same count.
+      mockClient.mockResponse('messages', 'select', [], undefined, { count: 3 })
+
+      const result = await adapter.getUnreadCounts()
+
+      expect(result).toBeInstanceOf(Map)
+      expect(result.size).toBe(2)
+      expect(result.get('conv-001')).toBe(3)
+      expect(result.get('conv-002')).toBe(3)
+    })
+
     it('throws on participation query error', async () => {
       mockClient.mockResponse('conversation_participants', 'select', null, {
         message: 'DB error',
