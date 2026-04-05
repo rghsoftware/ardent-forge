@@ -90,13 +90,6 @@ jobs:
             exit 1
           fi
 
-      - name: Inject version
-        run: |
-          VERSION_NAME="${GITHUB_REF_NAME#v}"
-          VERSION_CODE=$(( $(date -u +%s) / 60 ))
-          echo "tauri.android.versionName=$VERSION_NAME" > src-tauri/gen/android/app/tauri.properties
-          echo "tauri.android.versionCode=$VERSION_CODE" >> src-tauri/gen/android/app/tauri.properties
-
       - name: Build signed AAB
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
@@ -104,6 +97,8 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          ANDROID_VERSION_NAME: ${{ github.ref_name }}
+          ANDROID_VERSION_CODE: ${{ github.run_number + 1100000 }}
         run: bunx tauri android build --target aarch64 --aab
 
       - name: Upload AAB artifact
