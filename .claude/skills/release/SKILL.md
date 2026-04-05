@@ -33,7 +33,22 @@ Prepare and publish a new version of Ardent Forge by bumping versions, updating 
 
 4. Derive the new version using semver. For pre-release, increment the pre-release number. For stable, drop the pre-release suffix (or bump major/minor/patch per user input).
 
-### Step 2: Pre-flight checklist
+### Step 2: Merge develop into main (stable releases only)
+
+Skip this step for pre-release (alpha/beta/RC) releases.
+
+For stable releases, `develop` must be merged into `main` before tagging:
+
+1. Confirm with the user: "Ready to merge `develop` into `main` for the stable release?"
+2. Ensure the working tree is clean on `develop`
+3. Switch to `main` and pull latest: `git checkout main && git pull origin main`
+4. Merge develop: `git merge develop --no-ff -m "chore: merge develop into main for vX.Y.Z release"`
+5. Push the merge: `git push origin main`
+6. If there are merge conflicts, stop and report them to the user -- do not force-resolve
+
+After the merge, remain on `main` for the rest of the release process.
+
+### Step 3: Pre-flight checklist
 
 Verify each item before proceeding. Stop and report any failures.
 
@@ -43,9 +58,8 @@ Verify each item before proceeding. Stop and report any failures.
 - [ ] Lint passes (`bun run lint`)
 - [ ] Build succeeds (`bun run build`)
 - [ ] No pending Supabase migrations that haven't been tested locally (`ls supabase/migrations/`)
-- [ ] For stable releases: `develop` has been merged into `main`
 
-### Step 3: Bump versions
+### Step 4: Bump versions
 
 Update the version string in all four files:
 
@@ -58,7 +72,7 @@ All three manifest files (1-3) must contain the identical version string (withou
 
 **Version code (Android):** The `versionCode` in `tauri.properties` must be strictly greater than the previous value. Read the current value and increment by 1. CI will override this with `1000000 + github.run_number`, but the committed value serves as a floor and prevents conflicts if the CI formula ever resets. Never reuse or decrease a version code -- Play Store rejects uploads with duplicate or lower codes.
 
-### Step 4: Update CHANGELOG.md
+### Step 5: Update CHANGELOG.md
 
 1. Read the current `CHANGELOG.md`
 2. Gather changes since the last release tag: `git log $(git describe --tags --abbrev=0)..HEAD --oneline`
@@ -84,13 +98,13 @@ All three manifest files (1-3) must contain the identical version string (withou
 5. Omit empty sections
 6. Use past tense, link PR numbers where available
 
-### Step 5: Commit version bump
+### Step 6: Commit version bump
 
 1. Stage the four version files (`package.json`, `tauri.conf.json`, `Cargo.toml`, `tauri.properties`) and `CHANGELOG.md`
 2. Commit with message: `chore(release): bump version to X.Y.Z`
 3. Do NOT push yet -- present the commit to the user for review
 
-### Step 6: Tag and push
+### Step 7: Tag and push
 
 After user confirms:
 
@@ -99,7 +113,7 @@ After user confirms:
 
 This triggers the `release.yml` GitHub Actions workflow.
 
-### Step 7: Monitor CI/CD pipeline
+### Step 8: Monitor CI/CD pipeline
 
 1. Check workflow status: `gh run list --workflow=release.yml --limit 1`
 2. Report the three job statuses to the user:
@@ -109,7 +123,7 @@ This triggers the `release.yml` GitHub Actions workflow.
 3. If any job fails: `gh run view <run-id> --log-failed` to surface the error
 4. Link the user to the GitHub Actions run for live monitoring
 
-### Step 8: Post-release verification
+### Step 9: Post-release verification
 
 Once the pipeline succeeds, verify:
 
@@ -117,7 +131,7 @@ Once the pipeline succeeds, verify:
 - [ ] Release is marked as pre-release or stable (matching the tag type)
 - [ ] Play Store internal track shows the new version (user must verify manually)
 
-### Step 9: Post-release cleanup (stable releases only)
+### Step 10: Post-release cleanup (stable releases only)
 
 For stable releases, prompt the user about:
 
