@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/select'
 import type { Weight } from '@/domain/types'
 
-const WEIGHT_UNITS: Array<'lb' | 'kg'> = ['lb', 'kg']
+const WEIGHT_UNITS = ['lb', 'kg'] as const satisfies readonly Weight['unit'][]
 
 interface WeightInputProps {
   value: Weight
@@ -28,7 +28,7 @@ export function WeightInput({ value, onChange, label }: WeightInputProps) {
           value={value.value || ''}
           onChange={(e) => {
             const v = parseFloat(e.target.value)
-            if (!isNaN(v)) onChange({ ...value, value: v })
+            onChange({ ...value, value: isNaN(v) ? 0 : v })
           }}
           placeholder="--"
           min={0}

@@ -46,7 +46,7 @@ export function LoadSpecEditor({
     : LOAD_TYPES.filter((t) => t.value !== 'percentageOf1RM' || exerciseSupports1RM)
 
   const handleTypeChange = useCallback(
-    (newType: string) => {
+    (newType: LoadSpec['type']) => {
       switch (newType) {
         case 'absolute':
           onChange({ type: 'absolute', weight: { value: 135, unit: 'lb' } })
@@ -69,14 +69,21 @@ export function LoadSpecEditor({
         case 'percentMaxReps':
           onChange({ type: 'percentMaxReps', percentage: 0.5 })
           break
-        default:
+        case 'unspecified':
           onChange({ type: 'unspecified' })
+          break
+        default: {
+          const _exhaustive: never = newType
+          console.error('[load-spec-editor] Unhandled load type:', _exhaustive)
+          onChange({ type: 'unspecified' })
+        }
       }
     },
     [onChange],
   )
 
-  // Reset to 'unspecified' when the current load type is no longer in the filtered list
+  // Scheme type changes can shrink the allowed load list. Auto-reset prevents
+  // saving an invalid scheme+load combination.
   useEffect(() => {
     if (allowedLoads === null) return
     const isCurrentAllowed = (allowedLoads as string[]).includes(value.type)
@@ -91,7 +98,7 @@ export function LoadSpecEditor({
   return (
     <div className="flex flex-col gap-3">
       {/* Load type dropdown */}
-      <Select value={value.type} onValueChange={handleTypeChange}>
+      <Select value={value.type} onValueChange={(v) => handleTypeChange(v as LoadSpec['type'])}>
         <SelectTrigger className="min-h-12 w-full border-0 border-b border-warm-ash/30 bg-transparent text-xs uppercase tracking-wider text-bone-white">
           <SelectValue />
         </SelectTrigger>

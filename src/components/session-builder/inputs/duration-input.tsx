@@ -23,49 +23,50 @@ type DurationInputSize = keyof typeof SIZE_STYLES
 // Component
 // ---------------------------------------------------------------------------
 
-interface DurationInputProps {
+interface DurationInputBase {
   value: Duration | undefined
-  onChange: (d: Duration) => void
   label: string
   /** Visual size variant. Defaults to `"default"`. */
   size?: DurationInputSize
 }
 
-interface DurationInputUndefinableProps {
-  value: Duration | undefined
-  onChange: (d: Duration | undefined) => void
-  label: string
-  /** Visual size variant. Defaults to `"default"`. */
-  size?: DurationInputSize
-}
+/**
+ * When `clearable` is true, setting both minutes and seconds to zero emits
+ * `undefined` instead of `{ seconds: 0 }`. This signals "no rest specified"
+ * to downstream consumers -- a persistence distinction from an explicit
+ * zero-second duration.
+ */
+type DurationInputProps = DurationInputBase &
+  (
+    | { clearable?: false; onChange: (d: Duration) => void }
+    | { clearable: true; onChange: (d: Duration | undefined) => void }
+  )
 
-export function DurationInput({
-  value,
-  onChange,
-  label,
-  size = 'default',
-}: DurationInputProps | DurationInputUndefinableProps) {
+export function DurationInput(props: DurationInputProps) {
+  const { value, label, size = 'default' } = props
   const totalSeconds = value?.seconds ?? 0
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   const styles = SIZE_STYLES[size]
 
+  const emit = (totalSecs: number) => {
+    // When clearable, emitting undefined means "no rest specified"
+    // (vs exactly 0 seconds) -- a persistence distinction.
+    if (props.clearable && totalSecs === 0) {
+      props.onChange(undefined)
+    } else {
+      props.onChange({ seconds: totalSecs })
+    }
+  }
+
   const handleMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const m = parseInt(e.target.value) || 0
-    if (size === 'compact' && m === 0 && seconds === 0) {
-      ;(onChange as (d: Duration | undefined) => void)(undefined)
-    } else {
-      onChange({ seconds: m * 60 + seconds })
-    }
+    emit(m * 60 + seconds)
   }
 
   const handleSecondsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const s = parseInt(e.target.value) || 0
-    if (size === 'compact' && minutes === 0 && s === 0) {
-      ;(onChange as (d: Duration | undefined) => void)(undefined)
-    } else {
-      onChange({ seconds: minutes * 60 + s })
-    }
+    emit(minutes * 60 + s)
   }
 
   return (
@@ -106,4 +107,4 @@ export function DurationInput({
   )
 }
 
-export type { DurationInputProps, DurationInputUndefinableProps, DurationInputSize }
+export type { DurationInputProps, DurationInputSize }

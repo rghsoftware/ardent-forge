@@ -1,12 +1,9 @@
+// Extracted from set-scheme-editor.tsx to reduce file size and enable independent testing
 export { UnderlineNumberInput } from './underline-number-input'
 export type { UnderlineNumberInputProps } from './underline-number-input'
 
 export { DurationInput } from './duration-input'
-export type {
-  DurationInputProps,
-  DurationInputUndefinableProps,
-  DurationInputSize,
-} from './duration-input'
+export type { DurationInputProps, DurationInputSize } from './duration-input'
 
 export { WeightInput } from './weight-input'
 export type { WeightInputProps } from './weight-input'

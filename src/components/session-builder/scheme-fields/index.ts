@@ -1,3 +1,4 @@
+// Extracted from set-scheme-editor.tsx to reduce file size and enable independent testing
 export { FixedSetsFields } from './fixed-sets-fields'
 export type { FixedSetsFieldsProps } from './fixed-sets-fields'
 

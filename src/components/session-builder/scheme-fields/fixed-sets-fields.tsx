@@ -2,7 +2,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { Icon } from '@/components/icon'
 import { UnderlineNumberInput, NumberRangeInput, DurationInput, LoadSpecEditor } from '../inputs'
-import type { Duration, SetScheme, NumberRange } from '@/domain/types'
+import type { Duration, NumberRange, SetScheme } from '@/domain/types'
 
 interface FixedSetsFieldsProps {
   value: SetScheme & { type: 'fixedSets' }
@@ -11,14 +11,12 @@ interface FixedSetsFieldsProps {
 }
 
 export function FixedSetsFields({ value, onChange, exerciseSupports1RM }: FixedSetsFieldsProps) {
-  const setsIsRange = typeof value.sets === 'object'
-  const repsIsRange = typeof value.reps === 'object'
   const hasOptions = !!(value.restBetweenSets?.seconds || value.lastSetAMRAP)
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-4">
-        {setsIsRange ? (
+        {typeof value.sets === 'object' ? (
           <NumberRangeInput
             value={value.sets as NumberRange}
             onChange={(r) => onChange({ ...value, sets: r })}
@@ -33,7 +31,7 @@ export function FixedSetsFields({ value, onChange, exerciseSupports1RM }: FixedS
             className="flex-1"
           />
         )}
-        {repsIsRange ? (
+        {typeof value.reps === 'object' ? (
           <NumberRangeInput
             value={value.reps as NumberRange}
             onChange={(r) => onChange({ ...value, reps: r })}

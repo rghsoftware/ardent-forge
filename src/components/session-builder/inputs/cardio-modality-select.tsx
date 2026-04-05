@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/select'
 import type { CardioModality } from '@/domain/types'
 
-const CARDIO_MODALITIES: CardioModality[] = [
+const CARDIO_MODALITIES = [
   'RUNNING',
   'CYCLING',
   'SWIMMING',
@@ -16,7 +16,7 @@ const CARDIO_MODALITIES: CardioModality[] = [
   'JUMP_ROPE',
   'STAIR_CLIMBER',
   'ELLIPTICAL',
-]
+] as const satisfies readonly CardioModality[]
 
 interface CardioModalitySelectProps {
   value: CardioModality
@@ -36,7 +36,7 @@ export function CardioModalitySelect({ value, onChange }: CardioModalitySelectPr
         <SelectContent className="bg-surface-gunmetal">
           {CARDIO_MODALITIES.map((m) => (
             <SelectItem key={m} value={m} className="text-xs uppercase">
-              {m.replace('_', ' ')}
+              {m.replaceAll('_', ' ')}
             </SelectItem>
           ))}
         </SelectContent>

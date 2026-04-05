@@ -168,7 +168,6 @@ export function BlockEditor({
           id={`block-${block.clientId}`}
           className="border-l-2 border-forge bg-surface-iron milled-edge"
         >
-          {/* Block header -- two rows for breathing room */}
           <div className="cursor-pointer px-3 py-3" onClick={handleHeaderClick}>
             {/* Row 1: drag handle + name + menu */}
             <div className="flex items-center gap-2">

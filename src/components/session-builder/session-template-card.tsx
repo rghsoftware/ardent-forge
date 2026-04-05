@@ -9,7 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { SessionTemplate, SessionType, ScoringType } from '@/domain/types'
+import { SESSION_TYPE_BADGE } from '@/components/program-builder/constants'
+import type { SessionTemplate, ScoringType } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,16 +25,8 @@ interface SessionTemplateCardProps {
 }
 
 // ---------------------------------------------------------------------------
-// Category color map
+// Display constants (SESSION_TYPE_BADGE imported from program-builder/constants)
 // ---------------------------------------------------------------------------
-
-const CATEGORY_BADGE = {
-  STRENGTH: 'bg-ember/10 text-ember',
-  CONDITIONING: 'bg-quenched/10 text-quenched',
-  SE: 'bg-arc/10 text-arc',
-  MIXED: 'bg-bone-white/10 text-bone-white',
-  EVENT: 'bg-ember/15 text-ember',
-} satisfies Record<SessionType, string>
 
 const SCORING_LABELS = {
   NONE: null,
@@ -72,7 +65,7 @@ export function SessionTemplateCard({
           <span className="font-display text-sm font-medium text-bone-white">{template.name}</span>
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className={`px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wider ${CATEGORY_BADGE[template.category] ?? 'bg-surface-steel text-warm-ash'}`}
+              className={`px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wider ${SESSION_TYPE_BADGE[template.category] ?? 'bg-surface-steel text-warm-ash'}`}
             >
               {template.category}
             </span>

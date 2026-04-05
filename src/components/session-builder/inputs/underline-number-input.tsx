@@ -30,7 +30,7 @@ export function UnderlineNumberInput({
         value={value ?? ''}
         onChange={(e) => {
           const n = parseFloat(e.target.value)
-          if (!isNaN(n)) onChange(n)
+          onChange(isNaN(n) ? 0 : n)
         }}
         placeholder={placeholder ?? '--'}
         min={min}

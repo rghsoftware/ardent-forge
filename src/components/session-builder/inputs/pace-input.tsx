@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/select'
 import type { Pace } from '@/domain/types'
 
-const PACE_UNITS: Array<'mi' | 'km'> = ['mi', 'km']
+const PACE_UNITS = ['mi', 'km'] as const satisfies readonly Pace['unit'][]
 
 interface PaceInputProps {
   value: Pace | undefined

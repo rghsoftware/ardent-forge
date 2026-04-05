@@ -88,7 +88,7 @@ const SCHEME_GROUP_FOR_TYPE = {
   emom: 'METCON',
   amrapTimed: 'METCON',
   descendingReps: 'METCON',
-} satisfies Record<SetSchemeType, string>
+} satisfies Record<SetSchemeType, (typeof SCHEME_GROUPS)[number]['label']>
 
 const SCHEME_TYPE_LABELS = {
   fixedSets: 'Fixed',
@@ -125,9 +125,10 @@ export function SetSchemeEditor({
     !value.type || value.type === 'fixedSets',
   )
 
-  // Category-based filtering: derive which types to show
+  // Category-based filtering: derive which types to show.
+  // Empty array means "all scheme types allowed" -- Mixed and Event return []
+  // to show the full list rather than filtering.
   const defaultTypes = sessionCategory ? CATEGORY_SCHEME_TYPES[sessionCategory] : []
-  // Empty array means "show all" (Mixed/Event categories)
   const categoryShowsAll = defaultTypes.length === 0
   const isFiltered = !categoryShowsAll && !showAllTypes
 
@@ -143,7 +144,10 @@ export function SetSchemeEditor({
     (newType: SetSchemeType) => {
       if (newType === value.type) return
       let next = defaultScheme(newType)
-      // Preserve rest if available on both old and new
+      // Preserve rest between sets when switching scheme types: rest is high-friction
+      // to re-enter (minutes + seconds), so keeping it avoids punishing users who
+      // experiment with different schemes. Load is reset because each scheme type
+      // has different default load semantics.
       if ('restBetweenSets' in value && 'restBetweenSets' in next && value.restBetweenSets) {
         next = { ...next, restBetweenSets: value.restBetweenSets }
       }
@@ -241,7 +245,6 @@ export function SetSchemeEditor({
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Dynamic fields */}
       <div className="border-t border-warm-ash/10 pt-4">
         {value.type === 'fixedSets' && (
           <FixedSetsFields
@@ -285,7 +288,6 @@ export function SetSchemeEditor({
         )}
       </div>
 
-      {/* Validation errors */}
       {Object.entries(errors).map(([key, msg]) => (
         <p key={key} className="text-xs text-destructive">
           {msg}

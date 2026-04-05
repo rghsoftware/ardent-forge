@@ -19,9 +19,22 @@ export function CollapsedFieldsRow({
   useEffect(() => {
     const el = contentRef.current
     if (!el) return
+
     if (expanded) {
+      // Animate from 0 to scrollHeight, then unlock so content can grow freely
       el.style.maxHeight = `${el.scrollHeight}px`
+
+      const unlock = () => {
+        el.style.maxHeight = 'none'
+      }
+      el.addEventListener('transitionend', unlock, { once: true })
+      return () => el.removeEventListener('transitionend', unlock)
     } else {
+      // Collapse: first lock to current scrollHeight (from 'none'), force
+      // reflow, then animate to 0
+      el.style.maxHeight = `${el.scrollHeight}px`
+      // Force reflow so the browser registers the starting value
+      void el.offsetHeight
       el.style.maxHeight = '0px'
     }
   }, [expanded])

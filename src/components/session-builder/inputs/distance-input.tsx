@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/select'
 import type { Distance } from '@/domain/types'
 
-const DISTANCE_UNITS: Array<'mi' | 'km' | 'm' | 'yd'> = ['mi', 'km', 'm', 'yd']
+const DISTANCE_UNITS = ['mi', 'km', 'm', 'yd'] as const satisfies readonly Distance['unit'][]
 
 interface DistanceInputProps {
   value: Distance | undefined
@@ -29,7 +29,7 @@ export function DistanceInput({ value, onChange, label }: DistanceInputProps) {
           value={current.value || ''}
           onChange={(e) => {
             const v = parseFloat(e.target.value)
-            if (!isNaN(v)) onChange({ ...current, value: v })
+            onChange({ ...current, value: isNaN(v) ? 0 : v })
           }}
           placeholder="--"
           min={0}

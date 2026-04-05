@@ -100,7 +100,7 @@ export const SESSION_TYPE_BADGE = {
 } satisfies Record<SessionType, string>
 
 // ---------------------------------------------------------------------------
-// Source labels for program source badges
+// Block type visual styles
 // ---------------------------------------------------------------------------
 
 export const BLOCK_TYPE_STYLES = {
@@ -110,6 +110,10 @@ export const BLOCK_TYPE_STYLES = {
   DELOAD: 'bg-arc/15 text-arc',
   TEST: 'bg-warm-ash/15 text-warm-ash',
 } satisfies Record<BlockType, string>
+
+// ---------------------------------------------------------------------------
+// Source labels for program source badges
+// ---------------------------------------------------------------------------
 
 export const SOURCE_LABELS = {
   CUSTOM: 'Custom',

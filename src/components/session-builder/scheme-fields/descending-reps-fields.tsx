@@ -36,14 +36,26 @@ export function DescendingRepsFields({
               .split(/[,\s]+/)
               .map(Number)
               .filter((n) => !isNaN(n) && n > 0)
-            if (nums.length >= 2) {
-              onChange({ ...value, repLadder: nums })
-            }
+            // Always sync parent with whatever valid numbers are parsed,
+            // even if fewer than 2 (prevents parent state divergence)
+            onChange({ ...value, repLadder: nums.length > 0 ? nums : [] })
           }}
           placeholder="10, 8, 6, 4, 2"
           className="min-h-12 w-full border-0 border-b border-warm-ash/30 bg-transparent py-2 font-body text-sm text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
           aria-label="Rep ladder"
         />
+        {ladderText.trim().length > 0 &&
+          (() => {
+            const nums = ladderText
+              .split(/[,\s]+/)
+              .map(Number)
+              .filter((n) => !isNaN(n) && n > 0)
+            return nums.length < 2 ? (
+              <span className="text-[11px] text-warning-flare/80">
+                Enter at least 2 numbers separated by commas
+              </span>
+            ) : null
+          })()}
       </div>
       <LoadSpecEditor
         value={value.load ?? { type: 'unspecified' }}

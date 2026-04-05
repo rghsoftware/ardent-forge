@@ -165,7 +165,10 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
   const handleMoveGroup = useCallback((fromIndex: number, toIndex: number) => {
     setGroups((prev) => {
-      if (toIndex < 0 || toIndex >= prev.length) return prev
+      if (toIndex < 0 || toIndex >= prev.length) {
+        console.warn('[session-template-form] handleMoveGroup: target index out of bounds')
+        return prev
+      }
       const reordered = [...prev]
       const [moved] = reordered.splice(fromIndex, 1)
       reordered.splice(toIndex, 0, moved)
@@ -270,7 +273,8 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
   return (
     <div className="flex flex-col gap-6 pb-8 lg:grid lg:grid-cols-[320px_1fr] lg:gap-8">
-      {/* ---- Left column: template metadata (sticky on desktop) ---- */}
+      {/* ---- Left column: template metadata ---- */}
+      {/* Sticky within its grid cell so it remains visible while scrolling the activity groups column */}
       <div className="flex flex-col gap-6 lg:sticky lg:top-0 lg:self-start">
         {/* Template name */}
         <div className="px-4 lg:px-0">
@@ -350,6 +354,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
             <div className="px-4 lg:px-0">
               <DurationInput
                 size="compact"
+                clearable
                 value={timeCap}
                 onChange={setTimeCap}
                 label="Time Cap (optional)"
@@ -392,6 +397,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
         <div className="px-4 lg:px-0">
           <DurationInput
             size="compact"
+            clearable
             value={restBetweenGroups}
             onChange={setRestBetweenGroups}
             label="Rest Between Groups (optional)"

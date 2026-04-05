@@ -87,6 +87,7 @@ export function ActivityGroupEditor({
   const visibility = group.groupType ? GROUP_FIELD_VISIBILITY[group.groupType] : null
 
   const handleTypeChange = (value: string) => {
+    // ToggleGroup fires empty string on deselect -- ignore to keep current selection
     if (!value) return
     const newType = value as GroupType
 
@@ -128,7 +129,10 @@ export function ActivityGroupEditor({
   }
 
   const handleMoveActivity = (fromIndex: number, toIndex: number) => {
-    if (toIndex < 0 || toIndex >= group.activities.length) return
+    if (toIndex < 0 || toIndex >= group.activities.length) {
+      console.warn('[activity-group-editor] handleMoveActivity: target index out of bounds')
+      return
+    }
     const reordered = [...group.activities]
     const [moved] = reordered.splice(fromIndex, 1)
     reordered.splice(toIndex, 0, moved)
@@ -230,10 +234,9 @@ export function ActivityGroupEditor({
               {visibility.restBetweenRounds && (
                 <DurationInput
                   size="compact"
+                  clearable
                   value={group.restBetweenRounds}
-                  onChange={(d: Duration | undefined) =>
-                    onChange({ ...group, restBetweenRounds: d })
-                  }
+                  onChange={(d) => onChange({ ...group, restBetweenRounds: d })}
                   label="Rest / Rounds"
                 />
               )}
@@ -241,10 +244,9 @@ export function ActivityGroupEditor({
               {visibility.restBetweenActivities && (
                 <DurationInput
                   size="compact"
+                  clearable
                   value={group.restBetweenActivities}
-                  onChange={(d: Duration | undefined) =>
-                    onChange({ ...group, restBetweenActivities: d })
-                  }
+                  onChange={(d) => onChange({ ...group, restBetweenActivities: d })}
                   label="Rest / Exercises"
                 />
               )}
