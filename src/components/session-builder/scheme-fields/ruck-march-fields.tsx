@@ -9,7 +9,7 @@ import type { Duration, SetScheme } from '@/domain/types'
 
 interface RuckMarchFieldsProps {
   value: SetScheme & { type: 'ruckMarch' }
-  onChange: (s: SetScheme) => void
+  onChange: (s: SetScheme & { type: 'ruckMarch' }) => void
 }
 
 export function RuckMarchFields({ value, onChange }: RuckMarchFieldsProps) {

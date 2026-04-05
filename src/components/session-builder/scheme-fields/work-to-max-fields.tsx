@@ -3,7 +3,7 @@ import type { SetScheme } from '@/domain/types'
 
 interface WorkToMaxFieldsProps {
   value: SetScheme & { type: 'workToMax' }
-  onChange: (s: SetScheme) => void
+  onChange: (s: SetScheme & { type: 'workToMax' }) => void
 }
 
 export function WorkToMaxFields({ value, onChange }: WorkToMaxFieldsProps) {

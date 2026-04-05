@@ -3,7 +3,7 @@ import type { Duration, SetScheme } from '@/domain/types'
 
 interface AmrapTimedFieldsProps {
   value: SetScheme & { type: 'amrapTimed' }
-  onChange: (s: SetScheme) => void
+  onChange: (s: SetScheme & { type: 'amrapTimed' }) => void
 }
 
 export function AmrapTimedFields({ value, onChange }: AmrapTimedFieldsProps) {

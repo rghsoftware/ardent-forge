@@ -3,7 +3,7 @@ import type { SetScheme } from '@/domain/types'
 
 interface PercentageOfMaxRepsFieldsProps {
   value: SetScheme & { type: 'percentageOfMaxReps' }
-  onChange: (s: SetScheme) => void
+  onChange: (s: SetScheme & { type: 'percentageOfMaxReps' }) => void
 }
 
 export function PercentageOfMaxRepsFields({ value, onChange }: PercentageOfMaxRepsFieldsProps) {

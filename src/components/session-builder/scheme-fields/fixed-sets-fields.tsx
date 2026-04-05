@@ -6,7 +6,7 @@ import type { Duration, NumberRange, SetScheme } from '@/domain/types'
 
 interface FixedSetsFieldsProps {
   value: SetScheme & { type: 'fixedSets' }
-  onChange: (s: SetScheme) => void
+  onChange: (s: SetScheme & { type: 'fixedSets' }) => void
   exerciseSupports1RM: boolean
 }
 

@@ -6,7 +6,7 @@ import type { Duration, SetScheme } from '@/domain/types'
 
 interface PercentageSetsFieldsProps {
   value: SetScheme & { type: 'percentageSets' }
-  onChange: (s: SetScheme) => void
+  onChange: (s: SetScheme & { type: 'percentageSets' }) => void
 }
 
 export function PercentageSetsFields({ value, onChange }: PercentageSetsFieldsProps) {

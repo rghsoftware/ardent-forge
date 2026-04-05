@@ -3,7 +3,7 @@ import type { SetScheme } from '@/domain/types'
 
 interface EmomFieldsProps {
   value: SetScheme & { type: 'emom' }
-  onChange: (s: SetScheme) => void
+  onChange: (s: SetScheme & { type: 'emom' }) => void
   exerciseSupports1RM: boolean
 }
 

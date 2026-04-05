@@ -4,7 +4,7 @@ import type { SetScheme } from '@/domain/types'
 
 interface DescendingRepsFieldsProps {
   value: SetScheme & { type: 'descendingReps' }
-  onChange: (s: SetScheme) => void
+  onChange: (s: SetScheme & { type: 'descendingReps' }) => void
   exerciseSupports1RM: boolean
 }
 
