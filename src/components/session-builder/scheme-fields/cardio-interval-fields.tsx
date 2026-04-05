@@ -3,7 +3,7 @@ import type { Duration, SetScheme } from '@/domain/types'
 
 interface CardioIntervalFieldsProps {
   value: SetScheme & { type: 'cardioInterval' }
-  onChange: (s: SetScheme) => void
+  onChange: (s: SetScheme & { type: 'cardioInterval' }) => void
 }
 
 export function CardioIntervalFields({ value, onChange }: CardioIntervalFieldsProps) {

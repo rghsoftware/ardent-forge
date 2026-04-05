@@ -63,7 +63,7 @@ export function ProgramForm({ draft, onChange, error }: ProgramFormProps) {
         {error && <p className="mt-1 text-xs text-warning-flare">{error}</p>}
       </div>
 
-      {/* Mobile details toggle (hidden on desktop) */}
+      {/* Mobile details toggle (hidden on large screens) */}
       <button
         type="button"
         onClick={() => setDetailsOpen((prev) => !prev)}

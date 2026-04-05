@@ -3,7 +3,7 @@ import type { Duration, SetScheme } from '@/domain/types'
 
 interface TimedHoldFieldsProps {
   value: SetScheme & { type: 'timedHold' }
-  onChange: (s: SetScheme) => void
+  onChange: (s: SetScheme & { type: 'timedHold' }) => void
 }
 
 export function TimedHoldFields({ value, onChange }: TimedHoldFieldsProps) {

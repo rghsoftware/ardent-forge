@@ -110,6 +110,14 @@
 
 /* Dark-only: no :root light mode, no .dark toggle. The .dark class on <html> and @custom-variant are retained for shadcn/ui compatibility. */
 :root {
+  /* Safe area insets -- var() prefers Tauri-injected custom properties, falling
+     back to env() for plain web contexts. Tauri plugin only injects top/bottom;
+     left/right use env() directly since the plugin does not provide those. */
+  --sai-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --sai-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --sai-left: env(safe-area-inset-left, 0px);
+  --sai-right: env(safe-area-inset-right, 0px);
+
   /* Background & surfaces */
   --background: #131313;
   --foreground: #e5e2e1;
@@ -333,5 +341,13 @@
   }
   .session-tint-event {
     background-color: rgba(251, 92, 28, 0.08);
+  }
+
+  /* Barcode scanner transparency -- makes WebView content see-through
+     so the native camera feed behind it is visible during scanning */
+  .scanner-active,
+  .scanner-active body,
+  .scanner-active #root {
+    background: transparent !important;
   }
 }

@@ -18,7 +18,7 @@ The net effect: data flows from the device to the cloud, but never back. A worko
 
 ## User Stories
 
-1. **As a user with multiple devices**, I want workouts logged on my phone to appear on my desktop (and vice versa) without manual intervention, so my training history is always complete regardless of which device I use.
+1. **As a user with multiple devices**, I want workouts logged on my phone to appear on all my devices (and vice versa) without manual intervention, so my training history is always complete regardless of which device I use.
 
 2. **As a user signing in on a new device**, I want all my existing programs, templates, and workout history to download automatically, so I do not start from a blank state.
 
@@ -52,18 +52,18 @@ The net effect: data flows from the device to the cloud, but never back. A worko
 
 ## Testable Assertions
 
-| ID | Assertion | Validation Method |
-|----|-----------|-------------------|
-| TA-1 | A row upserted via Realtime (INSERT) with no local counterpart is written to SQLite | Unit test: `upsert_row` with empty local table, verify row exists after |
-| TA-2 | A row upserted via Realtime (UPDATE) where remote `updated_at` > local `updated_at` overwrites the local row | Unit test: seed local row, call `upsert_row` with newer remote, verify columns updated |
-| TA-3 | A row upserted via Realtime where local `updated_at` >= remote `updated_at` is skipped (no write) | Unit test: seed local row, call `upsert_row` with older/equal remote, verify local unchanged |
-| TA-4 | `upsert_row` dynamically discovers columns via `pragma_table_info` -- no hardcoded column lists | Code review: verify no table-specific column enums or match arms |
-| TA-5 | Force-pull downloads all rows for all 15 syncable tables and upserts them locally | Integration test: seed Supabase with known data, force-pull, verify local SQLite matches |
-| TA-6 | Force-pull with >1000 rows in a table paginates correctly | Integration test: seed table with 1500 rows, force-pull, verify all 1500 present locally |
-| TA-7 | Force-pull transitions state: Idle -> Pulling -> Idle (success) or Idle -> Pulling -> Error (failure) | Unit test on state transitions |
-| TA-8 | `sync:data_changed` event fires after successful realtime upsert | Existing test in `sync-listener.tsx` covers frontend reaction; verify Rust emits event |
-| TA-9 | `last_pull_at` is updated in `sync_metadata` after successful force-pull per table | Unit test: verify timestamp advances after pull |
-| TA-10 | Force-pull while offline returns appropriate auth error | Unit test: call `sync_force_pull` with `SyncState::Offline`, verify error |
+| ID    | Assertion                                                                                                    | Validation Method                                                                            |
+| ----- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| TA-1  | A row upserted via Realtime (INSERT) with no local counterpart is written to SQLite                          | Unit test: `upsert_row` with empty local table, verify row exists after                      |
+| TA-2  | A row upserted via Realtime (UPDATE) where remote `updated_at` > local `updated_at` overwrites the local row | Unit test: seed local row, call `upsert_row` with newer remote, verify columns updated       |
+| TA-3  | A row upserted via Realtime where local `updated_at` >= remote `updated_at` is skipped (no write)            | Unit test: seed local row, call `upsert_row` with older/equal remote, verify local unchanged |
+| TA-4  | `upsert_row` dynamically discovers columns via `pragma_table_info` -- no hardcoded column lists              | Code review: verify no table-specific column enums or match arms                             |
+| TA-5  | Force-pull downloads all rows for all 15 syncable tables and upserts them locally                            | Integration test: seed Supabase with known data, force-pull, verify local SQLite matches     |
+| TA-6  | Force-pull with >1000 rows in a table paginates correctly                                                    | Integration test: seed table with 1500 rows, force-pull, verify all 1500 present locally     |
+| TA-7  | Force-pull transitions state: Idle -> Pulling -> Idle (success) or Idle -> Pulling -> Error (failure)        | Unit test on state transitions                                                               |
+| TA-8  | `sync:data_changed` event fires after successful realtime upsert                                             | Existing test in `sync-listener.tsx` covers frontend reaction; verify Rust emits event       |
+| TA-9  | `last_pull_at` is updated in `sync_metadata` after successful force-pull per table                           | Unit test: verify timestamp advances after pull                                              |
+| TA-10 | Force-pull while offline returns appropriate auth error                                                      | Unit test: call `sync_force_pull` with `SyncState::Offline`, verify error                    |
 
 ## Open Questions
 

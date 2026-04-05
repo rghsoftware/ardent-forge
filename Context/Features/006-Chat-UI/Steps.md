@@ -8,37 +8,40 @@
 
 ## Team Composition
 
-| Role | Agent | Scope |
-|------|-------|-------|
-| frontend-specialist-1 | Navigation + Routes + Conversation List | Nav changes, route files, list screen |
-| frontend-specialist-2 | Conversation Detail + Messages | Header, message list, bubbles, virtualization |
-| frontend-specialist-3 | Compose + Interactions | Compose bar, typing indicator, new conversation, attachment picker |
-| frontend-specialist-4 | Group/Block + Polish | Participant sheet, block banner, leave dialog, unread badges |
-| quality-engineer | Validation | Verify all acceptance criteria |
+| Role                  | Agent                                   | Scope                                                              |
+| --------------------- | --------------------------------------- | ------------------------------------------------------------------ |
+| frontend-specialist-1 | Navigation + Routes + Conversation List | Nav changes, route files, list screen                              |
+| frontend-specialist-2 | Conversation Detail + Messages          | Header, message list, bubbles, virtualization                      |
+| frontend-specialist-3 | Compose + Interactions                  | Compose bar, typing indicator, new conversation, attachment picker |
+| frontend-specialist-4 | Group/Block + Polish                    | Participant sheet, block banner, leave dialog, unread badges       |
+| quality-engineer      | Validation                              | Verify all acceptance criteria                                     |
 
 ---
 
 ## Wave 1: Navigation & Routes (Foundation)
 
 ### S001: Add COMMS to navigation
+
 **Agent:** frontend-specialist-1
 **Files:** `src/components/layout/mobile-nav.tsx`, `src/components/layout/sidebar-nav.tsx`
 **Depends on:** Nothing
 **Parallel:** Yes (independent of S002)
 
 - [ ] Mobile: Replace `Social` (`group`, `/groups`) with `Comms` (`chat`, `/comms`) in `navItems` array
-- [ ] Desktop: Add `Comms` (`chat`, `/comms`) after `Vault` and before `Library` in `navItems` array
+- [ ] Large screen sidebar: Add `Comms` (`chat`, `/comms`) after `Vault` and before `Library` in `navItems` array
 - [ ] Both navs import `useUnreadCounts` from `@/hooks/use-chat`
 - [ ] Sum all unread counts into a total; display as an 8px `ember` dot on the COMMS icon when total > 0
 - [ ] Touch targets remain >= 48px
 
 **Acceptance:**
+
 - COMMS tab visible at both breakpoints
 - Tapping navigates to `/comms`
 - Unread dot appears when conversations have unread messages
 - TA-1
 
 ### S002: Create route files
+
 **Agent:** frontend-specialist-1
 **Files:** `src/routes/_authenticated/comms.tsx`, `src/routes/_authenticated/comms.$conversationId.tsx`
 **Depends on:** Nothing
@@ -50,6 +53,7 @@
 - [ ] Import paths use `@/components/chat/` prefix
 
 **Acceptance:**
+
 - Routes resolve without error
 - TanStack Router route tree regenerates cleanly (`bun run build` passes)
 - TA-2
@@ -59,6 +63,7 @@
 ## Wave 2: Conversation List Screen
 
 ### S003: Conversation list, rows, skeleton, empty state
+
 **Agent:** frontend-specialist-1
 **Files:** `src/components/chat/conversation-list.tsx`
 **Depends on:** S002
@@ -77,6 +82,7 @@
 - [ ] "NEW" button (top-right, `variant="default"` size="sm") opens `NewConversationSheet`
 
 **Acceptance:**
+
 - Conversation list renders all conversations
 - Unread indicator (dot + bold) shows correctly
 - Empty state renders when no conversations
@@ -84,6 +90,7 @@
 - TA-2, TA-8
 
 ### S003-D: User profile batch fetching consideration
+
 **Agent:** frontend-specialist-1
 **Note:** For the conversation list, each `ConversationRow` for a direct conversation needs the other user's display name. Use individual `useUserProfile(otherUserId)` calls per row. TanStack Query deduplicates and caches these. If performance becomes an issue with many conversations, batch fetching can be added later -- premature optimization to avoid now.
 
@@ -92,6 +99,7 @@
 ## Wave 3: Conversation Detail (Core)
 
 ### S004: Conversation header
+
 **Agent:** frontend-specialist-2
 **Files:** `src/components/chat/conversation-header.tsx`
 **Depends on:** S002
@@ -106,9 +114,11 @@
 - [ ] Sticky top, `surface-anvil` background, `border-b border-ghost-line/15`
 
 **Acceptance:**
+
 - Header shows correct title and controls per conversation type
 
 ### S005: Message bubble and system message components
+
 **Agent:** frontend-specialist-2
 **Files:** `src/components/chat/message-bubble.tsx`
 **Depends on:** Nothing
@@ -123,12 +133,14 @@
 - [ ] Zero border-radius on all bubbles
 
 **Acceptance:**
+
 - Own/other messages styled correctly
 - Sender names show in group, hidden in direct
 - Pending messages show clock icon
 - TA-6, TA-12
 
 ### S006: Virtualized message list with date separators and timestamp clusters
+
 **Agent:** frontend-specialist-2
 **Files:** `src/components/chat/message-list.tsx`
 **Depends on:** S005
@@ -154,6 +166,7 @@
 - [ ] Show loading spinner at top when `isFetchingPreviousPage`
 
 **Acceptance:**
+
 - 500+ messages render smoothly (virtualized)
 - Date separators at day boundaries
 - Timestamps at 5-minute gaps
@@ -165,6 +178,7 @@
 ## Wave 4: Compose & Interactions
 
 ### S007: Compose bar
+
 **Agent:** frontend-specialist-3
 **Files:** `src/components/chat/compose-bar.tsx`
 **Depends on:** Nothing
@@ -173,18 +187,20 @@
 - [ ] Text input: `bg-transparent`, underline style (`border-b-2 border-surface-steel focus:border-ember`), placeholder "Message..." in `text-warm-ash/50`
 - [ ] Send button: `send` icon, `text-warm-ash/30` when empty, `text-ember` when has content, disabled when empty
 - [ ] Attachment button: `attach_file` icon, left of input
-- [ ] Enter key sends (desktop); Shift+Enter for newline
+- [ ] Enter key sends (large screens); Shift+Enter for newline
 - [ ] On input change, call `getRealtimeManager()?.broadcastTyping(conversationId, userId, userName)`
 - [ ] On submit: call `sendMessage({ conversationId, messageType: 'text', content })`, clear input
 - [ ] Props: `conversationId: string`, `onSend: () => void` (for scroll-to-bottom trigger), `disabled?: boolean` (for blocked state)
 
 **Acceptance:**
+
 - Send button activates with content
 - Messages send on Enter/button tap
 - Input clears after send
 - TA-6
 
 ### S008: Typing indicator
+
 **Agent:** frontend-specialist-3
 **Files:** `src/components/chat/typing-indicator.tsx`
 **Depends on:** Nothing
@@ -196,10 +212,12 @@
 - [ ] `text-xs text-warm-ash/60`, 24px height, smooth enter/exit transition
 
 **Acceptance:**
+
 - Typing indicator appears/disappears correctly
 - TA-7
 
 ### S009: New conversation sheet with contact picker
+
 **Agent:** frontend-specialist-3
 **Files:** `src/components/chat/new-conversation-sheet.tsx`
 **Depends on:** Nothing
@@ -220,17 +238,19 @@
 - [ ] "START" CTA button at bottom, disabled until selection made
 
 **Acceptance:**
+
 - Can create direct conversation
 - Existing direct conversation navigated to (not duplicated)
 - Can create group conversation with title
 - TA-3
 
 ### S010: Attachment picker (stub)
+
 **Agent:** frontend-specialist-3
 **Files:** `src/components/chat/attachment-picker.tsx`
 **Depends on:** Nothing
 
-- [ ] `AttachmentPicker`: `Sheet` (side="bottom") on mobile, small popover on desktop
+- [ ] `AttachmentPicker`: `Sheet` (side="bottom") on mobile, small popover on large screens
 - [ ] 4 options as `surface-steel` cards in a 2x2 grid:
   - Video (`videocam`), Photo (`photo_camera`), Workout (`fitness_center`), File (`description`)
 - [ ] Each option: icon + label, tappable
@@ -238,6 +258,7 @@
 - [ ] Props: `open: boolean`, `onOpenChange: (open: boolean) => void`
 
 **Acceptance:**
+
 - Picker opens from compose bar attachment button
 - All 4 options visible
 - Tap shows "Coming soon" alert
@@ -247,6 +268,7 @@
 ## Wave 5: Group Management & Blocking
 
 ### S011: Participant sheet (group conversations)
+
 **Agent:** frontend-specialist-4
 **Files:** `src/components/chat/participant-sheet.tsx`
 **Depends on:** Nothing
@@ -258,11 +280,13 @@
 - [ ] Invalidate conversations query on success
 
 **Acceptance:**
+
 - Participant list shows all current members
 - Can add a new member
 - TA-10
 
 ### S012: Block banner and client-side blocking
+
 **Agent:** frontend-specialist-4
 **Files:** `src/hooks/use-blocked-users.ts`, `src/components/chat/block-banner.tsx`
 **Depends on:** Nothing
@@ -281,6 +305,7 @@
 - [ ] Message filtering: `blockedUserIds` Set passed to `MessageList`, which filters them out in the `useMemo` derivation
 
 **Acceptance:**
+
 - Block/unblock toggles correctly
 - Blocked messages hidden in message list
 - Banner shows in blocked direct conversations
@@ -288,6 +313,7 @@
 - TA-9
 
 ### S013: Leave conversation dialog
+
 **Agent:** frontend-specialist-4
 **Files:** `src/components/chat/leave-dialog.tsx`
 **Depends on:** Nothing
@@ -298,6 +324,7 @@
 - [ ] On confirm: `useLeaveConversation().mutateAsync(conversationId)`, navigate to `/comms`
 
 **Acceptance:**
+
 - Leave confirmation shows
 - Leaving removes conversation from list
 - TA-10
@@ -307,6 +334,7 @@
 ## Wave 6: Integration & Assembly
 
 ### S014: Assemble ConversationDetail container
+
 **Agent:** frontend-specialist-2
 **Files:** `src/components/chat/conversation-detail.tsx`
 **Depends on:** S004, S005, S006, S007, S008, S010, S011, S012, S013
@@ -329,12 +357,14 @@
 - [ ] Not found state: "Conversation not found" centered message
 
 **Acceptance:**
+
 - All sub-components render correctly together
 - Typing indicator shows above compose bar
 - Blocked conversation shows banner instead of compose bar
 - Last read updates on mount
 
 ### S014-T: Verify full flow end-to-end
+
 **Agent:** quality-engineer
 **Depends on:** S014
 
@@ -358,6 +388,7 @@
 ## Wave 7: Test Coverage & Polish (from PR #35 review)
 
 ### S015-T: Unit tests for deriveItems (message-list.tsx)
+
 **Agent:** quality-engineer
 **Files:** `src/components/chat/__tests__/message-list.test.ts`
 **Depends on:** S006
@@ -369,10 +400,12 @@
 - [ ] Test empty input array
 
 **Acceptance:**
+
 - All branches of `deriveItems` covered
 - Pure function tests (no React rendering needed)
 
 ### S016-T: Unit tests for useBlockedUsers
+
 **Agent:** quality-engineer
 **Files:** `src/hooks/__tests__/use-blocked-users.test.ts`
 **Depends on:** S012
@@ -383,10 +416,12 @@
 - [ ] Test corruption handling (non-array JSON, invalid localStorage)
 
 **Acceptance:**
+
 - renderHook + localStorage mock
 - All happy paths and error paths covered
 
 ### S017-T: Unit tests for formatTypingText (typing-indicator.tsx)
+
 **Agent:** quality-engineer
 **Files:** `src/components/chat/__tests__/typing-indicator.test.ts`
 **Depends on:** S008
@@ -397,9 +432,11 @@
 - [ ] Test 3+ users (count)
 
 **Acceptance:**
+
 - All 4 grammar branches covered
 
 ### S018-T: Unit tests for relativeTime and getInitials (conversation-list.tsx)
+
 **Agent:** quality-engineer
 **Files:** `src/components/chat/__tests__/conversation-list.test.ts`
 **Depends on:** S003
@@ -408,9 +445,11 @@
 - [ ] Test getInitials: single word, two words, empty string
 
 **Acceptance:**
+
 - All branches covered
 
 ### S019: Migrate useBlockedUsers to Zustand store
+
 **Agent:** frontend-specialist-4
 **Files:** `src/hooks/use-blocked-users.ts`
 **Depends on:** S012
@@ -420,10 +459,12 @@
 - [ ] Update all consumers
 
 **Acceptance:**
+
 - Follows project Zustand store patterns
 - All existing behavior preserved
 
 ### S020: Wire archive action in conversation header
+
 **Agent:** frontend-specialist-2
 **Files:** `src/components/chat/conversation-header.tsx`, `src/components/chat/conversation-detail.tsx`
 **Depends on:** S004
@@ -433,6 +474,7 @@
 - [ ] Navigate back to `/comms` on success
 
 **Acceptance:**
+
 - Archive button triggers mutation
 - User sees feedback on success/failure
 
@@ -440,14 +482,14 @@
 
 ## Milestone Summary
 
-| Wave | Tasks | Parallel | Description |
-|------|-------|----------|-------------|
-| 1 | S001, S002 | Yes | Navigation + routes |
-| 2 | S003 | No | Conversation list screen |
-| 3 | S004, S005, S006 | S004+S005 parallel, S006 after S005 | Conversation detail core |
-| 4 | S007, S008, S009, S010 | All parallel | Compose + interactions |
-| 5 | S011, S012, S013 | All parallel | Group mgmt + blocking |
-| 6 | S014, S014-T | Sequential | Assembly + validation |
+| Wave | Tasks                  | Parallel                            | Description              |
+| ---- | ---------------------- | ----------------------------------- | ------------------------ |
+| 1    | S001, S002             | Yes                                 | Navigation + routes      |
+| 2    | S003                   | No                                  | Conversation list screen |
+| 3    | S004, S005, S006       | S004+S005 parallel, S006 after S005 | Conversation detail core |
+| 4    | S007, S008, S009, S010 | All parallel                        | Compose + interactions   |
+| 5    | S011, S012, S013       | All parallel                        | Group mgmt + blocking    |
+| 6    | S014, S014-T           | Sequential                          | Assembly + validation    |
 
 **Total:** 14 implementation tasks + 1 validation task
 **Estimated agents:** 4 frontend specialists + 1 quality engineer
@@ -466,7 +508,7 @@ interface MessageListProps {
   conversationType: ConversationType
   blockedUserIds: Set<string>
   currentUserId: string
-  onNewMessageAtBottom: () => void  // for scroll-to-bottom trigger
+  onNewMessageAtBottom: () => void // for scroll-to-bottom trigger
 }
 
 // ConversationDetail -> ComposeBar

@@ -33,7 +33,7 @@ _authenticated.tsx (layout)
               |     |-- TimestampCluster
               |-- TypingIndicator
               |-- ComposeBar
-              |     |-- AttachmentPicker (Sheet on mobile, Popover on desktop)
+              |     |-- AttachmentPicker (Sheet on mobile, Popover on large screens)
               |-- ParticipantSheet (group only)
               |-- BlockDialog (direct only)
               |-- LeaveDialog
@@ -47,18 +47,18 @@ _authenticated.tsx (layout)
 
 Two new route files under `src/routes/_authenticated/`:
 
-| File | Route | Purpose |
-|------|-------|---------|
-| `comms.tsx` | `/comms` | Conversation list |
+| File                        | Route                    | Purpose             |
+| --------------------------- | ------------------------ | ------------------- |
+| `comms.tsx`                 | `/comms`                 | Conversation list   |
 | `comms.$conversationId.tsx` | `/comms/:conversationId` | Conversation detail |
 
 Follows the established pattern from `groups.tsx` / `groups.$groupId.tsx`. Each route file is thin -- delegates to a component.
 
 ### TD-2: Navigation Changes
 
-**Mobile bottom nav:** Replace `Social` (`/groups`) with `Comms` (`/comms`, icon: `chat`). The 5-tab + avatar structure remains unchanged. Groups are still accessible via desktop sidebar, group deep links, and conversation context.
+**Mobile bottom nav:** Replace `Social` (`/groups`) with `Comms` (`/comms`, icon: `chat`). The 5-tab + avatar structure remains unchanged. Groups are still accessible via the large screen sidebar, group deep links, and conversation context.
 
-**Desktop sidebar:** Add `Comms` item (`chat` icon, `/comms`) after `Vault` and before `Library`. Total sidebar items go from 7 to 8.
+**Large screen sidebar:** Add `Comms` item (`chat` icon, `/comms`) after `Vault` and before `Library`. Total sidebar items go from 7 to 8.
 
 ### TD-3: Message List Virtualization Strategy
 
@@ -84,6 +84,7 @@ type MessageListItem =
 ```
 
 A `useMemo` over `allMessages` produces this flattened list:
+
 1. Insert `date-separator` when the date changes between adjacent messages
 2. Insert `timestamp` when gap between adjacent messages exceeds 5 minutes
 3. Set `showSender = true` for the first message after a gap or sender change (group only)
@@ -93,6 +94,7 @@ The virtualizer renders this heterogeneous list, with `estimateSize` keyed on it
 ### TD-5: Contact Picker Data Source
 
 The contact picker for new conversations queries:
+
 - `useConnections()` -- returns `DirectConnection[]` with `requesterId`/`recipientId` and `status: 'ACTIVE'`
 - Filter to active connections only
 - Display the "other user" (the one who isn't the current user)
@@ -116,8 +118,9 @@ This is intentionally simple -- server-side blocking with a `user_blocks` table 
 ### TD-7: Compose Bar and Typing Broadcast
 
 The compose bar manages:
+
 - Text input state (`useState<string>`)
-- Send on Enter (desktop) or Send button tap
+- Send on Enter (large screens) or Send button tap
 - Typing broadcast: call `RealtimeManager.broadcastTyping()` on input change (already debounced at 2s internally)
 - Attachment button opens `AttachmentPicker`
 
@@ -125,7 +128,7 @@ No form library needed -- it's a single text input with a submit action.
 
 ### TD-8: Attachment Picker (Stub)
 
-Build the full picker UI (4 options: Video, Photo, Workout, File) as a `Sheet` (mobile) or `Popover` (desktop). Each option shows a toast "Coming soon" on tap. Step 24 will wire the actual upload flows.
+Build the full picker UI (4 options: Video, Photo, Workout, File) as a `Sheet` (mobile) or `Popover` (large screens). Each option shows a toast "Coming soon" on tap. Step 24 will wire the actual upload flows.
 
 ### TD-9: Scroll-to-Bottom Behavior
 
@@ -136,7 +139,7 @@ Build the full picker UI (4 options: Video, Photo, Workout, File) as a `Sheet` (
 
 ### TD-10: Unread Badge in Navigation
 
-The `useUnreadCounts()` hook returns `Map<string, number>`. Sum all values for a total unread count. Display as a small badge on the COMMS tab icon in both mobile and desktop navigation.
+The `useUnreadCounts()` hook returns `Map<string, number>`. Sum all values for a total unread count. Display as a small badge on the COMMS tab icon in both mobile and large screen navigation.
 
 ---
 
@@ -144,41 +147,43 @@ The `useUnreadCounts()` hook returns `Map<string, number>`. Sum all values for a
 
 All new files go in `src/components/chat/` and `src/routes/_authenticated/`:
 
-| File | Component(s) | Notes |
-|------|-------------|-------|
-| `src/routes/_authenticated/comms.tsx` | Route: `/comms` | Thin, delegates to ConversationList |
-| `src/routes/_authenticated/comms.$conversationId.tsx` | Route: `/comms/:conversationId` | Thin, delegates to ConversationDetail |
-| `src/components/chat/conversation-list.tsx` | `ConversationList`, `ConversationRow`, `ConversationListSkeleton`, `ConversationEmptyState` | Main list screen |
-| `src/components/chat/conversation-detail.tsx` | `ConversationDetail` | Container: header + messages + compose |
-| `src/components/chat/conversation-header.tsx` | `ConversationHeader` | Back, title, participant count, menu |
-| `src/components/chat/message-list.tsx` | `MessageList` | Virtualized, infinite scroll, date separators |
-| `src/components/chat/message-bubble.tsx` | `MessageBubble`, `SystemMessage` | Own/other/system rendering |
-| `src/components/chat/compose-bar.tsx` | `ComposeBar` | Input + send + attachment buttons |
-| `src/components/chat/typing-indicator.tsx` | `TypingIndicator` | Animated dots with user names |
-| `src/components/chat/attachment-picker.tsx` | `AttachmentPicker` | Sheet/Popover with 4 stub options |
-| `src/components/chat/new-conversation-sheet.tsx` | `NewConversationSheet`, `ContactPicker` | Create direct or group conversation |
-| `src/components/chat/participant-sheet.tsx` | `ParticipantSheet` | View/add/leave for group conversations |
-| `src/components/chat/block-banner.tsx` | `BlockBanner` | Blocked conversation indicator + unblock |
-| `src/hooks/use-blocked-users.ts` | `useBlockedUsers` | localStorage-backed blocked user set |
+| File                                                  | Component(s)                                                                                | Notes                                         |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `src/routes/_authenticated/comms.tsx`                 | Route: `/comms`                                                                             | Thin, delegates to ConversationList           |
+| `src/routes/_authenticated/comms.$conversationId.tsx` | Route: `/comms/:conversationId`                                                             | Thin, delegates to ConversationDetail         |
+| `src/components/chat/conversation-list.tsx`           | `ConversationList`, `ConversationRow`, `ConversationListSkeleton`, `ConversationEmptyState` | Main list screen                              |
+| `src/components/chat/conversation-detail.tsx`         | `ConversationDetail`                                                                        | Container: header + messages + compose        |
+| `src/components/chat/conversation-header.tsx`         | `ConversationHeader`                                                                        | Back, title, participant count, menu          |
+| `src/components/chat/message-list.tsx`                | `MessageList`                                                                               | Virtualized, infinite scroll, date separators |
+| `src/components/chat/message-bubble.tsx`              | `MessageBubble`, `SystemMessage`                                                            | Own/other/system rendering                    |
+| `src/components/chat/compose-bar.tsx`                 | `ComposeBar`                                                                                | Input + send + attachment buttons             |
+| `src/components/chat/typing-indicator.tsx`            | `TypingIndicator`                                                                           | Animated dots with user names                 |
+| `src/components/chat/attachment-picker.tsx`           | `AttachmentPicker`                                                                          | Sheet/Popover with 4 stub options             |
+| `src/components/chat/new-conversation-sheet.tsx`      | `NewConversationSheet`, `ContactPicker`                                                     | Create direct or group conversation           |
+| `src/components/chat/participant-sheet.tsx`           | `ParticipantSheet`                                                                          | View/add/leave for group conversations        |
+| `src/components/chat/block-banner.tsx`                | `BlockBanner`                                                                               | Blocked conversation indicator + unblock      |
+| `src/hooks/use-blocked-users.ts`                      | `useBlockedUsers`                                                                           | localStorage-backed blocked user set          |
 
 **Modified files:**
 
-| File | Change |
-|------|--------|
-| `src/components/layout/mobile-nav.tsx` | Replace Social with Comms, add unread badge |
-| `src/components/layout/sidebar-nav.tsx` | Add Comms item, add unread badge |
+| File                                    | Change                                      |
+| --------------------------------------- | ------------------------------------------- |
+| `src/components/layout/mobile-nav.tsx`  | Replace Social with Comms, add unread badge |
+| `src/components/layout/sidebar-nav.tsx` | Add Comms item, add unread badge            |
 
 ---
 
 ## Data Flow
 
 ### Conversation List
+
 ```
 useConversations() --> ConversationList
 useUnreadCounts() --> unread badges per row + nav badge
 ```
 
 ### Conversation Detail
+
 ```
 useConversation(id) --> ConversationHeader (title, type, participants)
 useMessages(id)     --> MessageList (infinite query, virtualized)
@@ -189,6 +194,7 @@ useBlockedUsers()   --> filter messages, show BlockBanner
 ```
 
 ### New Conversation
+
 ```
 useConnections()           --> ContactPicker (active connections)
 useFindDirectConversation() --> check for existing direct before creating
@@ -211,24 +217,24 @@ useCreateConversation()    --> create + navigate to new conversation
 
 ## Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Virtualized reverse scroll is tricky (anchor-to-bottom, prepend pages) | Scroll jumps, jank | Use `scrollToIndex` for anchor; test with 500+ messages early |
-| No user profiles table -- names unavailable | Contact picker and message sender names broken | Add a `profiles` view migration as part of this step |
-| `estimateSize` inaccuracy for variable-height messages | Scroll position drift | Use conservative estimates, measure actual after render |
-| Mobile nav change (Social -> Comms) breaks muscle memory | User confusion | COMMS is higher-value real estate; Groups accessible from sidebar + deep links |
-| Blocking is client-side only | Blocked users can still send messages (user sees them on reload) | Clearly documented as temporary; server-side blocking is a follow-up |
+| Risk                                                                   | Impact                                                           | Mitigation                                                                     |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Virtualized reverse scroll is tricky (anchor-to-bottom, prepend pages) | Scroll jumps, jank                                               | Use `scrollToIndex` for anchor; test with 500+ messages early                  |
+| No user profiles table -- names unavailable                            | Contact picker and message sender names broken                   | Add a `profiles` view migration as part of this step                           |
+| `estimateSize` inaccuracy for variable-height messages                 | Scroll position drift                                            | Use conservative estimates, measure actual after render                        |
+| Mobile nav change (Social -> Comms) breaks muscle memory               | User confusion                                                   | COMMS is higher-value real estate; Groups accessible from sidebar + deep links |
+| Blocking is client-side only                                           | Blocked users can still send messages (user sees them on reload) | Clearly documented as temporary; server-side blocking is a follow-up           |
 
 ---
 
 ## Dependencies
 
-| Package | Already Installed | Purpose |
-|---------|-------------------|---------|
-| `@tanstack/react-virtual` | Yes | Message list virtualization |
-| `@tanstack/react-query` | Yes | All data fetching/mutations |
-| `@tanstack/react-router` | Yes | Route definitions |
-| `sonner` or toast library | Check | "Coming soon" toasts for attachment picker |
+| Package                   | Already Installed | Purpose                                    |
+| ------------------------- | ----------------- | ------------------------------------------ |
+| `@tanstack/react-virtual` | Yes               | Message list virtualization                |
+| `@tanstack/react-query`   | Yes               | All data fetching/mutations                |
+| `@tanstack/react-router`  | Yes               | Route definitions                          |
+| `sonner` or toast library | Check             | "Coming soon" toasts for attachment picker |
 
 ---
 

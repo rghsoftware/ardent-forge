@@ -31,12 +31,12 @@ BuilderPage / ProgramForm             -- context for R6, R7
 
 ### New Components
 
-| Component            | Location                                                  | Purpose                                                           |
-| -------------------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
-| `HelpTrigger`        | `src/components/ui/help-trigger.tsx`                      | Shared responsive help component (Popover desktop, Drawer mobile) |
-| `Popover`            | `src/components/ui/popover.tsx`                           | shadcn Popover primitive (new install)                            |
-| `Drawer`             | `src/components/ui/drawer.tsx`                            | shadcn Drawer primitive (new install)                             |
-| `CollapsedFieldsRow` | `src/components/session-builder/collapsed-fields-row.tsx` | Expandable row for hidden template-level fields                   |
+| Component            | Location                                                  | Purpose                                                                 |
+| -------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `HelpTrigger`        | `src/components/ui/help-trigger.tsx`                      | Shared responsive help component (Popover large screens, Drawer mobile) |
+| `Popover`            | `src/components/ui/popover.tsx`                           | shadcn Popover primitive (new install)                                  |
+| `Drawer`             | `src/components/ui/drawer.tsx`                            | shadcn Drawer primitive (new install)                                   |
+| `CollapsedFieldsRow` | `src/components/session-builder/collapsed-fields-row.tsx` | Expandable row for hidden template-level fields                         |
 
 ### Modified Components
 
@@ -56,13 +56,13 @@ BuilderPage / ProgramForm             -- context for R6, R7
 
 ### D1. HelpTrigger: Popover + Drawer dual rendering
 
-**Decision:** Use `useMediaQuery` (or `window.matchMedia`) to conditionally render shadcn Popover (desktop) or shadcn Drawer (mobile) from a single `HelpTrigger` component.
+**Decision:** Use `useMediaQuery` (or `window.matchMedia`) to conditionally render shadcn Popover (large screens) or shadcn Drawer (mobile) from a single `HelpTrigger` component.
 
 **Options considered:**
 
 1. Single Popover with responsive positioning -- Rejected: Popovers don't provide swipe-to-dismiss or full-width behavior on mobile
 2. Sheet with side="bottom" -- Rejected: lacks swipe gesture, feels wrong for dismissible help
-3. **Popover (desktop) + Drawer (mobile)** -- Chosen: each primitive is purpose-built for its context
+3. **Popover (large screens) + Drawer (mobile)** -- Chosen: each primitive is purpose-built for its context
 
 **Implementation:**
 
@@ -233,10 +233,10 @@ Threading `sessionCategory` through 3 levels (Form > GroupEditor > ActivityEdito
 
 ## New Dependencies
 
-| Package                   | Version | Purpose                                   | Size  |
-| ------------------------- | ------- | ----------------------------------------- | ----- |
-| `@radix-ui/react-popover` | latest  | Popover primitive for HelpTrigger desktop | ~10KB |
-| `vaul`                    | latest  | Drawer primitive for HelpTrigger mobile   | ~8KB  |
+| Package                   | Version | Purpose                                         | Size  |
+| ------------------------- | ------- | ----------------------------------------------- | ----- |
+| `@radix-ui/react-popover` | latest  | Popover primitive for HelpTrigger large screens | ~10KB |
+| `vaul`                    | latest  | Drawer primitive for HelpTrigger mobile         | ~8KB  |
 
 Both are installed via shadcn CLI (`bunx --bun shadcn@latest add popover drawer`).
 

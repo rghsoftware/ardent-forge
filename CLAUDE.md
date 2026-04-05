@@ -2,15 +2,16 @@
 
 ## Project: Ardent Forge
 
-A fitness/workout tracking application with a React/TypeScript frontend (Vite, TanStack Router, Tailwind 4, shadcn, Zustand), a Rust/Tauri desktop shell, and a Supabase backend.
+A fitness/workout tracking application with a React/TypeScript frontend (Vite, TanStack Router, Tailwind 4, shadcn, Zustand), a Rust/Tauri mobile shell, and a Supabase backend.
 
-| Stack | Directory | Purpose |
-|---|---|---|
-| React 19 / TypeScript | `src/` | Frontend UI -- components, routing, state |
-| Rust / Tauri 2 | `src-tauri/` | Desktop app shell, offline SQLite, native APIs |
-| Supabase | `supabase/` | Auth, Postgres, RLS policies, migrations |
+| Stack                 | Directory    | Purpose                                       |
+| --------------------- | ------------ | --------------------------------------------- |
+| React 19 / TypeScript | `src/`       | Frontend UI -- components, routing, state     |
+| Rust / Tauri 2        | `src-tauri/` | Mobile app shell, offline SQLite, native APIs |
+| Supabase              | `supabase/`  | Auth, Postgres, RLS policies, migrations      |
 
 **Key directories:**
+
 - `Context/Features/` -- Feature specs, tech plans, implementation steps
 - `Context/Decisions/` -- Architecture Decision Records (ADRs)
 - `Context/Backlog/` -- Ideas and bugs for future work
@@ -245,13 +246,15 @@ bun run test:watch   # Vitest (watch mode)
 bun run lint         # ESLint
 ```
 
-**Tauri desktop:**
+**Tauri mobile:**
+
 ```bash
 bun tauri dev        # Dev mode with hot reload
 bun tauri build      # Production build
 ```
 
 **Supabase local:**
+
 ```bash
 npx supabase start   # Local Supabase stack
 npx supabase db push # Apply migrations

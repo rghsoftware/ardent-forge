@@ -42,7 +42,7 @@ Every logged set stores both what the program **prescribed** and what you **actu
 - **Program builder** -- design blocks, weeks, and sessions with drag-and-drop
 - **Live workout logging** -- pre-filled sets from your program with built-in rest timer
 - **Analytics dashboard** -- volume tracking, PR detection, 1RM progression charts
-- **Cross-platform** -- runs in the browser, on desktop, Android, and iOS via Tauri v2
+- **Cross-platform** -- runs in the browser, on Android, and iOS via Tauri v2
 
 ## Tech Stack
 

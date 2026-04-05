@@ -3,7 +3,7 @@ import type { SetScheme } from '@/domain/types'
 
 interface ForRepsFieldsProps {
   value: SetScheme & { type: 'forReps' }
-  onChange: (s: SetScheme) => void
+  onChange: (s: SetScheme & { type: 'forReps' }) => void
   exerciseSupports1RM: boolean
 }
 

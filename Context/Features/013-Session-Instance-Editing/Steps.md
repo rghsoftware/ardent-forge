@@ -120,12 +120,12 @@
   - **Depends:** S008, S009, S010
   - **Parallel:** false
 
-- [ ] S011-T: Test click routing and edit sheet wiring (clicking empty slot opens picker -- A-002, clicking filled slot opens edit sheet -- A-001, edit sheet displays template info -- A-003, notes persist in draft -- A-004, "Change template" opens picker -- A-005, "Remove session" clears slot with undo -- A-006, desktop and mobile both route correctly -- A-007, visual indicator appears on customized slots -- A-010)
+- [ ] S011-T: Test click routing and edit sheet wiring (clicking empty slot opens picker -- A-002, clicking filled slot opens edit sheet -- A-001, edit sheet displays template info -- A-003, notes persist in draft -- A-004, "Change template" opens picker -- A-005, "Remove session" clears slot with undo -- A-006, large screen and mobile both route correctly -- A-007, visual indicator appears on customized slots -- A-010)
   - **Assigned:** ui-eng
   - **Depends:** S011
   - **Parallel:** false
 
-🏁 MILESTONE: Phase 3 complete -- Full UI functional. Verify against A-001 through A-007, A-010. All builder interactions working on desktop and mobile.
+🏁 MILESTONE: Phase 3 complete -- Full UI functional. Verify against A-001 through A-007, A-010. All builder interactions working on large screen and mobile.
 **Contracts:**
 
 - `src/components/program-builder/session-edit-sheet.tsx` -- SessionEditSheet component
@@ -134,7 +134,7 @@
 
 ### Phase 4: Validation & Polish
 
-- [ ] S012: Full feature validation -- read-only inspection of all modified/created files against Spec.md testable assertions A-001 through A-011. Verify: click routing branches correctly, edit sheet renders template data, notes field persists through save/reload cycle, activity overrides stored as partial diffs, override merger handles all cases, visual indicator logic, desktop and mobile parity, workout-start merges overrides.
+- [ ] S012: Full feature validation -- read-only inspection of all modified/created files against Spec.md testable assertions A-001 through A-011. Verify: click routing branches correctly, edit sheet renders template data, notes field persists through save/reload cycle, activity overrides stored as partial diffs, override merger handles all cases, visual indicator logic, large screen and mobile parity, workout-start merges overrides.
   - **Assigned:** validator
   - **Depends:** S007, S011
   - **Parallel:** false

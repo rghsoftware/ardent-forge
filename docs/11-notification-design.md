@@ -61,23 +61,22 @@ flowchart LR
     end
 ```
 
-| Element     | Content                                           |
-| ----------- | ------------------------------------------------- |
-| Priority    | High (heads-up display)                           |
-| Sound       | Short chime (configurable)                        |
-| Vibration   | Double tap pattern                                |
-| Ongoing     | No — fires once and clears                        |
-| Auto-cancel | Yes — when user opens workout                     |
-| Platform    | Tauri notification plugin (Android, iOS, Desktop) |
+| Element     | Content                                  |
+| ----------- | ---------------------------------------- |
+| Priority    | High (heads-up display)                  |
+| Sound       | Short chime (configurable)               |
+| Vibration   | Double tap pattern                       |
+| Ongoing     | No — fires once and clears               |
+| Auto-cancel | Yes — when user opens workout            |
+| Platform    | Tauri notification plugin (Android, iOS) |
 
 **Behavior by platform**:
 
-| Platform | Screen Locked                       | App Backgrounded    |
-| -------- | ----------------------------------- | ------------------- |
-| Android  | Heads-up notification + sound       | Full notification   |
-| iOS      | Lock screen notification + sound    | Full notification   |
-| Desktop  | System notification                 | System notification |
-| Browser  | Web Notification API (if permitted) | Web Notification    |
+| Platform | Screen Locked                       | App Backgrounded  |
+| -------- | ----------------------------------- | ----------------- |
+| Android  | Heads-up notification + sound       | Full notification |
+| iOS      | Lock screen notification + sound    | Full notification |
+| Browser  | Web Notification API (if permitted) | Web Notification  |
 
 ### Type 2: Session Reminder
 
@@ -271,7 +270,7 @@ flowchart TB
 
     subgraph Delivery["Delivery"]
         TauriNotif["Tauri Notification Plugin"]
-        Platform["Platform Notification API<br/>Android / iOS / Desktop"]
+        Platform["Platform Notification API<br/>Android / iOS"]
     end
 
     RestTimerService --> TauriNotif
@@ -426,7 +425,7 @@ Ardent Forge uses the `tauri-plugin-notification` for cross-platform notificatio
 
 - Android notification channels
 - iOS notification categories
-- Desktop native notifications
+- Mobile native notifications
 - Permission requests
 
 ### Rest Timer in Rust

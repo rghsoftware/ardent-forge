@@ -3,7 +3,7 @@ import { Icon } from '@/components/icon'
 import { useAuth } from '@/lib/auth'
 import { useUnreadCounts } from '@/hooks/use-chat'
 
-// Mobile nav omits Builder (requires desktop viewport) and adds "Me" profile tab
+// Mobile nav omits Builder (requires wide viewport) and adds "Me" profile tab
 const navItems = [
   { label: 'Forge', icon: 'hardware', to: '/' },
   { label: 'Tracker', icon: 'history', to: '/history' },
@@ -19,7 +19,7 @@ export function MobileNav() {
   const totalUnread = unreadMap ? Array.from(unreadMap.values()).reduce((sum, n) => sum + n, 0) : 0
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 heat-blur border-t border-ghost-line/15">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 heat-blur border-t border-ghost-line/15 pb-[var(--sai-bottom)]">
       <div className="flex items-stretch bg-surface-pit/80">
         {navItems.map((item) => (
           <Link

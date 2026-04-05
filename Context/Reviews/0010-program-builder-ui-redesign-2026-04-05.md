@@ -146,7 +146,7 @@
 
 - **File:** src/components/session-builder/session-template-form.tsx:272-274
 - **Severity:** Low
-- **Detail:** Comment says "sticky on desktop" but `lg:sticky` inside a CSS Grid cell is sticky within the grid cell's area, not the viewport. Clarify: "sticky within its grid cell so it remains visible while the user scrolls the activity groups column."
+- **Detail:** Comment says "sticky on large screens" but `lg:sticky` inside a CSS Grid cell is sticky within the grid cell's area, not the viewport. Clarify: "sticky within its grid cell so it remains visible while the user scrolls the activity groups column."
 - **Status:** :white_check_mark: Fixed
 - **Resolution:** Updated comment to: "Sticky within its grid cell so it remains visible while scrolling the activity groups column."
 

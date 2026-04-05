@@ -15,12 +15,12 @@ All notable changes to Ardent Forge are documented in this file.
 ### Features
 
 - **Per-instance session editing** -- edit scheduled sessions individually within assigned programs (#74)
-- **Program and template builder redesign** -- overhauled builder UI with improved desktop layout and UX (#75)
+- **Program and template builder redesign** -- overhauled builder UI with improved large screen layout and UX (#75)
 - **Exercises library tab** -- added Exercises tab to the Library page
 
 ### Improvements
 
-- Improved desktop layout and UX for the program form
+- Improved large screen layout and UX for the program form
 - Release skill for versioning and Play Store deployment
 
 ### Bug Fixes
@@ -85,7 +85,7 @@ All notable changes to Ardent Forge are documented in this file.
 - **Programmed workout logging** -- log workouts against structured programs (Step 13)
 - **Program structure** -- blocks, weeks, and scheduling (Step 11)
 - **Session templates** -- template system with SetScheme editor (#11)
-- **Tauri desktop shell** -- Rust/SQLite backend with offline support (Step 8)
+- **Tauri mobile shell** -- Rust/SQLite backend with offline support (Step 8)
 - **Workout history** -- history list, detail view, and volume trends (#8)
 - **Active workout logging** -- full workout logging UI (Step 6) (#7)
 - **Exercise library & profile** -- exercise browser, user profile, bottom nav (#6)

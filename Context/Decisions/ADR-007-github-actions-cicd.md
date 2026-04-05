@@ -51,5 +51,5 @@ GitHub Actions is the simplest path from zero to a working pipeline. The reposit
 - All CI/CD configuration lives in `.github/workflows/` within the repository
 - Build minutes are consumed from the GitHub Actions free tier (2,000 min/month for private repos)
 - Android release builds (~15-20 min cold, ~8-10 min cached) will be the largest consumer of minutes
-- Future desktop or iOS pipelines can be added as additional workflow files without changing the CI platform
+- Future iOS pipelines can be added as additional workflow files without changing the CI platform
 - If build volume exceeds free tier, GitHub Actions billing or self-hosted runners become the next decision point

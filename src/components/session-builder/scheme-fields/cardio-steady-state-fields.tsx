@@ -3,7 +3,7 @@ import type { Duration, SetScheme } from '@/domain/types'
 
 interface CardioSteadyStateFieldsProps {
   value: SetScheme & { type: 'cardioSteadyState' }
-  onChange: (s: SetScheme) => void
+  onChange: (s: SetScheme & { type: 'cardioSteadyState' }) => void
 }
 
 export function CardioSteadyStateFields({ value, onChange }: CardioSteadyStateFieldsProps) {
