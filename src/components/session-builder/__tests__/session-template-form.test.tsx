@@ -60,8 +60,12 @@ describe('SessionTemplateForm', () => {
     expect(screen.getByLabelText('Template description')).toBeInTheDocument()
   })
 
-  it('renders scoring section', () => {
+  it('renders scoring section visible when category supports it', async () => {
+    const user = userEvent.setup()
     renderWithProviders(<SessionTemplateForm />)
+
+    // Default category is STRENGTH which collapses scoring. Switch to CONDITIONING.
+    await user.click(screen.getByText('CONDITIONING'))
     expect(screen.getByText('SCORING')).toBeInTheDocument()
   })
 

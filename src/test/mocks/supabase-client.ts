@@ -1,8 +1,8 @@
 import { vi } from 'vitest'
 
 type SupabaseResponse<T = unknown> =
-  | { data: T; error: null }
-  | { data: null; error: { message: string } }
+  | { data: T; error: null; count?: number | null }
+  | { data: null; error: { message: string }; count?: number | null }
 
 interface MockQueryBuilder {
   select: (columns?: string) => MockQueryBuilder
@@ -12,6 +12,10 @@ interface MockQueryBuilder {
   upsert: (data: unknown) => MockQueryBuilder
   eq: (column: string, value: unknown) => MockQueryBuilder
   neq: (column: string, value: unknown) => MockQueryBuilder
+  gt: (column: string, value: unknown) => MockQueryBuilder
+  gte: (column: string, value: unknown) => MockQueryBuilder
+  lt: (column: string, value: unknown) => MockQueryBuilder
+  lte: (column: string, value: unknown) => MockQueryBuilder
   not: (column: string, operator: string, value: unknown) => MockQueryBuilder
   is: (column: string, value: unknown) => MockQueryBuilder
   in: (column: string, values: unknown[]) => MockQueryBuilder
@@ -75,6 +79,10 @@ export function createMockSupabaseClient() {
       upsert: vi.fn((_data: unknown) => createQueryBuilder(table, 'upsert')),
       eq: vi.fn((_column: string, _value: unknown) => builder),
       neq: vi.fn((_column: string, _value: unknown) => builder),
+      gt: vi.fn((_column: string, _value: unknown) => builder),
+      gte: vi.fn((_column: string, _value: unknown) => builder),
+      lt: vi.fn((_column: string, _value: unknown) => builder),
+      lte: vi.fn((_column: string, _value: unknown) => builder),
       not: vi.fn((_column: string, _operator: string, _value: unknown) => builder),
       is: vi.fn((_column: string, _value: unknown) => builder),
       in: vi.fn((_column: string, _values: unknown[]) => builder),
@@ -130,12 +138,13 @@ export function createMockSupabaseClient() {
       operation: MockResponseConfig['operation'],
       data: unknown,
       error?: { message: string } | null,
+      options?: { count?: number | null },
     ): void {
       const key = makeKey(table, operation)
       if (error) {
-        responses.set(key, { data: null, error })
+        responses.set(key, { data: null, error, count: options?.count })
       } else {
-        responses.set(key, { data, error: null })
+        responses.set(key, { data, error: null, count: options?.count })
       }
     },
 
