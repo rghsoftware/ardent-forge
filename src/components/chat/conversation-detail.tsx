@@ -18,6 +18,7 @@ import { LeaveDialog } from './leave-dialog'
 import { ParticipantSheet } from './participant-sheet'
 import { Icon } from '@/components/icon'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -89,14 +90,24 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
 
   const handleConfirmBlock = useCallback(() => {
     if (otherUserId) {
-      blockUser(otherUserId)
+      try {
+        blockUser(otherUserId)
+      } catch (err) {
+        console.error('[chat] Failed to block user:', err)
+        toast('Failed to block user. Please try again.')
+      }
     }
     setBlockDialogOpen(false)
   }, [otherUserId, blockUser])
 
   const handleUnblock = useCallback(() => {
     if (otherUserId) {
-      unblockUser(otherUserId)
+      try {
+        unblockUser(otherUserId)
+      } catch (err) {
+        console.error('[chat] Failed to unblock user:', err)
+        toast('Failed to unblock user. Please try again.')
+      }
     }
   }, [otherUserId, unblockUser])
 
@@ -108,6 +119,7 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
       })
       .catch((err) => {
         console.error('[chat] Archive failed:', err)
+        toast('Failed to archive conversation. Please try again.')
       })
   }, [conversationId, navigate, toggleArchive])
 
@@ -138,8 +150,30 @@ export function ConversationDetail({ conversationId }: ConversationDetailProps) 
     )
   }
 
-  // Not found / error state
-  if (isError || !conversation) {
+  // Error state
+  if (isError) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 md:px-6 lg:px-8">
+          <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
+            cloud_off
+          </span>
+          <p className="font-display text-sm text-warning-flare">Failed to load conversation</p>
+          <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
+          <button
+            type="button"
+            onClick={handleBack}
+            className="mt-4 text-sm text-ember hover:underline"
+          >
+            Back to Comms
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Not found state
+  if (!conversation) {
     return (
       <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
         <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 md:px-6 lg:px-8">

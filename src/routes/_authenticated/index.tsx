@@ -75,14 +75,24 @@ function TodayPage() {
   const { startWorkout, startProgrammedWorkout, isStarting } = useActiveWorkout()
   const userId = user?.id ?? ''
 
-  const { data: recentWorkouts = [] } = useWorkoutLogs(userId, 5)
+  const { data: recentWorkouts = [], isError: isWorkoutsError } = useWorkoutLogs(userId, 5)
   const [startError, setStartError] = useState<string | null>(null)
 
   // Active program context
-  const { data: activation, isLoading: isLoadingActivation } = useActiveProgram(userId || undefined)
-  const { data: programFull, isLoading: isLoadingProgram } = useProgramFull(activation?.programId)
+  const {
+    data: activation,
+    isLoading: isLoadingActivation,
+    isError: isActivationError,
+  } = useActiveProgram(userId || undefined)
+  const {
+    data: programFull,
+    isLoading: isLoadingProgram,
+    isError: isProgramError,
+  } = useProgramFull(activation?.programId)
 
-  const { data: nextEvent } = useNextUpcomingEvent(userId || undefined)
+  const { data: nextEvent, isError: isEventError } = useNextUpcomingEvent(userId || undefined)
+
+  const hasDataError = isWorkoutsError || isActivationError || isProgramError || isEventError
 
   const isProgramLoading = isLoadingActivation || (!!activation && isLoadingProgram)
   const hasActiveProgram = !!activation && !!programFull
@@ -116,7 +126,11 @@ function TodayPage() {
   }
 
   const handleStartWorkout = async () => {
-    if (!userId) return
+    if (!userId) {
+      console.error('[today-page] Cannot start workout: no authenticated user')
+      setStartError('You must be signed in to start a workout.')
+      return
+    }
     setStartError(null)
     try {
       const workoutLog = await startWorkout(userId)
@@ -163,6 +177,16 @@ function TodayPage() {
         {/* Crash recovery check */}
         <CrashRecoveryDialog userId={userId} />
 
+        {/* Data fetch error banner */}
+        {hasDataError && (
+          <div
+            role="alert"
+            className="mt-6 bg-warning-flare/10 border border-warning-flare/30 px-4 py-3 text-xs text-warning-flare text-center"
+          >
+            Some data failed to load. Check your connection and try again.
+          </div>
+        )}
+
         {/* Data mismatch error banner */}
         {todayContext?.error && (
           <div
@@ -173,7 +197,9 @@ function TodayPage() {
           </div>
         )}
 
-        {/* Two-column at md+ when there are recent sessions, single column otherwise */}
+        {/* Two-column grid at md+ when there are recent sessions to show in the right column.
+           When no recent sessions exist, no grid wrapper is needed -- the left column
+           fills the single-column layout naturally. */}
         <div
           className={
             completedWorkouts.length > 0 ? 'md:grid md:grid-cols-2 md:gap-8 lg:gap-10' : undefined

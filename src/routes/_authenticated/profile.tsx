@@ -34,8 +34,13 @@ function ProfilePage() {
   const bodyweightUnit = effectiveUnits === 'IMPERIAL' ? 'lb' : 'kg'
   const effectiveDisplayVisible = displayVisible ?? profile?.displayVisible ?? true
 
+  const [saveError, setSaveError] = useState<string | null>(null)
+
   const handleSaveSettings = async () => {
-    if (!profile) return
+    if (!profile) {
+      console.error('[profile] Cannot save settings: no profile loaded')
+      return
+    }
 
     const bodyweightValue = parseFloat(effectiveBodyweight)
     const updates: Parameters<typeof updateProfile.mutateAsync>[0] = {
@@ -62,6 +67,7 @@ function ProfilePage() {
       setDisplayVisible(null)
     } catch (err) {
       console.error('[profile] Failed to save settings:', err)
+      setSaveError('Failed to save settings. Please try again.')
     }
   }
 
@@ -78,6 +84,7 @@ function ProfilePage() {
     return (
       <div className="min-h-full bg-surface-pit px-4 py-8 md:px-6 md:py-10 lg:px-8 lg:py-12">
         <Skeleton className="mb-8 h-8 w-32 rounded-none bg-surface-gunmetal" />
+        {/* Simplified 2-col skeleton -- full 3-col layout loads with content */}
         <div className="md:grid md:grid-cols-2 md:gap-8 lg:gap-12">
           <div className="space-y-4">
             <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
@@ -117,6 +124,7 @@ function ProfilePage() {
         <div className="flex flex-col md:grid md:grid-cols-2 md:gap-8 lg:grid-cols-3 lg:gap-10">
           {/* Column 1: Settings + Account */}
           <div>
+            {/* SETTINGS section */}
             <section className="pb-8">
               <div className="border-t border-surface-steel pb-2 pt-4">
                 <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
@@ -190,14 +198,15 @@ function ProfilePage() {
                 >
                   {updateProfile.isPending ? 'Saving...' : 'Save settings'}
                 </Button>
-                {updateProfile.isError && (
+                {(updateProfile.isError || saveError) && (
                   <p className="mt-2 text-xs text-warning-flare">
-                    Failed to save settings. Please try again.
+                    {saveError ?? 'Failed to save settings. Please try again.'}
                   </p>
                 )}
               </div>
             </section>
 
+            {/* ACCOUNT section */}
             <section className="pb-8">
               <div className="border-t border-surface-steel pb-2 pt-4">
                 <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
@@ -237,6 +246,7 @@ function ProfilePage() {
 
           {/* Column 2: Backend + Remote Display */}
           <div>
+            {/* BACKEND section */}
             <section className="pb-8">
               <div className="border-t border-surface-steel pb-2 pt-4">
                 <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
@@ -246,6 +256,7 @@ function ProfilePage() {
               <BackendSettings />
             </section>
 
+            {/* REMOTE DISPLAY section */}
             <section className="pb-8">
               <div className="border-t border-surface-steel pb-2 pt-4">
                 <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
@@ -269,6 +280,7 @@ function ProfilePage() {
 
           {/* Column 3: Notifications */}
           <div>
+            {/* NOTIFICATIONS section */}
             <section className="pb-8">
               <div className="border-t border-surface-steel pb-2 pt-4">
                 <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">

@@ -88,6 +88,7 @@ function HistoryPage() {
         </div>
       ) : completedSummaries.length === 0 ? (
         <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col md:px-6 lg:px-8">
+          {/* Ghost preview: mirrors real history row layout */}
           <GhostSessionPreview />
 
           <div className="flex flex-col items-center gap-4 px-8 py-10 text-center">
@@ -119,7 +120,6 @@ function HistoryPage() {
               return (
                 <div
                   key={summary.log.id}
-                  className="mx-auto max-w-5xl md:px-6 lg:px-8"
                   style={{
                     position: 'absolute',
                     top: 0,
@@ -127,13 +127,17 @@ function HistoryPage() {
                     width: '100%',
                     height: `${virtualItem.size}px`,
                     transform: `translateY(${virtualItem.start}px)`,
+                    display: 'flex',
+                    justifyContent: 'center',
                   }}
                 >
-                  <WorkoutHistoryCard
-                    summary={summary}
-                    index={virtualItem.index}
-                    onClick={() => handleCardClick(summary.log.id)}
-                  />
+                  <div className="w-full max-w-5xl md:px-6 lg:px-8">
+                    <WorkoutHistoryCard
+                      summary={summary}
+                      index={virtualItem.index}
+                      onClick={() => handleCardClick(summary.log.id)}
+                    />
+                  </div>
                 </div>
               )
             })}

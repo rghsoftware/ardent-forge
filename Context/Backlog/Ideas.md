@@ -54,3 +54,11 @@ skill. Prioritize via the backlog-prioritize skill.
 **Added:** 2026-04-04
 **Source:** `Context/Reviews/0009-pr71-enhancement-batch-review.md`
 **Resolution:** TauriAdapter.getUnreadCounts already has 2 unit tests (happy path + empty). The `Promise.allSettled` batching was a suggestion for SupabaseAdapter that was never implemented (still sequential loop). No further action needed; re-open if batching is implemented.
+
+## Aggregated 1RM View
+
+**Added:** 2026-04-05
+**Source:** `Context/Reviews/0011-pr76-web-responsiveness-review.md` (P11-012)
+**Priority:** Medium
+
+The `OneRmManagement` component was removed from the profile page during the responsiveness overhaul. The per-exercise 1RM management is still accessible on each exercise detail page (`/exercises/$exerciseId`), but the aggregated cross-exercise 1RM view no longer exists. Consider adding an aggregated 1RM summary to the library exercises tab or a dedicated stats/progress page.

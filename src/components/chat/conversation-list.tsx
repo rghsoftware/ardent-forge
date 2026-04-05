@@ -155,7 +155,7 @@ export function ConversationList() {
         ) : isError ? (
           <div className="flex flex-col items-center justify-center px-4 py-16">
             <Icon name="cloud_off" size={36} className="mb-3 text-warm-ash/60" />
-            <p className="font-heading text-sm text-bone-white">Failed to load conversations</p>
+            <p className="font-display text-sm text-warning-flare">Failed to load conversations</p>
             <p className="mt-2 text-xs text-warm-ash/50">Check your connection and try again.</p>
           </div>
         ) : !conversations || conversations.length === 0 ? (

@@ -102,15 +102,19 @@ function ExerciseDetailPage() {
 
   const estimatedValue = watch('estimated')
 
+  const [oneRmError, setOneRmError] = useState<string | null>(null)
+
   const onSubmitOneRm = async (values: OneRmFormValues) => {
     if (!userId) {
       console.error('[exercises] Cannot save 1RM: no authenticated user')
+      setOneRmError('You must be signed in to update your 1RM.')
       return
     }
 
     const weightUnitConst = profile?.preferredUnits === 'METRIC' ? ('kg' as const) : ('lb' as const)
     const now = new Date().toISOString()
 
+    setOneRmError(null)
     try {
       await saveOneRepMax.mutateAsync({
         userId,
@@ -139,45 +143,51 @@ function ExerciseDetailPage() {
       setShowOneRmDialog(false)
     } catch (err) {
       console.error('[exercises] Failed to save 1RM:', err)
-      // Error states available via saveOneRepMax.isError / updateProfile.isError
+      setOneRmError('Failed to save 1RM. Please try again.')
     }
   }
 
   if (isLoadingExercise) {
     return (
-      <div className="min-h-[100dvh] bg-surface-anvil p-4">
-        <Skeleton className="mb-4 h-8 w-48 rounded-none bg-surface-steel" />
-        <Skeleton className="mb-2 h-4 w-32 rounded-none bg-surface-steel" />
-        <Skeleton className="h-4 w-64 rounded-none bg-surface-steel" />
+      <div className="min-h-[100dvh] bg-surface-anvil">
+        <div className="mx-auto max-w-5xl p-4">
+          <Skeleton className="mb-4 h-8 w-48 rounded-none bg-surface-steel" />
+          <Skeleton className="mb-2 h-4 w-32 rounded-none bg-surface-steel" />
+          <Skeleton className="h-4 w-64 rounded-none bg-surface-steel" />
+        </div>
       </div>
     )
   }
 
   if (isExerciseError) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
-        <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
-          cloud_off
-        </span>
-        <p className="font-display text-sm text-warning-flare">Failed to load exercise</p>
-        <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
-        <Link to="/exercises" className="mt-4 text-xs text-ember">
-          Back to library
-        </Link>
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil">
+        <div className="mx-auto flex max-w-5xl flex-col items-center px-4">
+          <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
+            cloud_off
+          </span>
+          <p className="font-display text-sm text-warning-flare">Failed to load exercise</p>
+          <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
+          <Link to="/exercises" className="mt-4 text-xs text-ember">
+            Back to library
+          </Link>
+        </div>
       </div>
     )
   }
 
   if (!exercise) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
-        <span className="material-symbols-outlined mb-3 text-4xl text-warm-ash/40">
-          error_outline
-        </span>
-        <p className="font-display text-sm text-warm-ash">Exercise not found</p>
-        <Link to="/exercises" className="mt-4 text-xs text-ember">
-          Back to library
-        </Link>
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil">
+        <div className="mx-auto flex max-w-5xl flex-col items-center px-4">
+          <span className="material-symbols-outlined mb-3 text-4xl text-warm-ash/40">
+            error_outline
+          </span>
+          <p className="font-display text-sm text-warm-ash">Exercise not found</p>
+          <Link to="/exercises" className="mt-4 text-xs text-ember">
+            Back to library
+          </Link>
+        </div>
       </div>
     )
   }
@@ -421,8 +431,10 @@ function ExerciseDetailPage() {
             >
               {isSubmitting ? 'Saving...' : 'Save 1RM'}
             </Button>
-            {(saveOneRepMax.isError || updateProfile.isError) && (
-              <p className="text-xs text-warning-flare">Failed to save 1RM. Please try again.</p>
+            {(oneRmError || saveOneRepMax.isError || updateProfile.isError) && (
+              <p className="text-xs text-warning-flare">
+                {oneRmError ?? 'Failed to save 1RM. Please try again.'}
+              </p>
             )}
           </form>
         </DialogContent>
