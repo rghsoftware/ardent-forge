@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useConversations, useUnreadCounts } from '@/hooks/use-chat'
 import { Icon } from '@/components/icon'
+import { EmptyState } from '@/components/shared/empty-state'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -49,18 +50,17 @@ interface ConversationEmptyStateProps {
 
 export function ConversationEmptyState({ onStartConversation }: ConversationEmptyStateProps) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 py-16 text-center">
-      <Icon name="chat" size={48} className="text-warm-ash/30" />
-      <p className="font-heading text-sm text-warm-ash uppercase tracking-wider">
-        No active channels
-      </p>
-      <p className="text-xs text-warm-ash/50 leading-relaxed">
-        Start a conversation with a connection or group member.
-      </p>
-      <Button variant="default" size="sm" onClick={onStartConversation} className="mt-2">
-        Start conversation
-      </Button>
-    </div>
+    <EmptyState
+      icon="chat"
+      heading="No active channels"
+      subtext="Start a conversation with a connection or group member."
+      action={
+        <Button variant="default" size="sm" onClick={onStartConversation} className="mt-2">
+          Start conversation
+        </Button>
+      }
+      className="flex-1"
+    />
   )
 }
 

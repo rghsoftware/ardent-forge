@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/lib/auth'
+import { useOnboarding } from '@/hooks/use-onboarding'
+import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useProgramFull, useCreateProgram, useUpdateProgram } from '@/hooks/use-programs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -46,6 +48,11 @@ function BuilderPage() {
   const { programId } = Route.useSearch()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { markRouteVisited } = useOnboarding()
+
+  useEffect(() => {
+    markRouteVisited('/builder')
+  }, [markRouteVisited])
 
   // Draft state
   const [draft, setDraft] = useState<ProgramDraft>(createEmptyDraft)
@@ -292,6 +299,14 @@ function BuilderPage() {
             {isSaving ? 'Saving...' : 'Save program'}
           </Button>
         </div>
+      </div>
+
+      {/* Onboarding hint */}
+      <div className="px-4 lg:px-8">
+        <OnboardingHint hintKey="builder-intro">
+          Design your training program here. Add blocks, assign sessions to days, and set your
+          progression.
+        </OnboardingHint>
       </div>
 
       {/* Layout: independent scroll columns on large screens, stacked scroll on mobile */}

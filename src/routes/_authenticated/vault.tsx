@@ -1,21 +1,37 @@
+import { useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { VaultOverview } from '@/components/vault/vault-overview'
 import { VaultOneRmTab } from '@/components/vault/vault-one-rm-tab'
 import { VaultVolumeTab } from '@/components/vault/vault-volume-tab'
 import { Icon } from '@/components/icon'
+import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
+import { useOnboarding } from '@/hooks/use-onboarding'
 
 export const Route = createFileRoute('/_authenticated/vault')({
   component: VaultPage,
 })
 
 function VaultPage() {
+  const { markRouteVisited } = useOnboarding()
+
+  useEffect(() => {
+    markRouteVisited('/vault')
+  }, [markRouteVisited])
+
   return (
     <div className="min-h-[100dvh] bg-surface-anvil">
       {/* Header */}
       <div className="mx-auto max-w-5xl flex items-center gap-3 px-4 pt-6 pb-4 md:px-6 lg:px-8">
         <Icon name="monitoring" size={24} className="text-warm-ash" />
         <h1 className="font-display text-2xl font-medium text-bone-white">Vault</h1>
+      </div>
+
+      {/* Onboarding hint */}
+      <div className="mx-auto max-w-5xl px-4 md:px-6 lg:px-8">
+        <OnboardingHint hintKey="vault-intro">
+          Your training analytics will appear here as you log sessions.
+        </OnboardingHint>
       </div>
 
       {/* Tabs */}

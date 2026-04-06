@@ -44,6 +44,7 @@ export * from './media'
 // display-snapshot.ts imports sessionTypeSchema from session.ts but does not
 // re-export it, so a plain wildcard re-export is safe here.
 export * from './display-snapshot'
+export * from './onboarding'
 
 // program.ts re-exports sessionTypeSchema and SessionType from session.ts.
 // Exclude those names here to prevent ambiguous re-export errors.

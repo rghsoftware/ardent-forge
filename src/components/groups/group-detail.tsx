@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Icon } from '@/components/icon'
+import { EmptyState } from '@/components/shared/empty-state'
 import { ActivityFeed } from './activity-feed'
 import { MemberCard } from './member-card'
 import { InviteCodeDisplay } from './invite-code-display'
@@ -244,9 +245,12 @@ function MembersTab({
             <p className="text-xs text-warning-flare">Failed to create invite</p>
           )}
           {activeInvites.length === 0 ? (
-            <p className="text-xs text-warm-ash/40">
-              No active invites. Create one to add members.
-            </p>
+            <EmptyState
+              icon="mail"
+              heading="No active invites"
+              subtext="Create an invite to add members to this group."
+              className="px-4 py-6"
+            />
           ) : (
             activeInvites.map((inv) => (
               <InviteCodeDisplay key={inv.id} invite={inv} groupId={groupId} />
@@ -258,7 +262,12 @@ function MembersTab({
       {/* Members list */}
       <div className="flex flex-col">
         {members.length === 0 ? (
-          <p className="py-8 text-center text-xs text-warm-ash/40">No members found.</p>
+          <EmptyState
+            icon="group"
+            heading="No members yet"
+            subtext="Invite connections to join this group."
+            className="px-4 py-6"
+          />
         ) : (
           members.map((member) => (
             <MemberCard

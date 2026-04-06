@@ -100,6 +100,7 @@ function ExerciseDetailPage() {
     },
   })
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form's watch uses its own subscription model
   const estimatedValue = watch('estimated')
 
   const [oneRmError, setOneRmError] = useState<string | null>(null)
