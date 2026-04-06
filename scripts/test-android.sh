@@ -9,7 +9,7 @@ set -euo pipefail
 # Prerequisites:
 #   1. Maestro CLI: curl -Ls "https://get.maestro.mobile.dev" | bash
 #   2. Android SDK (emulator + platform-tools in PATH or ~/Android/Sdk)
-#   3. Debug APK built: bun tauri android build --debug
+#   3. Debug APK built: bun tauri android build
 #
 # Usage:
 #   ./scripts/test-android.sh                     # Run all Maestro flows
@@ -210,9 +210,11 @@ find_apk() {
     # Search the current project root first, then the main repo root.
     # Worktrees have their own src-tauri/ but Tauri writes build outputs
     # relative to the project it was invoked from.
+    # Look for any APK (release unsigned or debug) -- release builds
+    # embed the frontend, debug builds require a dev server.
     for search_root in "$PROJECT_ROOT" "$MAIN_REPO_ROOT"; do
         apk_path=$(find "$search_root/src-tauri/gen/android/app/build/outputs" \
-            -name "*.apk" -path "*/debug/*" 2>/dev/null | head -1)
+            -name "*.apk" 2>/dev/null | head -1)
         if [ -n "$apk_path" ]; then
             echo "$apk_path"
             return
@@ -234,7 +236,7 @@ install_apk() {
         fi
         echo ""
         echo -e "Build one with:"
-        echo -e "  bun tauri android build --debug"
+        echo -e "  bun tauri android build"
         echo -e "Or re-run with --build to build automatically:"
         echo -e "  $0 --build"
         exit 1

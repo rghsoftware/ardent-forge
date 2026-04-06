@@ -111,8 +111,8 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Build debug APK
-        run: bunx tauri android build --target aarch64 --debug
+      - name: Build APK
+        run: bunx tauri android build --target aarch64
 
       - name: Install Maestro
         run: |
@@ -128,7 +128,8 @@ jobs:
           force-avd-creation: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
-            adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
+            APK=$(find src-tauri/gen/android/app/build/outputs -name "*.apk" | head -1)
+            adb install -r "$APK"
             maestro test --include-tags smoke maestro/
 
       - name: Upload Maestro report
