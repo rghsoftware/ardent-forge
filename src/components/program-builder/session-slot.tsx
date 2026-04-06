@@ -6,14 +6,6 @@ import type { SessionDraft, ProgramDraft } from './builder-state'
 import { SESSION_BORDER, SESSION_TINT, SESSION_TYPE_BADGE } from './constants'
 import type { DayOfWeek } from './constants'
 
-const SESSION_BORDER: Record<string, string> = {
-  STRENGTH: 'border-l-2 border-ember',
-  CONDITIONING: 'border-l-2 border-quenched',
-  SE: 'border-l-2 border-arc',
-  MIXED: 'border-l-2 border-bone-white/40',
-  EVENT: 'border-l-2 border-ember',
-}
-
 // ---------------------------------------------------------------------------
 // SessionSlot
 // ---------------------------------------------------------------------------
