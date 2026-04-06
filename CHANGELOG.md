@@ -2,6 +2,16 @@
 
 All notable changes to Ardent Forge are documented in this file.
 
+## [1.0.0-beta.8] - 2026-04-05
+
+### Bug Fixes
+
+- Fixed Google OAuth sign-in on mobile by setting `appLink: false` on deep link config (custom scheme was incorrectly treated as App Link requiring verification)
+- Added CORS headers to discovery API function for Tauri WebView cross-origin fetch
+- Synced baked Android `tauri.conf.json` CSP with source
+
+---
+
 ## [1.0.0-beta.7] - 2026-04-05
 
 ### Bug Fixes

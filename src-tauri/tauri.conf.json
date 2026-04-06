@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Ardent Forge",
-  "version": "1.0.0-beta.7",
+  "version": "1.0.0-beta.8",
   "identifier": "com.rghsoftware.ardentforge",
   "build": {
     "frontendDist": "../dist",
@@ -42,11 +42,13 @@
       "mobile": [
         {
           "schemes": ["ardentforge"],
-          "host": "auth"
+          "host": "auth",
+          "appLink": false
         },
         {
           "schemes": ["ardentforge"],
-          "host": "connect"
+          "host": "connect",
+          "appLink": false
         }
       ]
     }
