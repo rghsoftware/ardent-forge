@@ -10,6 +10,7 @@ interface ProgramSessionCardProps {
   sessionName?: string
   sessionType?: string
   onStartSession: () => void
+  onPreview?: () => void
   onTimeTravel?: () => void
   isLoading?: boolean
   isRestDay?: boolean
@@ -84,6 +85,7 @@ export function ProgramSessionCard({
   sessionName,
   sessionType,
   onStartSession,
+  onPreview,
   onTimeTravel,
   isLoading = false,
   isRestDay = false,
@@ -97,11 +99,26 @@ export function ProgramSessionCard({
     ? (SESSION_TYPE_COLORS[sessionType] ?? 'bg-surface-gunmetal text-warm-ash')
     : null
 
+  const isPreviewable = !!onPreview && !isRestDay
   return (
     <div
       className={`flex flex-col gap-4 p-5 milled-edge ${
         isEvent ? 'border-l-2 border-ember bg-surface-iron' : 'bg-surface-iron'
-      }`}
+      } ${isPreviewable ? 'cursor-pointer' : ''}`}
+      onClick={isPreviewable ? onPreview : undefined}
+      role={isPreviewable ? 'button' : undefined}
+      tabIndex={isPreviewable ? 0 : undefined}
+      onKeyDown={
+        isPreviewable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onPreview?.()
+              }
+            }
+          : undefined
+      }
+      aria-label={isPreviewable ? "Preview today's session" : undefined}
     >
       {/* Program header -- program name + block/week context */}
       <div className="flex items-start justify-between gap-2">
@@ -114,7 +131,10 @@ export function ProgramSessionCard({
         {onTimeTravel && (
           <button
             type="button"
-            onClick={onTimeTravel}
+            onClick={(e) => {
+              e.stopPropagation()
+              onTimeTravel()
+            }}
             className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/40 hover:text-ember"
             aria-label="Time travel -- adjust program position"
           >
@@ -158,7 +178,10 @@ export function ProgramSessionCard({
           <Button
             variant="molten"
             className="w-full min-h-12 text-xs font-medium"
-            onClick={onStartSession}
+            onClick={(e) => {
+              e.stopPropagation()
+              onStartSession()
+            }}
           >
             {isEvent ? 'Start event session' : "Start today's session"}
           </Button>

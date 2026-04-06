@@ -28,6 +28,7 @@ interface BlockEditorProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onPreviewSession?: (sessionTemplateId: string) => void
   onCopyWeek?: (sourceWeekClientId: string) => void
   showWeekends: boolean
   isNew?: boolean
@@ -39,6 +40,7 @@ export function BlockEditor({
   draft,
   onUpdate,
   onPickSession,
+  onPreviewSession,
   onCopyWeek,
   showWeekends,
   isNew,
@@ -330,6 +332,7 @@ export function BlockEditor({
                     blockClientId={block.clientId}
                     onUpdate={onUpdate}
                     onPickSession={onPickSession}
+                    onPreviewSession={onPreviewSession}
                     onCopyWeek={handleCopyWeek}
                     showWeekends={showWeekends}
                     isNew={week.clientId === newWeekId}
