@@ -194,15 +194,56 @@ ensure_emulator() {
 build_apk() {
     echo -e "${CYAN}Building APK from: $PROJECT_ROOT${NC}"
     (cd "$PROJECT_ROOT" && bunx tauri android build)
+
+    # The release build is unsigned. Sign with the debug keystore so it
+    # can be installed on emulators and dev devices.
+    local unsigned
+    unsigned=$(find "$APK_OUTPUT_DIR" -name "*unsigned*.apk" 2>/dev/null | head -1 || true)
+    if [ -n "$unsigned" ]; then
+        local signed="${unsigned/unsigned/debug-signed}"
+        echo -e "${CYAN}Signing APK with debug keystore...${NC}"
+
+        # apksigner is in build-tools; find the latest version
+        local apksigner
+        apksigner=$(find "$HOME/Android/Sdk/build-tools" -name "apksigner" 2>/dev/null \
+            | sort -V | tail -1 || true)
+        if [ -z "$apksigner" ]; then
+            echo -e "${RED}Error: apksigner not found in Android SDK build-tools.${NC}"
+            exit 1
+        fi
+
+        # zipalign first (required before signing)
+        local zipalign
+        zipalign=$(find "$HOME/Android/Sdk/build-tools" -name "zipalign" 2>/dev/null \
+            | sort -V | tail -1 || true)
+        if [ -n "$zipalign" ]; then
+            local aligned="${unsigned/unsigned/aligned}"
+            "$zipalign" -f 4 "$unsigned" "$aligned"
+            unsigned="$aligned"
+        fi
+
+        "$apksigner" sign \
+            --ks "$HOME/.android/debug.keystore" \
+            --ks-pass pass:android \
+            --key-alias androiddebugkey \
+            --ks-key-alias androiddebugkey \
+            --out "$signed" \
+            "$unsigned"
+
+        echo -e "${GREEN}Signed: $(basename "$signed")${NC}"
+    fi
+
     echo -e "${GREEN}Build complete.${NC}"
 }
 
 install_apk() {
     local apk_path
-    apk_path=$(find "$APK_OUTPUT_DIR" -name "*.apk" 2>/dev/null \
-        | grep -v "debug" | head -1 || true)
 
-    # Fall back to any APK if no non-debug found
+    # Prefer debug-signed APK, then any signed APK, then any APK
+    apk_path=$(find "$APK_OUTPUT_DIR" -name "*debug-signed*.apk" 2>/dev/null | head -1 || true)
+    if [ -z "$apk_path" ]; then
+        apk_path=$(find "$APK_OUTPUT_DIR" -name "*.apk" ! -name "*unsigned*" 2>/dev/null | head -1 || true)
+    fi
     if [ -z "$apk_path" ]; then
         apk_path=$(find "$APK_OUTPUT_DIR" -name "*.apk" 2>/dev/null | head -1 || true)
     fi
