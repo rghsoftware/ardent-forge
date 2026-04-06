@@ -26,20 +26,20 @@ describe('OnboardingHint', () => {
 
   it('renders when hint key has not been seen', () => {
     render(
-      <OnboardingHint hintKey="test-hint">
+      <OnboardingHint hintKey="vault-intro">
         <p>This is a hint</p>
       </OnboardingHint>,
     )
 
     expect(screen.getByText('This is a hint')).toBeInTheDocument()
-    expect(screen.getByTestId('onboarding-hint-test-hint')).toBeInTheDocument()
+    expect(screen.getByTestId('onboarding-hint-vault-intro')).toBeInTheDocument()
   })
 
   it('does not render when hint key has already been seen', () => {
     mockShouldShowHint = false
 
     const { container } = render(
-      <OnboardingHint hintKey="test-hint">
+      <OnboardingHint hintKey="vault-intro">
         <p>This is a hint</p>
       </OnboardingHint>,
     )
@@ -65,7 +65,7 @@ describe('OnboardingHint', () => {
 
   it('dismiss button has at least 48px touch target', () => {
     render(
-      <OnboardingHint hintKey="test-hint">
+      <OnboardingHint hintKey="vault-intro">
         <p>Hint content</p>
       </OnboardingHint>,
     )
@@ -77,35 +77,35 @@ describe('OnboardingHint', () => {
 
   it('applies motion-safe animation class', () => {
     render(
-      <OnboardingHint hintKey="test-hint">
+      <OnboardingHint hintKey="vault-intro">
         <p>Hint content</p>
       </OnboardingHint>,
     )
 
-    const hint = screen.getByTestId('onboarding-hint-test-hint')
+    const hint = screen.getByTestId('onboarding-hint-vault-intro')
     expect(hint.className).toContain('motion-safe:animate-')
   })
 
   it('renders with ember left border accent', () => {
     render(
-      <OnboardingHint hintKey="test-hint">
+      <OnboardingHint hintKey="vault-intro">
         <p>Hint content</p>
       </OnboardingHint>,
     )
 
-    const hint = screen.getByTestId('onboarding-hint-test-hint')
+    const hint = screen.getByTestId('onboarding-hint-vault-intro')
     expect(hint.className).toContain('border-l-2')
     expect(hint.className).toContain('border-ember')
   })
 
   it('applies additional className when provided', () => {
     render(
-      <OnboardingHint hintKey="test-hint" className="mt-6">
+      <OnboardingHint hintKey="vault-intro" className="mt-6">
         <p>Hint content</p>
       </OnboardingHint>,
     )
 
-    const hint = screen.getByTestId('onboarding-hint-test-hint')
+    const hint = screen.getByTestId('onboarding-hint-vault-intro')
     expect(hint.className).toContain('mt-6')
   })
 })

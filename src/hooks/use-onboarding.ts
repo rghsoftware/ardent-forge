@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import type { OnboardingHintKey, OnboardingRoute } from '@/domain/types'
 import { useAuth } from '@/lib/auth'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 
@@ -22,8 +23,8 @@ export function useOnboarding() {
 
   return {
     isFirstRun: !welcomeDismissed,
-    shouldShowHint: (key: string) => !hintsSeenKeys.includes(key),
-    hasVisited: (route: string) => visitedRoutes.includes(route),
+    shouldShowHint: (key: OnboardingHintKey) => !hintsSeenKeys.includes(key),
+    hasVisited: (route: OnboardingRoute) => visitedRoutes.includes(route),
     dismissWelcome,
     markHintSeen,
     markRouteVisited,

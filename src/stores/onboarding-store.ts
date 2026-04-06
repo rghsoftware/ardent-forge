@@ -6,6 +6,7 @@
  * See ADR-010 for the localStorage-over-persist-middleware rationale.
  */
 import { create } from 'zustand'
+import type { OnboardingHintKey, OnboardingRoute } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // Persistence helpers
@@ -17,8 +18,8 @@ function storageKey(userId: string): string {
 
 interface OnboardingState {
   welcomeDismissed: boolean
-  hintsSeenKeys: string[]
-  visitedRoutes: string[]
+  hintsSeenKeys: OnboardingHintKey[]
+  visitedRoutes: OnboardingRoute[]
   firstWorkoutCompleted: boolean
 }
 
@@ -76,8 +77,8 @@ interface OnboardingStore extends OnboardingState {
   currentUserId: string
   initialize: (userId: string) => void
   dismissWelcome: () => void
-  markHintSeen: (key: string) => void
-  markRouteVisited: (route: string) => void
+  markHintSeen: (key: OnboardingHintKey) => void
+  markRouteVisited: (route: OnboardingRoute) => void
   markFirstWorkoutCompleted: () => void
   resetOnboarding: () => void
 }
@@ -116,7 +117,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     set({ welcomeDismissed: true })
   },
 
-  markHintSeen: (key: string) => {
+  markHintSeen: (key: OnboardingHintKey) => {
     const { currentUserId, hintsSeenKeys } = get()
     if (!currentUserId) {
       console.warn('[onboarding-store] markHintSeen called before initialize')
@@ -129,7 +130,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     set({ hintsSeenKeys: nextKeys })
   },
 
-  markRouteVisited: (route: string) => {
+  markRouteVisited: (route: OnboardingRoute) => {
     const { currentUserId, visitedRoutes } = get()
     if (!currentUserId) {
       console.warn('[onboarding-store] markRouteVisited called before initialize')

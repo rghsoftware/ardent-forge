@@ -1,10 +1,11 @@
 import { type ReactNode } from 'react'
+import type { OnboardingHintKey } from '@/domain/types'
 import { useOnboarding } from '@/hooks/use-onboarding'
 import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 
 interface OnboardingHintProps {
-  hintKey: string
+  hintKey: OnboardingHintKey
   children: ReactNode
   position?: 'above' | 'below'
   className?: string

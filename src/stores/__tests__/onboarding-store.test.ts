@@ -67,7 +67,7 @@ describe('initialize', () => {
   it('loads existing state from localStorage', () => {
     const stored = {
       welcomeDismissed: true,
-      hintsSeenKeys: ['hint-a'],
+      hintsSeenKeys: ['library-intro'],
       visitedRoutes: ['/library'],
       firstWorkoutCompleted: true,
     }
@@ -76,7 +76,7 @@ describe('initialize', () => {
     getState().initialize('user-2')
 
     expect(getState().welcomeDismissed).toBe(true)
-    expect(getState().hintsSeenKeys).toEqual(['hint-a'])
+    expect(getState().hintsSeenKeys).toEqual(['library-intro'])
     expect(getState().visitedRoutes).toEqual(['/library'])
     expect(getState().firstWorkoutCompleted).toBe(true)
   })
@@ -158,28 +158,28 @@ describe('dismissWelcome', () => {
 describe('markHintSeen', () => {
   it('adds key to hintsSeenKeys and persists', () => {
     getState().initialize('user-1')
-    getState().markHintSeen('tip-navigation')
+    getState().markHintSeen('library-intro')
 
-    expect(getState().hintsSeenKeys).toEqual(['tip-navigation'])
+    expect(getState().hintsSeenKeys).toEqual(['library-intro'])
 
     const stored = JSON.parse(localStorage.getItem('onboarding-state-user-1')!)
-    expect(stored.hintsSeenKeys).toEqual(['tip-navigation'])
+    expect(stored.hintsSeenKeys).toEqual(['library-intro'])
   })
 
   it('does not add duplicate keys', () => {
     getState().initialize('user-1')
-    getState().markHintSeen('tip-navigation')
-    getState().markHintSeen('tip-navigation')
+    getState().markHintSeen('library-intro')
+    getState().markHintSeen('library-intro')
 
-    expect(getState().hintsSeenKeys).toEqual(['tip-navigation'])
+    expect(getState().hintsSeenKeys).toEqual(['library-intro'])
   })
 
   it('accumulates multiple keys', () => {
     getState().initialize('user-1')
-    getState().markHintSeen('tip-a')
-    getState().markHintSeen('tip-b')
+    getState().markHintSeen('vault-intro')
+    getState().markHintSeen('builder-intro')
 
-    expect(getState().hintsSeenKeys).toEqual(['tip-a', 'tip-b'])
+    expect(getState().hintsSeenKeys).toEqual(['vault-intro', 'builder-intro'])
   })
 })
 
@@ -231,7 +231,7 @@ describe('resetOnboarding', () => {
   it('clears all state back to defaults and persists', () => {
     getState().initialize('user-1')
     getState().dismissWelcome()
-    getState().markHintSeen('tip-a')
+    getState().markHintSeen('vault-intro')
     getState().markRouteVisited('/library')
     getState().markFirstWorkoutCompleted()
 
@@ -245,5 +245,148 @@ describe('resetOnboarding', () => {
     const stored = JSON.parse(localStorage.getItem('onboarding-state-user-1')!)
     expect(stored.welcomeDismissed).toBe(false)
     expect(stored.hintsSeenKeys).toEqual([])
+  })
+})
+
+// ===========================================================================
+// mutation guards before initialize
+// ===========================================================================
+
+describe('mutation guards before initialize', () => {
+  it('dismissWelcome on uninitialized store warns and keeps defaults', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    getState().dismissWelcome()
+
+    expect(getState().welcomeDismissed).toBe(false)
+    expect(getState().currentUserId).toBe('')
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[onboarding-store] dismissWelcome called before initialize',
+    )
+
+    warnSpy.mockRestore()
+  })
+
+  it('markHintSeen on uninitialized store warns and keeps defaults', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    getState().markHintSeen('library-intro')
+
+    expect(getState().hintsSeenKeys).toEqual([])
+    expect(getState().currentUserId).toBe('')
+    expect(warnSpy).toHaveBeenCalledWith('[onboarding-store] markHintSeen called before initialize')
+
+    warnSpy.mockRestore()
+  })
+
+  it('markRouteVisited on uninitialized store warns and keeps defaults', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    getState().markRouteVisited('/library')
+
+    expect(getState().visitedRoutes).toEqual([])
+    expect(getState().currentUserId).toBe('')
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[onboarding-store] markRouteVisited called before initialize',
+    )
+
+    warnSpy.mockRestore()
+  })
+
+  it('markFirstWorkoutCompleted on uninitialized store warns and keeps defaults', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    getState().markFirstWorkoutCompleted()
+
+    expect(getState().firstWorkoutCompleted).toBe(false)
+    expect(getState().currentUserId).toBe('')
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[onboarding-store] markFirstWorkoutCompleted called before initialize',
+    )
+
+    warnSpy.mockRestore()
+  })
+
+  it('resetOnboarding on uninitialized store warns and keeps defaults', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    getState().resetOnboarding()
+
+    expect(getState().welcomeDismissed).toBe(false)
+    expect(getState().hintsSeenKeys).toEqual([])
+    expect(getState().visitedRoutes).toEqual([])
+    expect(getState().firstWorkoutCompleted).toBe(false)
+    expect(getState().currentUserId).toBe('')
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[onboarding-store] resetOnboarding called before initialize',
+    )
+
+    warnSpy.mockRestore()
+  })
+})
+
+// ===========================================================================
+// persistState failure
+// ===========================================================================
+
+describe('persistState failure', () => {
+  it('updates in-memory state and logs error when localStorage.setItem throws', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const originalSetItem = localStorageMock.setItem
+    localStorageMock.setItem = () => {
+      throw new Error('QuotaExceededError')
+    }
+
+    getState().initialize('user-1')
+    getState().dismissWelcome()
+
+    // In-memory state should still update
+    expect(getState().welcomeDismissed).toBe(true)
+
+    // Error should be logged with store prefix
+    expect(errorSpy).toHaveBeenCalledWith(
+      '[onboarding-store] Failed to persist onboarding state:',
+      expect.any(Error),
+    )
+
+    localStorageMock.setItem = originalSetItem
+    errorSpy.mockRestore()
+  })
+})
+
+// ===========================================================================
+// user-switching state isolation
+// ===========================================================================
+
+describe('user-switching state isolation', () => {
+  it('isolates state between different userIds', () => {
+    // Initialize user-A and make changes
+    getState().initialize('user-A')
+    getState().dismissWelcome()
+    getState().markHintSeen('library-intro')
+    getState().markRouteVisited('/library')
+
+    // Verify user-A state
+    expect(getState().welcomeDismissed).toBe(true)
+    expect(getState().hintsSeenKeys).toEqual(['library-intro'])
+    expect(getState().visitedRoutes).toEqual(['/library'])
+
+    // Switch to user-B -- should get fresh defaults
+    getState().initialize('user-B')
+
+    expect(getState().currentUserId).toBe('user-B')
+    expect(getState().welcomeDismissed).toBe(false)
+    expect(getState().hintsSeenKeys).toEqual([])
+    expect(getState().visitedRoutes).toEqual([])
+    expect(getState().firstWorkoutCompleted).toBe(false)
+
+    // Switch back to user-A -- should restore persisted state
+    getState().initialize('user-A')
+
+    expect(getState().currentUserId).toBe('user-A')
+    expect(getState().welcomeDismissed).toBe(true)
+    expect(getState().hintsSeenKeys).toEqual(['library-intro'])
+    expect(getState().visitedRoutes).toEqual(['/library'])
+    expect(getState().firstWorkoutCompleted).toBe(false)
   })
 })

@@ -4,6 +4,7 @@ import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 import { useUnreadCounts } from '@/hooks/use-chat'
+import type { OnboardingRoute } from '@/domain/types'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { SKIP_DISCOVERY_ROUTES } from './nav-constants'
 
@@ -44,7 +45,7 @@ export function SidebarNav() {
   const { data: unreadMap } = useUnreadCounts()
   const totalUnread = unreadMap ? Array.from(unreadMap.values()).reduce((sum, n) => sum + n, 0) : 0
   const visitedRoutes = useOnboardingStore((s) => s.visitedRoutes)
-  const hasVisited = (route: string) => visitedRoutes.includes(route)
+  const hasVisited = (route: string) => visitedRoutes.includes(route as OnboardingRoute)
 
   useEffect(() => {
     if (!menuOpen) return

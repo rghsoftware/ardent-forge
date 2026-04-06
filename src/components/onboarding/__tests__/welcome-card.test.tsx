@@ -18,8 +18,14 @@ vi.mock('@/lib/auth', () => ({
   useAuth: () => ({ user: { id: 'test-user-id' } }),
 }))
 
+const mockUseWorkoutLogs = vi.fn<() => { data: Record<string, unknown>[]; isError: boolean }>(
+  () => ({
+    data: [],
+    isError: false,
+  }),
+)
 vi.mock('@/hooks/use-workout-logs', () => ({
-  useWorkoutLogs: () => ({ data: [] }),
+  useWorkoutLogs: () => mockUseWorkoutLogs(),
 }))
 
 vi.mock('@tanstack/react-router', () => ({
@@ -35,6 +41,7 @@ describe('WelcomeCard', () => {
     mockIsFirstRun = true
     mockDismissWelcome.mockClear()
     mockNavigate.mockClear()
+    mockUseWorkoutLogs.mockReturnValue({ data: [], isError: false })
   })
 
   it('renders when isFirstRun is true', () => {
@@ -109,5 +116,14 @@ describe('WelcomeCard', () => {
     for (const button of pathButtons) {
       expect(button.className).toContain('min-h-12')
     }
+  })
+
+  it('auto-dismisses for existing users with workout history', () => {
+    mockUseWorkoutLogs.mockReturnValue({ data: [{ id: 'w1' }], isError: false })
+
+    const { container } = render(<WelcomeCard />)
+
+    expect(container.innerHTML).toBe('')
+    expect(mockDismissWelcome).toHaveBeenCalledTimes(1)
   })
 })
