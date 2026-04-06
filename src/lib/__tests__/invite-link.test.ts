@@ -20,7 +20,7 @@ describe('buildInviteLink', () => {
   it('produces https:// web app URL with encoded params', () => {
     const link = buildInviteLink('https://abc.supabase.co', 'eyJhbGciOiJIUzI1NiJ9')
     expect(link).toBe(
-      'https://ardent-forge.vercel.app/connect?url=https%3A%2F%2Fabc.supabase.co&key=eyJhbGciOiJIUzI1NiJ9',
+      'https://app.ardentforge.app/connect?url=https%3A%2F%2Fabc.supabase.co&key=eyJhbGciOiJIUzI1NiJ9',
     )
   })
 
@@ -50,7 +50,7 @@ describe('parseInviteLink', () => {
 
   it('parses https:// web app links', () => {
     const parsed = parseInviteLink(
-      'https://ardent-forge.vercel.app/connect?url=https%3A%2F%2Fabc.supabase.co&key=abc123',
+      'https://app.ardentforge.app/connect?url=https%3A%2F%2Fabc.supabase.co&key=abc123',
     )
     expect(parsed).toEqual({ url: 'https://abc.supabase.co', key: 'abc123' })
   })
@@ -73,7 +73,7 @@ describe('parseInviteLink', () => {
   it('returns null for https:// with wrong path', () => {
     expect(
       parseInviteLink(
-        'https://ardent-forge.vercel.app/setup?url=https%3A%2F%2Fabc.supabase.co&key=abc',
+        'https://app.ardentforge.app/setup?url=https%3A%2F%2Fabc.supabase.co&key=abc',
       ),
     ).toBeNull()
   })

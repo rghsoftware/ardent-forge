@@ -1,7 +1,7 @@
 const SCHEME = 'ardentforge:'
 const HOST = 'connect'
 
-const WEB_APP_ORIGIN = 'https://ardent-forge.vercel.app'
+const WEB_APP_ORIGIN = 'https://app.ardentforge.app'
 
 // The publishable (anon) key is not a secret -- safe to embed in QR codes and invite
 // links since it is already bundled into every client build.
