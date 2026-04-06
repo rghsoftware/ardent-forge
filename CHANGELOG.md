@@ -2,6 +2,16 @@
 
 All notable changes to Ardent Forge are documented in this file.
 
+## [1.0.0-beta.7] - 2026-04-05
+
+### Bug Fixes
+
+- Widened CSP connect-src to allow setup flow to reach arbitrary servers (was restricted to \*.supabase.co)
+- Made invite links shareable via HTTPS URLs (app.ardentforge.app/connect) instead of custom scheme only
+- QR codes still use ardentforge:// deep links for direct mobile scanning
+
+---
+
 ## [1.0.0-beta.6] - 2026-04-05
 
 ### Features
