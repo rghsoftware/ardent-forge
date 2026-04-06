@@ -225,7 +225,6 @@ build_apk() {
         "$apksigner" sign \
             --ks "$HOME/.android/debug.keystore" \
             --ks-pass pass:android \
-            --key-alias androiddebugkey \
             --ks-key-alias androiddebugkey \
             --out "$signed" \
             "$unsigned"
