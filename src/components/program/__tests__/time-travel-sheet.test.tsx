@@ -30,14 +30,15 @@ vi.mock('@/hooks/use-week-statuses', () => ({
   }),
 }))
 
-// Mock computePositionFromDate to return a deterministic preview
 const mockComputePosition = vi.fn()
+const mockComputeDateFromPosition = vi.fn()
 const mockValidatePosition = vi.fn()
 vi.mock('@/lib/program-position', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/program-position')>()
   return {
     ...actual,
     computePositionFromDate: (...args: unknown[]) => mockComputePosition(...args),
+    computeDateFromPosition: (...args: unknown[]) => mockComputeDateFromPosition(...args),
     validateProgramPosition: (...args: unknown[]) => mockValidatePosition(...args),
   }
 })
@@ -124,14 +125,13 @@ function renderSheet(overrides?: Partial<Parameters<typeof TimeTravelSheet>[0]>)
 describe('TimeTravelSheet', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default: position is valid
     mockValidatePosition.mockReturnValue(true)
-    // Default: computePositionFromDate returns block 1, week 2
     mockComputePosition.mockReturnValue({ blockOrdinal: 1, weekNumber: 2 })
+    mockComputeDateFromPosition.mockReturnValue('2025-05-25')
   })
 
   // -----------------------------------------------------------------------
-  // 1. Renders with current start date and position displayed
+  // 1. Renders with current start date and position
   // -----------------------------------------------------------------------
 
   it('renders the sheet title', () => {
@@ -146,33 +146,18 @@ describe('TimeTravelSheet', () => {
     expect(dateInput.value).toBe('2025-06-01')
   })
 
-  it('renders both section headers', () => {
+  it('renders a single Save button (disabled when nothing changed)', () => {
     renderSheet()
-    expect(screen.getByText('Start date')).toBeInTheDocument()
-    // "Jump to position" appears as both a heading and button text
-    const jumpElements = screen.getAllByText('Jump to position')
-    expect(jumpElements.length).toBeGreaterThanOrEqual(1)
-  })
-
-  it('renders Update start date button (disabled when unchanged)', () => {
-    renderSheet()
-    const btn = screen.getByText('Update start date')
-    expect(btn).toBeInTheDocument()
-    expect(btn).toBeDisabled()
-  })
-
-  it('renders Jump to position button (disabled when position unchanged)', () => {
-    renderSheet()
-    const btn = screen.getByRole('button', { name: 'Jump to position' })
+    const btn = screen.getByRole('button', { name: 'Save' })
     expect(btn).toBeInTheDocument()
     expect(btn).toBeDisabled()
   })
 
   // -----------------------------------------------------------------------
-  // 2. Date change shows new computed position preview
+  // 2. Changing start date syncs position selectors
   // -----------------------------------------------------------------------
 
-  it('shows position preview when start date is changed', async () => {
+  it('updates position selectors when start date changes', async () => {
     mockComputePosition.mockReturnValue({ blockOrdinal: 1, weekNumber: 2 })
     const user = userEvent.setup()
     renderSheet()
@@ -181,12 +166,11 @@ describe('TimeTravelSheet', () => {
     await user.clear(dateInput)
     await user.type(dateInput, '2025-05-25')
 
-    // The preview shows the computed position
-    expect(screen.getByText(/This will move you to/)).toBeInTheDocument()
+    // The change summary should reflect the new position
     expect(screen.getByText(/Accumulation, Week 2/)).toBeInTheDocument()
   })
 
-  it('enables Update start date button when date changes', async () => {
+  it('enables Save button when start date changes', async () => {
     mockComputePosition.mockReturnValue({ blockOrdinal: 1, weekNumber: 2 })
     const user = userEvent.setup()
     renderSheet()
@@ -195,7 +179,7 @@ describe('TimeTravelSheet', () => {
     await user.clear(dateInput)
     await user.type(dateInput, '2025-05-25')
 
-    expect(screen.getByText('Update start date')).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Save' })).not.toBeDisabled()
   })
 
   // -----------------------------------------------------------------------
@@ -204,19 +188,15 @@ describe('TimeTravelSheet', () => {
 
   it('shows intermediate weeks with skip labels on forward jump', async () => {
     mockValidatePosition.mockReturnValue(true)
+    mockComputeDateFromPosition.mockReturnValue('2025-05-04')
     const user = userEvent.setup()
     renderSheet()
 
-    // Change block to ordinal 2 (Intensification) -- this is a forward jump
-    // We need to interact with the Block select
     const blockTrigger = screen.getByText('Block').closest('div')!.querySelector('button')!
     await user.click(blockTrigger)
-    // Select Block 2
     const option = await screen.findByText('2. Intensification')
     await user.click(option)
 
-    // Forward jump from Block 1 Week 1 to Block 2 Week 1 means intermediate weeks:
-    // Block 1 Week 2, Block 1 Week 3
     expect(screen.getByText('Skipped weeks')).toBeInTheDocument()
     expect(screen.getByText('Accumulation, Week 2')).toBeInTheDocument()
     expect(screen.getByText('Accumulation, Week 3')).toBeInTheDocument()
@@ -224,6 +204,7 @@ describe('TimeTravelSheet', () => {
 
   it('shows bulk label buttons for intermediate weeks', async () => {
     mockValidatePosition.mockReturnValue(true)
+    mockComputeDateFromPosition.mockReturnValue('2025-05-04')
     const user = userEvent.setup()
     renderSheet()
 
@@ -242,7 +223,6 @@ describe('TimeTravelSheet', () => {
   // -----------------------------------------------------------------------
 
   it('does not show skip labels on backward jump', () => {
-    // Activation at Block 2, Week 2 -- selecting Block 1, Week 1 is backward
     const backwardActivation: ProgramActivation = {
       ...testActivation,
       currentBlockOrdinal: 2,
@@ -250,8 +230,6 @@ describe('TimeTravelSheet', () => {
     }
     renderSheet({ activation: backwardActivation })
 
-    // Default selection matches activation (Block 2, Week 2), no change yet
-    // No skip labels should appear
     expect(screen.queryByText('Skipped weeks')).not.toBeInTheDocument()
   })
 
@@ -261,54 +239,48 @@ describe('TimeTravelSheet', () => {
 
   it('toggles individual week skip labels', async () => {
     mockValidatePosition.mockReturnValue(true)
+    mockComputeDateFromPosition.mockReturnValue('2025-05-04')
     const user = userEvent.setup()
     renderSheet()
 
-    // Jump forward to Block 2
     const blockTrigger = screen.getByText('Block').closest('div')!.querySelector('button')!
     await user.click(blockTrigger)
     const option = await screen.findByText('2. Intensification')
     await user.click(option)
 
-    // Find the first intermediate week row (Accumulation, Week 2)
     const weekRow = screen.getByText('Accumulation, Week 2').closest('div')!
     const doneBtn = within(weekRow).getByText('Done')
     const skippedBtn = within(weekRow).getByText('Skipped')
     const unmarkedBtn = within(weekRow).getByText('Unmarked')
 
-    // Initially unmarked
     expect(unmarkedBtn).toHaveAttribute('aria-pressed', 'true')
 
-    // Click Done
     await user.click(doneBtn)
     expect(doneBtn).toHaveAttribute('aria-pressed', 'true')
     expect(unmarkedBtn).toHaveAttribute('aria-pressed', 'false')
 
-    // Click Skipped
     await user.click(skippedBtn)
     expect(skippedBtn).toHaveAttribute('aria-pressed', 'true')
     expect(doneBtn).toHaveAttribute('aria-pressed', 'false')
   })
 
   // -----------------------------------------------------------------------
-  // 6. Bulk "Mark all" buttons apply to all intermediate weeks
+  // 6. Bulk label buttons
   // -----------------------------------------------------------------------
 
   it('marks all intermediate weeks as done via bulk button', async () => {
     mockValidatePosition.mockReturnValue(true)
+    mockComputeDateFromPosition.mockReturnValue('2025-05-04')
     const user = userEvent.setup()
     renderSheet()
 
-    // Jump forward to Block 2
     const blockTrigger = screen.getByText('Block').closest('div')!.querySelector('button')!
     await user.click(blockTrigger)
     const option = await screen.findByText('2. Intensification')
     await user.click(option)
 
-    // Click "All done"
     await user.click(screen.getByText('All done'))
 
-    // All "Done" buttons should be active
     const doneButtons = screen.getAllByText('Done')
     for (const btn of doneButtons) {
       expect(btn).toHaveAttribute('aria-pressed', 'true')
@@ -317,6 +289,7 @@ describe('TimeTravelSheet', () => {
 
   it('marks all intermediate weeks as skipped via bulk button', async () => {
     mockValidatePosition.mockReturnValue(true)
+    mockComputeDateFromPosition.mockReturnValue('2025-05-04')
     const user = userEvent.setup()
     renderSheet()
 
@@ -335,6 +308,7 @@ describe('TimeTravelSheet', () => {
 
   it('clears all labels via Clear bulk button', async () => {
     mockValidatePosition.mockReturnValue(true)
+    mockComputeDateFromPosition.mockReturnValue('2025-05-04')
     const user = userEvent.setup()
     renderSheet()
 
@@ -343,7 +317,6 @@ describe('TimeTravelSheet', () => {
     const option = await screen.findByText('2. Intensification')
     await user.click(option)
 
-    // Mark all done first, then clear
     await user.click(screen.getByText('All done'))
     await user.click(screen.getByText('Clear'))
 
@@ -354,15 +327,15 @@ describe('TimeTravelSheet', () => {
   })
 
   // -----------------------------------------------------------------------
-  // 7. Invalid position prevented by selector constraints
+  // 7. Invalid position
   // -----------------------------------------------------------------------
 
   it('shows error message when position is invalid', async () => {
     mockValidatePosition.mockReturnValue(false)
+    mockComputeDateFromPosition.mockReturnValue('2025-05-25')
     const user = userEvent.setup()
     renderSheet()
 
-    // Change week to trigger positionChanged
     const weekTrigger = screen.getByText('Week').closest('div')!.querySelector('button')!
     await user.click(weekTrigger)
     const weekOption = await screen.findByText('Week 2')
@@ -371,8 +344,9 @@ describe('TimeTravelSheet', () => {
     expect(screen.getByText('This position does not exist in the program.')).toBeInTheDocument()
   })
 
-  it('disables Jump button when position is invalid', async () => {
+  it('disables Save button when position is invalid', async () => {
     mockValidatePosition.mockReturnValue(false)
+    mockComputeDateFromPosition.mockReturnValue('2025-05-25')
     const user = userEvent.setup()
     renderSheet()
 
@@ -381,25 +355,24 @@ describe('TimeTravelSheet', () => {
     const weekOption = await screen.findByText('Week 2')
     await user.click(weekOption)
 
-    expect(screen.getByRole('button', { name: 'Jump to position' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 
   // -----------------------------------------------------------------------
-  // 8. Confirmation shows before/after position summary
+  // 8. Change summary shows before/after position
   // -----------------------------------------------------------------------
 
   it('shows current and new position summary on valid position change', async () => {
     mockValidatePosition.mockReturnValue(true)
+    mockComputeDateFromPosition.mockReturnValue('2025-05-25')
     const user = userEvent.setup()
     renderSheet()
 
-    // Change week to 2
     const weekTrigger = screen.getByText('Week').closest('div')!.querySelector('button')!
     await user.click(weekTrigger)
     const weekOption = await screen.findByText('Week 2')
     await user.click(weekOption)
 
-    // Should show current -> new summary
     expect(screen.getByText(/Current:/)).toBeInTheDocument()
     expect(screen.getByText(/Accumulation, Week 1/)).toBeInTheDocument()
     expect(screen.getByText(/New:/)).toBeInTheDocument()
@@ -407,24 +380,24 @@ describe('TimeTravelSheet', () => {
   })
 
   // -----------------------------------------------------------------------
-  // 9. handleStartDateSave -- success and error paths (S018-T)
+  // 9. Save via start date change
   // -----------------------------------------------------------------------
 
-  describe('handleStartDateSave', () => {
+  describe('save via start date change', () => {
     async function changeStartDate(user: ReturnType<typeof userEvent.setup>, date: string) {
       const dateInput = screen.getByLabelText('Program start date') as HTMLInputElement
       await user.clear(dateInput)
       await user.type(dateInput, date)
     }
 
-    it('calls updateActiveProgram with correct args and closes the sheet on success', async () => {
+    it('calls updateActiveProgram with start date and computed position', async () => {
       mockComputePosition.mockReturnValue({ blockOrdinal: 1, weekNumber: 2 })
       const onOpenChange = vi.fn()
       const user = userEvent.setup()
       renderSheet({ onOpenChange })
 
       await changeStartDate(user, '2025-05-25')
-      await user.click(screen.getByText('Update start date'))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
 
       expect(mockUpdateActiveProgram).toHaveBeenCalledWith('user-1', {
         startDate: '2025-05-25',
@@ -434,7 +407,7 @@ describe('TimeTravelSheet', () => {
       expect(onOpenChange).toHaveBeenCalledWith(false)
     })
 
-    it('renders error message when updateActiveProgram rejects', async () => {
+    it('renders error when updateActiveProgram rejects', async () => {
       mockComputePosition.mockReturnValue({ blockOrdinal: 1, weekNumber: 2 })
       mockUpdateActiveProgram.mockRejectedValueOnce(new Error('Network error'))
       const onOpenChange = vi.fn()
@@ -442,20 +415,18 @@ describe('TimeTravelSheet', () => {
       renderSheet({ onOpenChange })
 
       await changeStartDate(user, '2025-05-25')
-      await user.click(screen.getByText('Update start date'))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
 
       expect(screen.getByText('Failed to save. Please try again.')).toBeInTheDocument()
-      // Sheet should remain open
       expect(onOpenChange).not.toHaveBeenCalledWith(false)
     })
   })
 
   // -----------------------------------------------------------------------
-  // 10. handleJumpSave -- success and error paths (S019-T)
+  // 10. Save via position change
   // -----------------------------------------------------------------------
 
-  describe('handleJumpSave', () => {
-    /** Helper: jump from Block 1 Week 1 to Block 2 Week 1 (forward jump) */
+  describe('save via position change', () => {
     async function jumpToBlock2(user: ReturnType<typeof userEvent.setup>) {
       const blockTrigger = screen.getByText('Block').closest('div')!.querySelector('button')!
       await user.click(blockTrigger)
@@ -463,7 +434,6 @@ describe('TimeTravelSheet', () => {
       await user.click(option)
     }
 
-    /** Helper: jump from Block 1 Week 1 to Block 1 Week 2 (simple forward) */
     async function jumpToWeek2(user: ReturnType<typeof userEvent.setup>) {
       const weekTrigger = screen.getByText('Week').closest('div')!.querySelector('button')!
       await user.click(weekTrigger)
@@ -471,16 +441,18 @@ describe('TimeTravelSheet', () => {
       await user.click(weekOption)
     }
 
-    it('calls updateActiveProgram with selected position and closes on success', async () => {
+    it('calls updateActiveProgram with back-calculated start date and position', async () => {
       mockValidatePosition.mockReturnValue(true)
+      mockComputeDateFromPosition.mockReturnValue('2025-05-25')
       const onOpenChange = vi.fn()
       const user = userEvent.setup()
       renderSheet({ onOpenChange })
 
       await jumpToWeek2(user)
-      await user.click(screen.getByRole('button', { name: 'Jump to position' }))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
 
       expect(mockUpdateActiveProgram).toHaveBeenCalledWith('user-1', {
+        startDate: '2025-05-25',
         currentBlockOrdinal: 1,
         currentWeekNumber: 2,
       })
@@ -489,85 +461,75 @@ describe('TimeTravelSheet', () => {
 
     it('calls upsertStatusesAsync with labeled weeks only (filters out unmarked)', async () => {
       mockValidatePosition.mockReturnValue(true)
+      mockComputeDateFromPosition.mockReturnValue('2025-05-04')
       const onOpenChange = vi.fn()
       const user = userEvent.setup()
       renderSheet({ onOpenChange })
 
-      // Jump to Block 2 Week 1 (forward, creates intermediate weeks)
       await jumpToBlock2(user)
 
-      // Mark first intermediate week (Accumulation, Week 2) as "Done"
       const week2Row = screen.getByText('Accumulation, Week 2').closest('div')!
       await user.click(within(week2Row).getByText('Done'))
 
-      // Leave second intermediate (Accumulation, Week 3) as unmarked
+      await user.click(screen.getByRole('button', { name: 'Save' }))
 
-      await user.click(screen.getByRole('button', { name: 'Jump to position' }))
-
-      // Should only include the "done" week, not the "unmarked" one
       expect(mockUpsertStatusesAsync).toHaveBeenCalledWith([
         { blockOrdinal: 1, weekNumber: 2, status: 'done' },
       ])
-      // Sheet closes
       expect(onOpenChange).toHaveBeenCalledWith(false)
     })
 
     it('does not call upsertStatusesAsync when all intermediate weeks are unmarked', async () => {
       mockValidatePosition.mockReturnValue(true)
+      mockComputeDateFromPosition.mockReturnValue('2025-05-04')
       const user = userEvent.setup()
       renderSheet()
 
-      // Jump to Block 2 (intermediate weeks default to unmarked)
       await jumpToBlock2(user)
-      await user.click(screen.getByRole('button', { name: 'Jump to position' }))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
 
       expect(mockUpdateActiveProgram).toHaveBeenCalled()
       expect(mockUpsertStatusesAsync).not.toHaveBeenCalled()
     })
 
-    it('renders step-1 error when updateActiveProgram rejects', async () => {
+    it('renders error when updateActiveProgram rejects', async () => {
       mockValidatePosition.mockReturnValue(true)
+      mockComputeDateFromPosition.mockReturnValue('2025-05-25')
       mockUpdateActiveProgram.mockRejectedValueOnce(new Error('DB error'))
       const onOpenChange = vi.fn()
       const user = userEvent.setup()
       renderSheet({ onOpenChange })
 
       await jumpToWeek2(user)
-      await user.click(screen.getByRole('button', { name: 'Jump to position' }))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
 
-      expect(screen.getByText('Failed to save position. Please try again.')).toBeInTheDocument()
+      expect(screen.getByText('Failed to save. Please try again.')).toBeInTheDocument()
       expect(onOpenChange).not.toHaveBeenCalledWith(false)
-      // upsertStatusesAsync should NOT be called if step 1 fails
       expect(mockUpsertStatusesAsync).not.toHaveBeenCalled()
     })
 
     it('renders step-2 error when upsertStatusesAsync rejects', async () => {
       mockValidatePosition.mockReturnValue(true)
+      mockComputeDateFromPosition.mockReturnValue('2025-05-04')
       mockUpsertStatusesAsync.mockRejectedValueOnce(new Error('Upsert failed'))
       const onOpenChange = vi.fn()
       const user = userEvent.setup()
       renderSheet({ onOpenChange })
 
-      // Jump forward with labeled weeks to trigger upsertStatusesAsync
       await jumpToBlock2(user)
-
-      // Mark all intermediate weeks as done so upsertStatusesAsync will be called
       await user.click(screen.getByText('All done'))
-      await user.click(screen.getByRole('button', { name: 'Jump to position' }))
+      await user.click(screen.getByRole('button', { name: 'Save' }))
 
-      // updateActiveProgram should have succeeded
       expect(mockUpdateActiveProgram).toHaveBeenCalled()
-      // Step-2 specific error message
       expect(
         screen.getByText('Position updated, but week labels failed to save. Please try again.'),
       ).toBeInTheDocument()
-      // Sheet stays open on error
       expect(onOpenChange).not.toHaveBeenCalledWith(false)
     })
   })
 
   // -----------------------------------------------------------------------
-  // Bonus: does not render when closed
+  // 11. Does not render when closed
   // -----------------------------------------------------------------------
 
   it('does not render content when open is false', () => {

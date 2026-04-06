@@ -91,6 +91,28 @@ export function computePositionFromDate(
   return fallback
 }
 
+/**
+ * Reverse of computePositionFromDate: given a target position and today's
+ * date, back-calculate what start date would place us at that position today.
+ *
+ * Returns null if the position cannot be resolved (invalid block/week).
+ */
+export function computeDateFromPosition(
+  blockOrdinal: number,
+  weekNumber: number,
+  today: string,
+  blocks: Block[],
+  blockWeeks: BlockWeek[],
+): string | null {
+  const globalWeek = linearize(blockOrdinal, weekNumber, blocks, blockWeeks)
+  if (globalWeek < 0) return null
+
+  const todayMs = new Date(today + 'T00:00:00').getTime()
+  const startMs = todayMs - (globalWeek - 1) * 7 * MS_PER_DAY
+  const d = new Date(startMs)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
