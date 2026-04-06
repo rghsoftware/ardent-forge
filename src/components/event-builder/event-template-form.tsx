@@ -326,6 +326,7 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
             description: description.trim() || undefined,
             category: 'EVENT',
             scoring: 'NONE',
+            isPublic: false,
             eventMetadata,
           },
           groups: [], // EVENT templates have no activity groups

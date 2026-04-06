@@ -20,6 +20,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Icon } from '@/components/icon'
 import { ShareDialog } from '@/components/sharing/share-dialog'
+import { TimeTravelSheet } from '@/components/program/time-travel-sheet'
 import { SOURCE_LABELS } from '@/components/program-builder/constants'
 import { SessionTemplateCard } from '@/components/session-builder/session-template-card'
 import { EventCard } from '@/components/event-builder/event-card'
@@ -30,18 +31,29 @@ import { ExerciseSearchInput } from '@/components/exercises/exercise-search-inpu
 import { ExerciseFilterBar } from '@/components/exercises/exercise-filter-bar'
 import { ExerciseListItem } from '@/components/exercises/exercise-list-item'
 import { CreateExerciseSheet } from '@/components/exercises/create-exercise-sheet'
+import { ScopeToggle } from '@/components/shared/scope-toggle'
+import { SearchInput } from '@/components/shared/search-input'
+import { ProgramFilterBar } from '@/components/library/program-filter-bar'
+import { TemplateFilterBar } from '@/components/library/template-filter-bar'
+import { PublishDialog } from '@/components/library/publish-dialog'
 import {
   useSessionTemplates,
   useSessionTemplateFull,
   useDeleteSessionTemplate,
   useCloneSessionTemplate,
+  usePublishSessionTemplate,
+  useUnpublishSessionTemplate,
+  useClonePublicSessionTemplate,
 } from '@/hooks/use-session-templates'
 import {
   usePrograms,
   useActiveProgram,
+  useProgramFull,
   useSetActiveProgram,
   useClearActiveProgram,
   useDeleteProgram,
+  usePublishProgram,
+  useUnpublishProgram,
 } from '@/hooks/use-programs'
 import { useExercises, useRecentlyUsedExercises } from '@/hooks/use-exercises'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
@@ -49,7 +61,14 @@ import { useAuth } from '@/lib/auth'
 import { toast } from 'sonner'
 import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useOnboarding } from '@/hooks/use-onboarding'
-import type { Program, ExerciseCategory, MuscleGroup, MovementPattern } from '@/domain/types'
+import type {
+  Program,
+  ExerciseCategory,
+  MuscleGroup,
+  MovementPattern,
+  ProgramSource,
+  SessionType,
+} from '@/domain/types'
 
 export const Route = createFileRoute('/_authenticated/library')({
   component: LibraryPage,
@@ -71,9 +90,30 @@ function LibraryPage() {
   const [activeTab, setActiveTab] = useState<LibraryTab>('templates')
 
   // Template state
-  const { data: templates = [], isLoading, error } = useSessionTemplates(userId || undefined)
+  const [templateSearchQuery, setTemplateSearchQuery] = useState('')
+  const [templateCategory, setTemplateCategory] = useState<SessionType | undefined>()
+  const [templateScope, setTemplateScope] = useState<'mine' | 'public'>('mine')
+  const debouncedTemplateQuery = useDebouncedValue(templateSearchQuery, 200)
+
+  const {
+    data: templates = [],
+    isLoading,
+    error,
+  } = useSessionTemplates(userId || undefined, {
+    searchQuery: debouncedTemplateQuery || undefined,
+    category: templateCategory,
+    scope: templateScope,
+  })
   const deleteMutation = useDeleteSessionTemplate()
   const cloneMutation = useCloneSessionTemplate()
+  const publishTemplateMutation = usePublishSessionTemplate()
+  const unpublishTemplateMutation = useUnpublishSessionTemplate()
+  const clonePublicTemplateMutation = useClonePublicSessionTemplate()
+
+  const [publishTemplateTarget, setPublishTemplateTarget] = useState<{
+    id: string
+    name: string
+  } | null>(null)
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -231,7 +271,29 @@ function LibraryPage() {
       {/* Tab content */}
       {activeTab === 'templates' && (
         <div role="tabpanel" id="tabpanel-templates" aria-labelledby="tab-templates">
-          <div className="mx-auto max-w-5xl flex flex-col gap-2 px-4 pt-4 md:px-6 lg:px-8">
+          <div className="mx-auto max-w-5xl md:px-6 lg:px-8">
+            {/* Scope toggle */}
+            <div className="px-4 pt-4">
+              <ScopeToggle value={templateScope} onChange={setTemplateScope} />
+            </div>
+            {/* Search */}
+            <div className="px-4 pt-3 pb-2">
+              <SearchInput
+                value={templateSearchQuery}
+                onChange={setTemplateSearchQuery}
+                placeholder="Search templates"
+                autoFocus={false}
+              />
+            </div>
+            {/* Category filter */}
+            <div className="px-4 pb-3">
+              <TemplateFilterBar
+                activeCategory={templateCategory}
+                onCategoryChange={setTemplateCategory}
+              />
+            </div>
+          </div>
+          <div className="mx-auto max-w-5xl flex flex-col gap-2 px-4 md:px-6 lg:px-8">
             {isLoading ? (
               <>
                 <Skeleton className="h-16 w-full bg-surface-iron" />
@@ -247,70 +309,137 @@ function LibraryPage() {
                 </p>
               </div>
             ) : templates.length === 0 ? (
-              <div className="flex flex-col gap-6 py-4">
-                {/* Ghost template cards */}
-                <div className="flex flex-col gap-px opacity-25 pointer-events-none select-none">
-                  {(['Upper Push A', 'Lower B — Squat Focus'] as const).map((name) => (
-                    <div
-                      key={name}
-                      className="flex w-full items-center gap-3 bg-surface-iron px-4 py-4"
-                    >
-                      <div className="flex flex-1 flex-col gap-1">
-                        <span className="font-display text-sm font-medium text-bone-white">
-                          {name}
-                        </span>
-                        <span className="inline-flex w-fit items-center bg-surface-gunmetal text-bone-white text-[11px] px-2 py-0.5 uppercase tracking-widest">
-                          Strength
-                        </span>
+              templateScope === 'mine' && !debouncedTemplateQuery && !templateCategory ? (
+                <div className="flex flex-col gap-6 py-4">
+                  {/* Ghost template cards */}
+                  <div className="flex flex-col gap-px opacity-25 pointer-events-none select-none">
+                    {(['Upper Push A', 'Lower B — Squat Focus'] as const).map((name) => (
+                      <div
+                        key={name}
+                        className="flex w-full items-center gap-3 bg-surface-iron px-4 py-4"
+                      >
+                        <div className="flex flex-1 flex-col gap-1">
+                          <span className="font-display text-sm font-medium text-bone-white">
+                            {name}
+                          </span>
+                          <span className="inline-flex w-fit items-center bg-surface-gunmetal text-bone-white text-[11px] px-2 py-0.5 uppercase tracking-widest">
+                            Strength
+                          </span>
+                        </div>
+                        <div className="flex min-h-10 min-w-10 items-center justify-center text-warm-ash/60">
+                          <Icon name="delete" size={18} />
+                        </div>
                       </div>
-                      <div className="flex min-h-10 min-w-10 items-center justify-center text-warm-ash/60">
-                        <Icon name="delete" size={18} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
 
-                {/* Value description + CTA */}
-                <div className="flex flex-col items-center gap-4 px-2 text-center">
-                  <p className="text-sm font-heading text-warm-ash">Build your training blocks.</p>
-                  <p className="text-xs text-warm-ash/50 leading-relaxed">
-                    Session templates are reusable workout blueprints. Design a Push Day, a Tempo
-                    Run, or an EMOM -- then snap them into any program.
-                  </p>
-                  <Button
-                    variant="default"
-                    onClick={handleCreate}
-                    className="min-h-12 text-xs w-full"
-                  >
-                    <Icon name="add" size={16} />
-                    Create your first template
-                  </Button>
+                  {/* Value description + CTA */}
+                  <div className="flex flex-col items-center gap-4 px-2 text-center">
+                    <p className="text-sm font-heading text-warm-ash">
+                      Build your training blocks.
+                    </p>
+                    <p className="text-xs text-warm-ash/50 leading-relaxed">
+                      Session templates are reusable workout blueprints. Design a Push Day, a Tempo
+                      Run, or an EMOM -- then snap them into any program.
+                    </p>
+                    <Button
+                      variant="default"
+                      onClick={handleCreate}
+                      className="min-h-12 w-full text-xs"
+                    >
+                      <Icon name="add" size={16} />
+                      Create your first template
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              templates.map((template) =>
-                template.category === 'EVENT' ? (
-                  <EventCard
-                    key={template.id}
-                    template={template}
-                    onEdit={() => handleEditEvent(template.id)}
-                    onDelete={() => handleDelete(template.id)}
-                    onClone={() => cloneMutation.mutate({ id: template.id, userId })}
-                    isCloning={
-                      cloneMutation.isPending && cloneMutation.variables?.id === template.id
-                    }
-                  />
-                ) : (
-                  <SessionTemplateCard
-                    key={template.id}
-                    template={template}
-                    onEdit={() => handleEdit(template.id)}
-                    onDelete={() => handleDelete(template.id)}
-                  />
-                ),
+              ) : (
+                <div className="flex flex-col items-center gap-3 py-16">
+                  <span className="material-symbols-outlined text-4xl text-warm-ash/40">
+                    search_off
+                  </span>
+                  <p className="font-display text-sm text-warm-ash">No templates found</p>
+                </div>
               )
+            ) : (
+              templates.map((template) => {
+                const isOwned = template.userId === userId
+                return template.category === 'EVENT' ? (
+                  <div key={template.id} className="flex flex-col gap-0">
+                    <EventCard
+                      template={template}
+                      onEdit={() => handleEditEvent(template.id)}
+                      onDelete={() => handleDelete(template.id)}
+                      onClone={() => cloneMutation.mutate({ id: template.id, userId })}
+                      isCloning={
+                        cloneMutation.isPending && cloneMutation.variables?.id === template.id
+                      }
+                    />
+                    {templateScope === 'public' && (
+                      <TemplatePublicActions
+                        templateId={template.id}
+                        templateName={template.name}
+                        isOwned={isOwned}
+                        isPublic={template.isPublic}
+                        userId={template.userId}
+                        onPublish={() =>
+                          setPublishTemplateTarget({ id: template.id, name: template.name })
+                        }
+                        onUnpublish={() => unpublishTemplateMutation.mutate(template.id)}
+                        onClone={() => clonePublicTemplateMutation.mutate(template.id)}
+                        isCloning={
+                          clonePublicTemplateMutation.isPending &&
+                          clonePublicTemplateMutation.variables === template.id
+                        }
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div key={template.id} className="flex flex-col gap-0">
+                    <SessionTemplateCard
+                      template={template}
+                      onEdit={() => handleEdit(template.id)}
+                      onDelete={() => handleDelete(template.id)}
+                    />
+                    {templateScope === 'public' && (
+                      <TemplatePublicActions
+                        templateId={template.id}
+                        templateName={template.name}
+                        isOwned={isOwned}
+                        isPublic={template.isPublic}
+                        userId={template.userId}
+                        onPublish={() =>
+                          setPublishTemplateTarget({ id: template.id, name: template.name })
+                        }
+                        onUnpublish={() => unpublishTemplateMutation.mutate(template.id)}
+                        onClone={() => clonePublicTemplateMutation.mutate(template.id)}
+                        isCloning={
+                          clonePublicTemplateMutation.isPending &&
+                          clonePublicTemplateMutation.variables === template.id
+                        }
+                      />
+                    )}
+                  </div>
+                )
+              })
             )}
           </div>
+
+          {/* Publish template confirmation dialog */}
+          <PublishDialog
+            open={!!publishTemplateTarget}
+            onOpenChange={(open) => {
+              if (!open) setPublishTemplateTarget(null)
+            }}
+            mode="template"
+            entityName={publishTemplateTarget?.name ?? ''}
+            onConfirm={() => {
+              if (publishTemplateTarget) {
+                publishTemplateMutation.mutate(publishTemplateTarget.id)
+                setPublishTemplateTarget(null)
+              }
+            }}
+            isPublishing={publishTemplateMutation.isPending}
+          />
         </div>
       )}
       {activeTab === 'programs' && (
@@ -399,14 +528,40 @@ function LibraryPage() {
 
 function ProgramList({ userId }: { userId: string | undefined }) {
   const navigate = useNavigate()
-  const { data: programs = [], isLoading, error } = usePrograms(userId)
+
+  // Search, filter, scope state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeSource, setActiveSource] = useState<ProgramSource | undefined>()
+  const [scope, setScope] = useState<'mine' | 'public'>('mine')
+  const debouncedQuery = useDebouncedValue(searchQuery, 200)
+
+  const {
+    data: programs = [],
+    isLoading,
+    error,
+  } = usePrograms(userId, {
+    searchQuery: debouncedQuery || undefined,
+    source: activeSource,
+    scope,
+  })
   const { data: activeProgram, error: activeProgramError } = useActiveProgram(userId)
+  const { data: activeProgramFull, isError: activeProgramFullError } = useProgramFull(
+    activeProgram?.programId,
+  )
+  const [timeTravelOpen, setTimeTravelOpen] = useState(false)
   const setActiveMutation = useSetActiveProgram()
   const clearActiveMutation = useClearActiveProgram()
   const deleteProgramMutation = useDeleteProgram()
+  const publishProgramMutation = usePublishProgram()
+  const unpublishProgramMutation = useUnpublishProgram()
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const programToDelete = programs.find((p) => p.id === confirmDeleteId)
+
+  const [publishProgramTarget, setPublishProgramTarget] = useState<{
+    id: string
+    name: string
+  } | null>(null)
 
   const handleActivate = async (programId: string) => {
     if (!userId) {
@@ -449,100 +604,136 @@ function ProgramList({ userId }: { userId: string | undefined }) {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-2 px-4 pt-4">
-        <Skeleton className="h-24 w-full bg-surface-iron" />
-        <Skeleton className="h-24 w-full bg-surface-iron" />
-        <Skeleton className="h-24 w-full bg-surface-iron" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center gap-3 px-4 py-16">
-        <Icon name="error" size={48} className="text-destructive/60" />
-        <p className="text-center text-xs text-destructive">Failed to load programs</p>
-        <p className="text-center text-xs text-warm-ash/40">
-          {error instanceof Error ? error.message : 'An unexpected error occurred.'}
-        </p>
-      </div>
-    )
-  }
-
-  if (programs.length === 0) {
-    return (
-      <div className="flex flex-col gap-6 px-4 py-4">
-        {/* Ghost program entries */}
-        <div className="flex flex-col gap-2 opacity-25 pointer-events-none select-none">
-          {(
-            [
-              { name: '12-Week Strength Base', meta: '3 blocks · 4 days/week', active: true },
-              { name: 'Marathon Base Build', meta: '4 blocks · 5 days/week', active: false },
-            ] as const
-          ).map((p) => (
-            <div
-              key={p.name}
-              className="flex items-center justify-between bg-surface-iron px-4 py-4"
-            >
-              <div className="flex flex-col gap-1">
-                <span className="font-display text-sm font-medium text-bone-white">{p.name}</span>
-                <span className="text-xs text-warm-ash/60">{p.meta}</span>
-              </div>
-              {p.active && (
-                <span className="inline-flex items-center bg-ember/20 text-ember text-[11px] px-2 py-0.5 uppercase tracking-widest">
-                  Active
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Value description + CTA */}
-        <div className="flex flex-col items-center gap-4 text-center">
-          <p className="text-sm font-heading text-warm-ash">Structure your training.</p>
-          <p className="text-xs text-warm-ash/50 leading-relaxed">
-            Programs organize workouts into blocks and weeks. Build a strength cycle, a marathon
-            prep, or a competition block -- then execute it session by session.
-          </p>
-          <Button
-            variant="default"
-            onClick={() => navigate({ to: '/builder', search: { programId: undefined } })}
-            className="min-h-12 bg-forge text-on-forge text-xs hover:brightness-110 w-full"
-          >
-            <Icon name="add" size={16} />
-            Open Program Builder
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <>
-      {activeProgramError && (
-        <div className="mx-4 mt-4 rounded bg-warning-flare/10 px-3 py-2 text-xs text-warning-flare">
-          Could not load active program status.
-        </div>
-      )}
-      <div className="flex flex-col gap-2 px-4 pt-4">
-        {programs.map((program) => {
-          const isActive = activeProgram?.programId === program.id
-
-          return (
-            <ProgramCard
-              key={program.id}
-              program={program}
-              isActive={isActive}
-              onActivate={() => handleActivate(program.id)}
-              onDeactivate={handleDeactivate}
-              onEdit={() => handleEdit(program.id)}
-              onDelete={() => setConfirmDeleteId(program.id)}
-            />
-          )
-        })}
+      {/* Scope toggle */}
+      <div className="px-4 pt-4">
+        <ScopeToggle value={scope} onChange={setScope} />
       </div>
+      {/* Search */}
+      <div className="px-4 pt-3 pb-2">
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search programs"
+          autoFocus={false}
+        />
+      </div>
+      {/* Source filter */}
+      <div className="px-4 pb-3">
+        <ProgramFilterBar activeSource={activeSource} onSourceChange={setActiveSource} />
+      </div>
+
+      {isLoading ? (
+        <div className="flex flex-col gap-2 px-4">
+          <Skeleton className="h-24 w-full bg-surface-iron" />
+          <Skeleton className="h-24 w-full bg-surface-iron" />
+          <Skeleton className="h-24 w-full bg-surface-iron" />
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center gap-3 px-4 py-16">
+          <Icon name="error" size={48} className="text-destructive/60" />
+          <p className="text-center text-xs text-destructive">Failed to load programs</p>
+          <p className="text-center text-xs text-warm-ash/40">
+            {error instanceof Error ? error.message : 'An unexpected error occurred.'}
+          </p>
+        </div>
+      ) : programs.length === 0 ? (
+        scope === 'mine' && !debouncedQuery && !activeSource ? (
+          <div className="flex flex-col gap-6 px-4 py-4">
+            {/* Ghost program entries */}
+            <div className="pointer-events-none flex select-none flex-col gap-2 opacity-25">
+              {(
+                [
+                  { name: '12-Week Strength Base', meta: '3 blocks · 4 days/week', active: true },
+                  { name: 'Marathon Base Build', meta: '4 blocks · 5 days/week', active: false },
+                ] as const
+              ).map((p) => (
+                <div
+                  key={p.name}
+                  className="flex items-center justify-between bg-surface-iron px-4 py-4"
+                >
+                  <div className="flex flex-col gap-1">
+                    <span className="font-display text-sm font-medium text-bone-white">
+                      {p.name}
+                    </span>
+                    <span className="text-xs text-warm-ash/60">{p.meta}</span>
+                  </div>
+                  {p.active && (
+                    <span className="inline-flex items-center bg-ember/20 px-2 py-0.5 text-[11px] uppercase tracking-widest text-ember">
+                      Active
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Value description + CTA */}
+            <div className="flex flex-col items-center gap-4 text-center">
+              <p className="font-heading text-sm text-warm-ash">Structure your training.</p>
+              <p className="text-xs leading-relaxed text-warm-ash/50">
+                Programs organize workouts into blocks and weeks. Build a strength cycle, a marathon
+                prep, or a competition block -- then execute it session by session.
+              </p>
+              <Button
+                variant="default"
+                onClick={() => navigate({ to: '/builder', search: { programId: undefined } })}
+                className="min-h-12 w-full bg-forge text-xs text-on-forge hover:brightness-110"
+              >
+                <Icon name="add" size={16} />
+                Open Program Builder
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3 py-16">
+            <span className="material-symbols-outlined text-4xl text-warm-ash/40">search_off</span>
+            <p className="font-display text-sm text-warm-ash">No programs found</p>
+          </div>
+        )
+      ) : (
+        <>
+          {activeProgramError && (
+            <div className="mx-4 mt-4 rounded bg-warning-flare/10 px-3 py-2 text-xs text-warning-flare">
+              Could not load active program status.
+            </div>
+          )}
+          <div className="flex flex-col gap-2 px-4">
+            {programs.map((program) => {
+              const isActive = activeProgram?.programId === program.id
+              const isOwned = program.userId === userId
+
+              return (
+                <div key={program.id} className="flex flex-col gap-0">
+                  <ProgramCard
+                    program={program}
+                    isActive={isActive}
+                    onActivate={() => handleActivate(program.id)}
+                    onDeactivate={handleDeactivate}
+                    onEdit={() => handleEdit(program.id)}
+                    onDelete={() => setConfirmDeleteId(program.id)}
+                    onTimeTravel={
+                      isActive && activeProgramFull
+                        ? () => setTimeTravelOpen(true)
+                        : isActive && activeProgramFullError
+                          ? () => toast.error('Failed to load program data. Please try again.')
+                          : undefined
+                    }
+                    scope={scope}
+                    isOwned={isOwned}
+                    onPublish={() =>
+                      setPublishProgramTarget({ id: program.id, name: program.name })
+                    }
+                    onUnpublish={() => unpublishProgramMutation.mutate(program.id)}
+                    isPublic={program.isPublic}
+                    authorId={program.userId}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
 
       {/* Confirm delete dialog */}
       <Dialog open={!!confirmDeleteId} onOpenChange={() => setConfirmDeleteId(null)}>
@@ -578,6 +769,33 @@ function ProgramList({ userId }: { userId: string | undefined }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Publish program confirmation dialog */}
+      <PublishDialog
+        open={!!publishProgramTarget}
+        onOpenChange={(open) => {
+          if (!open) setPublishProgramTarget(null)
+        }}
+        mode="program"
+        entityName={publishProgramTarget?.name ?? ''}
+        onConfirm={() => {
+          if (publishProgramTarget) {
+            publishProgramMutation.mutate(publishProgramTarget.id)
+            setPublishProgramTarget(null)
+          }
+        }}
+        isPublishing={publishProgramMutation.isPending}
+      />
+
+      {/* Time Travel Sheet */}
+      {activeProgram && activeProgramFull && (
+        <TimeTravelSheet
+          open={timeTravelOpen}
+          onOpenChange={setTimeTravelOpen}
+          activation={activeProgram}
+          programFull={activeProgramFull}
+        />
+      )}
     </>
   )
 }
@@ -704,6 +922,71 @@ function ExerciseList({ userId }: { userId: string | undefined }) {
 }
 
 // ---------------------------------------------------------------------------
+// Template public actions (placeholder for public visibility feature)
+// ---------------------------------------------------------------------------
+
+function TemplatePublicActions({
+  isOwned,
+  isPublic,
+  templateName,
+  onPublish,
+  onUnpublish,
+  onClone,
+  isCloning,
+}: {
+  templateId: string
+  templateName: string
+  isOwned: boolean
+  isPublic: boolean
+  userId: string
+  onPublish: () => void
+  onUnpublish: () => void
+  onClone: () => void
+  isCloning: boolean
+}) {
+  if (isOwned) {
+    return (
+      <div className="flex items-center justify-end bg-surface-iron px-4 pb-3">
+        {isPublic ? (
+          <button
+            type="button"
+            onClick={onUnpublish}
+            className="flex min-h-[36px] items-center gap-1 px-2 text-xs text-warm-ash hover:text-bone-white"
+            aria-label={`Unpublish ${templateName}`}
+          >
+            <span className="material-symbols-outlined text-base">visibility_off</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onPublish}
+            className="flex min-h-[36px] items-center gap-1 px-2 text-xs text-ember hover:brightness-110"
+            aria-label={`Publish ${templateName}`}
+          >
+            <span className="material-symbols-outlined text-base">publish</span>
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center justify-end bg-surface-iron px-4 pb-3">
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={isCloning}
+        onClick={onClone}
+        className="min-h-[36px] text-xs"
+        aria-label={`Clone ${templateName}`}
+      >
+        {isCloning ? 'Cloning...' : 'Clone'}
+      </Button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Program card component
 // ---------------------------------------------------------------------------
 
@@ -714,6 +997,7 @@ function ProgramCard({
   onDeactivate,
   onEdit,
   onDelete,
+  onTimeTravel,
 }: {
   program: Program
   isActive: boolean
@@ -721,6 +1005,13 @@ function ProgramCard({
   onDeactivate: () => void
   onEdit: () => void
   onDelete: () => void
+  onTimeTravel?: () => void
+  scope?: 'mine' | 'public'
+  isOwned?: boolean
+  onPublish?: () => void
+  onUnpublish?: () => void
+  isPublic?: boolean
+  authorId?: string
 }) {
   const totalWeeks = program.durationWeeks ?? 0
 
@@ -767,6 +1058,17 @@ function ProgramCard({
           <Button variant="default" onClick={onActivate} className="min-h-12 flex-1 text-xs">
             Activate
           </Button>
+        )}
+
+        {onTimeTravel && (
+          <button
+            type="button"
+            onClick={onTimeTravel}
+            className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-ember"
+            aria-label={`Time travel -- adjust position for ${program.name}`}
+          >
+            <Icon name="history" size={18} />
+          </button>
         )}
 
         <ShareDialog

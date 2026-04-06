@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   DataAdapter,
   ExerciseFilters,
+  ProgramFilters,
+  SessionTemplateFilters,
   ProgramFull,
   SessionTemplateFull,
   VaultSummary,
@@ -26,6 +28,8 @@ import type {
   BlockWeek,
   ScheduledSession,
   ProgramActivation,
+  WeekStatus,
+  WeekStatusValue,
   ShareLink,
   ShareableEntityType,
   WeeklyVolumeEntry,
@@ -58,6 +62,7 @@ import type {
   BlockWeekRow,
   ScheduledSessionRow,
   ProgramActivationRow,
+  ProgramWeekStatusRow,
   ShareLinkRow,
   EventItemRow,
   ConversationRow,
@@ -106,6 +111,7 @@ import {
   fromMessage,
   toMediaAttachment,
   fromMediaAttachment,
+  toWeekStatus,
 } from './data-mapper'
 import {
   toAccountabilityGroup,
@@ -134,10 +140,11 @@ export class SupabaseAdapter implements DataAdapter {
   // ---------------------------------------------------------------------------
 
   async getExercises(filters?: ExerciseFilters): Promise<Exercise[]> {
-    // When a search query is provided, use the search_exercises Postgres function
-    // which searches both name and aliases. Additional filters are applied client-side
-    // since the RPC returns full exercise rows.
-    if (filters?.searchQuery) {
+    const isPublicScope = filters?.scope === 'public'
+
+    // For public scope, use a direct query instead of the RPC since the RPC
+    // may be scoped to the current user's exercises.
+    if (filters?.searchQuery && !isPublicScope) {
       const { data, error } = await this.client.rpc('search_exercises', {
         query_text: filters.searchQuery,
       })
@@ -161,9 +168,17 @@ export class SupabaseAdapter implements DataAdapter {
       return exercises.sort((a, b) => a.name.localeCompare(b.name))
     }
 
-    // No search query -- use standard table query with column filters
+    // Direct table query with column filters
     let query = this.client.from('exercises').select('*')
 
+    if (isPublicScope) {
+      // Public scope: show public custom exercises from all users
+      query = query.eq('is_public', true).eq('is_custom', true)
+    }
+
+    if (filters?.searchQuery) {
+      query = query.ilike('name', `%${filters.searchQuery}%`)
+    }
     if (filters?.category) {
       query = query.eq('category', filters.category)
     }
@@ -173,7 +188,7 @@ export class SupabaseAdapter implements DataAdapter {
     if (filters?.muscleGroup) {
       query = query.contains('muscle_groups', { primary: [filters.muscleGroup] })
     }
-    if (filters?.isCustom !== undefined) {
+    if (filters?.isCustom !== undefined && !isPublicScope) {
       query = query.eq('is_custom', filters.isCustom)
     }
 
@@ -586,12 +601,26 @@ export class SupabaseAdapter implements DataAdapter {
   // Session template operations
   // ---------------------------------------------------------------------------
 
-  async getSessionTemplates(userId: string): Promise<SessionTemplate[]> {
-    const { data, error } = await this.client
-      .from('session_templates')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+  async getSessionTemplates(
+    userId: string,
+    filters?: SessionTemplateFilters,
+  ): Promise<SessionTemplate[]> {
+    let query = this.client.from('session_templates').select('*')
+
+    if (filters?.scope === 'public') {
+      query = query.eq('is_public', true)
+    } else {
+      query = query.eq('user_id', userId)
+    }
+
+    if (filters?.searchQuery) {
+      query = query.ilike('name', `%${filters.searchQuery}%`)
+    }
+    if (filters?.category) {
+      query = query.eq('category', filters.category)
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false })
     if (error) throw error
     return (data as SessionTemplateRow[]).map(toSessionTemplate)
   }
@@ -896,12 +925,23 @@ export class SupabaseAdapter implements DataAdapter {
   // Program operations
   // ---------------------------------------------------------------------------
 
-  async getPrograms(userId: string): Promise<Program[]> {
-    const { data, error } = await this.client
-      .from('programs')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+  async getPrograms(userId: string, filters?: ProgramFilters): Promise<Program[]> {
+    let query = this.client.from('programs').select('*')
+
+    if (filters?.scope === 'public') {
+      query = query.eq('is_public', true)
+    } else {
+      query = query.eq('user_id', userId)
+    }
+
+    if (filters?.searchQuery) {
+      query = query.ilike('name', `%${filters.searchQuery}%`)
+    }
+    if (filters?.source) {
+      query = query.eq('source', filters.source)
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false })
     if (error) throw error
     return (data as ProgramRow[]).map(toProgram)
   }
@@ -1128,6 +1168,99 @@ export class SupabaseAdapter implements DataAdapter {
   }
 
   // ---------------------------------------------------------------------------
+  // Public visibility operations
+  // ---------------------------------------------------------------------------
+
+  async publishProgram(programId: string): Promise<void> {
+    try {
+      const { error } = await this.client.rpc('publish_program', {
+        p_program_id: programId,
+      })
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to publish program:', err)
+      throw err
+    }
+  }
+
+  async publishSessionTemplate(templateId: string): Promise<void> {
+    try {
+      const { error } = await this.client.rpc('publish_session_template', {
+        p_template_id: templateId,
+      })
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to publish session template:', err)
+      throw err
+    }
+  }
+
+  async publishExercise(exerciseId: string): Promise<void> {
+    try {
+      const { error } = await this.client
+        .from('exercises')
+        .update({ is_public: true })
+        .eq('id', exerciseId)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to publish exercise:', err)
+      throw err
+    }
+  }
+
+  async unpublishProgram(programId: string): Promise<void> {
+    try {
+      const { error } = await this.client
+        .from('programs')
+        .update({ is_public: false })
+        .eq('id', programId)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to unpublish program:', err)
+      throw err
+    }
+  }
+
+  async unpublishSessionTemplate(templateId: string): Promise<void> {
+    try {
+      const { error } = await this.client
+        .from('session_templates')
+        .update({ is_public: false })
+        .eq('id', templateId)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to unpublish session template:', err)
+      throw err
+    }
+  }
+
+  async unpublishExercise(exerciseId: string): Promise<void> {
+    try {
+      const { error } = await this.client
+        .from('exercises')
+        .update({ is_public: false })
+        .eq('id', exerciseId)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to unpublish exercise:', err)
+      throw err
+    }
+  }
+
+  async clonePublicSessionTemplate(templateId: string): Promise<string> {
+    try {
+      const { data, error } = await this.client.rpc('clone_session_template', {
+        p_template_id: templateId,
+      })
+      if (error) throw error
+      return data as string
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to clone session template:', err)
+      throw err
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Program activation operations
   // ---------------------------------------------------------------------------
 
@@ -1168,7 +1301,7 @@ export class SupabaseAdapter implements DataAdapter {
 
   async updateActiveProgram(
     userId: string,
-    updates: { currentBlockOrdinal?: number; currentWeekNumber?: number },
+    updates: { currentBlockOrdinal?: number; currentWeekNumber?: number; startDate?: string },
   ): Promise<ProgramActivation> {
     const row: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -1178,6 +1311,9 @@ export class SupabaseAdapter implements DataAdapter {
     }
     if (updates.currentWeekNumber !== undefined) {
       row.current_week_number = updates.currentWeekNumber
+    }
+    if (updates.startDate !== undefined) {
+      row.start_date = updates.startDate
     }
 
     const { data, error } = await this.client
@@ -1192,6 +1328,59 @@ export class SupabaseAdapter implements DataAdapter {
 
   async clearActiveProgram(userId: string): Promise<void> {
     const { error } = await this.client.from('program_activations').delete().eq('user_id', userId)
+    if (error) throw error
+  }
+
+  // ---------------------------------------------------------------------------
+  // Week status operations (Program Time Travel)
+  // ---------------------------------------------------------------------------
+
+  async getWeekStatuses(activationId: string): Promise<WeekStatus[]> {
+    const { data, error } = await this.client
+      .from('program_week_statuses')
+      .select('*')
+      .eq('activation_id', activationId)
+      .order('block_ordinal', { ascending: true })
+      .order('week_number', { ascending: true })
+    if (error) throw error
+    return (data as ProgramWeekStatusRow[]).map(toWeekStatus)
+  }
+
+  async upsertWeekStatuses(
+    activationId: string,
+    statuses: Array<{ blockOrdinal: number; weekNumber: number; status: WeekStatusValue }>,
+  ): Promise<WeekStatus[]> {
+    const rows = statuses.map((s) => ({
+      activation_id: activationId,
+      block_ordinal: s.blockOrdinal,
+      week_number: s.weekNumber,
+      status: s.status,
+    }))
+
+    const { error } = await this.client
+      .from('program_week_statuses')
+      .upsert(rows, { onConflict: 'activation_id,block_ordinal,week_number' })
+    if (error) throw error
+
+    return this.getWeekStatuses(activationId)
+  }
+
+  async deleteWeekStatuses(
+    activationId: string,
+    keys: Array<{ blockOrdinal: number; weekNumber: number }>,
+  ): Promise<void> {
+    if (keys.length === 0) return
+
+    // Supabase JS client doesn't support tuple IN clauses, so build an .or() filter
+    const orFilter = keys
+      .map((k) => `and(block_ordinal.eq.${k.blockOrdinal},week_number.eq.${k.weekNumber})`)
+      .join(',')
+
+    const { error } = await this.client
+      .from('program_week_statuses')
+      .delete()
+      .eq('activation_id', activationId)
+      .or(orFilter)
     if (error) throw error
   }
 
@@ -1607,11 +1796,20 @@ export class SupabaseAdapter implements DataAdapter {
   async requestConnection(recipientId: string): Promise<DirectConnection> {
     const userId = await this.getCurrentUserId()
 
+    let resolvedId = recipientId
+    if (recipientId.includes('@')) {
+      const { data, error: lookupError } = await this.client.rpc('resolve_user_id_by_email', {
+        lookup_email: recipientId,
+      })
+      if (lookupError) throw lookupError
+      resolvedId = data as string
+    }
+
     const { data, error } = await this.client
       .from('direct_connections')
       .insert({
         requester_id: userId,
-        recipient_id: recipientId,
+        recipient_id: resolvedId,
       })
       .select()
       .single()

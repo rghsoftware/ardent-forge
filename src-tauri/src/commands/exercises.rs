@@ -140,8 +140,8 @@ pub async fn create_exercise(
 
     sqlx::query(
         "INSERT INTO exercises (id, name, aliases, category, movement_pattern, muscle_groups, \
-         is_bilateral, supports_1rm, equipment_required, is_custom, created_at, updated_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)",
+         is_bilateral, supports_1rm, equipment_required, is_custom, is_public, created_at, updated_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)",
     )
     .bind(&id)
     .bind(&exercise.name)

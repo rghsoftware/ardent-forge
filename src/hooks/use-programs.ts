@@ -1,15 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAdapter } from '@/lib/adapter'
+import { toast } from 'sonner'
+import type { ProgramFilters } from '@/lib/data-adapter'
 import type { Program, Block, BlockWeek, ScheduledSession } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // Query hooks
 // ---------------------------------------------------------------------------
 
-export function usePrograms(userId: string | undefined) {
+export function usePrograms(userId: string | undefined, filters?: ProgramFilters) {
   return useQuery({
-    queryKey: ['programs', userId],
-    queryFn: () => getAdapter().getPrograms(userId!),
+    queryKey: ['programs', userId, filters],
+    queryFn: () => getAdapter().getPrograms(userId!, filters),
     enabled: !!userId,
   })
 }
@@ -160,6 +162,36 @@ export function useClearActiveProgram() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['active-program'] })
+    },
+  })
+}
+
+export function usePublishProgram() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (programId: string) => getAdapter().publishProgram(programId),
+    onError: (err) => {
+      console.error('[programs] Failed to publish program:', err)
+      toast('Failed to publish program. Please try again.')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['programs'] })
+    },
+  })
+}
+
+export function useUnpublishProgram() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (programId: string) => getAdapter().unpublishProgram(programId),
+    onError: (err) => {
+      console.error('[programs] Failed to unpublish program:', err)
+      toast('Failed to unpublish program. Please try again.')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['programs'] })
     },
   })
 }

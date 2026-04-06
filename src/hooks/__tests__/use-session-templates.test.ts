@@ -52,7 +52,7 @@ describe('useSessionTemplates', () => {
 
     expect(result.current.data).toHaveLength(2)
     expect(result.current.data![0].name).toBe('Upper Body')
-    expect(mockAdapter.getSessionTemplates).toHaveBeenCalledWith('user-1')
+    expect(mockAdapter.getSessionTemplates).toHaveBeenCalledWith('user-1', undefined)
   })
 
   it('does not fetch when userId is undefined', async () => {
@@ -143,6 +143,7 @@ describe('useCreateSessionTemplate', () => {
         name: 'New Template',
         category: 'STRENGTH',
         scoring: 'NONE',
+        isPublic: false,
       },
       groups: [
         {

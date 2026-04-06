@@ -73,6 +73,11 @@ export function createMockAdapter(
     updateActiveProgram: vi.fn().mockResolvedValue({}),
     clearActiveProgram: vi.fn().mockResolvedValue(undefined),
 
+    // Week status operations
+    getWeekStatuses: vi.fn().mockResolvedValue([]),
+    upsertWeekStatuses: vi.fn().mockResolvedValue([]),
+    deleteWeekStatuses: vi.fn().mockResolvedValue(undefined),
+
     // Share link operations
     getShareLinks: vi.fn().mockResolvedValue([]),
     getShareLinksForEntity: vi.fn().mockResolvedValue([]),
@@ -136,6 +141,17 @@ export function createMockAdapter(
     saveMediaAttachment: vi.fn().mockResolvedValue({}),
     getMediaAttachments: vi.fn().mockResolvedValue([]),
     updateMediaAttachment: vi.fn().mockResolvedValue({}),
+
+    // Publish / unpublish operations
+    publishProgram: vi.fn().mockResolvedValue(undefined),
+    publishSessionTemplate: vi.fn().mockResolvedValue(undefined),
+    publishExercise: vi.fn().mockResolvedValue(undefined),
+    unpublishProgram: vi.fn().mockResolvedValue(undefined),
+    unpublishSessionTemplate: vi.fn().mockResolvedValue(undefined),
+    unpublishExercise: vi.fn().mockResolvedValue(undefined),
+
+    // Clone operations
+    clonePublicSessionTemplate: vi.fn().mockResolvedValue('cloned-id'),
   }
 
   return { ...base, ...overrides }

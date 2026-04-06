@@ -21,6 +21,7 @@ pub struct CreateSessionTemplateInput {
     pub rest_between_groups: Option<String>,
     pub time_cap: Option<String>,
     pub scoring: String,
+    pub is_public: Option<bool>,
 }
 
 #[derive(serde::Deserialize)]
@@ -196,8 +197,8 @@ pub async fn create_session_template_full(
     sqlx::query(
         "INSERT INTO session_templates \
          (id, user_id, name, description, category, rest_between_groups, \
-          time_cap, scoring, created_at, updated_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          time_cap, scoring, is_public, created_at, updated_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&template_id)
     .bind(&template.user_id)
@@ -207,6 +208,7 @@ pub async fn create_session_template_full(
     .bind(&template.rest_between_groups)
     .bind(&template.time_cap)
     .bind(&template.scoring)
+    .bind(template.is_public.unwrap_or(false) as i64)
     .bind(now)
     .bind(now)
     .execute(&mut *tx)
@@ -336,7 +338,7 @@ pub async fn update_session_template_full(
     let result = sqlx::query(
         "UPDATE session_templates SET \
          user_id = ?, name = ?, description = ?, category = ?, \
-         rest_between_groups = ?, time_cap = ?, scoring = ?, updated_at = ? \
+         rest_between_groups = ?, time_cap = ?, scoring = ?, is_public = ?, updated_at = ? \
          WHERE id = ?",
     )
     .bind(&template.user_id)
@@ -346,6 +348,7 @@ pub async fn update_session_template_full(
     .bind(&template.rest_between_groups)
     .bind(&template.time_cap)
     .bind(&template.scoring)
+    .bind(template.is_public.unwrap_or(false) as i64)
     .bind(now)
     .bind(&template_id)
     .execute(&mut *tx)

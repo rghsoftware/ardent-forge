@@ -1,11 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAdapter } from '@/lib/adapter'
+import { toast } from 'sonner'
+import type { SessionTemplateFilters } from '@/lib/data-adapter'
 import type { SessionTemplate, ActivityGroup, Activity } from '@/domain/types'
 
-export function useSessionTemplates(userId: string | undefined) {
+export function useSessionTemplates(userId: string | undefined, filters?: SessionTemplateFilters) {
   return useQuery({
-    queryKey: ['session-templates', userId],
-    queryFn: () => getAdapter().getSessionTemplates(userId!),
+    queryKey: ['session-templates', userId, filters],
+    queryFn: () => getAdapter().getSessionTemplates(userId!, filters),
     enabled: !!userId,
   })
 }
@@ -108,6 +110,51 @@ export function useDeleteSessionTemplate() {
     mutationFn: (id: string) => getAdapter().deleteSessionTemplate(id),
     onError: (err) => {
       console.error('[session-templates] Failed to delete template:', err)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['session-templates'] })
+    },
+  })
+}
+
+export function usePublishSessionTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (templateId: string) => getAdapter().publishSessionTemplate(templateId),
+    onError: (err) => {
+      console.error('[session-templates] Failed to publish template:', err)
+      toast('Failed to publish template. Please try again.')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['session-templates'] })
+    },
+  })
+}
+
+export function useUnpublishSessionTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (templateId: string) => getAdapter().unpublishSessionTemplate(templateId),
+    onError: (err) => {
+      console.error('[session-templates] Failed to unpublish template:', err)
+      toast('Failed to unpublish template. Please try again.')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['session-templates'] })
+    },
+  })
+}
+
+export function useClonePublicSessionTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (templateId: string) => getAdapter().clonePublicSessionTemplate(templateId),
+    onError: (err) => {
+      console.error('[session-templates] Failed to clone public template:', err)
+      toast('Failed to clone template. Please try again.')
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['session-templates'] })

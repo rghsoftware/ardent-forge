@@ -20,6 +20,7 @@ const baseSessionTemplate = {
   name: 'Upper Body Strength',
   category: 'STRENGTH',
   scoring: 'NONE',
+  isPublic: false,
 }
 
 const baseActivity = {

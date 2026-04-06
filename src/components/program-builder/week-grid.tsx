@@ -56,6 +56,11 @@ export function WeekGrid({
     onCopyWeek(week.clientId)
   }, [week.clientId, onCopyWeek])
 
+  const isLastWeek = useMemo(() => {
+    const block = draft.blocks.find((b) => b.clientId === blockClientId)
+    return !block || block.weeks.length <= 1
+  }, [draft.blocks, blockClientId])
+
   const handleRemoveWeek = useCallback(() => {
     onUpdate(removeWeekFromBlock(draft, blockClientId, week.clientId))
   }, [draft, blockClientId, week.clientId, onUpdate])
@@ -102,8 +107,14 @@ export function WeekGrid({
         <button
           type="button"
           onClick={() => setShowWeekDeleteConfirm(true)}
-          className="flex items-center gap-1 px-1.5 py-1 text-xs font-medium text-warm-ash/70 hover:text-warning-flare"
+          disabled={isLastWeek}
+          className={`flex items-center gap-1 px-1.5 py-1 text-xs font-medium ${
+            isLastWeek
+              ? 'cursor-not-allowed text-warm-ash/30'
+              : 'text-warm-ash/70 hover:text-warning-flare'
+          }`}
           aria-label={`Remove week ${weekIndex + 1}`}
+          title={isLastWeek ? 'A block must have at least one week' : undefined}
         >
           <Icon name="delete" size={16} />
           Delete

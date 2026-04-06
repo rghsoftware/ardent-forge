@@ -52,7 +52,7 @@ describe('usePrograms', () => {
 
     expect(result.current.data).toHaveLength(2)
     expect(result.current.data![0].name).toBe('Program A')
-    expect(mockAdapter.getPrograms).toHaveBeenCalledWith('user-1')
+    expect(mockAdapter.getPrograms).toHaveBeenCalledWith('user-1', undefined)
   })
 
   it('does not fetch when userId is undefined', async () => {
