@@ -136,6 +136,17 @@ export function createMockAdapter(
     saveMediaAttachment: vi.fn().mockResolvedValue({}),
     getMediaAttachments: vi.fn().mockResolvedValue([]),
     updateMediaAttachment: vi.fn().mockResolvedValue({}),
+
+    // Publish / unpublish operations
+    publishProgram: vi.fn().mockResolvedValue(undefined),
+    publishSessionTemplate: vi.fn().mockResolvedValue(undefined),
+    publishExercise: vi.fn().mockResolvedValue(undefined),
+    unpublishProgram: vi.fn().mockResolvedValue(undefined),
+    unpublishSessionTemplate: vi.fn().mockResolvedValue(undefined),
+    unpublishExercise: vi.fn().mockResolvedValue(undefined),
+
+    // Clone operations
+    clonePublicSessionTemplate: vi.fn().mockResolvedValue('cloned-id'),
   }
 
   return { ...base, ...overrides }

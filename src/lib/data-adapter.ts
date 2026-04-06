@@ -29,7 +29,13 @@ import type {
   MessageType,
   MediaAttachment,
 } from '@/domain/types'
-import type { ExerciseCategory, MovementPattern, MuscleGroup } from '@/domain/types'
+import type {
+  ExerciseCategory,
+  MovementPattern,
+  MuscleGroup,
+  ProgramSource,
+  SessionType,
+} from '@/domain/types'
 import type { WeeklyVolumeEntry } from '@/domain/types'
 
 export type WorkoutWithSets = { log: WorkoutLog; sets: LoggedSet[] }
@@ -107,6 +113,19 @@ export interface ExerciseFilters {
   muscleGroup?: MuscleGroup
   searchQuery?: string
   isCustom?: boolean
+  scope?: 'mine' | 'public'
+}
+
+export interface ProgramFilters {
+  searchQuery?: string
+  source?: ProgramSource
+  scope?: 'mine' | 'public'
+}
+
+export interface SessionTemplateFilters {
+  searchQuery?: string
+  category?: SessionType
+  scope?: 'mine' | 'public'
 }
 
 /**
@@ -175,7 +194,7 @@ export interface DataAdapter {
   ): Promise<OneRepMaxHistory>
 
   // Session template operations
-  getSessionTemplates(userId: string): Promise<SessionTemplate[]>
+  getSessionTemplates(userId: string, filters?: SessionTemplateFilters): Promise<SessionTemplate[]>
   getSessionTemplate(id: string): Promise<SessionTemplate | null>
   getSessionTemplateFull(id: string): Promise<SessionTemplateFull | null>
   createSessionTemplateFull(
@@ -209,7 +228,7 @@ export interface DataAdapter {
   reorderEventItems(items: Array<{ id: string; sortOrder: number }>): Promise<void>
 
   // Program operations
-  getPrograms(userId: string): Promise<Program[]>
+  getPrograms(userId: string, filters?: ProgramFilters): Promise<Program[]>
   getProgramFull(id: string): Promise<ProgramFull | null>
   createProgramFull(
     program: Omit<Program, 'id' | 'createdAt' | 'updatedAt'>,
@@ -237,6 +256,15 @@ export interface DataAdapter {
   ): Promise<ProgramFull>
   deleteProgram(id: string): Promise<void>
   assignProgramToMember(programId: string, memberId: string, groupId: string): Promise<Program>
+
+  // Public visibility operations
+  publishProgram(programId: string): Promise<void>
+  publishSessionTemplate(templateId: string): Promise<void>
+  publishExercise(exerciseId: string): Promise<void>
+  unpublishProgram(programId: string): Promise<void>
+  unpublishSessionTemplate(templateId: string): Promise<void>
+  unpublishExercise(exerciseId: string): Promise<void>
+  clonePublicSessionTemplate(templateId: string): Promise<string>
 
   // Program activation operations
   getActiveProgram(userId: string): Promise<ProgramActivation | null>

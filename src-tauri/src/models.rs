@@ -17,6 +17,7 @@ pub struct ExerciseRow {
     pub supports_1rm: Option<i32>,          // boolean 0/1
     pub equipment_required: Option<String>, // JSON array
     pub is_custom: Option<i32>,             // boolean, default 0
+    pub is_public: Option<i32>,             // boolean, default 0
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
@@ -170,6 +171,7 @@ pub struct SessionTemplateRow {
     pub rest_between_groups: Option<String>, // JSON Duration
     pub time_cap: Option<String>,            // JSON Duration
     pub scoring: String,
+    pub is_public: i64,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub last_assigned_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]

@@ -240,6 +240,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
             category,
             description: description.trim() || undefined,
             scoring,
+            isPublic: false,
             timeCap,
             restBetweenGroups,
           },

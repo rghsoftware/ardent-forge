@@ -89,6 +89,7 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
         supports1RM: values.supports1RM,
         isBilateral: values.isBilateral,
         isCustom: true,
+        isPublic: false,
       })
       reset()
       onOpenChange(false)

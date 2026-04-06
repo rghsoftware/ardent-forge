@@ -12,6 +12,7 @@ export interface ExerciseRow {
   supports_1rm: boolean
   equipment_required: unknown
   is_custom: boolean
+  is_public: boolean
   user_id: string | null
   created_at: string
   updated_at: string
@@ -112,6 +113,7 @@ export interface SessionTemplateRow {
   scoring: string
   event_metadata: string | null
   last_assigned_at: string | null
+  is_public: boolean
   created_at: string
   updated_at: string
 }

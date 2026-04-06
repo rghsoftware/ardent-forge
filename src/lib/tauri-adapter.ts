@@ -5,8 +5,10 @@ import type {
   DataAdapter,
   ExerciseFilters,
   GroupActivityFeedEntry,
+  ProgramFilters,
   ProgramFull,
   SessionTemplateFull,
+  SessionTemplateFilters,
   VaultSummary,
   WorkoutLogSummary,
   WorkoutWithSets,
@@ -121,6 +123,7 @@ interface TauriExerciseResponse {
   supports_1rm: number | null
   equipment_required: string | null
   is_custom: number | null
+  is_public: number | null
   created_at: string | null
   updated_at: string | null
 }
@@ -236,6 +239,7 @@ interface TauriSessionTemplateResponse {
   rest_between_groups: string | null
   time_cap: string | null
   scoring: string
+  is_public: number // 0 or 1 in SQLite
   last_assigned_at: string | null
   created_at: string | null
   updated_at: string | null
@@ -587,6 +591,7 @@ function toExerciseRow(r: TauriExerciseResponse): ExerciseRow {
     supports_1rm: intToBool(r.supports_1rm),
     equipment_required: parseJson(r.equipment_required, 'equipment_required'),
     is_custom: intToBool(r.is_custom),
+    is_public: intToBool(r.is_public),
     user_id: null,
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
@@ -701,6 +706,7 @@ function toSessionTemplateRowFromTauri(r: TauriSessionTemplateResponse): Session
     rest_between_groups: r.rest_between_groups,
     time_cap: r.time_cap,
     scoring: r.scoring,
+    is_public: r.is_public !== 0,
     event_metadata: null, // Event features deferred for Tauri offline mode (W-8)
     last_assigned_at: r.last_assigned_at ?? null,
     created_at: r.created_at ?? new Date().toISOString(),
@@ -945,6 +951,12 @@ export class TauriAdapter implements DataAdapter {
   // ---------------------------------------------------------------------------
 
   async getExercises(filters?: ExerciseFilters): Promise<Exercise[]> {
+    // Public scope requires an internet connection -- not available offline
+    if (filters?.scope === 'public') {
+      console.warn('[tauri-adapter] Public exercise browsing requires an internet connection')
+      return []
+    }
+
     // Build the Rust ExerciseFilters shape
     const rustFilters = filters
       ? {
@@ -1372,11 +1384,38 @@ export class TauriAdapter implements DataAdapter {
   // Session template operations
   // ---------------------------------------------------------------------------
 
-  async getSessionTemplates(userId: string): Promise<SessionTemplate[]> {
+  async getSessionTemplates(
+    userId: string,
+    filters?: SessionTemplateFilters,
+  ): Promise<SessionTemplate[]> {
+    // Public scope requires an internet connection -- not available offline
+    if (filters?.scope === 'public') {
+      console.warn(
+        '[tauri-adapter] Public session template browsing requires an internet connection',
+      )
+      return []
+    }
+
     const rows = await invokeCommand<TauriSessionTemplateResponse[]>('get_session_templates', {
       user_id: userId,
     })
-    return rows.map((r) => toSessionTemplate(toSessionTemplateRowFromTauri(r)))
+
+    let templates = rows.map((r) => toSessionTemplate(toSessionTemplateRowFromTauri(r)))
+
+    // Apply client-side filters for searchQuery and category
+    if (filters?.searchQuery) {
+      const q = filters.searchQuery.toLowerCase()
+      templates = templates.filter(
+        (t) =>
+          t.name.toLowerCase().includes(q) ||
+          (t.description && t.description.toLowerCase().includes(q)),
+      )
+    }
+    if (filters?.category) {
+      templates = templates.filter((t) => t.category === filters.category)
+    }
+
+    return templates
   }
 
   async getSessionTemplate(id: string): Promise<SessionTemplate | null> {
@@ -1416,6 +1455,7 @@ export class TauriAdapter implements DataAdapter {
       rest_between_groups: partial.rest_between_groups ?? null,
       time_cap: partial.time_cap ?? null,
       scoring: partial.scoring ?? null,
+      is_public: partial.is_public ?? false,
     }
 
     const groupsInput = groups.map((g) => {
@@ -1470,6 +1510,7 @@ export class TauriAdapter implements DataAdapter {
       rest_between_groups: partial.rest_between_groups ?? null,
       time_cap: partial.time_cap ?? null,
       scoring: partial.scoring ?? null,
+      is_public: partial.is_public ?? false,
     }
 
     const groupsInput = groups.map((g) => {
@@ -1521,6 +1562,38 @@ export class TauriAdapter implements DataAdapter {
   }
 
   // ---------------------------------------------------------------------------
+  // Public visibility operations (online-only -- require Supabase)
+  // ---------------------------------------------------------------------------
+
+  async publishProgram(_programId: string): Promise<void> {
+    throw new Error('Publishing requires an internet connection')
+  }
+
+  async publishSessionTemplate(_templateId: string): Promise<void> {
+    throw new Error('Publishing requires an internet connection')
+  }
+
+  async publishExercise(_exerciseId: string): Promise<void> {
+    throw new Error('Publishing requires an internet connection')
+  }
+
+  async unpublishProgram(_programId: string): Promise<void> {
+    throw new Error('Unpublishing requires an internet connection')
+  }
+
+  async unpublishSessionTemplate(_templateId: string): Promise<void> {
+    throw new Error('Unpublishing requires an internet connection')
+  }
+
+  async unpublishExercise(_exerciseId: string): Promise<void> {
+    throw new Error('Unpublishing requires an internet connection')
+  }
+
+  async clonePublicSessionTemplate(_templateId: string): Promise<string> {
+    throw new Error('Cloning public templates requires an internet connection')
+  }
+
+  // ---------------------------------------------------------------------------
   // Event item operations (deferred for offline/Tauri -- W-8)
   // ---------------------------------------------------------------------------
 
@@ -1556,11 +1629,33 @@ export class TauriAdapter implements DataAdapter {
   // Program operations
   // ---------------------------------------------------------------------------
 
-  async getPrograms(userId: string): Promise<Program[]> {
+  async getPrograms(userId: string, filters?: ProgramFilters): Promise<Program[]> {
+    // Public scope requires an internet connection -- not available offline
+    if (filters?.scope === 'public') {
+      console.warn('[tauri-adapter] Public program browsing requires an internet connection')
+      return []
+    }
+
     const rows = await invokeCommand<TauriProgramResponse[]>('get_programs', {
       user_id: userId,
     })
-    return rows.map((r) => toProgram(toProgramRowFromTauri(r)))
+
+    let programs = rows.map((r) => toProgram(toProgramRowFromTauri(r)))
+
+    // Apply client-side filters for searchQuery and source
+    if (filters?.searchQuery) {
+      const q = filters.searchQuery.toLowerCase()
+      programs = programs.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.description && p.description.toLowerCase().includes(q)),
+      )
+    }
+    if (filters?.source) {
+      programs = programs.filter((p) => p.source === filters.source)
+    }
+
+    return programs
   }
 
   async getProgramFull(id: string): Promise<ProgramFull | null> {

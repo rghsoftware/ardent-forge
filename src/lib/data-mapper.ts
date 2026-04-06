@@ -121,6 +121,7 @@ export function toExercise(row: ExerciseRow): Exercise {
     supports1RM: row.supports_1rm,
     equipmentRequired: z.array(equipmentSchema).parse(row.equipment_required),
     isCustom: row.is_custom,
+    isPublic: row.is_public,
   }
 }
 
@@ -137,6 +138,7 @@ export function fromExercise(
     supports_1rm: exercise.supports1RM,
     equipment_required: exercise.equipmentRequired,
     is_custom: exercise.isCustom,
+    is_public: exercise.isPublic,
   }
 }
 
@@ -382,6 +384,7 @@ export function toSessionTemplate(row: SessionTemplateRow): SessionTemplate {
         ? eventMetadataSchema.parse(parseJsonOrValue(row.event_metadata))
         : undefined,
     lastAssignedAt: row.last_assigned_at ?? undefined,
+    isPublic: row.is_public,
   }
 }
 
@@ -399,6 +402,7 @@ export function fromSessionTemplate(
     time_cap: template.timeCap ? JSON.stringify(template.timeCap) : null,
     scoring: template.scoring,
     event_metadata: template.eventMetadata ? JSON.stringify(template.eventMetadata) : null,
+    is_public: template.isPublic,
   }
 }
 

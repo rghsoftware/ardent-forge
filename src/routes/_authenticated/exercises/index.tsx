@@ -2,12 +2,19 @@ import { useEffect, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useAuth } from '@/lib/auth'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import { useExercises, useRecentlyUsedExercises } from '@/hooks/use-exercises'
-import type { ExerciseCategory, MuscleGroup, MovementPattern } from '@/domain/types'
+import {
+  useExercises,
+  useRecentlyUsedExercises,
+  usePublishExercise,
+  useUnpublishExercise,
+} from '@/hooks/use-exercises'
+import type { ExerciseCategory, MuscleGroup, MovementPattern, Exercise } from '@/domain/types'
 import { ExerciseSearchInput } from '@/components/exercises/exercise-search-input'
 import { ExerciseFilterBar } from '@/components/exercises/exercise-filter-bar'
 import { ExerciseListItem } from '@/components/exercises/exercise-list-item'
 import { CreateExerciseSheet } from '@/components/exercises/create-exercise-sheet'
+import { ScopeToggle } from '@/components/shared/scope-toggle'
+import { PublishDialog } from '@/components/library/publish-dialog'
 import { Icon } from '@/components/icon'
 import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -45,11 +52,13 @@ function ExercisesPage() {
     markRouteVisited('/exercises')
   }, [markRouteVisited])
 
+  const [scope, setScope] = useState<'mine' | 'public'>('mine')
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<ExerciseCategory | undefined>()
   const [activeMuscleGroup, setActiveMuscleGroup] = useState<MuscleGroup | undefined>()
   const [activeMovementPattern, setActiveMovementPattern] = useState<MovementPattern | undefined>()
   const [showCreateSheet, setShowCreateSheet] = useState(false)
+  const [publishTarget, setPublishTarget] = useState<Exercise | null>(null)
 
   const debouncedQuery = useDebouncedValue(searchQuery, 200)
 
@@ -65,11 +74,29 @@ function ExercisesPage() {
     category: activeCategory,
     muscleGroup: activeMuscleGroup,
     movementPattern: activeMovementPattern,
+    scope,
   })
 
   const { data: recentlyUsed, isLoading: isLoadingRecent } = useRecentlyUsedExercises(userId)
 
-  const isLoading = isLoadingExercises || (!hasActiveFilters && isLoadingRecent)
+  const publishExercise = usePublishExercise()
+  const unpublishExercise = useUnpublishExercise()
+
+  const isLoading = isLoadingExercises || (scope === 'mine' && !hasActiveFilters && isLoadingRecent)
+
+  const handlePublishConfirm = () => {
+    if (!publishTarget) {
+      console.error('[exercises] Cannot publish: no target exercise selected')
+      return
+    }
+    publishExercise.mutate(publishTarget.id, {
+      onSuccess: () => setPublishTarget(null),
+    })
+  }
+
+  const handleUnpublish = (exercise: Exercise) => {
+    unpublishExercise.mutate(exercise.id)
+  }
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
@@ -77,6 +104,11 @@ function ExercisesPage() {
       <div className="flex items-center gap-3 px-4 pt-6 pb-4">
         <Icon name="fitness_center" size={24} className="text-warm-ash" />
         <h1 className="font-display text-2xl font-medium text-bone-white">Exercise Library</h1>
+      </div>
+
+      {/* Scope toggle */}
+      <div className="px-4 pt-2 pb-1">
+        <ScopeToggle value={scope} onChange={setScope} />
       </div>
 
       {/* Search */}
@@ -113,7 +145,13 @@ function ExercisesPage() {
           <>
             {exercises && exercises.length > 0 ? (
               exercises.map((exercise) => (
-                <ExerciseListItem key={exercise.id} exercise={exercise} />
+                <ExerciseListItemWithActions
+                  key={exercise.id}
+                  exercise={exercise}
+                  scope={scope}
+                  onPublish={setPublishTarget}
+                  onUnpublish={handleUnpublish}
+                />
               ))
             ) : (
               <div className="flex flex-col items-center justify-center px-4 py-16">
@@ -125,9 +163,10 @@ function ExercisesPage() {
             )}
           </>
         ) : (
-          /* Default view -- recently used + all exercises */
+          /* Default view */
           <>
-            {recentlyUsed && recentlyUsed.length > 0 && (
+            {/* Recently used -- only shown in "mine" scope */}
+            {scope === 'mine' && recentlyUsed && recentlyUsed.length > 0 && (
               <>
                 <div className="px-4 py-2">
                   <h2 className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
@@ -135,7 +174,13 @@ function ExercisesPage() {
                   </h2>
                 </div>
                 {recentlyUsed.map((exercise) => (
-                  <ExerciseListItem key={exercise.id} exercise={exercise} />
+                  <ExerciseListItemWithActions
+                    key={exercise.id}
+                    exercise={exercise}
+                    scope={scope}
+                    onPublish={setPublishTarget}
+                    onUnpublish={handleUnpublish}
+                  />
                 ))}
                 <div className="h-4" />
               </>
@@ -143,18 +188,28 @@ function ExercisesPage() {
 
             <div className="px-4 py-2">
               <h2 className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
-                ALL EXERCISES
+                {scope === 'mine' ? 'ALL EXERCISES' : 'PUBLIC EXERCISES'}
               </h2>
             </div>
             {exercises && exercises.length > 0 ? (
               exercises.map((exercise) => (
-                <ExerciseListItem key={exercise.id} exercise={exercise} />
+                <ExerciseListItemWithActions
+                  key={exercise.id}
+                  exercise={exercise}
+                  scope={scope}
+                  onPublish={setPublishTarget}
+                  onUnpublish={handleUnpublish}
+                />
               ))
             ) : (
               <EmptyState
                 icon="fitness_center"
-                heading="No exercises found"
-                subtext="Exercises will appear here after your first workout, or create a custom exercise below."
+                heading={scope === 'mine' ? 'No exercises found' : 'No public exercises yet'}
+                subtext={
+                  scope === 'mine'
+                    ? 'Exercises will appear here after your first workout, or create a custom exercise below.'
+                    : 'Public exercises shared by the community will appear here.'
+                }
               />
             )}
           </>
@@ -173,6 +228,75 @@ function ExercisesPage() {
       </div>
 
       <CreateExerciseSheet open={showCreateSheet} onOpenChange={setShowCreateSheet} />
+
+      {/* Publish confirmation dialog */}
+      <PublishDialog
+        open={!!publishTarget}
+        onOpenChange={(open) => {
+          if (!open) setPublishTarget(null)
+        }}
+        mode="exercise"
+        entityName={publishTarget?.name ?? ''}
+        onConfirm={handlePublishConfirm}
+        isPublishing={publishExercise.isPending}
+      />
+    </div>
+  )
+}
+
+/** Wraps ExerciseListItem with optional publish/unpublish actions for custom exercises */
+function ExerciseListItemWithActions({
+  exercise,
+  scope,
+  onPublish,
+  onUnpublish,
+}: {
+  exercise: Exercise
+  scope: 'mine' | 'public'
+  onPublish: (exercise: Exercise) => void
+  onUnpublish: (exercise: Exercise) => void
+}) {
+  // For custom exercises in "mine" scope, show publish/unpublish action
+  const showPublishAction = exercise.isCustom && scope === 'mine'
+
+  if (!showPublishAction) {
+    return <ExerciseListItem exercise={exercise} />
+  }
+
+  return (
+    <div className="flex items-center bg-surface-iron">
+      <div className="min-w-0 flex-1">
+        <ExerciseListItem exercise={exercise} />
+      </div>
+      <div className="shrink-0 pr-4">
+        {exercise.isPublic ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onUnpublish(exercise)
+            }}
+            className="flex min-h-[36px] items-center gap-1 px-2 text-xs text-warm-ash hover:text-bone-white"
+            aria-label={`Unpublish ${exercise.name}`}
+          >
+            <span className="material-symbols-outlined text-base">visibility_off</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onPublish(exercise)
+            }}
+            className="flex min-h-[36px] items-center gap-1 px-2 text-xs text-ember hover:brightness-110"
+            aria-label={`Publish ${exercise.name}`}
+          >
+            <span className="material-symbols-outlined text-base">publish</span>
+          </button>
+        )}
+      </div>
     </div>
   )
 }

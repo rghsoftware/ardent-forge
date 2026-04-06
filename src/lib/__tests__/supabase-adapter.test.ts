@@ -42,6 +42,7 @@ const exerciseRow: ExerciseRow = {
   supports_1rm: true,
   equipment_required: ['BARBELL', 'SQUAT_RACK'],
   is_custom: false,
+  is_public: false,
   user_id: null,
   created_at: now,
   updated_at: now,
@@ -160,6 +161,7 @@ const sessionTemplateRow: SessionTemplateRow = {
   rest_between_groups: JSON.stringify({ seconds: 120 }),
   time_cap: null,
   scoring: 'NONE',
+  is_public: false,
   event_metadata: null,
   last_assigned_at: null,
   created_at: now,
@@ -398,6 +400,7 @@ describe('Exercise operations', () => {
         supports1RM: true,
         equipmentRequired: ['BARBELL', 'SQUAT_RACK'],
         isCustom: true,
+        isPublic: false,
       })
 
       expect(mockClient.from).toHaveBeenCalledWith('exercises')
@@ -422,6 +425,7 @@ describe('Exercise operations', () => {
           supports1RM: false,
           equipmentRequired: ['NONE'],
           isCustom: true,
+          isPublic: false,
         }),
       ).rejects.toThrow('Not authenticated')
     })
@@ -904,6 +908,7 @@ describe('Session template operations', () => {
           name: 'Heavy Upper',
           category: 'STRENGTH',
           scoring: 'NONE',
+          isPublic: false,
         },
         [
           {
@@ -950,6 +955,7 @@ describe('Session template operations', () => {
           name: 'Heavy Upper Updated',
           category: 'STRENGTH',
           scoring: 'NONE',
+          isPublic: false,
         },
         [
           {

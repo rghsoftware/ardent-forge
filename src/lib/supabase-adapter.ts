@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   DataAdapter,
   ExerciseFilters,
+  ProgramFilters,
+  SessionTemplateFilters,
   ProgramFull,
   SessionTemplateFull,
   VaultSummary,
@@ -134,10 +136,11 @@ export class SupabaseAdapter implements DataAdapter {
   // ---------------------------------------------------------------------------
 
   async getExercises(filters?: ExerciseFilters): Promise<Exercise[]> {
-    // When a search query is provided, use the search_exercises Postgres function
-    // which searches both name and aliases. Additional filters are applied client-side
-    // since the RPC returns full exercise rows.
-    if (filters?.searchQuery) {
+    const isPublicScope = filters?.scope === 'public'
+
+    // For public scope, use a direct query instead of the RPC since the RPC
+    // may be scoped to the current user's exercises.
+    if (filters?.searchQuery && !isPublicScope) {
       const { data, error } = await this.client.rpc('search_exercises', {
         query_text: filters.searchQuery,
       })
@@ -161,9 +164,17 @@ export class SupabaseAdapter implements DataAdapter {
       return exercises.sort((a, b) => a.name.localeCompare(b.name))
     }
 
-    // No search query -- use standard table query with column filters
+    // Direct table query with column filters
     let query = this.client.from('exercises').select('*')
 
+    if (isPublicScope) {
+      // Public scope: show public custom exercises from all users
+      query = query.eq('is_public', true).eq('is_custom', true)
+    }
+
+    if (filters?.searchQuery) {
+      query = query.ilike('name', `%${filters.searchQuery}%`)
+    }
     if (filters?.category) {
       query = query.eq('category', filters.category)
     }
@@ -173,7 +184,7 @@ export class SupabaseAdapter implements DataAdapter {
     if (filters?.muscleGroup) {
       query = query.contains('muscle_groups', { primary: [filters.muscleGroup] })
     }
-    if (filters?.isCustom !== undefined) {
+    if (filters?.isCustom !== undefined && !isPublicScope) {
       query = query.eq('is_custom', filters.isCustom)
     }
 
@@ -586,12 +597,26 @@ export class SupabaseAdapter implements DataAdapter {
   // Session template operations
   // ---------------------------------------------------------------------------
 
-  async getSessionTemplates(userId: string): Promise<SessionTemplate[]> {
-    const { data, error } = await this.client
-      .from('session_templates')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+  async getSessionTemplates(
+    userId: string,
+    filters?: SessionTemplateFilters,
+  ): Promise<SessionTemplate[]> {
+    let query = this.client.from('session_templates').select('*')
+
+    if (filters?.scope === 'public') {
+      query = query.eq('is_public', true)
+    } else {
+      query = query.eq('user_id', userId)
+    }
+
+    if (filters?.searchQuery) {
+      query = query.ilike('name', `%${filters.searchQuery}%`)
+    }
+    if (filters?.category) {
+      query = query.eq('category', filters.category)
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false })
     if (error) throw error
     return (data as SessionTemplateRow[]).map(toSessionTemplate)
   }
@@ -896,12 +921,23 @@ export class SupabaseAdapter implements DataAdapter {
   // Program operations
   // ---------------------------------------------------------------------------
 
-  async getPrograms(userId: string): Promise<Program[]> {
-    const { data, error } = await this.client
-      .from('programs')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
+  async getPrograms(userId: string, filters?: ProgramFilters): Promise<Program[]> {
+    let query = this.client.from('programs').select('*')
+
+    if (filters?.scope === 'public') {
+      query = query.eq('is_public', true)
+    } else {
+      query = query.eq('user_id', userId)
+    }
+
+    if (filters?.searchQuery) {
+      query = query.ilike('name', `%${filters.searchQuery}%`)
+    }
+    if (filters?.source) {
+      query = query.eq('source', filters.source)
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false })
     if (error) throw error
     return (data as ProgramRow[]).map(toProgram)
   }
@@ -1125,6 +1161,99 @@ export class SupabaseAdapter implements DataAdapter {
     })
     if (error) throw error
     return toProgram(data)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Public visibility operations
+  // ---------------------------------------------------------------------------
+
+  async publishProgram(programId: string): Promise<void> {
+    try {
+      const { error } = await this.client.rpc('publish_program', {
+        p_program_id: programId,
+      })
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to publish program:', err)
+      throw err
+    }
+  }
+
+  async publishSessionTemplate(templateId: string): Promise<void> {
+    try {
+      const { error } = await this.client.rpc('publish_session_template', {
+        p_template_id: templateId,
+      })
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to publish session template:', err)
+      throw err
+    }
+  }
+
+  async publishExercise(exerciseId: string): Promise<void> {
+    try {
+      const { error } = await this.client
+        .from('exercises')
+        .update({ is_public: true })
+        .eq('id', exerciseId)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to publish exercise:', err)
+      throw err
+    }
+  }
+
+  async unpublishProgram(programId: string): Promise<void> {
+    try {
+      const { error } = await this.client
+        .from('programs')
+        .update({ is_public: false })
+        .eq('id', programId)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to unpublish program:', err)
+      throw err
+    }
+  }
+
+  async unpublishSessionTemplate(templateId: string): Promise<void> {
+    try {
+      const { error } = await this.client
+        .from('session_templates')
+        .update({ is_public: false })
+        .eq('id', templateId)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to unpublish session template:', err)
+      throw err
+    }
+  }
+
+  async unpublishExercise(exerciseId: string): Promise<void> {
+    try {
+      const { error } = await this.client
+        .from('exercises')
+        .update({ is_public: false })
+        .eq('id', exerciseId)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to unpublish exercise:', err)
+      throw err
+    }
+  }
+
+  async clonePublicSessionTemplate(templateId: string): Promise<string> {
+    try {
+      const { data, error } = await this.client.rpc('clone_session_template', {
+        p_template_id: templateId,
+      })
+      if (error) throw error
+      return data as string
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to clone session template:', err)
+      throw err
+    }
   }
 
   // ---------------------------------------------------------------------------

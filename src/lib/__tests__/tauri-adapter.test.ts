@@ -42,6 +42,7 @@ const tauriExerciseResponse = {
   supports_1rm: 1,
   equipment_required: JSON.stringify(['BARBELL', 'SQUAT_RACK']),
   is_custom: 0,
+  is_public: 0,
   created_at: now,
   updated_at: now,
 }
@@ -158,6 +159,7 @@ const tauriSessionTemplateResponse = {
   rest_between_groups: JSON.stringify({ seconds: 120 }),
   time_cap: null,
   scoring: 'NONE',
+  is_public: 0,
   last_assigned_at: null,
   created_at: now,
   updated_at: now,
@@ -650,6 +652,7 @@ describe('Exercise operations', () => {
         supports1RM: true,
         equipmentRequired: ['BARBELL', 'SQUAT_RACK'],
         isCustom: true,
+        isPublic: false,
       })
 
       expect(mockInvoke).toHaveBeenCalledWith('create_exercise', {
@@ -1388,6 +1391,7 @@ describe('Session template operations', () => {
           name: 'Heavy Upper',
           category: 'STRENGTH',
           scoring: 'NONE',
+          isPublic: false,
         },
         [
           {
@@ -1443,6 +1447,7 @@ describe('Session template operations', () => {
           name: 'Heavy Upper Updated',
           category: 'STRENGTH',
           scoring: 'NONE',
+          isPublic: false,
         },
         [
           {
