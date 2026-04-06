@@ -42,11 +42,13 @@
       "mobile": [
         {
           "schemes": ["ardentforge"],
-          "host": "auth"
+          "host": "auth",
+          "appLink": false
         },
         {
           "schemes": ["ardentforge"],
-          "host": "connect"
+          "host": "connect",
+          "appLink": false
         }
       ]
     }
