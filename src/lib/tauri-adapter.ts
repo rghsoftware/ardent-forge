@@ -1982,6 +1982,12 @@ export class TauriAdapter implements DataAdapter {
   // ---------------------------------------------------------------------------
 
   async requestConnection(recipientId: string): Promise<DirectConnection> {
+    if (recipientId.includes('@')) {
+      throw new Error(
+        'Email lookup requires an internet connection. Please use the user ID instead.',
+      )
+    }
+
     const row = await invokeCommand<TauriDirectConnectionResponse>('request_connection', {
       requester_id: this.userId,
       recipient_id: recipientId,

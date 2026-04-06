@@ -1607,11 +1607,20 @@ export class SupabaseAdapter implements DataAdapter {
   async requestConnection(recipientId: string): Promise<DirectConnection> {
     const userId = await this.getCurrentUserId()
 
+    let resolvedId = recipientId
+    if (recipientId.includes('@')) {
+      const { data, error: lookupError } = await this.client.rpc('resolve_user_id_by_email', {
+        lookup_email: recipientId,
+      })
+      if (lookupError) throw lookupError
+      resolvedId = data as string
+    }
+
     const { data, error } = await this.client
       .from('direct_connections')
       .insert({
         requester_id: userId,
-        recipient_id: recipientId,
+        recipient_id: resolvedId,
       })
       .select()
       .single()
