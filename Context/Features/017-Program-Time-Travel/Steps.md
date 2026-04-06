@@ -5,9 +5,9 @@
 
 ## Progress
 
-- **Status:** Not started
+- **Status:** Complete
 - **Current task:** --
-- **Last milestone:** --
+- **Last milestone:** Feature complete
 
 ## Team Orchestration
 
@@ -42,31 +42,31 @@
 
 ### Phase 1: Domain Types & Pure Functions
 
-- [ ] S001: Add `WeekStatus` domain type to `src/domain/types/program.ts` -- add `weekStatusValueSchema` (`'done' | 'skipped'`), `weekStatusSchema` (id, activationId, blockOrdinal, weekNumber, status, createdAt), and exported types. Add barrel export in `src/domain/types/index.ts`.
+- [x] S001: Add `WeekStatus` domain type to `src/domain/types/program.ts` -- add `weekStatusValueSchema` (`'done' | 'skipped'`), `weekStatusSchema` (id, activationId, blockOrdinal, weekNumber, status, createdAt), and exported types. Add barrel export in `src/domain/types/index.ts`.
   - **Assigned:** builder-domain
   - **Depends:** none
   - **Parallel:** false
-- [ ] S001-T: Test WeekStatus Zod schema validation (valid status values accepted, invalid rejected, required fields enforced, date format validated)
+- [x] S001-T: Test WeekStatus Zod schema validation (valid status values accepted, invalid rejected, required fields enforced, date format validated)
   - **Assigned:** builder-domain
   - **Depends:** S001
   - **Parallel:** false
-- [ ] S002: Create `src/lib/program-position.ts` with two pure functions: (1) `computePositionFromDate(startDate, today, blocks, blockWeeks)` -- computes globalWeek from date diff, walks blocks in ordinal order to find blockOrdinal + weekNumber, clamps to last position if past program end. (2) `validateProgramPosition(blockOrdinal, weekNumber, blocks, blockWeeks)` -- returns boolean for whether the position exists in the program structure.
+- [x] S002: Create `src/lib/program-position.ts` with two pure functions: (1) `computePositionFromDate(startDate, today, blocks, blockWeeks)` -- computes globalWeek from date diff, walks blocks in ordinal order to find blockOrdinal + weekNumber, clamps to last position if past program end. (2) `validateProgramPosition(blockOrdinal, weekNumber, blocks, blockWeeks)` -- returns boolean for whether the position exists in the program structure.
   - **Assigned:** builder-domain
   - **Depends:** none
   - **Parallel:** true
-- [ ] S002-T: Test `computePositionFromDate` and `validateProgramPosition` (same-day start returns week 1 block 1, 7 days later returns week 2, block boundary crossing, past-program-end clamps to last week, multi-block programs, single-week blocks, invalid block ordinal rejected, invalid week number for block rejected, empty blocks array edge case)
+- [x] S002-T: Test `computePositionFromDate` and `validateProgramPosition` (same-day start returns week 1 block 1, 7 days later returns week 2, block boundary crossing, past-program-end clamps to last week, multi-block programs, single-week blocks, invalid block ordinal rejected, invalid week number for block rejected, empty blocks array edge case)
   - **Assigned:** builder-domain
   - **Depends:** S002
   - **Parallel:** false
-- [ ] S003: Extend `DataAdapter` interface in `src/lib/data-adapter.ts` -- add `startDate?: string` to `updateActiveProgram` updates parameter. Add `getWeekStatuses(activationId: string): Promise<WeekStatus[]>` and `upsertWeekStatuses(activationId: string, statuses: Array<{blockOrdinal: number, weekNumber: number, status: 'done' | 'skipped'}>): Promise<WeekStatus[]>` methods.
+- [x] S003: Extend `DataAdapter` interface in `src/lib/data-adapter.ts` -- add `startDate?: string` to `updateActiveProgram` updates parameter. Add `getWeekStatuses(activationId: string): Promise<WeekStatus[]>` and `upsertWeekStatuses(activationId: string, statuses: Array<{blockOrdinal: number, weekNumber: number, status: 'done' | 'skipped'}>): Promise<WeekStatus[]>` methods.
   - **Assigned:** builder-domain
   - **Depends:** S001
   - **Parallel:** true
-- [ ] S004: Add `ProgramWeekStatusRow` type to `src/lib/database.types.ts`. Add `toWeekStatus` and `fromWeekStatus` mapper functions in `src/lib/data-mapper.ts`.
+- [x] S004: Add `ProgramWeekStatusRow` type to `src/lib/database.types.ts`. Add `toWeekStatus` and `fromWeekStatus` mapper functions in `src/lib/data-mapper.ts`.
   - **Assigned:** builder-domain
   - **Depends:** S001
   - **Parallel:** true
-- [ ] S004-T: Test `toWeekStatus` and `fromWeekStatus` data mappers (round-trip conversion, field name snake_case to camelCase mapping)
+- [x] S004-T: Test `toWeekStatus` and `fromWeekStatus` data mappers (round-trip conversion, field name snake_case to camelCase mapping)
   - **Assigned:** builder-domain
   - **Depends:** S004
   - **Parallel:** false
@@ -83,27 +83,27 @@
 
 ### Phase 2: Database & Rust Backend
 
-- [ ] S005: Create Supabase migration for `program_week_statuses` table with RLS policies. Table: id (uuid PK), activation_id (FK to program_activations ON DELETE CASCADE), block_ordinal (integer), week_number (integer), status (text CHECK IN done/skipped), created_at (timestamptz). UNIQUE constraint on (activation_id, block_ordinal, week_number). RLS: separate SELECT/INSERT/UPDATE/DELETE policies joining through program_activations.user_id = auth.uid().
+- [x] S005: Create Supabase migration for `program_week_statuses` table with RLS policies. Table: id (uuid PK), activation_id (FK to program_activations ON DELETE CASCADE), block_ordinal (integer), week_number (integer), status (text CHECK IN done/skipped), created_at (timestamptz). UNIQUE constraint on (activation_id, block_ordinal, week_number). RLS: separate SELECT/INSERT/UPDATE/DELETE policies joining through program_activations.user_id = auth.uid().
   - **Assigned:** builder-db
   - **Depends:** none
   - **Parallel:** true
-- [ ] S006: Add `ProgramWeekStatusRow` struct to `src-tauri/src/models.rs`. Add `program_week_statuses` table to SQLite schema in `src-tauri/src/schema.sql` (or equivalent migration file). Fields mirror Supabase schema with SQLite types (TEXT for id, INTEGER for timestamps).
+- [x] S006: Add `ProgramWeekStatusRow` struct to `src-tauri/src/models.rs`. Add `program_week_statuses` table to SQLite schema in `src-tauri/src/schema.sql` (or equivalent migration file). Fields mirror Supabase schema with SQLite types (TEXT for id, INTEGER for timestamps).
   - **Assigned:** builder-rust
   - **Depends:** none
   - **Parallel:** true
-- [ ] S007: Create `update_active_program` Rust command in `src-tauri/src/commands/programs.rs`. Accept optional `current_block_ordinal`, `current_week_number`, and `start_date` parameters. Build dynamic SQL UPDATE that only sets provided fields. Return updated `ProgramActivationRow`. Register command in `src-tauri/src/lib.rs`.
+- [x] S007: Create `update_active_program` Rust command in `src-tauri/src/commands/programs.rs`. Accept optional `current_block_ordinal`, `current_week_number`, and `start_date` parameters. Build dynamic SQL UPDATE that only sets provided fields. Return updated `ProgramActivationRow`. Register command in `src-tauri/src/lib.rs`.
   - **Assigned:** builder-rust
   - **Depends:** S006
   - **Parallel:** false
-- [ ] S007-T: Test `update_active_program` Rust command (update only start_date, update only position, update both, no-op when no fields provided, verify updated_at changes)
+- [x] S007-T: Test `update_active_program` Rust command (update only start_date, update only position, update both, no-op when no fields provided, verify updated_at changes)
   - **Assigned:** builder-rust
   - **Depends:** S007
   - **Parallel:** false
-- [ ] S008: Create `get_week_statuses` and `upsert_week_statuses` Rust commands in `src-tauri/src/commands/programs.rs`. `get_week_statuses` accepts activation_id, returns Vec<ProgramWeekStatusRow>. `upsert_week_statuses` accepts activation_id + Vec of status inputs, uses INSERT OR REPLACE with UNIQUE constraint. Register both commands in `src-tauri/src/lib.rs`.
+- [x] S008: Create `get_week_statuses` and `upsert_week_statuses` Rust commands in `src-tauri/src/commands/programs.rs`. `get_week_statuses` accepts activation_id, returns Vec<ProgramWeekStatusRow>. `upsert_week_statuses` accepts activation_id + Vec of status inputs, uses INSERT OR REPLACE with UNIQUE constraint. Register both commands in `src-tauri/src/lib.rs`.
   - **Assigned:** builder-rust
   - **Depends:** S006
   - **Parallel:** true
-- [ ] S008-T: Test week status Rust commands (insert new statuses, upsert overwrites existing, get returns correct statuses for activation, empty result for no statuses, cascade delete when activation removed)
+- [x] S008-T: Test week status Rust commands (insert new statuses, upsert overwrites existing, get returns correct statuses for activation, empty result for no statuses, cascade delete when activation removed)
   - **Assigned:** builder-rust
   - **Depends:** S008
   - **Parallel:** false
@@ -118,27 +118,27 @@
 
 ### Phase 3: Adapter Implementations
 
-- [ ] S009: Implement `updateActiveProgram` with `startDate` support in `src/lib/supabase-adapter.ts`. Follow existing pattern: conditionally add `start_date` to the update row when provided.
+- [x] S009: Implement `updateActiveProgram` with `startDate` support in `src/lib/supabase-adapter.ts`. Follow existing pattern: conditionally add `start_date` to the update row when provided.
   - **Assigned:** builder-adapters
   - **Depends:** S003, S005
   - **Parallel:** true
-- [ ] S010: Implement `getWeekStatuses` and `upsertWeekStatuses` in `src/lib/supabase-adapter.ts`. `getWeekStatuses`: SELECT from program_week_statuses WHERE activation_id, map with `toWeekStatus`. `upsertWeekStatuses`: UPSERT using ON CONFLICT (activation_id, block_ordinal, week_number) DO UPDATE.
+- [x] S010: Implement `getWeekStatuses` and `upsertWeekStatuses` in `src/lib/supabase-adapter.ts`. `getWeekStatuses`: SELECT from program_week_statuses WHERE activation_id, map with `toWeekStatus`. `upsertWeekStatuses`: UPSERT using ON CONFLICT (activation_id, block_ordinal, week_number) DO UPDATE.
   - **Assigned:** builder-adapters
   - **Depends:** S003, S004, S005
   - **Parallel:** true
-- [ ] S011: Implement `updateActiveProgram` with `startDate` support in `src/lib/tauri-adapter.ts`. Pass `start_date` to the `update_active_program` Tauri command.
+- [x] S011: Implement `updateActiveProgram` with `startDate` support in `src/lib/tauri-adapter.ts`. Pass `start_date` to the `update_active_program` Tauri command.
   - **Assigned:** builder-adapters
   - **Depends:** S003, S007
   - **Parallel:** true
-- [ ] S012: Implement `getWeekStatuses` and `upsertWeekStatuses` in `src/lib/tauri-adapter.ts`. Call the corresponding Tauri commands, map responses through `toProgramActivationRowFromTauri`-style mappers using `toWeekStatus`.
+- [x] S012: Implement `getWeekStatuses` and `upsertWeekStatuses` in `src/lib/tauri-adapter.ts`. Call the corresponding Tauri commands, map responses through `toProgramActivationRowFromTauri`-style mappers using `toWeekStatus`.
   - **Assigned:** builder-adapters
   - **Depends:** S003, S004, S008
   - **Parallel:** true
-- [ ] S009-T: Test Supabase adapter -- updateActiveProgram with startDate, getWeekStatuses, upsertWeekStatuses (mock Supabase client, verify correct SQL shape, verify mapper usage, verify A-001 persistence, verify A-004 unmarked weeks create no records)
+- [x] S009-T: Test Supabase adapter -- updateActiveProgram with startDate, getWeekStatuses, upsertWeekStatuses (mock Supabase client, verify correct SQL shape, verify mapper usage, verify A-001 persistence, verify A-004 unmarked weeks create no records)
   - **Assigned:** builder-adapters
   - **Depends:** S009, S010
   - **Parallel:** false
-- [ ] S011-T: Test Tauri adapter -- updateActiveProgram with startDate, getWeekStatuses, upsertWeekStatuses (mock invokeCommand, verify correct args passed, verify mapper usage)
+- [x] S011-T: Test Tauri adapter -- updateActiveProgram with startDate, getWeekStatuses, upsertWeekStatuses (mock invokeCommand, verify correct args passed, verify mapper usage)
   - **Assigned:** builder-adapters
   - **Depends:** S011, S012
   - **Parallel:** false
@@ -151,32 +151,32 @@
 
 ### Phase 4: Hooks & UI Components
 
-- [ ] S013: Create `src/hooks/use-week-statuses.ts` -- TanStack Query hook wrapping `getWeekStatuses` (query) and `upsertWeekStatuses` (mutation with optimistic update and query invalidation). Follow existing hook patterns in the codebase.
+- [x] S013: Create `src/hooks/use-week-statuses.ts` -- TanStack Query hook wrapping `getWeekStatuses` (query) and `upsertWeekStatuses` (mutation with optimistic update and query invalidation). Follow existing hook patterns in the codebase.
   - **Assigned:** builder-ui
   - **Depends:** S009, S010
   - **Parallel:** false
-- [ ] S014: Create `src/components/program/time-travel-sheet.tsx` -- bottom sheet component with two sections: (1) **Start Date Edit**: date picker bound to activation.startDate, on change calls `computePositionFromDate` to preview new position, save button calls `updateActiveProgram` with new startDate + computed position. (2) **Position Jump**: block/week selector populated from program structure (validated via `validateProgramPosition`), shows current vs target position. On forward jump, renders skip label UI for intermediate weeks (each week row with done/skipped/unmarked toggle, bulk "mark all" option). Confirmation step shows summary before applying. Save calls `updateActiveProgram` for position + `upsertWeekStatuses` for any labeled weeks.
+- [x] S014: Create `src/components/program/time-travel-sheet.tsx` -- bottom sheet component with two sections: (1) **Start Date Edit**: date picker bound to activation.startDate, on change calls `computePositionFromDate` to preview new position, save button calls `updateActiveProgram` with new startDate + computed position. (2) **Position Jump**: block/week selector populated from program structure (validated via `validateProgramPosition`), shows current vs target position. On forward jump, renders skip label UI for intermediate weeks (each week row with done/skipped/unmarked toggle, bulk "mark all" option). Confirmation step shows summary before applying. Save calls `updateActiveProgram` for position + `upsertWeekStatuses` for any labeled weeks.
   - **Assigned:** builder-ui
   - **Depends:** S002, S003, S013
   - **Parallel:** false
-- [ ] S014-T: Test TimeTravelSheet component (renders current start date and position, date change shows new computed position preview, forward jump shows skip label UI for intermediate weeks, backward jump hides skip label UI, confirmation shows before/after summary, invalid position prevented by selector constraints, bulk "mark all" applies to all intermediate weeks)
+- [x] S014-T: Test TimeTravelSheet component (renders current start date and position, date change shows new computed position preview, forward jump shows skip label UI for intermediate weeks, backward jump hides skip label UI, confirmation shows before/after summary, invalid position prevented by selector constraints, bulk "mark all" applies to all intermediate weeks)
   - **Assigned:** builder-ui
   - **Depends:** S014
   - **Parallel:** false
 
-- [ ] S018-T: Test `handleStartDateSave` success and error paths -- click "Update start date" after changing date, verify `updateActiveProgram` called with correct args (startDate, computed position), verify sheet closes on success, verify error message renders on failure. Relates to A-001, A-002, A-011.
+- [x] S018-T: Test `handleStartDateSave` success and error paths -- click "Update start date" after changing date, verify `updateActiveProgram` called with correct args (startDate, computed position), verify sheet closes on success, verify error message renders on failure. Relates to A-001, A-002, A-011.
   - **Assigned:** builder-ui
   - **Depends:** S014
   - **Parallel:** false
-- [ ] S019-T: Test `handleJumpSave` success and error paths -- click "Jump to position" after valid change, verify adapter call with correct args, verify `upsertStatusesAsync` called for labeled weeks, verify unmarked-filtering logic, verify sheet closes on success, verify error rendering on failure. Relates to A-003, A-004, A-005, A-009.
+- [x] S019-T: Test `handleJumpSave` success and error paths -- click "Jump to position" after valid change, verify adapter call with correct args, verify `upsertStatusesAsync` called for labeled weeks, verify unmarked-filtering logic, verify sheet closes on success, verify error rendering on failure. Relates to A-003, A-004, A-005, A-009.
   - **Assigned:** builder-ui
   - **Depends:** S014
   - **Parallel:** false
-- [ ] S020-T: Add `useWeekStatuses` hook unit tests -- renderHook-based tests verifying optimistic cache updates (findIndex by composite key, synthetic IDs for new entries), rollback on mutation failure, and disabled query when activationId is undefined.
+- [x] S020-T: Add `useWeekStatuses` hook unit tests -- renderHook-based tests verifying optimistic cache updates (findIndex by composite key, synthetic IDs for new entries), rollback on mutation failure, and disabled query when activationId is undefined.
   - **Assigned:** builder-ui
   - **Depends:** S013
   - **Parallel:** false
-- [ ] S021: Add `deleteWeekStatuses(activationId, keys[])` method to `DataAdapter` interface and both adapter implementations -- needed for the "unmarked" removal path where a user previously labeled a week "done" and later wants it unmarked. Implement in Supabase adapter (DELETE WHERE activation_id + block_ordinal + week_number) and Tauri adapter (new Rust command `delete_week_statuses`). Relates to A-004.
+- [x] S021: Add `deleteWeekStatuses(activationId, keys[])` method to `DataAdapter` interface and both adapter implementations -- needed for the "unmarked" removal path where a user previously labeled a week "done" and later wants it unmarked. Implement in Supabase adapter (DELETE WHERE activation_id + block_ordinal + week_number) and Tauri adapter (new Rust command `delete_week_statuses`). Relates to A-004.
   - **Assigned:** builder-adapters
   - **Depends:** S003
   - **Parallel:** true
@@ -189,19 +189,19 @@
 
 ### Phase 5: Integration & Wiring
 
-- [ ] S015: Wire TimeTravelSheet into `src/components/today/program-session-card.tsx` -- add a settings/gear action button that opens the sheet. Pass activation, programFull, and callbacks. Ensure the sheet triggers query invalidation on save so the Today page re-renders with updated position.
+- [x] S015: Wire TimeTravelSheet into `src/components/today/program-session-card.tsx` -- add a settings/gear action button that opens the sheet. Pass activation, programFull, and callbacks. Ensure the sheet triggers query invalidation on save so the Today page re-renders with updated position.
   - **Assigned:** builder-ui
   - **Depends:** S014
   - **Parallel:** true
-- [ ] S016: Wire TimeTravelSheet into `src/routes/_authenticated/library.tsx` -- add a "Manage" or settings action to the active program's card/menu that opens the sheet. Pass the same props as the Today page integration.
+- [x] S016: Wire TimeTravelSheet into `src/routes/_authenticated/library.tsx` -- add a "Manage" or settings action to the active program's card/menu that opens the sheet. Pass the same props as the Today page integration.
   - **Assigned:** builder-ui
   - **Depends:** S014
   - **Parallel:** true
-- [ ] S015-T: Test Today page integration (settings button visible on program card, sheet opens with correct activation data, after save the Today page reflects new position)
+- [x] S015-T: Test Today page integration (settings button visible on program card, sheet opens with correct activation data, after save the Today page reflects new position)
   - **Assigned:** builder-ui
   - **Depends:** S015
   - **Parallel:** false
-- [ ] S016-T: Test Library page integration (manage action visible on active program card, sheet opens with correct data)
+- [x] S016-T: Test Library page integration (manage action visible on active program card, sheet opens with correct data)
   - **Assigned:** builder-ui
   - **Depends:** S016
   - **Parallel:** false
@@ -210,7 +210,7 @@
 
 ### Phase 6: Validation
 
-- [ ] S017: Full feature validation -- verify all testable assertions A-001 through A-011. Run full test suite (`bun run test`). Check TypeScript compilation (`bun run build`). Run linter (`bun run lint`). Verify Rust compilation (`cd src-tauri && cargo check`). Manual walkthrough: activate program, edit start date to 7 days ago, confirm Today shows Week 2 session. Jump forward, verify skip label UI, confirm labels persist.
+- [x] S017: Full feature validation -- verify all testable assertions A-001 through A-011. Run full test suite (`bun run test`). Check TypeScript compilation (`bun run build`). Run linter (`bun run lint`). Verify Rust compilation (`cd src-tauri && cargo check`). Manual walkthrough: activate program, edit start date to 7 days ago, confirm Today shows Week 2 session. Jump forward, verify skip label UI, confirm labels persist.
   - **Assigned:** validator
   - **Depends:** S015, S016, S015-T, S016-T
   - **Parallel:** false

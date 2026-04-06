@@ -1892,6 +1892,17 @@ export class TauriAdapter implements DataAdapter {
     return rows.map((r) => toWeekStatus(toWeekStatusRowFromTauri(r)))
   }
 
+  async deleteWeekStatuses(
+    activationId: string,
+    keys: Array<{ blockOrdinal: number; weekNumber: number }>,
+  ): Promise<void> {
+    if (keys.length === 0) return
+    await invokeCommand<void>('delete_week_statuses', {
+      activation_id: activationId,
+      keys,
+    })
+  }
+
   // ---------------------------------------------------------------------------
   // Share link operations (not supported offline -- require Supabase)
   // ---------------------------------------------------------------------------

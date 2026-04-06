@@ -407,6 +407,166 @@ describe('TimeTravelSheet', () => {
   })
 
   // -----------------------------------------------------------------------
+  // 9. handleStartDateSave -- success and error paths (S018-T)
+  // -----------------------------------------------------------------------
+
+  describe('handleStartDateSave', () => {
+    async function changeStartDate(user: ReturnType<typeof userEvent.setup>, date: string) {
+      const dateInput = screen.getByLabelText('Program start date') as HTMLInputElement
+      await user.clear(dateInput)
+      await user.type(dateInput, date)
+    }
+
+    it('calls updateActiveProgram with correct args and closes the sheet on success', async () => {
+      mockComputePosition.mockReturnValue({ blockOrdinal: 1, weekNumber: 2 })
+      const onOpenChange = vi.fn()
+      const user = userEvent.setup()
+      renderSheet({ onOpenChange })
+
+      await changeStartDate(user, '2025-05-25')
+      await user.click(screen.getByText('Update start date'))
+
+      expect(mockUpdateActiveProgram).toHaveBeenCalledWith('user-1', {
+        startDate: '2025-05-25',
+        currentBlockOrdinal: 1,
+        currentWeekNumber: 2,
+      })
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
+    it('renders error message when updateActiveProgram rejects', async () => {
+      mockComputePosition.mockReturnValue({ blockOrdinal: 1, weekNumber: 2 })
+      mockUpdateActiveProgram.mockRejectedValueOnce(new Error('Network error'))
+      const onOpenChange = vi.fn()
+      const user = userEvent.setup()
+      renderSheet({ onOpenChange })
+
+      await changeStartDate(user, '2025-05-25')
+      await user.click(screen.getByText('Update start date'))
+
+      expect(screen.getByText('Failed to save. Please try again.')).toBeInTheDocument()
+      // Sheet should remain open
+      expect(onOpenChange).not.toHaveBeenCalledWith(false)
+    })
+  })
+
+  // -----------------------------------------------------------------------
+  // 10. handleJumpSave -- success and error paths (S019-T)
+  // -----------------------------------------------------------------------
+
+  describe('handleJumpSave', () => {
+    /** Helper: jump from Block 1 Week 1 to Block 2 Week 1 (forward jump) */
+    async function jumpToBlock2(user: ReturnType<typeof userEvent.setup>) {
+      const blockTrigger = screen.getByText('Block').closest('div')!.querySelector('button')!
+      await user.click(blockTrigger)
+      const option = await screen.findByText('2. Intensification')
+      await user.click(option)
+    }
+
+    /** Helper: jump from Block 1 Week 1 to Block 1 Week 2 (simple forward) */
+    async function jumpToWeek2(user: ReturnType<typeof userEvent.setup>) {
+      const weekTrigger = screen.getByText('Week').closest('div')!.querySelector('button')!
+      await user.click(weekTrigger)
+      const weekOption = await screen.findByText('Week 2')
+      await user.click(weekOption)
+    }
+
+    it('calls updateActiveProgram with selected position and closes on success', async () => {
+      mockValidatePosition.mockReturnValue(true)
+      const onOpenChange = vi.fn()
+      const user = userEvent.setup()
+      renderSheet({ onOpenChange })
+
+      await jumpToWeek2(user)
+      await user.click(screen.getByRole('button', { name: 'Jump to position' }))
+
+      expect(mockUpdateActiveProgram).toHaveBeenCalledWith('user-1', {
+        currentBlockOrdinal: 1,
+        currentWeekNumber: 2,
+      })
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
+    it('calls upsertStatusesAsync with labeled weeks only (filters out unmarked)', async () => {
+      mockValidatePosition.mockReturnValue(true)
+      const onOpenChange = vi.fn()
+      const user = userEvent.setup()
+      renderSheet({ onOpenChange })
+
+      // Jump to Block 2 Week 1 (forward, creates intermediate weeks)
+      await jumpToBlock2(user)
+
+      // Mark first intermediate week (Accumulation, Week 2) as "Done"
+      const week2Row = screen.getByText('Accumulation, Week 2').closest('div')!
+      await user.click(within(week2Row).getByText('Done'))
+
+      // Leave second intermediate (Accumulation, Week 3) as unmarked
+
+      await user.click(screen.getByRole('button', { name: 'Jump to position' }))
+
+      // Should only include the "done" week, not the "unmarked" one
+      expect(mockUpsertStatusesAsync).toHaveBeenCalledWith([
+        { blockOrdinal: 1, weekNumber: 2, status: 'done' },
+      ])
+      // Sheet closes
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
+    it('does not call upsertStatusesAsync when all intermediate weeks are unmarked', async () => {
+      mockValidatePosition.mockReturnValue(true)
+      const user = userEvent.setup()
+      renderSheet()
+
+      // Jump to Block 2 (intermediate weeks default to unmarked)
+      await jumpToBlock2(user)
+      await user.click(screen.getByRole('button', { name: 'Jump to position' }))
+
+      expect(mockUpdateActiveProgram).toHaveBeenCalled()
+      expect(mockUpsertStatusesAsync).not.toHaveBeenCalled()
+    })
+
+    it('renders step-1 error when updateActiveProgram rejects', async () => {
+      mockValidatePosition.mockReturnValue(true)
+      mockUpdateActiveProgram.mockRejectedValueOnce(new Error('DB error'))
+      const onOpenChange = vi.fn()
+      const user = userEvent.setup()
+      renderSheet({ onOpenChange })
+
+      await jumpToWeek2(user)
+      await user.click(screen.getByRole('button', { name: 'Jump to position' }))
+
+      expect(screen.getByText('Failed to save position. Please try again.')).toBeInTheDocument()
+      expect(onOpenChange).not.toHaveBeenCalledWith(false)
+      // upsertStatusesAsync should NOT be called if step 1 fails
+      expect(mockUpsertStatusesAsync).not.toHaveBeenCalled()
+    })
+
+    it('renders step-2 error when upsertStatusesAsync rejects', async () => {
+      mockValidatePosition.mockReturnValue(true)
+      mockUpsertStatusesAsync.mockRejectedValueOnce(new Error('Upsert failed'))
+      const onOpenChange = vi.fn()
+      const user = userEvent.setup()
+      renderSheet({ onOpenChange })
+
+      // Jump forward with labeled weeks to trigger upsertStatusesAsync
+      await jumpToBlock2(user)
+
+      // Mark all intermediate weeks as done so upsertStatusesAsync will be called
+      await user.click(screen.getByText('All done'))
+      await user.click(screen.getByRole('button', { name: 'Jump to position' }))
+
+      // updateActiveProgram should have succeeded
+      expect(mockUpdateActiveProgram).toHaveBeenCalled()
+      // Step-2 specific error message
+      expect(
+        screen.getByText('Position updated, but week labels failed to save. Please try again.'),
+      ).toBeInTheDocument()
+      // Sheet stays open on error
+      expect(onOpenChange).not.toHaveBeenCalledWith(false)
+    })
+  })
+
+  // -----------------------------------------------------------------------
   // Bonus: does not render when closed
   // -----------------------------------------------------------------------
 

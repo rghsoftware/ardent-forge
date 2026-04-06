@@ -905,7 +905,7 @@ pub async fn get_week_statuses(
 }
 
 // ---------------------------------------------------------------------------
-// Week status upsert input
+// Week status input structs
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize)]
@@ -914,6 +914,13 @@ pub struct WeekStatusInput {
     pub block_ordinal: i64,
     pub week_number: i64,
     pub status: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeekStatusKey {
+    pub block_ordinal: i64,
+    pub week_number: i64,
 }
 
 /// Upserts week statuses for a program activation. For each entry, inserts a
@@ -979,4 +986,46 @@ pub async fn upsert_week_statuses(
     .await?;
 
     Ok(rows)
+}
+
+/// Deletes week statuses for a program activation. Removes rows matching the
+/// given (block_ordinal, week_number) keys within a transaction.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `activation_id`: The activation's unique identifier.
+/// - `keys`: A vector of (block_ordinal, week_number) pairs to delete.
+#[tauri::command]
+pub async fn delete_week_statuses(
+    pool: State<'_, SqlitePool>,
+    activation_id: String,
+    keys: Vec<WeekStatusKey>,
+) -> Result<(), AppError> {
+    if activation_id.is_empty() {
+        return Err(AppError::validation(
+            "activation_id",
+            "[programs] activation_id must not be empty",
+        ));
+    }
+    if keys.is_empty() {
+        return Ok(());
+    }
+
+    let mut tx = pool.begin().await?;
+
+    for key in &keys {
+        sqlx::query(
+            "DELETE FROM program_week_statuses \
+             WHERE activation_id = ? AND block_ordinal = ? AND week_number = ?",
+        )
+        .bind(&activation_id)
+        .bind(key.block_ordinal)
+        .bind(key.week_number)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
+    Ok(())
 }

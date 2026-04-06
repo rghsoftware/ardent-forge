@@ -1365,6 +1365,25 @@ export class SupabaseAdapter implements DataAdapter {
     return this.getWeekStatuses(activationId)
   }
 
+  async deleteWeekStatuses(
+    activationId: string,
+    keys: Array<{ blockOrdinal: number; weekNumber: number }>,
+  ): Promise<void> {
+    if (keys.length === 0) return
+
+    // Supabase JS client doesn't support tuple IN clauses, so build an .or() filter
+    const orFilter = keys
+      .map((k) => `and(block_ordinal.eq.${k.blockOrdinal},week_number.eq.${k.weekNumber})`)
+      .join(',')
+
+    const { error } = await this.client
+      .from('program_week_statuses')
+      .delete()
+      .eq('activation_id', activationId)
+      .or(orFilter)
+    if (error) throw error
+  }
+
   // ---------------------------------------------------------------------------
   // Share link operations
   // ---------------------------------------------------------------------------

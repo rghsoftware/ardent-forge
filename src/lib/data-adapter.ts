@@ -287,6 +287,10 @@ export interface DataAdapter {
     activationId: string,
     statuses: Array<{ blockOrdinal: number; weekNumber: number; status: WeekStatusValue }>,
   ): Promise<WeekStatus[]>
+  deleteWeekStatuses(
+    activationId: string,
+    keys: Array<{ blockOrdinal: number; weekNumber: number }>,
+  ): Promise<void>
 
   // Share link operations
   getShareLinks(userId: string): Promise<ShareLink[]>

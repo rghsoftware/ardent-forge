@@ -93,6 +93,7 @@ pub fn run() {
             commands::programs::update_active_program,
             commands::programs::get_week_statuses,
             commands::programs::upsert_week_statuses,
+            commands::programs::delete_week_statuses,
             // User profile
             commands::user_profile::get_user_profile,
             commands::user_profile::update_user_profile,
