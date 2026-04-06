@@ -53,6 +53,20 @@ function SetupPage() {
   const [scanning, setScanning] = useState(false)
   const [showPasteField, setShowPasteField] = useState(false)
 
+  // Make the webview transparent while the QR scanner is active so the
+  // native camera feed (rendered behind the webview) is visible.
+  useEffect(() => {
+    if (!scanning) return
+    const html = document.documentElement
+    const body = document.body
+    html.style.background = 'transparent'
+    body.style.background = 'transparent'
+    return () => {
+      html.style.background = ''
+      body.style.background = ''
+    }
+  }, [scanning])
+
   // Unified process state -- one discriminated union, no impossible states
   const [state, setState] = useState<SetupState>({ phase: 'idle' })
   const autoValidated = useRef(false)
@@ -261,6 +275,29 @@ function SetupPage() {
   const showEnvWarning =
     hasEnvVars && (state.phase === 'validation-failed' || state.phase === 'schema-missing')
 
+  if (scanning) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center">
+        <div className="h-[280px] w-[280px] rounded-lg border-2 border-ember" />
+        <button
+          type="button"
+          className="mt-8 flex items-center gap-2 rounded-md bg-black/60 px-6 py-3 text-sm text-bone-white"
+          onClick={async () => {
+            try {
+              await cancelRef.current?.()
+            } catch (err) {
+              console.error('[setup] Failed to cancel scan:', err)
+            }
+            setScanning(false)
+          }}
+        >
+          <X className="h-4 w-4" />
+          Cancel
+        </button>
+      </div>
+    )
+  }
+
   return (
     <AuthPageShell>
       <h1 className="font-display text-xl font-medium text-bone-white">Connect to server</h1>
@@ -438,27 +475,6 @@ function SetupPage() {
           See the setup guide
         </a>
       </p>
-      {/* Scanning overlay (Tauri/Android only) */}
-      {scanning && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80">
-          <div className="h-[280px] w-[280px] rounded-lg border-2 border-ember" />
-          <button
-            type="button"
-            className="mt-8 flex items-center gap-2 rounded-md px-6 py-3 text-sm text-bone-white hover:bg-surface-gunmetal"
-            onClick={async () => {
-              try {
-                await cancelRef.current?.()
-              } catch (err) {
-                console.error('[setup] Failed to cancel scan:', err)
-              }
-              setScanning(false)
-            }}
-          >
-            <X className="h-4 w-4" />
-            Cancel
-          </button>
-        </div>
-      )}
     </AuthPageShell>
   )
 }
