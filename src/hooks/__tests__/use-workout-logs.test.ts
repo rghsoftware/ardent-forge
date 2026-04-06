@@ -157,6 +157,7 @@ describe('useCreateWorkoutLog', () => {
     const log = await result.current.mutateAsync({
       userId: 'user-1',
       startedAt: '2026-01-15T10:00:00.000Z',
+      totalPausedMs: 0,
     })
 
     expect(mockAdapter.createWorkoutLog).toHaveBeenCalled()

@@ -66,6 +66,8 @@ export const workoutLogSchema = syncableEntitySchema
     perceivedDifficulty: z.number().int().min(1).max(10).optional(), // L-6
     bodyweightAtSession: weightSchema.optional(),
     eventMetadata: eventMetadataSchema.optional(),
+    pausedAt: z.string().datetime().optional(),
+    totalPausedMs: z.number().int().nonnegative(),
   })
   .refine(
     (data) => {

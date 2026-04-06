@@ -134,6 +134,8 @@ const workoutLogRowFull: WorkoutLogRow = {
   bodyweight_at_session: { value: 185, unit: 'lb' },
   overall_notes: 'Felt strong today',
   event_metadata: null,
+  paused_at: null,
+  total_paused_ms: 0,
   created_at: now,
   updated_at: later,
 }
@@ -150,6 +152,8 @@ const workoutLogRowNulls: WorkoutLogRow = {
   bodyweight_at_session: null,
   overall_notes: null,
   event_metadata: null,
+  paused_at: null,
+  total_paused_ms: 0,
   created_at: now,
   updated_at: now,
 }

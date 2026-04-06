@@ -25,6 +25,7 @@ interface ExerciseBlockProps {
     setType: SetType,
   ) => void
   isConfirming?: boolean
+  isBodyweight?: boolean
 }
 
 export function ExerciseBlock({
@@ -33,6 +34,7 @@ export function ExerciseBlock({
   loggedActivityId,
   onConfirmSet,
   isConfirming = false,
+  isBodyweight = false,
 }: ExerciseBlockProps) {
   const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
   const hasPrescribed = sets.some((s) => s.prescribedWeight != null || s.prescribedReps != null)
@@ -66,7 +68,7 @@ export function ExerciseBlock({
             SET
           </span>
           <span className="flex-1 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
-            WEIGHT
+            {isBodyweight ? 'BW' : 'WEIGHT'}
           </span>
           <span className="flex-1 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
             REPS
@@ -95,6 +97,7 @@ export function ExerciseBlock({
             isConfirming={isConfirming}
             prescribedWeight={set.prescribedWeight}
             prescribedReps={set.prescribedReps}
+            isBodyweight={isBodyweight}
             onConfirm={(weight, reps, setType) =>
               onConfirmSet(loggedActivityId, set.setNumber, weight, reps, setType)
             }

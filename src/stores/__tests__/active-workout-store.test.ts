@@ -1,4 +1,3 @@
-import { vi } from 'vitest'
 import { useActiveWorkoutStore } from '@/stores/active-workout-store'
 import type {
   WorkoutLog,
@@ -127,25 +126,20 @@ afterEach(() => {
 // ===========================================================================
 
 describe('lifecycle', () => {
-  it('startWorkout sets workoutLog and starts elapsed timer', () => {
-    vi.useFakeTimers()
-    try {
-      const wl = makeWorkoutLog()
-      getState().startWorkout('user-1', wl)
+  it('startWorkout sets workoutLog and leaves elapsed timer to the log page (D-1)', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
 
-      const state = getState()
-      expect(state.workoutLog).toEqual(wl)
-      expect(state.loggedGroups).toEqual([])
-      expect(state.elapsedSeconds).toBe(0)
-      expect(state.restTimer).toBeNull()
-      expect(state.undoAction).toBeNull()
+    const state = getState()
+    expect(state.workoutLog).toEqual(wl)
+    expect(state.loggedGroups).toEqual([])
+    expect(state.elapsedSeconds).toBe(0)
+    expect(state.restTimer).toBeNull()
+    expect(state.undoAction).toBeNull()
 
-      // Advance 3 seconds -- elapsed timer should tick
-      vi.advanceTimersByTime(3000)
-      expect(getState().elapsedSeconds).toBe(3)
-    } finally {
-      vi.useRealTimers()
-    }
+    // Elapsed is now driven by setElapsedSeconds from the log page, not the store.
+    getState().setElapsedSeconds(3)
+    expect(getState().elapsedSeconds).toBe(3)
   })
 
   it('startWorkout throws if already active (L-8)', () => {
@@ -158,74 +152,47 @@ describe('lifecycle', () => {
   })
 
   it('finishWorkout clears all state back to initial', () => {
-    vi.useFakeTimers()
-    try {
-      getState().startWorkout('user-1', makeWorkoutLog())
-      vi.advanceTimersByTime(5000)
-      expect(getState().elapsedSeconds).toBe(5)
+    getState().startWorkout('user-1', makeWorkoutLog())
+    getState().setElapsedSeconds(5)
+    expect(getState().elapsedSeconds).toBe(5)
 
-      getState().finishWorkout()
+    getState().finishWorkout()
 
-      const state = getState()
-      expect(state.workoutLog).toBeNull()
-      expect(state.loggedGroups).toEqual([])
-      expect(state.elapsedSeconds).toBe(0)
-      expect(state.restTimer).toBeNull()
-      expect(state.undoAction).toBeNull()
-
-      // Timer should no longer tick
-      vi.advanceTimersByTime(3000)
-      expect(getState().elapsedSeconds).toBe(0)
-    } finally {
-      vi.useRealTimers()
-    }
+    const state = getState()
+    expect(state.workoutLog).toBeNull()
+    expect(state.loggedGroups).toEqual([])
+    expect(state.elapsedSeconds).toBe(0)
+    expect(state.restTimer).toBeNull()
+    expect(state.undoAction).toBeNull()
   })
 
   it('discardWorkout clears all state back to initial', () => {
-    vi.useFakeTimers()
-    try {
-      getState().startWorkout('user-1', makeWorkoutLog())
-      vi.advanceTimersByTime(2000)
+    getState().startWorkout('user-1', makeWorkoutLog())
+    getState().setElapsedSeconds(2)
 
-      getState().discardWorkout()
+    getState().discardWorkout()
 
-      const state = getState()
-      expect(state.workoutLog).toBeNull()
-      expect(state.loggedGroups).toEqual([])
-      expect(state.elapsedSeconds).toBe(0)
-      expect(state.restTimer).toBeNull()
-      expect(state.undoAction).toBeNull()
-
-      // Timer should no longer tick
-      vi.advanceTimersByTime(3000)
-      expect(getState().elapsedSeconds).toBe(0)
-    } finally {
-      vi.useRealTimers()
-    }
+    const state = getState()
+    expect(state.workoutLog).toBeNull()
+    expect(state.loggedGroups).toEqual([])
+    expect(state.elapsedSeconds).toBe(0)
+    expect(state.restTimer).toBeNull()
+    expect(state.undoAction).toBeNull()
   })
 
   it('resumeWorkout restores workoutLog, groups, and elapsedSeconds', () => {
-    vi.useFakeTimers()
-    try {
-      const wl = makeWorkoutLog()
-      const groups: LoggedActivityGroupWithActivities[] = [makeGroupWithActivities()]
-      const elapsed = 120
+    const wl = makeWorkoutLog()
+    const groups: LoggedActivityGroupWithActivities[] = [makeGroupWithActivities()]
+    const elapsed = 120
 
-      getState().resumeWorkout(wl, groups, elapsed)
+    getState().resumeWorkout(wl, groups, elapsed)
 
-      const state = getState()
-      expect(state.workoutLog).toEqual(wl)
-      expect(state.loggedGroups).toEqual(groups)
-      expect(state.elapsedSeconds).toBe(120)
-      expect(state.restTimer).toBeNull()
-      expect(state.undoAction).toBeNull()
-
-      // Elapsed timer should resume ticking
-      vi.advanceTimersByTime(2000)
-      expect(getState().elapsedSeconds).toBe(122)
-    } finally {
-      vi.useRealTimers()
-    }
+    const state = getState()
+    expect(state.workoutLog).toEqual(wl)
+    expect(state.loggedGroups).toEqual(groups)
+    expect(state.elapsedSeconds).toBe(120)
+    expect(state.restTimer).toBeNull()
+    expect(state.undoAction).toBeNull()
   })
 })
 
@@ -469,34 +436,29 @@ describe('startProgrammedWorkout', () => {
   })
 
   it('sets workoutLog and pre-filled groups when valid', () => {
-    vi.useFakeTimers()
-    try {
-      const programmedWl = makeWorkoutLog({
-        id: 'wl-prog',
-        programContext: {
-          programId: 'prog-1',
-          blockId: 'block-1',
-          weekNumber: 2,
-          dayLabel: 'Day A',
-        },
-      })
-      const groups: LoggedActivityGroupWithActivities[] = [makeGroupWithActivities()]
+    const programmedWl = makeWorkoutLog({
+      id: 'wl-prog',
+      programContext: {
+        programId: 'prog-1',
+        blockId: 'block-1',
+        weekNumber: 2,
+        dayLabel: 'Day A',
+      },
+    })
+    const groups: LoggedActivityGroupWithActivities[] = [makeGroupWithActivities()]
 
-      getState().startProgrammedWorkout(programmedWl, groups)
+    getState().startProgrammedWorkout(programmedWl, groups)
 
-      const state = getState()
-      expect(state.workoutLog).toEqual(programmedWl)
-      expect(state.loggedGroups).toEqual(groups)
-      expect(state.elapsedSeconds).toBe(0)
-      expect(state.restTimer).toBeNull()
-      expect(state.undoAction).toBeNull()
+    const state = getState()
+    expect(state.workoutLog).toEqual(programmedWl)
+    expect(state.loggedGroups).toEqual(groups)
+    expect(state.elapsedSeconds).toBe(0)
+    expect(state.restTimer).toBeNull()
+    expect(state.undoAction).toBeNull()
 
-      // Elapsed timer should tick
-      vi.advanceTimersByTime(2000)
-      expect(getState().elapsedSeconds).toBe(2)
-    } finally {
-      vi.useRealTimers()
-    }
+    // Elapsed ticking is now owned by the log page (D-1); use setElapsedSeconds.
+    getState().setElapsedSeconds(2)
+    expect(getState().elapsedSeconds).toBe(2)
   })
 })
 

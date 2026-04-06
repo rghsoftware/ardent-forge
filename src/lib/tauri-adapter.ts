@@ -624,6 +624,8 @@ function toWorkoutLogRow(r: TauriWorkoutLogResponse): WorkoutLogRow {
     bodyweight_at_session: parseJson(r.bodyweight_at_session, 'bodyweight_at_session'),
     overall_notes: r.overall_notes,
     event_metadata: null, // Event features deferred for Tauri offline mode (W-8)
+    paused_at: null, // Pause state deferred for Tauri offline mode (F018)
+    total_paused_ms: 0,
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }

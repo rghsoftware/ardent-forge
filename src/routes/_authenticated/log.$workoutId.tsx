@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
+import { useActiveWorkoutStore } from '@/stores/active-workout-store'
 import { useExercises } from '@/hooks/use-exercises'
 import { useUserProfile } from '@/hooks/use-user-profile'
 import { useOnboarding } from '@/hooks/use-onboarding'
@@ -132,6 +133,65 @@ function ActiveWorkoutPage() {
       navigate({ to: '/' })
     }
   }, [isActive, showSummary, navigate])
+
+  // ---------------------------------------------------------------------------
+  // Elapsed timer ownership (Tech.md D-1)
+  //
+  // The elapsed timer interval lives here, not in the Zustand store, so that
+  // navigating from the Forge page to this log page does not tear down the
+  // tick. On mount / workoutLog change / pausedAt change, we:
+  //   1. Recompute elapsed from startedAt - totalPausedMs - (now - pausedAt?)
+  //   2. Push it into the store via setElapsedSeconds
+  //   3. If not paused, start a 1s interval that increments elapsed
+  //   4. Cleanup the interval on unmount / dep change
+  // ---------------------------------------------------------------------------
+  const workoutLogId = workoutLog?.id
+  const startedAt = workoutLog?.startedAt
+  const totalPausedMs = workoutLog?.totalPausedMs ?? 0
+  const pausedAt = workoutLog?.pausedAt
+  useEffect(() => {
+    if (!workoutLogId || !startedAt) return
+
+    const setElapsedSeconds = useActiveWorkoutStore.getState().setElapsedSeconds
+
+    const computeElapsed = (): number => {
+      try {
+        const startedMs = new Date(startedAt).getTime()
+        if (!Number.isFinite(startedMs)) {
+          console.error('[workout-log] Invalid startedAt:', startedAt)
+          return 0
+        }
+        const now = Date.now()
+        let elapsedMs = now - startedMs - totalPausedMs
+        if (pausedAt) {
+          const pausedAtMs = new Date(pausedAt).getTime()
+          if (Number.isFinite(pausedAtMs)) {
+            elapsedMs -= now - pausedAtMs
+          } else {
+            console.error('[workout-log] Invalid pausedAt:', pausedAt)
+          }
+        }
+        return Math.max(0, Math.round(elapsedMs / 1000))
+      } catch (err) {
+        console.error('[workout-log] Failed to compute elapsed:', err)
+        return 0
+      }
+    }
+
+    setElapsedSeconds(computeElapsed())
+
+    // When paused, the timer is frozen -- don't tick.
+    if (pausedAt) return
+
+    const intervalId = setInterval(() => {
+      const prev = useActiveWorkoutStore.getState().elapsedSeconds
+      useActiveWorkoutStore.getState().setElapsedSeconds(prev + 1)
+    }, 1000)
+
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [workoutLogId, startedAt, totalPausedMs, pausedAt])
 
   // Count confirmed sets to determine if FINISH should be enabled
   const confirmedSetCount = useMemo(() => {
@@ -424,8 +484,40 @@ function ActiveWorkoutPage() {
 
       {/* Exercise blocks */}
       <div className="flex flex-col gap-[1.75rem] px-0 pt-2">
-        {loggedGroups.map((group) =>
-          group.activities.map((activity) => {
+        {loggedGroups.map((group) => {
+          // Group-level rendering: circuits render once per group
+          if (group.groupType === 'CIRCUIT') {
+            const circuitExercises = group.activities.map((a) => ({
+              name: exerciseNames[a.exerciseId] ?? 'Unknown',
+              targetReps: DEFAULT_CIRCUIT_REPS,
+            }))
+            return (
+              <CircuitPanel
+                key={group.id}
+                exercises={circuitExercises}
+                rounds={3}
+                onComplete={async (completedRounds) => {
+                  // Log a single set per activity summarizing the circuit
+                  const results = await Promise.allSettled(
+                    group.activities.map((a) =>
+                      confirmSet(a.id, {
+                        loggedActivityId: a.id,
+                        setNumber: 1,
+                        setType: 'WORKING',
+                        completed: true,
+                        actualReps: completedRounds * DEFAULT_CIRCUIT_REPS,
+                      }),
+                    ),
+                  )
+                  if (results.some((r) => r.status === 'rejected')) {
+                    setPageError('Some circuit sets could not be saved.')
+                  }
+                }}
+              />
+            )
+          }
+
+          return group.activities.map((activity) => {
             const exercise = exerciseMap[activity.exerciseId]
             const modality = getExerciseModality(exercise, group.groupType)
 
@@ -489,38 +581,6 @@ function ActiveWorkoutPage() {
               )
             }
 
-            // Circuit panel (rendered at group level)
-            if (modality === 'circuit') {
-              const circuitExercises = group.activities.map((a) => ({
-                name: exerciseNames[a.exerciseId] ?? 'Unknown',
-                targetReps: DEFAULT_CIRCUIT_REPS,
-              }))
-              return (
-                <CircuitPanel
-                  key={group.id}
-                  exercises={circuitExercises}
-                  rounds={3}
-                  onComplete={async (completedRounds) => {
-                    // Log a single set per activity summarizing the circuit
-                    const results = await Promise.allSettled(
-                      group.activities.map((a) =>
-                        confirmSet(a.id, {
-                          loggedActivityId: a.id,
-                          setNumber: 1,
-                          setType: 'WORKING',
-                          completed: true,
-                          actualReps: completedRounds * DEFAULT_CIRCUIT_REPS,
-                        }),
-                      ),
-                    )
-                    if (results.some((r) => r.status === 'rejected')) {
-                      setPageError('Some circuit sets could not be saved.')
-                    }
-                  }}
-                />
-              )
-            }
-
             // Standard strength exercise block
             const confirmedSets = activity.sets.filter((s) => s.completed)
             const lastConfirmedSet =
@@ -573,10 +633,11 @@ function ActiveWorkoutPage() {
                 loggedActivityId={activity.id}
                 onConfirmSet={handleConfirmSet}
                 isConfirming={isConfirmingSet}
+                isBodyweight={exercise?.category === 'BODYWEIGHT'}
               />
             )
-          }),
-        )}
+          })
+        })}
       </div>
 
       {/* Add exercise button (hidden for programmed workouts) */}

@@ -167,6 +167,8 @@ export function toWorkoutLog(row: WorkoutLogRow): WorkoutLog {
     overallNotes: row.overall_notes ?? undefined,
     eventMetadata:
       row.event_metadata != null ? eventMetadataSchema.parse(row.event_metadata) : undefined,
+    pausedAt: row.paused_at ?? undefined,
+    totalPausedMs: row.total_paused_ms ?? 0,
   }
 }
 
@@ -184,6 +186,8 @@ export function fromWorkoutLog(
     bodyweight_at_session: log.bodyweightAtSession ?? null,
     overall_notes: log.overallNotes ?? null,
     event_metadata: log.eventMetadata ?? null,
+    paused_at: log.pausedAt ?? null,
+    total_paused_ms: log.totalPausedMs ?? 0,
   }
 }
 

@@ -15,6 +15,7 @@ interface SetRowProps {
   isConfirming?: boolean
   prescribedWeight?: { value: number; unit: string }
   prescribedReps?: number
+  isBodyweight?: boolean
 }
 
 export function SetRow({
@@ -26,6 +27,7 @@ export function SetRow({
   isConfirming = false,
   prescribedWeight,
   prescribedReps,
+  isBodyweight = false,
 }: SetRowProps) {
   const hasPrescription = prescribedWeight != null || prescribedReps != null
 
@@ -44,17 +46,21 @@ export function SetRow({
 
   const handleConfirm = useCallback(() => {
     if (confirmed || isConfirming) return
-    onConfirm(weight, reps, setType)
-  }, [confirmed, isConfirming, weight, reps, setType, onConfirm])
+    onConfirm(isBodyweight ? '' : weight, reps, setType)
+  }, [confirmed, isConfirming, weight, reps, setType, onConfirm, isBodyweight])
 
   // Prescribed label text (e.g. "120 lb x 5")
   const prescribedLabel = hasPrescription
-    ? [
-        prescribedWeight ? `${prescribedWeight.value} ${prescribedWeight.unit}` : null,
-        prescribedReps != null ? String(prescribedReps) : null,
-      ]
-        .filter(Boolean)
-        .join(' x ')
+    ? isBodyweight
+      ? prescribedReps != null
+        ? `BW x ${prescribedReps}`
+        : 'BW'
+      : [
+          prescribedWeight ? `${prescribedWeight.value} ${prescribedWeight.unit}` : null,
+          prescribedReps != null ? String(prescribedReps) : null,
+        ]
+          .filter(Boolean)
+          .join(' x ')
     : null
 
   // Variance calculation for confirmed sets
@@ -130,16 +136,22 @@ export function SetRow({
 
           {/* Actual column -- weight x reps inline */}
           <div className="flex flex-1 items-center gap-1">
-            <input
-              type="text"
-              inputMode="decimal"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              disabled={confirmed}
-              placeholder="--"
-              className="w-1/2 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
-              aria-label={`Actual weight for set ${setNumber}`}
-            />
+            {isBodyweight ? (
+              <span className="w-1/2 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
+                BW
+              </span>
+            ) : (
+              <input
+                type="text"
+                inputMode="decimal"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                disabled={confirmed}
+                placeholder="--"
+                className="w-1/2 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
+                aria-label={`Actual weight for set ${setNumber}`}
+              />
+            )}
             <span className="text-[11px] text-warm-ash/40">x</span>
             <input
               type="text"
@@ -155,18 +167,22 @@ export function SetRow({
         </>
       ) : (
         <>
-          {/* Weight input -- ad-hoc path (unchanged) */}
-          <div className="flex-1">
-            <input
-              type="text"
-              inputMode="decimal"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              disabled={confirmed}
-              placeholder="--"
-              className="w-full border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
-              aria-label={`Weight for set ${setNumber}`}
-            />
+          {/* Weight input -- ad-hoc path (hidden for bodyweight) */}
+          <div className="flex flex-1 items-center justify-center">
+            {isBodyweight ? (
+              <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">BW</span>
+            ) : (
+              <input
+                type="text"
+                inputMode="decimal"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                disabled={confirmed}
+                placeholder="--"
+                className="w-full border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
+                aria-label={`Weight for set ${setNumber}`}
+              />
+            )}
           </div>
 
           {/* Reps input -- ad-hoc path (unchanged) */}
@@ -199,7 +215,11 @@ export function SetRow({
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={isConfirming || confirmed || (!weight.trim() && !reps.trim())}
+            disabled={
+              isConfirming ||
+              confirmed ||
+              (isBodyweight ? !reps.trim() : !weight.trim() && !reps.trim())
+            }
             className="flex min-h-12 min-w-12 items-center justify-center text-ember transition-colors hover:text-forge disabled:opacity-40"
             aria-label={`Confirm set ${setNumber}`}
           >

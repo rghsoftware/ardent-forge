@@ -111,13 +111,12 @@ export function useActiveWorkout() {
   }, [undoAction, storeClearUndo])
 
   // ---------------------------------------------------------------------------
-  // Cleanup intervals on unmount
+  // Note: elapsed timer interval is owned by the workout log page (Tech.md D-1).
+  // Rest timer cleanup is handled by finishWorkout/discardWorkout in the store.
+  // We intentionally do NOT run store.cleanup() on unmount here: this hook is
+  // consumed by multiple pages (Forge, log page) and Forge→log navigation
+  // unmounts Forge mid-workout, which previously killed timers.
   // ---------------------------------------------------------------------------
-  useEffect(() => {
-    return () => {
-      useActiveWorkoutStore.getState().cleanup()
-    }
-  }, [])
 
   // ---------------------------------------------------------------------------
   // Bridge actions: DB mutation + store update
@@ -134,6 +133,7 @@ export function useActiveWorkout() {
         const log = await createWorkoutLogMutation.mutateAsync({
           userId,
           startedAt: now,
+          totalPausedMs: 0,
         })
         storeStartWorkout(userId, log)
         return log
@@ -197,6 +197,7 @@ export function useActiveWorkout() {
           startedAt: now,
           sessionTemplateId,
           programContext,
+          totalPausedMs: 0,
         })
 
         // 4. Persist all groups, activities, and sets to DB and build

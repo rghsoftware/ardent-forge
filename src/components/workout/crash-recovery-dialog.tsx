@@ -28,13 +28,30 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
   const { data: recentLogs = [] } = useWorkoutLogs(userId, 10)
   const deleteWorkoutLogMutation = useDeleteWorkoutLog()
 
-  // Find the most recent incomplete workout (no completedAt)
-  const incompleteWorkout: WorkoutLog | undefined = recentLogs.find((log) => !log.completedAt)
+  // Find the most recent incomplete workout that is not intentionally paused.
+  // Paused sessions (pausedAt != null) are handled by PausedSessionCard, not crash recovery.
+  const incompleteWorkout: WorkoutLog | undefined = recentLogs.find(
+    (log) => !log.completedAt && !log.pausedAt,
+  )
 
   // Fetch full workout data for the incomplete workout (groups, activities, sets)
   const { data: fullWorkout, isPending: isLoadingFullWorkout } = useWorkoutLogFull(
     incompleteWorkout?.id ?? '',
   )
+
+  // Qualify the candidate: a session is only "crash-orphaned" if it has at least
+  // one confirmed set OR was started more than 60s ago. Otherwise treat as a
+  // transient navigation race (fresh session that was never really used).
+  const hasConfirmedSet = fullWorkout ? fullWorkout.sets.some((s) => s.completed) : false
+  const ageMs = incompleteWorkout ? Date.now() - new Date(incompleteWorkout.startedAt).getTime() : 0
+  const qualifiesAsCrash = hasConfirmedSet || ageMs > 60_000
+
+  if (incompleteWorkout && fullWorkout && !qualifiesAsCrash) {
+    console.info('[crash-recovery] Skipping transient session (no confirmed sets, <60s old):', {
+      workoutId: incompleteWorkout.id,
+      ageMs,
+    })
+  }
 
   const [dismissed, setDismissed] = useState(false)
   const [isResuming, setIsResuming] = useState(false)
@@ -42,7 +59,9 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
   const [discardError, setDiscardError] = useState<string | null>(null)
 
   // Derive open state -- no effect needed
-  const open = Boolean(incompleteWorkout && !isActive && !dismissed)
+  const open = Boolean(
+    incompleteWorkout && fullWorkout && qualifiesAsCrash && !isActive && !dismissed,
+  )
 
   const handleResume = () => {
     if (!fullWorkout || !incompleteWorkout) return
@@ -71,6 +90,7 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
   }
 
   if (!incompleteWorkout) return null
+  if (fullWorkout && !qualifiesAsCrash) return null
 
   const startedDate = new Date(incompleteWorkout.startedAt)
   const timeAgo = formatTimeAgo(startedDate)

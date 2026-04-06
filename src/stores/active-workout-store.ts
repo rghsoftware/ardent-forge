@@ -67,7 +67,9 @@ interface ActiveWorkoutState {
 // Module-scope interval handles (kept outside Zustand to avoid re-renders)
 // ---------------------------------------------------------------------------
 
-let _elapsedInterval: ReturnType<typeof setInterval> | null = null
+// Note: the elapsed timer interval is owned by the workout log page (see
+// src/routes/_authenticated/log.$workoutId.tsx) per Tech.md D-1. The store
+// only holds the current elapsedSeconds value via setElapsedSeconds.
 let _restInterval: ReturnType<typeof setInterval> | null = null
 
 // Tauri event unlisten handles for the Rust rest timer path.
@@ -144,8 +146,10 @@ interface ActiveWorkoutActions {
   skipRest(): void
   adjustRest(delta: number): void
 
+  // Elapsed timer setter (owned by the workout log page, see Tech.md D-1)
+  setElapsedSeconds(seconds: number): void
+
   // Timer ticks (called by intervals internally)
-  tickElapsed(): void
   tickRest(): void
 
   // Cleanup
@@ -179,12 +183,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         throw new Error('Cannot start a new workout while one is already active')
       }
 
-      // Start the elapsed timer
-      if (_elapsedInterval) clearInterval(_elapsedInterval)
-      _elapsedInterval = setInterval(() => {
-        get().tickElapsed()
-      }, 1000)
-
       set({
         workoutLog,
         loggedGroups: [],
@@ -206,12 +204,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         throw new Error('Cannot start a new workout while one is already active')
       }
 
-      // Start the elapsed timer
-      if (_elapsedInterval) clearInterval(_elapsedInterval)
-      _elapsedInterval = setInterval(() => {
-        get().tickElapsed()
-      }, 1000)
-
       set({
         workoutLog,
         loggedGroups: groups,
@@ -227,14 +219,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       groups: LoggedActivityGroupWithActivities[],
       elapsedSeconds: number,
     ) {
-      // Clear any existing intervals
-      if (_elapsedInterval) clearInterval(_elapsedInterval)
+      // Clear any existing rest interval; the log page owns the elapsed interval.
       if (_restInterval) clearInterval(_restInterval)
       _restInterval = null
-
-      _elapsedInterval = setInterval(() => {
-        get().tickElapsed()
-      }, 1000)
 
       set({
         workoutLog,
@@ -246,10 +233,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     },
 
     finishWorkout() {
-      if (_elapsedInterval) {
-        clearInterval(_elapsedInterval)
-        _elapsedInterval = null
-      }
       if (_restInterval) {
         clearInterval(_restInterval)
         _restInterval = null
@@ -260,10 +243,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     },
 
     discardWorkout() {
-      if (_elapsedInterval) {
-        clearInterval(_elapsedInterval)
-        _elapsedInterval = null
-      }
       if (_restInterval) {
         clearInterval(_restInterval)
         _restInterval = null
@@ -482,8 +461,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     // Timer ticks
     // ------------------------------------------------------------------
 
-    tickElapsed() {
-      set((state) => ({ elapsedSeconds: state.elapsedSeconds + 1 }))
+    setElapsedSeconds(seconds: number) {
+      set({ elapsedSeconds: seconds })
     },
 
     tickRest() {
@@ -513,10 +492,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     // ------------------------------------------------------------------
 
     cleanup() {
-      if (_elapsedInterval) {
-        clearInterval(_elapsedInterval)
-        _elapsedInterval = null
-      }
       if (_restInterval) {
         clearInterval(_restInterval)
         _restInterval = null

@@ -839,6 +839,7 @@ describe('Workout log operations', () => {
       const result = await adapter.createWorkoutLog({
         userId: 'user-001',
         startedAt: now,
+        totalPausedMs: 0,
       })
 
       expect(mockInvoke).toHaveBeenCalledWith('create_workout_log', {
@@ -858,6 +859,7 @@ describe('Workout log operations', () => {
         userId: 'user-001',
         startedAt: now,
         completedAt: later,
+        totalPausedMs: 0,
       })
 
       const callArgs = mockInvoke.mock.calls[0][1] as {
@@ -875,6 +877,7 @@ describe('Workout log operations', () => {
       await adapter.createWorkoutLog({
         userId: 'user-001',
         startedAt: '2025-01-01T00:00:00Z',
+        totalPausedMs: 0,
       })
 
       const callArgs = mockInvoke.mock.calls[0][1] as {
@@ -890,6 +893,7 @@ describe('Workout log operations', () => {
       await adapter.createWorkoutLog({
         userId: 'user-001',
         startedAt: now,
+        totalPausedMs: 0,
       })
 
       const callArgs = mockInvoke.mock.calls[0][1] as {
@@ -905,6 +909,7 @@ describe('Workout log operations', () => {
       await adapter.createWorkoutLog({
         userId: 'user-001',
         startedAt: '2025-06-15T15:00:00+05:00',
+        totalPausedMs: 0,
       })
 
       const callArgs = mockInvoke.mock.calls[0][1] as {
@@ -922,6 +927,7 @@ describe('Workout log operations', () => {
       await adapter.createWorkoutLog({
         userId: 'user-001',
         startedAt: 'not-a-date',
+        totalPausedMs: 0,
       })
 
       const callArgs = mockInvoke.mock.calls[0][1] as {
@@ -945,6 +951,7 @@ describe('Workout log operations', () => {
         title: 'Updated Title',
         startedAt: now,
         completedAt: later,
+        totalPausedMs: 0,
       })
 
       expect(mockInvoke).toHaveBeenCalledWith('update_workout_log', {
@@ -981,6 +988,7 @@ describe('Workout log operations', () => {
           userId: 'user-001',
           startedAt: now,
           completedAt: later,
+          totalPausedMs: 0,
         },
         [
           {

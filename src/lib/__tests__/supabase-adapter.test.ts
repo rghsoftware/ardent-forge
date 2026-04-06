@@ -75,6 +75,8 @@ const workoutLogRow: WorkoutLogRow = {
   bodyweight_at_session: { value: 185, unit: 'lb' },
   overall_notes: 'Felt strong today',
   event_metadata: null,
+  paused_at: null,
+  total_paused_ms: 0,
   created_at: now,
   updated_at: later,
 }
@@ -589,6 +591,7 @@ describe('Workout log operations', () => {
       const result = await adapter.createWorkoutLog({
         userId: 'user-001',
         startedAt: now,
+        totalPausedMs: 0,
       })
 
       expect(mockClient.from).toHaveBeenCalledWith('workout_logs')
@@ -602,7 +605,7 @@ describe('Workout log operations', () => {
       })
 
       await expect(
-        adapter.createWorkoutLog({ userId: 'user-001', startedAt: now }),
+        adapter.createWorkoutLog({ userId: 'user-001', startedAt: now, totalPausedMs: 0 }),
       ).rejects.toEqual({ message: 'Insert failed' })
     })
   })
@@ -620,6 +623,7 @@ describe('Workout log operations', () => {
         title: 'Updated Title',
         startedAt: now,
         completedAt: later,
+        totalPausedMs: 0,
       }
 
       const result = await adapter.updateWorkoutLog(domainLog)

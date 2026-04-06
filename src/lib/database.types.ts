@@ -43,6 +43,8 @@ export interface WorkoutLogRow {
   bodyweight_at_session: unknown
   overall_notes: string | null
   event_metadata: unknown
+  paused_at: string | null
+  total_paused_ms: number
   created_at: string
   updated_at: string
 }
