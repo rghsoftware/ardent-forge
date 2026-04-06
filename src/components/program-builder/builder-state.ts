@@ -476,7 +476,10 @@ export function buildSavePayload(
 // IDs in update mode rather than fabricating new ones.
 // ---------------------------------------------------------------------------
 
-export function hydrateDraft(programFull: ProgramFull): ProgramDraft {
+export function hydrateDraft(
+  programFull: ProgramFull,
+  templateNames?: Map<string, string>,
+): ProgramDraft {
   const { program, blocks, blockWeeks, scheduledSessions } = programFull
 
   // Group weeks by blockId
@@ -508,6 +511,7 @@ export function hydrateDraft(programFull: ProgramFull): ProgramDraft {
               dayLabel: session.dayLabel,
               sessionType: session.sessionType,
               sessionTemplateId: session.sessionTemplateId,
+              templateName: templateNames?.get(session.sessionTemplateId),
               ...(session.notes ? { notes: session.notes } : {}),
               ...(session.overrides ? { overrides: session.overrides } : {}),
             }),

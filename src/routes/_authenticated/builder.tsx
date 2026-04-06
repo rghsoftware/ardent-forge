@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth'
 import { useOnboarding } from '@/hooks/use-onboarding'
 import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useProgramFull, useCreateProgram, useUpdateProgram } from '@/hooks/use-programs'
+import { useSessionTemplates } from '@/hooks/use-session-templates'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
@@ -79,18 +80,20 @@ function BuilderPage() {
   const updateMutation = useUpdateProgram()
   const isSaving = createMutation.isPending || updateMutation.isPending
 
-  // Edit mode: fetch existing program
+  const userId = user?.id ?? ''
+
+  // Edit mode: fetch existing program and resolve template names for display
   const { data: programFull, isLoading: isLoadingProgram } = useProgramFull(programId)
+  const { data: sessionTemplates } = useSessionTemplates(userId || undefined)
 
   // Track last-hydrated ID to ensure we hydrate only once per program. Uses React's
   // "adjusting state during render" pattern instead of useEffect to avoid an extra render cycle.
   const [hydratedProgramId, setHydratedProgramId] = useState<string | null>(null)
-  if (programFull && hydratedProgramId !== programFull.program.id) {
+  if (programFull && sessionTemplates && hydratedProgramId !== programFull.program.id) {
+    const templateNames = new Map(sessionTemplates.map((t) => [t.id, t.name]))
     setHydratedProgramId(programFull.program.id)
-    setDraft(hydrateDraft(programFull))
+    setDraft(hydrateDraft(programFull, templateNames))
   }
-
-  const userId = user?.id ?? ''
 
   // ---------------------------------------------------------------------------
   // Handlers
