@@ -1,39 +1,38 @@
 appId: com.rghsoftware.ardentforge
-name: Screen Orientation Change
+name: Activity Recreation Survival
 tags:
   - rendering
   - android
 ---
-# Verify the WebView survives orientation changes without crashing,
-# losing state, or rendering incorrectly. Orientation changes destroy
-# and recreate the Activity on Android -- a common source of WebView bugs.
+# Verify the WebView survives Activity recreation without crashing
+# or losing state. On Android, configuration changes (orientation,
+# locale, font scale) destroy and recreate the Activity -- a common
+# source of WebView bugs in Tauri apps.
+#
+# Maestro cannot trigger orientation changes directly, so this flow
+# exercises the Activity lifecycle via rapid background/foreground
+# cycles which can also trigger recreation.
 
 - launchApp
 
 - waitForAnimationToEnd
 
-# Verify initial portrait render
+# Verify initial render
 - assertVisible:
     text: '.*[Ss]etup.*|.*[Ss]ign.[Ii]n.*|.*[Aa]rdent.*'
     optional: false
 
-# Rotate to landscape
-- setLocation:
-    latitude: 0
-    longitude: 0
-- runScript:
-    script: |
-      // Maestro doesn't have native rotation, use adb
-    when:
-      platform: Android
-
-# Alternative: Use device settings to rotate
+# Rapid background/foreground cycle 1
 - pressKey: Home
 - launchApp
-
 - waitForAnimationToEnd
 
-# The app should still render correctly after rotation cycle
+# Rapid background/foreground cycle 2
+- pressKey: Home
+- launchApp
+- waitForAnimationToEnd
+
+# The app should still render correctly after multiple recreation cycles
 - assertVisible:
     text: '.*[Ss]etup.*|.*[Ss]ign.[Ii]n.*|.*[Aa]rdent.*'
     optional: false
