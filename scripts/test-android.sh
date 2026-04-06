@@ -197,18 +197,26 @@ ensure_emulator() {
 
 install_apk() {
     local apk_path
-    apk_path=$(find "$PROJECT_ROOT/src-tauri/gen/android/app/build/outputs" \
-        -name "*.apk" -path "*/debug/*" 2>/dev/null | head -1)
 
-    if [ -z "$apk_path" ]; then
-        echo -e "${YELLOW}No debug APK found. Building now...${NC}"
-        (cd "$PROJECT_ROOT" && bunx tauri android build --target aarch64 --debug)
-        apk_path=$(find "$PROJECT_ROOT/src-tauri/gen/android/app/build/outputs" \
-            -name "*.apk" -path "*/debug/*" 2>/dev/null | head -1)
+    # Look for debug APK in this directory first, then the main repo root
+    # (worktrees share the same build output via the main repo)
+    local git_root
+    git_root=$(git -C "$PROJECT_ROOT" rev-parse --show-superproject-working-tree 2>/dev/null)
+    if [ -z "$git_root" ]; then
+        git_root="$PROJECT_ROOT"
     fi
 
+    for search_root in "$PROJECT_ROOT" "$git_root"; do
+        apk_path=$(find "$search_root/src-tauri/gen/android/app/build/outputs" \
+            -name "*.apk" -path "*/debug/*" 2>/dev/null | head -1)
+        if [ -n "$apk_path" ]; then
+            break
+        fi
+    done
+
     if [ -z "$apk_path" ]; then
-        echo -e "${RED}Error: APK build failed.${NC}"
+        echo -e "${YELLOW}No debug APK found. Build one with:${NC}"
+        echo "  bun tauri android build --debug"
         exit 1
     fi
 
