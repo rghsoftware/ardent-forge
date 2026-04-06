@@ -25,7 +25,19 @@ AVD_NAME="ardent_forge_test"
 # Prefer the system image that's already downloaded locally
 SYSTEM_IMAGE="system-images;android-36.1;google_apis_playstore;x86_64"
 AVD_DEVICE="pixel_6"
-EMULATOR_BOOT_TIMEOUT=120  # seconds
+EMULATOR_BOOT_TIMEOUT=180  # seconds
+
+# Ensure the emulator can find AVDs created by avdmanager.
+# avdmanager may write to ~/.config/.android/avd while the emulator
+# looks in ~/.android/avd by default. Setting ANDROID_AVD_HOME resolves this.
+for avd_dir in \
+    "$HOME/.android/avd" \
+    "$HOME/.config/.android/avd"; do
+    if [ -d "$avd_dir" ]; then
+        export ANDROID_AVD_HOME="$avd_dir"
+        break
+    fi
+done
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -118,7 +130,13 @@ create_avd() {
         exit 1
     fi
 
-    echo -e "${CYAN}Creating AVD '$AVD_NAME'...${NC}"
+    # Ensure AVD lands in a directory the emulator will find
+    if [ -z "${ANDROID_AVD_HOME:-}" ]; then
+        export ANDROID_AVD_HOME="$HOME/.android/avd"
+        mkdir -p "$ANDROID_AVD_HOME"
+    fi
+
+    echo -e "${CYAN}Creating AVD '$AVD_NAME' in $ANDROID_AVD_HOME...${NC}"
     echo "no" | "$AVDMANAGER_BIN" create avd \
         --name "$AVD_NAME" \
         --package "$SYSTEM_IMAGE" \
