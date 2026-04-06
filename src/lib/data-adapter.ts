@@ -14,6 +14,8 @@ import type {
   BlockWeek,
   ScheduledSession,
   ProgramActivation,
+  WeekStatus,
+  WeekStatusValue,
   AccountabilityGroup,
   GroupMember,
   GroupInvite,
@@ -275,9 +277,20 @@ export interface DataAdapter {
   ): Promise<ProgramActivation>
   updateActiveProgram(
     userId: string,
-    updates: { currentBlockOrdinal?: number; currentWeekNumber?: number },
+    updates: { currentBlockOrdinal?: number; currentWeekNumber?: number; startDate?: string },
   ): Promise<ProgramActivation>
   clearActiveProgram(userId: string): Promise<void>
+
+  // Week status operations (Program Time Travel)
+  getWeekStatuses(activationId: string): Promise<WeekStatus[]>
+  upsertWeekStatuses(
+    activationId: string,
+    statuses: Array<{ blockOrdinal: number; weekNumber: number; status: WeekStatusValue }>,
+  ): Promise<WeekStatus[]>
+  deleteWeekStatuses(
+    activationId: string,
+    keys: Array<{ blockOrdinal: number; weekNumber: number }>,
+  ): Promise<void>
 
   // Share link operations
   getShareLinks(userId: string): Promise<ShareLink[]>

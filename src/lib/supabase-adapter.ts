@@ -28,6 +28,8 @@ import type {
   BlockWeek,
   ScheduledSession,
   ProgramActivation,
+  WeekStatus,
+  WeekStatusValue,
   ShareLink,
   ShareableEntityType,
   WeeklyVolumeEntry,
@@ -60,6 +62,7 @@ import type {
   BlockWeekRow,
   ScheduledSessionRow,
   ProgramActivationRow,
+  ProgramWeekStatusRow,
   ShareLinkRow,
   EventItemRow,
   ConversationRow,
@@ -108,6 +111,7 @@ import {
   fromMessage,
   toMediaAttachment,
   fromMediaAttachment,
+  toWeekStatus,
 } from './data-mapper'
 import {
   toAccountabilityGroup,
@@ -1297,7 +1301,7 @@ export class SupabaseAdapter implements DataAdapter {
 
   async updateActiveProgram(
     userId: string,
-    updates: { currentBlockOrdinal?: number; currentWeekNumber?: number },
+    updates: { currentBlockOrdinal?: number; currentWeekNumber?: number; startDate?: string },
   ): Promise<ProgramActivation> {
     const row: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -1307,6 +1311,9 @@ export class SupabaseAdapter implements DataAdapter {
     }
     if (updates.currentWeekNumber !== undefined) {
       row.current_week_number = updates.currentWeekNumber
+    }
+    if (updates.startDate !== undefined) {
+      row.start_date = updates.startDate
     }
 
     const { data, error } = await this.client
@@ -1321,6 +1328,59 @@ export class SupabaseAdapter implements DataAdapter {
 
   async clearActiveProgram(userId: string): Promise<void> {
     const { error } = await this.client.from('program_activations').delete().eq('user_id', userId)
+    if (error) throw error
+  }
+
+  // ---------------------------------------------------------------------------
+  // Week status operations (Program Time Travel)
+  // ---------------------------------------------------------------------------
+
+  async getWeekStatuses(activationId: string): Promise<WeekStatus[]> {
+    const { data, error } = await this.client
+      .from('program_week_statuses')
+      .select('*')
+      .eq('activation_id', activationId)
+      .order('block_ordinal', { ascending: true })
+      .order('week_number', { ascending: true })
+    if (error) throw error
+    return (data as ProgramWeekStatusRow[]).map(toWeekStatus)
+  }
+
+  async upsertWeekStatuses(
+    activationId: string,
+    statuses: Array<{ blockOrdinal: number; weekNumber: number; status: WeekStatusValue }>,
+  ): Promise<WeekStatus[]> {
+    const rows = statuses.map((s) => ({
+      activation_id: activationId,
+      block_ordinal: s.blockOrdinal,
+      week_number: s.weekNumber,
+      status: s.status,
+    }))
+
+    const { error } = await this.client
+      .from('program_week_statuses')
+      .upsert(rows, { onConflict: 'activation_id,block_ordinal,week_number' })
+    if (error) throw error
+
+    return this.getWeekStatuses(activationId)
+  }
+
+  async deleteWeekStatuses(
+    activationId: string,
+    keys: Array<{ blockOrdinal: number; weekNumber: number }>,
+  ): Promise<void> {
+    if (keys.length === 0) return
+
+    // Supabase JS client doesn't support tuple IN clauses, so build an .or() filter
+    const orFilter = keys
+      .map((k) => `and(block_ordinal.eq.${k.blockOrdinal},week_number.eq.${k.weekNumber})`)
+      .join(',')
+
+    const { error } = await this.client
+      .from('program_week_statuses')
+      .delete()
+      .eq('activation_id', activationId)
+      .or(orFilter)
     if (error) throw error
   }
 

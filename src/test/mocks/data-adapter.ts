@@ -73,6 +73,11 @@ export function createMockAdapter(
     updateActiveProgram: vi.fn().mockResolvedValue({}),
     clearActiveProgram: vi.fn().mockResolvedValue(undefined),
 
+    // Week status operations
+    getWeekStatuses: vi.fn().mockResolvedValue([]),
+    upsertWeekStatuses: vi.fn().mockResolvedValue([]),
+    deleteWeekStatuses: vi.fn().mockResolvedValue(undefined),
+
     // Share link operations
     getShareLinks: vi.fn().mockResolvedValue([]),
     getShareLinksForEntity: vi.fn().mockResolvedValue([]),

@@ -10,6 +10,7 @@ interface ProgramSessionCardProps {
   sessionName?: string
   sessionType?: string
   onStartSession: () => void
+  onTimeTravel?: () => void
   isLoading?: boolean
   isRestDay?: boolean
 }
@@ -83,6 +84,7 @@ export function ProgramSessionCard({
   sessionName,
   sessionType,
   onStartSession,
+  onTimeTravel,
   isLoading = false,
   isRestDay = false,
 }: ProgramSessionCardProps) {
@@ -102,11 +104,23 @@ export function ProgramSessionCard({
       }`}
     >
       {/* Program header -- program name + block/week context */}
-      <div className="flex flex-col gap-0.5">
-        <span className="font-heading text-xs text-ember">{programName}</span>
-        <span className="text-xs text-warm-ash/50">
-          {blockName} &middot; Week {weekNumber} of {totalWeeks}
-        </span>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-heading text-xs text-ember">{programName}</span>
+          <span className="text-xs text-warm-ash/50">
+            {blockName} &middot; Week {weekNumber} of {totalWeeks}
+          </span>
+        </div>
+        {onTimeTravel && (
+          <button
+            type="button"
+            onClick={onTimeTravel}
+            className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/40 hover:text-ember"
+            aria-label="Time travel -- adjust program position"
+          >
+            <Icon name="history" size={20} />
+          </button>
+        )}
       </div>
 
       {isRestDay ? (

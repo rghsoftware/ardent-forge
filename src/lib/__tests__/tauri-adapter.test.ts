@@ -248,6 +248,24 @@ const tauriProgramActivationResponse = {
   updated_at: now,
 }
 
+const tauriWeekStatusResponse = {
+  id: 'ws-001',
+  activation_id: 'pa-001',
+  block_ordinal: 1,
+  week_number: 1,
+  status: 'done',
+  created_at: now,
+}
+
+const tauriWeekStatusResponse2 = {
+  id: 'ws-002',
+  activation_id: 'pa-001',
+  block_ordinal: 1,
+  week_number: 2,
+  status: 'skipped',
+  created_at: now,
+}
+
 const tauriAccountabilityGroupResponse = {
   id: 'grp-001',
   user_id: 'user-001',
@@ -1777,8 +1795,43 @@ describe('Program activation operations', () => {
         user_id: 'user-001',
         current_block_ordinal: 2,
         current_week_number: 1,
+        start_date: null,
       })
       expect(result.programId).toBe('prog-001')
+    })
+
+    it('passes start_date when provided', async () => {
+      mockInvoke.mockResolvedValue(tauriProgramActivationResponse)
+
+      const result = await adapter.updateActiveProgram('user-001', {
+        currentBlockOrdinal: 2,
+        currentWeekNumber: 1,
+        startDate: '2025-07-01',
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('update_active_program', {
+        user_id: 'user-001',
+        current_block_ordinal: 2,
+        current_week_number: 1,
+        start_date: '2025-07-01',
+      })
+      expect(result.programId).toBe('prog-001')
+    })
+
+    it('passes null start_date when not provided', async () => {
+      mockInvoke.mockResolvedValue(tauriProgramActivationResponse)
+
+      await adapter.updateActiveProgram('user-001', {
+        currentBlockOrdinal: 1,
+        currentWeekNumber: 3,
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('update_active_program', {
+        user_id: 'user-001',
+        current_block_ordinal: 1,
+        current_week_number: 3,
+        start_date: null,
+      })
     })
   })
 
@@ -1788,6 +1841,70 @@ describe('Program activation operations', () => {
 
       await expect(adapter.clearActiveProgram('user-001')).resolves.toBeUndefined()
       expect(mockInvoke).toHaveBeenCalledWith('clear_active_program', { user_id: 'user-001' })
+    })
+  })
+})
+
+// ===========================================================================
+// Week status operations
+// ===========================================================================
+
+describe('Week status operations', () => {
+  describe('getWeekStatuses', () => {
+    it('invokes correct command with activation_id and maps results', async () => {
+      mockInvoke.mockResolvedValue([tauriWeekStatusResponse, tauriWeekStatusResponse2])
+
+      const result = await adapter.getWeekStatuses('pa-001')
+
+      expect(mockInvoke).toHaveBeenCalledWith('get_week_statuses', {
+        activation_id: 'pa-001',
+      })
+      expect(result).toHaveLength(2)
+      expect(result[0].blockOrdinal).toBe(1)
+      expect(result[0].weekNumber).toBe(1)
+      expect(result[0].status).toBe('done')
+      expect(result[1].weekNumber).toBe(2)
+      expect(result[1].status).toBe('skipped')
+    })
+
+    it('returns empty array when no statuses exist', async () => {
+      mockInvoke.mockResolvedValue([])
+
+      const result = await adapter.getWeekStatuses('pa-001')
+
+      expect(result).toEqual([])
+    })
+  })
+
+  describe('upsertWeekStatuses', () => {
+    it('invokes correct command with statuses array and returns mapped results', async () => {
+      mockInvoke.mockResolvedValue([tauriWeekStatusResponse, tauriWeekStatusResponse2])
+
+      const statuses = [
+        { blockOrdinal: 1, weekNumber: 1, status: 'done' as const },
+        { blockOrdinal: 1, weekNumber: 2, status: 'skipped' as const },
+      ]
+      const result = await adapter.upsertWeekStatuses('pa-001', statuses)
+
+      expect(mockInvoke).toHaveBeenCalledWith('upsert_week_statuses', {
+        activation_id: 'pa-001',
+        statuses,
+      })
+      expect(result).toHaveLength(2)
+      expect(result[0].status).toBe('done')
+      expect(result[1].status).toBe('skipped')
+    })
+
+    it('returns empty array when upserting empty statuses', async () => {
+      mockInvoke.mockResolvedValue([])
+
+      const result = await adapter.upsertWeekStatuses('pa-001', [])
+
+      expect(mockInvoke).toHaveBeenCalledWith('upsert_week_statuses', {
+        activation_id: 'pa-001',
+        statuses: [],
+      })
+      expect(result).toEqual([])
     })
   })
 })

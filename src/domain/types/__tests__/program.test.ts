@@ -7,6 +7,7 @@ import {
   blockWeekSchema,
   scheduledSessionSchema,
   programActivationSchema,
+  weekStatusSchema,
 } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
@@ -350,5 +351,99 @@ describe('ProgramActivation schema', () => {
   it('accepts valid YYYY-MM-DD startDate "2025-06-15"', () => {
     const valid = { ...baseProgramActivation, startDate: '2025-06-15' }
     expect(programActivationSchema.safeParse(valid).success).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// WeekStatus schema
+// ---------------------------------------------------------------------------
+
+const baseWeekStatus = {
+  id: 'ws-1',
+  activationId: 'pa-1',
+  blockOrdinal: 1,
+  weekNumber: 2,
+  status: 'done',
+  createdAt: '2025-06-15T10:00:00Z',
+}
+
+describe('WeekStatus schema', () => {
+  it('accepts valid status "done"', () => {
+    expect(weekStatusSchema.safeParse(baseWeekStatus).success).toBe(true)
+  })
+
+  it('accepts valid status "skipped"', () => {
+    const skipped = { ...baseWeekStatus, status: 'skipped' }
+    expect(weekStatusSchema.safeParse(skipped).success).toBe(true)
+  })
+
+  it('rejects invalid status "completed"', () => {
+    const bad = { ...baseWeekStatus, status: 'completed' }
+    expect(weekStatusSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects invalid status "unknown"', () => {
+    const bad = { ...baseWeekStatus, status: 'unknown' }
+    expect(weekStatusSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects missing activationId', () => {
+    const { activationId: _, ...noActivationId } = baseWeekStatus as Record<string, unknown>
+    expect(weekStatusSchema.safeParse(noActivationId).success).toBe(false)
+  })
+
+  it('rejects missing blockOrdinal', () => {
+    const { blockOrdinal: _, ...noBlockOrdinal } = baseWeekStatus as Record<string, unknown>
+    expect(weekStatusSchema.safeParse(noBlockOrdinal).success).toBe(false)
+  })
+
+  it('rejects missing weekNumber', () => {
+    const { weekNumber: _, ...noWeekNumber } = baseWeekStatus as Record<string, unknown>
+    expect(weekStatusSchema.safeParse(noWeekNumber).success).toBe(false)
+  })
+
+  it('rejects missing status', () => {
+    const { status: _, ...noStatus } = baseWeekStatus as Record<string, unknown>
+    expect(weekStatusSchema.safeParse(noStatus).success).toBe(false)
+  })
+
+  it('rejects zero blockOrdinal (must be positive)', () => {
+    const bad = { ...baseWeekStatus, blockOrdinal: 0 }
+    expect(weekStatusSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects negative blockOrdinal', () => {
+    const bad = { ...baseWeekStatus, blockOrdinal: -1 }
+    expect(weekStatusSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects non-integer blockOrdinal', () => {
+    const bad = { ...baseWeekStatus, blockOrdinal: 1.5 }
+    expect(weekStatusSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects zero weekNumber (must be positive)', () => {
+    const bad = { ...baseWeekStatus, weekNumber: 0 }
+    expect(weekStatusSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects negative weekNumber', () => {
+    const bad = { ...baseWeekStatus, weekNumber: -1 }
+    expect(weekStatusSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects non-integer weekNumber', () => {
+    const bad = { ...baseWeekStatus, weekNumber: 2.5 }
+    expect(weekStatusSchema.safeParse(bad).success).toBe(false)
+  })
+
+  it('rejects missing createdAt', () => {
+    const { createdAt: _, ...noCreatedAt } = baseWeekStatus as Record<string, unknown>
+    expect(weekStatusSchema.safeParse(noCreatedAt).success).toBe(false)
+  })
+
+  it('requires createdAt to be a string', () => {
+    const bad = { ...baseWeekStatus, createdAt: 12345 }
+    expect(weekStatusSchema.safeParse(bad).success).toBe(false)
   })
 })

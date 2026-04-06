@@ -20,6 +20,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Icon } from '@/components/icon'
 import { ShareDialog } from '@/components/sharing/share-dialog'
+import { TimeTravelSheet } from '@/components/program/time-travel-sheet'
 import { SOURCE_LABELS } from '@/components/program-builder/constants'
 import { SessionTemplateCard } from '@/components/session-builder/session-template-card'
 import { EventCard } from '@/components/event-builder/event-card'
@@ -47,6 +48,7 @@ import {
 import {
   usePrograms,
   useActiveProgram,
+  useProgramFull,
   useSetActiveProgram,
   useClearActiveProgram,
   useDeleteProgram,
@@ -543,6 +545,10 @@ function ProgramList({ userId }: { userId: string | undefined }) {
     scope,
   })
   const { data: activeProgram, error: activeProgramError } = useActiveProgram(userId)
+  const { data: activeProgramFull, isError: activeProgramFullError } = useProgramFull(
+    activeProgram?.programId,
+  )
+  const [timeTravelOpen, setTimeTravelOpen] = useState(false)
   const setActiveMutation = useSetActiveProgram()
   const clearActiveMutation = useClearActiveProgram()
   const deleteProgramMutation = useDeleteProgram()
@@ -706,6 +712,13 @@ function ProgramList({ userId }: { userId: string | undefined }) {
                     onDeactivate={handleDeactivate}
                     onEdit={() => handleEdit(program.id)}
                     onDelete={() => setConfirmDeleteId(program.id)}
+                    onTimeTravel={
+                      isActive && activeProgramFull
+                        ? () => setTimeTravelOpen(true)
+                        : isActive && activeProgramFullError
+                          ? () => toast.error('Failed to load program data. Please try again.')
+                          : undefined
+                    }
                     scope={scope}
                     isOwned={isOwned}
                     onPublish={() =>
@@ -773,6 +786,16 @@ function ProgramList({ userId }: { userId: string | undefined }) {
         }}
         isPublishing={publishProgramMutation.isPending}
       />
+
+      {/* Time Travel Sheet */}
+      {activeProgram && activeProgramFull && (
+        <TimeTravelSheet
+          open={timeTravelOpen}
+          onOpenChange={setTimeTravelOpen}
+          activation={activeProgram}
+          programFull={activeProgramFull}
+        />
+      )}
     </>
   )
 }
@@ -974,6 +997,7 @@ function ProgramCard({
   onDeactivate,
   onEdit,
   onDelete,
+  onTimeTravel,
 }: {
   program: Program
   isActive: boolean
@@ -981,6 +1005,7 @@ function ProgramCard({
   onDeactivate: () => void
   onEdit: () => void
   onDelete: () => void
+  onTimeTravel?: () => void
   scope?: 'mine' | 'public'
   isOwned?: boolean
   onPublish?: () => void
@@ -1033,6 +1058,17 @@ function ProgramCard({
           <Button variant="default" onClick={onActivate} className="min-h-12 flex-1 text-xs">
             Activate
           </Button>
+        )}
+
+        {onTimeTravel && (
+          <button
+            type="button"
+            onClick={onTimeTravel}
+            className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-ember"
+            aria-label={`Time travel -- adjust position for ${program.name}`}
+          >
+            <Icon name="history" size={18} />
+          </button>
         )}
 
         <ShareDialog

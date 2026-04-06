@@ -7,7 +7,8 @@ use uuid::Uuid;
 
 use crate::error::AppError;
 use crate::models::{
-    BlockRow, BlockWeekRow, ProgramActivationRow, ProgramFull, ProgramRow, ScheduledSessionRow,
+    BlockRow, BlockWeekRow, ProgramActivationRow, ProgramFull, ProgramRow,
+    ProgramWeekStatusRow, ScheduledSessionRow,
 };
 use crate::utils::now_unix;
 
@@ -785,5 +786,246 @@ pub async fn clear_active_program(
     if result.rows_affected() == 0 {
         return Err(AppError::not_found("ProgramActivation", &user_id));
     }
+    Ok(())
+}
+
+/// Updates fields on the active program activation for a user. Only provided
+/// (non-None) fields are updated; others are left unchanged.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `user_id`: The user whose activation to update.
+/// - `current_block_ordinal`: Optional new block ordinal.
+/// - `current_week_number`: Optional new week number.
+/// - `start_date`: Optional new start date (YYYY-MM-DD).
+///
+/// # Returns
+/// The updated `ProgramActivationRow`, or a not-found error if the user has no
+/// active program.
+#[tauri::command]
+pub async fn update_active_program(
+    pool: State<'_, SqlitePool>,
+    user_id: String,
+    current_block_ordinal: Option<i64>,
+    current_week_number: Option<i64>,
+    start_date: Option<String>,
+) -> Result<ProgramActivationRow, AppError> {
+    if current_block_ordinal.is_none() && current_week_number.is_none() && start_date.is_none() {
+        return Err(AppError::validation(
+            "fields",
+            "[programs] At least one field must be provided for update",
+        ));
+    }
+
+    // Validate YYYY-MM-DD format at the system boundary
+    if let Some(ref date) = start_date {
+        let valid = date.len() == 10
+            && date.as_bytes().get(4) == Some(&b'-')
+            && date.as_bytes().get(7) == Some(&b'-')
+            && chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").is_ok();
+        if !valid {
+            return Err(AppError::validation(
+                "start_date",
+                "[programs] start_date must be a valid date in YYYY-MM-DD format",
+            ));
+        }
+    }
+
+    let now = now_unix();
+    let mut set_clauses: Vec<String> = Vec::new();
+
+    if current_block_ordinal.is_some() {
+        set_clauses.push("current_block_ordinal = ?".to_string());
+    }
+    if current_week_number.is_some() {
+        set_clauses.push("current_week_number = ?".to_string());
+    }
+    if start_date.is_some() {
+        set_clauses.push("start_date = ?".to_string());
+    }
+    set_clauses.push("updated_at = ?".to_string());
+
+    let sql = format!(
+        "UPDATE program_activations SET {} WHERE user_id = ?",
+        set_clauses.join(", ")
+    );
+
+    let mut query = sqlx::query(&sql);
+
+    if let Some(ref block_ord) = current_block_ordinal {
+        query = query.bind(block_ord);
+    }
+    if let Some(ref week_num) = current_week_number {
+        query = query.bind(week_num);
+    }
+    if let Some(ref date) = start_date {
+        query = query.bind(date);
+    }
+    query = query.bind(now);
+    query = query.bind(&user_id);
+
+    let result = query.execute(pool.inner()).await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("ProgramActivation", &user_id));
+    }
+
+    let row = sqlx::query_as::<_, ProgramActivationRow>(
+        "SELECT * FROM program_activations WHERE user_id = ?",
+    )
+    .bind(&user_id)
+    .fetch_one(pool.inner())
+    .await?;
+
+    Ok(row)
+}
+
+/// Fetches all week statuses for a given program activation.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `activation_id`: The activation's unique identifier.
+///
+/// # Returns
+/// A vector of `ProgramWeekStatusRow` for the activation.
+#[tauri::command]
+pub async fn get_week_statuses(
+    pool: State<'_, SqlitePool>,
+    activation_id: String,
+) -> Result<Vec<ProgramWeekStatusRow>, AppError> {
+    let rows = sqlx::query_as::<_, ProgramWeekStatusRow>(
+        "SELECT * FROM program_week_statuses WHERE activation_id = ? \
+         ORDER BY block_ordinal, week_number",
+    )
+    .bind(&activation_id)
+    .fetch_all(pool.inner())
+    .await?;
+
+    Ok(rows)
+}
+
+// ---------------------------------------------------------------------------
+// Week status input structs
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeekStatusInput {
+    pub block_ordinal: i64,
+    pub week_number: i64,
+    pub status: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeekStatusKey {
+    pub block_ordinal: i64,
+    pub week_number: i64,
+}
+
+/// Upserts week statuses for a program activation. For each entry, inserts a
+/// new row or replaces the existing one (keyed by activation_id +
+/// block_ordinal + week_number). Returns the full list of statuses for the
+/// activation after the upsert.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `activation_id`: The activation's unique identifier.
+/// - `statuses`: A vector of week statuses to upsert.
+///
+/// # Returns
+/// The complete `Vec<ProgramWeekStatusRow>` for the activation after upsert.
+#[tauri::command]
+pub async fn upsert_week_statuses(
+    pool: State<'_, SqlitePool>,
+    activation_id: String,
+    statuses: Vec<WeekStatusInput>,
+) -> Result<Vec<ProgramWeekStatusRow>, AppError> {
+    // Validate all statuses before starting the transaction
+    for s in &statuses {
+        if s.status != "done" && s.status != "skipped" {
+            return Err(AppError::validation(
+                "status",
+                &format!(
+                    "[programs] Invalid week status '{}': must be 'done' or 'skipped'",
+                    s.status
+                ),
+            ));
+        }
+    }
+
+    let mut tx = pool.begin().await?;
+
+    for s in &statuses {
+        let id = Uuid::new_v4().to_string();
+        sqlx::query(
+            "INSERT INTO program_week_statuses \
+             (id, activation_id, block_ordinal, week_number, status) \
+             VALUES (?, ?, ?, ?, ?) \
+             ON CONFLICT(activation_id, block_ordinal, week_number) DO UPDATE SET \
+               status = excluded.status",
+        )
+        .bind(&id)
+        .bind(&activation_id)
+        .bind(s.block_ordinal)
+        .bind(s.week_number)
+        .bind(&s.status)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
+    // Return the full list for the activation
+    let rows = sqlx::query_as::<_, ProgramWeekStatusRow>(
+        "SELECT * FROM program_week_statuses WHERE activation_id = ? \
+         ORDER BY block_ordinal, week_number",
+    )
+    .bind(&activation_id)
+    .fetch_all(pool.inner())
+    .await?;
+
+    Ok(rows)
+}
+
+/// Deletes week statuses for a program activation. Removes rows matching the
+/// given (block_ordinal, week_number) keys within a transaction.
+///
+/// # Parameters
+/// - `pool`: SQLite connection pool (injected by Tauri state).
+/// - `activation_id`: The activation's unique identifier.
+/// - `keys`: A vector of (block_ordinal, week_number) pairs to delete.
+#[tauri::command]
+pub async fn delete_week_statuses(
+    pool: State<'_, SqlitePool>,
+    activation_id: String,
+    keys: Vec<WeekStatusKey>,
+) -> Result<(), AppError> {
+    if activation_id.is_empty() {
+        return Err(AppError::validation(
+            "activation_id",
+            "[programs] activation_id must not be empty",
+        ));
+    }
+    if keys.is_empty() {
+        return Ok(());
+    }
+
+    let mut tx = pool.begin().await?;
+
+    for key in &keys {
+        sqlx::query(
+            "DELETE FROM program_week_statuses \
+             WHERE activation_id = ? AND block_ordinal = ? AND week_number = ?",
+        )
+        .bind(&activation_id)
+        .bind(key.block_ordinal)
+        .bind(key.week_number)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
     Ok(())
 }
