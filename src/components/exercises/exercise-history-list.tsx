@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import { EmptyState } from '@/components/shared/empty-state'
 import { cn } from '@/lib/utils'
 import { formatDuration } from '@/lib/format-duration'
 import { VolumeLoadBar } from '@/components/history/volume-load-bar'
@@ -85,9 +87,19 @@ export function ExerciseHistoryList({ history }: ExerciseHistoryListProps) {
 
   if (!history || history.length === 0) {
     return (
-      <div className="flex items-center justify-center px-4 py-16">
-        <p className="font-display text-sm text-warm-ash">No workout history</p>
-      </div>
+      <EmptyState
+        icon="history"
+        heading="No workout history"
+        subtext="Log a session with this exercise and it will appear here."
+        action={
+          <Link
+            to="/"
+            className="inline-flex min-h-[48px] items-center bg-forge px-4 py-2 text-xs font-medium text-on-forge hover:bg-forge/80"
+          >
+            Log a session
+          </Link>
+        }
+      />
     )
   }
 

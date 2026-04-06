@@ -194,6 +194,7 @@ export interface ScheduledSessionRow {
   session_type: string
   session_template_id: string
   notes: string | null
+  overrides: unknown | null
   created_at: string
   updated_at: string
 }

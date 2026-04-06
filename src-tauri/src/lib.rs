@@ -28,6 +28,8 @@ pub fn run() {
             app.handle().plugin(tauri_plugin_notification::init())?;
             app.handle().plugin(tauri_plugin_deep_link::init())?;
             app.handle().plugin(tauri_plugin_opener::init())?;
+            app.handle()
+                .plugin(tauri_plugin_safe_area_insets_css::init())?;
             #[cfg(mobile)]
             app.handle().plugin(tauri_plugin_barcode_scanner::init())?;
 

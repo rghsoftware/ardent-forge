@@ -59,7 +59,10 @@ const VALID_CONFIG = {
   supabaseKey: 'test-anon-key',
 }
 
-const EXPECTED_LINK = 'ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-anon-key'
+const EXPECTED_DEEP_LINK =
+  'ardentforge://connect?url=https%3A%2F%2Fabc.supabase.co&key=test-anon-key'
+const EXPECTED_INVITE_LINK =
+  'https://app.ardentforge.app/connect?url=https%3A%2F%2Fabc.supabase.co&key=test-anon-key'
 
 // --- Tests ---
 
@@ -80,11 +83,12 @@ describe('BackendSettings - Share this server', () => {
 
     renderWithProviders(<BackendSettings />)
 
-    await screen.findByText('Share this server')
+    const shareBtn = await screen.findByText('Share this server')
+    fireEvent.click(shareBtn)
 
-    const qr = screen.getByTestId('qr-code')
+    const qr = await screen.findByTestId('qr-code')
     expect(qr).toBeInTheDocument()
-    expect(qr.getAttribute('data-value')).toBe(EXPECTED_LINK)
+    expect(qr.getAttribute('data-value')).toBe(EXPECTED_DEEP_LINK)
   })
 
   it('does not render share section when config is null', async () => {
@@ -106,13 +110,16 @@ describe('BackendSettings - Share this server', () => {
 
     renderWithProviders(<BackendSettings />)
 
+    const shareBtn = await screen.findByText('Share this server')
+    fireEvent.click(shareBtn)
+
     const copyBtn = await screen.findByText('Copy invite link')
     fireEvent.click(copyBtn)
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith('Invite link copied')
     })
-    expect(writeTextSpy).toHaveBeenCalledWith(EXPECTED_LINK)
+    expect(writeTextSpy).toHaveBeenCalledWith(EXPECTED_INVITE_LINK)
   })
 
   it('shows error toast when clipboard write fails', async () => {
@@ -120,6 +127,9 @@ describe('BackendSettings - Share this server', () => {
     writeTextSpy.mockRejectedValue(new Error('Clipboard denied'))
 
     renderWithProviders(<BackendSettings />)
+
+    const shareBtn = await screen.findByText('Share this server')
+    fireEvent.click(shareBtn)
 
     const copyBtn = await screen.findByText('Copy invite link')
     fireEvent.click(copyBtn)

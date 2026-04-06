@@ -10,7 +10,7 @@ let _adapter: DataAdapter | null = null
 /**
  * Returns the appropriate DataAdapter based on the runtime environment.
  *
- * - **Tauri mode** (desktop/mobile app): Returns a TauriAdapter that invokes
+ * - **Tauri mode** (mobile app): Returns a TauriAdapter that invokes
  *   Rust commands over the Tauri IPC bridge, backed by local SQLite.
  * - **Browser mode** (web-only): Returns a SupabaseAdapter that talks directly
  *   to the Supabase PostgreSQL backend.

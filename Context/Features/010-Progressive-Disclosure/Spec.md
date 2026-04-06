@@ -48,7 +48,7 @@ The template builder renders all configuration options simultaneously regardless
 **R1. HelpTrigger component**
 
 - Reusable component with `help_outline` Material Symbol icon (20px, `text-warm-ash`, `text-ember` on hover)
-- Opens Popover on desktop (>=768px), Drawer (shadcn/vaul) on mobile (<768px)
+- Opens Popover on large screens (>=768px), Drawer (shadcn/vaul) on mobile (<768px)
 - Props: `title` (string), `content` (ReactNode), `placement` (`'inline'` | `'section'`)
 - Popover: `bg-surface-gunmetal`, max-width 360px, `rounded-none`
 - Drawer: full-width, `bg-surface-gunmetal`, heat-blur backdrop overlay, swipe-to-dismiss via vaul
@@ -134,7 +134,7 @@ The template builder renders all configuration options simultaneously regardless
 | TA-11 | Selecting PercentageSets hides the load section entirely                                | R5          |
 | TA-12 | Selecting FixedSets shows Weight, RPE, BW, BW+, None load options                       | R5          |
 | TA-13 | WorkToMax shows only Weight, RPE, None load options                                     | R5          |
-| TA-14 | HelpTrigger opens popover on desktop (>=768px viewport)                                 | R1          |
+| TA-14 | HelpTrigger opens popover on large screens (>=768px viewport)                           | R1          |
 | TA-15 | HelpTrigger opens bottom sheet on mobile (<768px viewport)                              | R1          |
 | TA-16 | Block type HelpTrigger shows correct explanation for Accumulation                       | R6          |
 | TA-17 | Selecting Intensification block type shows one-liner below pills                        | R6          |
@@ -148,7 +148,7 @@ The template builder renders all configuration options simultaneously regardless
 
 2. **"Show all types" persistence** -- Yes, persist within the editing session, reset on close. Store as local React state on the template builder component (not Zustand, not localStorage). User "graduates" past the guardrail for the current editing session; resets when they close and reopen.
 
-3. **Mobile bottom sheet library** -- Use shadcn's Drawer component (wraps `vaul` internally). Provides swipe-to-dismiss, snap points, and visual handle out of the box. HelpTrigger conditionally renders Drawer on mobile (<768px) and Popover on desktop (>=768px). Install via `bunx --bun shadcn@latest add drawer` if not present.
+3. **Mobile bottom sheet library** -- Use shadcn's Drawer component (wraps `vaul` internally). Provides swipe-to-dismiss, snap points, and visual handle out of the box. HelpTrigger conditionally renders Drawer on mobile (<768px) and Popover on large screens (>=768px). Install via `bunx --bun shadcn@latest add drawer` if not present.
 
 ## Dependencies
 
@@ -165,5 +165,5 @@ The template builder renders all configuration options simultaneously regardless
 
 ### New Dependencies Introduced
 
-- `@radix-ui/react-popover` -- Popover primitive for HelpTrigger on desktop (via shadcn)
+- `@radix-ui/react-popover` -- Popover primitive for HelpTrigger on large screens (via shadcn)
 - `vaul` -- Drawer primitive for HelpTrigger on mobile (via shadcn Drawer component)

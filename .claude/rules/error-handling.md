@@ -62,3 +62,18 @@ const handleSave = () => {
   // ...
 }
 ```
+
+## Query Hook Error States
+
+All `useQuery`-based hooks in user-facing components must destructure and handle `isError` (or `error`). Showing stale or empty UI on a fetch failure is a silent failure. At minimum, render an error state so the user knows something went wrong.
+
+```typescript
+// Bad -- ignores error state
+const { data, isLoading } = useMyQuery(id)
+
+// Good -- handles error state
+const { data, isLoading, isError } = useMyQuery(id)
+
+// ... later in JSX:
+// {isError ? <ErrorMessage /> : isLoading ? <Skeleton /> : <Content data={data} />}
+```

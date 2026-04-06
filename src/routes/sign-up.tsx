@@ -53,7 +53,7 @@ function SignUpPage() {
   return (
     <AuthPageShell>
       <div className="space-y-0.5">
-        <h1 className="font-display text-xl font-bold text-bone-white">Create account</h1>
+        <h1 className="font-display text-xl font-medium text-bone-white">Create account</h1>
         <p className="text-sm text-warm-ash">Sign up for Ardent Forge</p>
       </div>
 

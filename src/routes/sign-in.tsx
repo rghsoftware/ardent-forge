@@ -64,7 +64,7 @@ function SignInPage() {
         </p>
       )}
 
-      <p className="text-sm text-warm-ash">Sign in to your account</p>
+      <h1 className="font-display text-xl font-medium text-bone-white">Sign in</h1>
 
       {/* Google sign-in */}
       <Button
@@ -138,8 +138,9 @@ function SignInPage() {
             variant="ghost"
             className="min-h-12 w-full text-warm-ash/60 hover:text-warm-ash"
             onClick={() => {
-              auth.continueAsGuest()
-              router.navigate({ to: '/' })
+              if (auth.continueAsGuest()) {
+                router.navigate({ to: '/' })
+              }
             }}
           >
             Continue as Guest

@@ -228,6 +228,7 @@ export function MessageList({
   const didInitialScroll = useRef(false)
 
   // ---- Virtualizer ----
+  // eslint-disable-next-line react-hooks/incompatible-library -- useVirtualizer manages its own deps
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => parentRef.current,
@@ -311,6 +312,15 @@ export function MessageList({
       <div className="flex flex-1 flex-col items-center justify-center gap-2">
         <Icon name="cloud_off" size={32} className="text-warm-ash/30" />
         <p className="text-sm text-warm-ash/60">Failed to load messages</p>
+      </div>
+    )
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
+        <Icon name="chat_bubble_outline" size={36} className="text-warm-ash/20" />
+        <p className="text-xs text-warm-ash/40">No messages yet</p>
       </div>
     )
   }

@@ -24,12 +24,12 @@ import type { SessionType, SessionTemplate } from '@/domain/types'
 // ---------------------------------------------------------------------------
 
 const SESSION_FILTERS: Array<{ value: SessionType | 'ALL'; label: string }> = [
-  { value: 'ALL', label: 'ALL' },
-  { value: 'STRENGTH', label: 'STRENGTH' },
-  { value: 'CONDITIONING', label: 'CONDITIONING' },
+  { value: 'ALL', label: 'All' },
+  { value: 'STRENGTH', label: 'Strength' },
+  { value: 'CONDITIONING', label: 'Conditioning' },
   { value: 'SE', label: 'SE' },
-  { value: 'MIXED', label: 'MIXED' },
-  { value: 'EVENT', label: 'EVENT' },
+  { value: 'MIXED', label: 'Mixed' },
+  { value: 'EVENT', label: 'Event' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -213,7 +213,7 @@ export function SessionPickerSheet({
                   <ToggleGroupItem
                     key={f.value}
                     value={f.value}
-                    className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
+                    className="min-h-8 px-2 py-1 text-xs font-medium uppercase tracking-wider"
                   >
                     {f.label}
                   </ToggleGroupItem>
@@ -237,7 +237,7 @@ export function SessionPickerSheet({
                 <div className="flex flex-col gap-1">
                   {recentTemplates.length > 0 && (
                     <>
-                      <p className="px-1 pb-1 text-[10px] font-medium uppercase tracking-wider text-warm-ash/50">
+                      <p className="px-1 pb-1 text-[11px] font-medium uppercase tracking-wider text-warm-ash/50">
                         Recent
                       </p>
                       {recentTemplates.map((template) => (
@@ -248,7 +248,7 @@ export function SessionPickerSheet({
                         />
                       ))}
                       <div className="my-2 border-t border-warm-ash/10" />
-                      <p className="px-1 pb-1 text-[10px] font-medium uppercase tracking-wider text-warm-ash/50">
+                      <p className="px-1 pb-1 text-[11px] font-medium uppercase tracking-wider text-warm-ash/50">
                         All templates
                       </p>
                     </>
@@ -326,7 +326,7 @@ function TemplateButton({
           {template.name}
         </span>
         <span
-          className={`inline-block self-start px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider ${
+          className={`inline-block self-start px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wider ${
             isEvent ? 'bg-ember/15 text-ember' : 'bg-surface-steel text-warm-ash'
           }`}
         >

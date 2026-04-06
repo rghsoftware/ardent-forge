@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
+import { EmptyState } from '@/components/shared/empty-state'
 import { toast } from 'sonner'
 import { ConfirmDeleteDialog } from './confirm-delete-dialog'
 import {
@@ -106,9 +107,11 @@ export function MobileBlockEditor({
       ))}
 
       {draft.blocks.length === 0 && (
-        <p className="py-8 text-center text-sm text-warm-ash/50">
-          Start by adding your first training block.
-        </p>
+        <EmptyState
+          icon="dashboard_customize"
+          heading="Start by adding your first training block."
+          className="py-12"
+        />
       )}
 
       <Button
@@ -563,8 +566,10 @@ function MobileDayRow({
   onPickSession,
 }: MobileDayRowProps) {
   const handleTap = useCallback(() => {
-    onPickSession(weekClientId, dayOfWeek)
-  }, [weekClientId, dayOfWeek, onPickSession])
+    if (!session) {
+      onPickSession(weekClientId, dayOfWeek)
+    }
+  }, [weekClientId, dayOfWeek, session, onPickSession])
 
   const handleRemove = useCallback(
     (e: React.MouseEvent | React.KeyboardEvent) => {
@@ -607,18 +612,11 @@ function MobileDayRow({
 
   return (
     <div
-      className={`flex min-h-12 items-center gap-3 px-3 py-2 transition-colors ${
-        isEvent
-          ? 'border-l-2 border-ember bg-surface-iron hover:bg-surface-steel'
-          : 'bg-surface-charcoal hover:bg-surface-steel'
+      className={`flex min-h-12 items-center gap-3 px-3 py-2 ${
+        isEvent ? 'border-l-2 border-ember bg-surface-iron' : 'bg-surface-charcoal'
       } ${SESSION_TINT[session.sessionType] ?? ''}`}
     >
-      <button
-        type="button"
-        onClick={handleTap}
-        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-        aria-label={`Session: ${session.templateName ?? 'Unnamed'} on ${DAY_ABBREVIATIONS[dayOfWeek]}`}
-      >
+      <div className="flex min-w-0 flex-1 items-center gap-3 text-left">
         <span className="w-8 text-[11px] font-medium uppercase tracking-wider text-warm-ash/60">
           {DAY_ABBREVIATIONS[dayOfWeek]}
         </span>
@@ -637,7 +635,7 @@ function MobileDayRow({
         >
           {session.sessionType}
         </span>
-      </button>
+      </div>
       <button
         type="button"
         onClick={handleRemove}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,6 +26,10 @@ import { EventCard } from '@/components/event-builder/event-card'
 import { SessionTemplateForm } from '@/components/session-builder/session-template-form'
 import type { SessionTemplateFull } from '@/lib/data-adapter'
 import { EventTemplateForm } from '@/components/event-builder/event-template-form'
+import { ExerciseSearchInput } from '@/components/exercises/exercise-search-input'
+import { ExerciseFilterBar } from '@/components/exercises/exercise-filter-bar'
+import { ExerciseListItem } from '@/components/exercises/exercise-list-item'
+import { CreateExerciseSheet } from '@/components/exercises/create-exercise-sheet'
 import {
   useSessionTemplates,
   useSessionTemplateFull,
@@ -39,19 +43,30 @@ import {
   useClearActiveProgram,
   useDeleteProgram,
 } from '@/hooks/use-programs'
+import { useExercises, useRecentlyUsedExercises } from '@/hooks/use-exercises'
+import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useAuth } from '@/lib/auth'
-import type { Program } from '@/domain/types'
+import { toast } from 'sonner'
+import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
+import { useOnboarding } from '@/hooks/use-onboarding'
+import type { Program, ExerciseCategory, MuscleGroup, MovementPattern } from '@/domain/types'
 
 export const Route = createFileRoute('/_authenticated/library')({
   component: LibraryPage,
 })
 
-type LibraryTab = 'templates' | 'programs'
+type LibraryTab = 'templates' | 'programs' | 'exercises'
 
 function LibraryPage() {
   const { user } = useAuth()
   const userId = user?.id ?? ''
   const navigate = useNavigate()
+
+  const { markRouteVisited } = useOnboarding()
+
+  useEffect(() => {
+    markRouteVisited('/library')
+  }, [markRouteVisited])
 
   const [activeTab, setActiveTab] = useState<LibraryTab>('templates')
 
@@ -63,6 +78,7 @@ function LibraryPage() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [sheetMode, setSheetMode] = useState<'session' | 'event'>('session')
+  const [showCreateExercise, setShowCreateExercise] = useState(false)
 
   const handleCreate = () => {
     setEditingId(null)
@@ -93,6 +109,7 @@ function LibraryPage() {
       await deleteMutation.mutateAsync(id)
     } catch (err) {
       console.error('[library] Failed to delete template:', err)
+      toast('Failed to delete template. Please try again.')
     }
   }
 
@@ -107,10 +124,13 @@ function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-anvil pb-20">
+    <div className="min-h-[100dvh] bg-surface-anvil pb-20">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-6 pb-4">
-        <h1 className="font-display text-2xl font-medium text-bone-white">Library</h1>
+      <div className="mx-auto max-w-5xl flex items-center justify-between px-4 pt-6 pb-4 md:px-6 lg:px-8">
+        <div className="flex items-center gap-3">
+          <Icon name="library_books" size={24} className="text-warm-ash" />
+          <h1 className="font-display text-2xl font-medium text-bone-white">Library</h1>
+        </div>
         {activeTab === 'templates' && (
           <div className="flex items-center gap-2">
             <Button variant="default" onClick={handleCreate} className="min-h-12 text-xs">
@@ -137,10 +157,30 @@ function LibraryPage() {
             Create program
           </Button>
         )}
+        {activeTab === 'exercises' && (
+          <Button
+            variant="default"
+            onClick={() => setShowCreateExercise(true)}
+            className="min-h-12 text-xs"
+          >
+            <Icon name="add" size={16} />
+            New exercise
+          </Button>
+        )}
+      </div>
+
+      {/* Onboarding hint */}
+      <div className="mx-auto max-w-5xl px-4 md:px-6 lg:px-8">
+        <OnboardingHint hintKey="library-intro">
+          Your templates and programs live here. Create a session template to start building.
+        </OnboardingHint>
       </div>
 
       {/* Tab navigation */}
-      <div className="flex border-b border-warm-ash/10 px-4" role="tablist">
+      <div
+        className="mx-auto max-w-5xl flex border-b border-warm-ash/10 px-4 md:px-6 lg:px-8"
+        role="tablist"
+      >
         <button
           type="button"
           role="tab"
@@ -171,12 +211,27 @@ function LibraryPage() {
         >
           PROGRAMS
         </button>
+        <button
+          type="button"
+          role="tab"
+          id="tab-exercises"
+          aria-selected={activeTab === 'exercises'}
+          aria-controls="tabpanel-exercises"
+          onClick={() => setActiveTab('exercises')}
+          className={`min-h-12 px-4 pb-3 text-xs uppercase tracking-wider transition-colors ${
+            activeTab === 'exercises'
+              ? 'border-b-2 border-ember text-ember'
+              : 'text-warm-ash/60 hover:text-warm-ash'
+          }`}
+        >
+          EXERCISES
+        </button>
       </div>
 
       {/* Tab content */}
-      {activeTab === 'templates' ? (
+      {activeTab === 'templates' && (
         <div role="tabpanel" id="tabpanel-templates" aria-labelledby="tab-templates">
-          <div className="flex flex-col gap-2 px-4 pt-4">
+          <div className="mx-auto max-w-5xl flex flex-col gap-2 px-4 pt-4 md:px-6 lg:px-8">
             {isLoading ? (
               <>
                 <Skeleton className="h-16 w-full bg-surface-iron" />
@@ -257,9 +312,25 @@ function LibraryPage() {
             )}
           </div>
         </div>
-      ) : (
-        <div role="tabpanel" id="tabpanel-programs" aria-labelledby="tab-programs">
+      )}
+      {activeTab === 'programs' && (
+        <div
+          role="tabpanel"
+          id="tabpanel-programs"
+          aria-labelledby="tab-programs"
+          className="mx-auto max-w-5xl md:px-6 lg:px-8"
+        >
           <ProgramList userId={userId || undefined} />
+        </div>
+      )}
+      {activeTab === 'exercises' && (
+        <div
+          role="tabpanel"
+          id="tabpanel-exercises"
+          aria-labelledby="tab-exercises"
+          className="mx-auto max-w-5xl md:px-6 lg:px-8"
+        >
+          <ExerciseList userId={userId || undefined} />
         </div>
       )}
 
@@ -270,50 +341,54 @@ function LibraryPage() {
           className="max-h-[95vh] overflow-y-auto bg-surface-anvil p-0"
           showCloseButton={false}
         >
-          <SheetHeader className="px-4 pt-4 pb-0">
-            <SheetTitle className="text-xs text-ember">
-              {sheetMode === 'event'
-                ? editingId
-                  ? 'Edit event'
-                  : 'New event'
-                : editingId
-                  ? 'Edit template'
-                  : 'New template'}
-            </SheetTitle>
-            <SheetDescription className="sr-only">
-              {sheetMode === 'event'
-                ? editingId
-                  ? 'Edit an existing event template'
-                  : 'Create a new event template'
-                : editingId
-                  ? 'Edit an existing session template'
-                  : 'Create a new session template'}
-            </SheetDescription>
-          </SheetHeader>
+          <div className="px-4 lg:px-12">
+            <SheetHeader className="px-4 pt-4 pb-0">
+              <SheetTitle className="text-xs text-ember">
+                {sheetMode === 'event'
+                  ? editingId
+                    ? 'Edit event'
+                    : 'New event'
+                  : editingId
+                    ? 'Edit template'
+                    : 'New template'}
+              </SheetTitle>
+              <SheetDescription className="sr-only">
+                {sheetMode === 'event'
+                  ? editingId
+                    ? 'Edit an existing event template'
+                    : 'Create a new event template'
+                  : editingId
+                    ? 'Edit an existing session template'
+                    : 'Create a new session template'}
+              </SheetDescription>
+            </SheetHeader>
 
-          <div className="pt-2">
-            {sheetMode === 'event' ? (
-              editingId ? (
-                <EditEventFormLoader
+            <div className="pt-2">
+              {sheetMode === 'event' ? (
+                editingId ? (
+                  <EditEventFormLoader
+                    templateId={editingId}
+                    onSave={handleSaved}
+                    onCancel={handleCancel}
+                  />
+                ) : (
+                  <EventTemplateForm onSave={handleSaved} onCancel={handleCancel} />
+                )
+              ) : editingId ? (
+                <EditTemplateFormLoader
                   templateId={editingId}
                   onSave={handleSaved}
                   onCancel={handleCancel}
                 />
               ) : (
-                <EventTemplateForm onSave={handleSaved} onCancel={handleCancel} />
-              )
-            ) : editingId ? (
-              <EditTemplateFormLoader
-                templateId={editingId}
-                onSave={handleSaved}
-                onCancel={handleCancel}
-              />
-            ) : (
-              <SessionTemplateForm onSave={handleSaved} onCancel={handleCancel} />
-            )}
+                <SessionTemplateForm onSave={handleSaved} onCancel={handleCancel} />
+              )}
+            </div>
           </div>
         </SheetContent>
       </Sheet>
+
+      <CreateExerciseSheet open={showCreateExercise} onOpenChange={setShowCreateExercise} />
     </div>
   )
 }
@@ -334,20 +409,30 @@ function ProgramList({ userId }: { userId: string | undefined }) {
   const programToDelete = programs.find((p) => p.id === confirmDeleteId)
 
   const handleActivate = async (programId: string) => {
-    if (!userId) return
+    if (!userId) {
+      console.error('[library] Cannot activate: no authenticated user')
+      toast('You must be signed in to activate a program.')
+      return
+    }
     try {
       await setActiveMutation.mutateAsync({ userId, programId })
     } catch (err) {
       console.error('[library] Failed to activate program:', err)
+      toast('Failed to activate program. Please try again.')
     }
   }
 
   const handleDeactivate = async () => {
-    if (!userId) return
+    if (!userId) {
+      console.error('[library] Cannot deactivate: no authenticated user')
+      toast('You must be signed in to deactivate a program.')
+      return
+    }
     try {
       await clearActiveMutation.mutateAsync(userId)
     } catch (err) {
       console.error('[library] Failed to deactivate program:', err)
+      toast('Failed to deactivate program. Please try again.')
     }
   }
 
@@ -360,6 +445,7 @@ function ProgramList({ userId }: { userId: string | undefined }) {
       await deleteProgramMutation.mutateAsync(id)
     } catch (err) {
       console.error('[library] Failed to delete program:', err)
+      toast('Failed to delete program. Please try again.')
     }
   }
 
@@ -493,6 +579,127 @@ function ProgramList({ userId }: { userId: string | undefined }) {
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Exercise list panel
+// ---------------------------------------------------------------------------
+
+function ExerciseList({ userId }: { userId: string | undefined }) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState<ExerciseCategory | undefined>()
+  const [activeMuscleGroup, setActiveMuscleGroup] = useState<MuscleGroup | undefined>()
+  const [activeMovementPattern, setActiveMovementPattern] = useState<MovementPattern | undefined>()
+
+  const debouncedQuery = useDebouncedValue(searchQuery, 200)
+
+  const hasActiveFilters =
+    !!debouncedQuery || !!activeCategory || !!activeMuscleGroup || !!activeMovementPattern
+
+  const {
+    data: exercises,
+    isLoading: isLoadingExercises,
+    isError,
+  } = useExercises({
+    searchQuery: debouncedQuery || undefined,
+    category: activeCategory,
+    muscleGroup: activeMuscleGroup,
+    movementPattern: activeMovementPattern,
+  })
+
+  const { data: recentlyUsed, isLoading: isLoadingRecent } = useRecentlyUsedExercises(userId)
+
+  const isLoading = isLoadingExercises || (!hasActiveFilters && isLoadingRecent)
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-0 px-4 pt-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-3 border-b border-b-[rgba(91,64,57,0.15)] bg-surface-iron px-4 py-3"
+          >
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-40 rounded-none bg-surface-steel" />
+              <Skeleton className="h-3 w-24 rounded-none bg-surface-steel" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center gap-3 px-4 py-16">
+        <Icon name="error" size={48} className="text-destructive/60" />
+        <p className="text-center text-xs text-destructive">Failed to load exercises</p>
+        <p className="text-center text-xs text-warm-ash/40">Check your connection and try again.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col">
+      {/* Search */}
+      <div className="px-4 pt-4 pb-3">
+        <ExerciseSearchInput value={searchQuery} onChange={setSearchQuery} />
+      </div>
+
+      {/* Filters */}
+      <div className="px-4 pb-4">
+        <ExerciseFilterBar
+          activeCategory={activeCategory}
+          activeMuscleGroup={activeMuscleGroup}
+          activeMovementPattern={activeMovementPattern}
+          onCategoryChange={setActiveCategory}
+          onMuscleGroupChange={setActiveMuscleGroup}
+          onMovementPatternChange={setActiveMovementPattern}
+        />
+      </div>
+
+      {/* Exercise list */}
+      {hasActiveFilters ? (
+        exercises && exercises.length > 0 ? (
+          exercises.map((exercise) => <ExerciseListItem key={exercise.id} exercise={exercise} />)
+        ) : (
+          <div className="flex flex-col items-center gap-3 py-16">
+            <span className="material-symbols-outlined text-4xl text-warm-ash/40">search_off</span>
+            <p className="font-display text-sm text-warm-ash">No exercises found</p>
+          </div>
+        )
+      ) : (
+        <>
+          {recentlyUsed && recentlyUsed.length > 0 && (
+            <>
+              <div className="px-4 py-2">
+                <h2 className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
+                  RECENTLY USED
+                </h2>
+              </div>
+              {recentlyUsed.map((exercise) => (
+                <ExerciseListItem key={exercise.id} exercise={exercise} />
+              ))}
+              <div className="h-4" />
+            </>
+          )}
+
+          <div className="px-4 py-2">
+            <h2 className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
+              ALL EXERCISES
+            </h2>
+          </div>
+          {exercises && exercises.length > 0 ? (
+            exercises.map((exercise) => <ExerciseListItem key={exercise.id} exercise={exercise} />)
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-16">
+              <p className="font-display text-sm text-warm-ash">No exercises found</p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 

@@ -2,7 +2,7 @@
 
 **Project ID:** `31574771765770371`
 **Colorscheme:** Iron & Ember
-**Device Targets:** Mobile-first (390px), Desktop (2560px)
+**Device Targets:** Mobile-first (390px), Large screen (2560px)
 
 ---
 
@@ -203,10 +203,10 @@ Industrial-style **underline inputs** are the standard. No boxed or outlined fie
 
 ### Navigation
 
-| Context     | Pattern                                                                                                                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Mobile**  | Bottom tab bar. Four core sections: FORGE, TRACKER, LIBRARY, VAULT. Material Symbols icons with labels. Active tab highlighted in `primary`. Background: `surface-container-lowest` (#0E0E0E).       |
-| **Desktop** | Left sidebar. Five items: Dashboard, Program Builder, Analytics, Library, Settings. Icon + text labels. Active item uses `primary` accent. Sidebar background: `surface-container-lowest` (#0E0E0E). |
+| Context          | Pattern                                                                                                                                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Mobile**       | Bottom tab bar. Four core sections: FORGE, TRACKER, LIBRARY, VAULT. Material Symbols icons with labels. Active tab highlighted in `primary`. Background: `surface-container-lowest` (#0E0E0E).       |
+| **Large screen** | Left sidebar. Five items: Dashboard, Program Builder, Analytics, Library, Settings. Icon + text labels. Active item uses `primary` accent. Sidebar background: `surface-container-lowest` (#0E0E0E). |
 
 ### Floating & Sticky Elements (The "Heat Blur")
 
@@ -246,7 +246,7 @@ Spacing follows a 0.1rem base unit for surgical precision in data-heavy layouts.
 - Touch targets >= 48px for gym use with sweaty or gloved hands.
 - Minimum viewport height: `max(884px, 100dvh)`.
 
-### Desktop Layout (>= 1024px)
+### Large Screen Layout (>= 1024px)
 
 - Left sidebar navigation (collapsed icon-only or expanded icon+text).
 - Multi-column content area with 2-3 column grids for program builders and analytics.
@@ -254,7 +254,7 @@ Spacing follows a 0.1rem base unit for surgical precision in data-heavy layouts.
 
 ### The Industrial Grid Pattern
 
-For subtle background texture on data-heavy desktop screens:
+For subtle background texture on data-heavy large screens:
 
 ```css
 background-image: radial-gradient(circle, #201f1f 1px, transparent 1px);
@@ -323,12 +323,12 @@ Narrow, utilitarian, with a molten-orange hover state.
 
 ## 9. Screen Reference
 
-| Screen Title                     | Device  | Dimensions  | Key Patterns                                                  |
-| -------------------------------- | ------- | ----------- | ------------------------------------------------------------- |
-| The Forge (Dashboard)            | Mobile  | 780 x 4654  | Nav tabs, workout block cards, exercise lists, stat readouts  |
-| Session Tracker (Active Workout) | Mobile  | 780 x 2282  | SET/PRESCRIBED/ACTUAL table, progress checks, elapsed timer   |
-| The Vault (Analytics/1RM)        | Mobile  | 780 x 5500  | Progression charts, data tables, waveform visualizations      |
-| Program Library                  | Mobile  | 780 x 10542 | Program archive cards, category badges, intensity metrics     |
-| The Forge (Web Dashboard)        | Desktop | 2560 x 2982 | Sidebar nav, program details, session logs, load distribution |
-| Program Builder (Desktop)        | Desktop | 2560 x 2048 | Sidebar nav, weekly layout, movement library, drag-drop       |
-| The Vault (Web Analytics)        | Desktop | 2560 x 2048 | Sidebar nav, charts, analytics tables, system status          |
+| Screen Title                     | Device       | Dimensions  | Key Patterns                                                  |
+| -------------------------------- | ------------ | ----------- | ------------------------------------------------------------- |
+| The Forge (Dashboard)            | Mobile       | 780 x 4654  | Nav tabs, workout block cards, exercise lists, stat readouts  |
+| Session Tracker (Active Workout) | Mobile       | 780 x 2282  | SET/PRESCRIBED/ACTUAL table, progress checks, elapsed timer   |
+| The Vault (Analytics/1RM)        | Mobile       | 780 x 5500  | Progression charts, data tables, waveform visualizations      |
+| Program Library                  | Mobile       | 780 x 10542 | Program archive cards, category badges, intensity metrics     |
+| The Forge (Web Dashboard)        | Large screen | 2560 x 2982 | Sidebar nav, program details, session logs, load distribution |
+| Program Builder (Large screen)   | Large screen | 2560 x 2048 | Sidebar nav, weekly layout, movement library, drag-drop       |
+| The Vault (Web Analytics)        | Large screen | 2560 x 2048 | Sidebar nav, charts, analytics tables, system status          |

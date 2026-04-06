@@ -249,9 +249,12 @@ export function NewConversationSheet({ open, onOpenChange, onCreated }: NewConve
           )}
 
           {!connectionsLoading && activeContacts.length === 0 && (
-            <div className="flex flex-col items-center gap-2 py-12 text-center">
-              <Icon name="person_off" size={32} className="text-warm-ash/30" />
-              <p className="text-sm text-warm-ash/50">No connections yet</p>
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <Icon name="person_off" size={48} className="text-warm-ash/30" />
+              <p className="text-sm font-heading text-warm-ash">No connections yet</p>
+              <p className="text-xs text-warm-ash/50">
+                Add connections from the Connections page to start a conversation.
+              </p>
             </div>
           )}
 

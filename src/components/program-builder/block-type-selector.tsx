@@ -40,7 +40,7 @@ export function BlockTypeSelector({ value, onChange }: BlockTypeSelectorProps) {
           <ToggleGroupItem
             key={bt.value}
             value={bt.value}
-            className="min-h-8 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
+            className="min-h-8 px-2 py-1 text-xs font-medium uppercase tracking-wider"
           >
             {bt.label}
           </ToggleGroupItem>

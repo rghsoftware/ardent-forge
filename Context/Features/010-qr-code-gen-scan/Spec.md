@@ -4,7 +4,7 @@
 
 ### Overview
 
-Add QR code-based server sharing to Ardent Forge. A configured user can generate a QR code (and copyable invite link) from Settings that encodes their backend connection details. A new user can scan that QR code (mobile) or paste the invite link (browser/desktop) on the setup screen to auto-configure their app without manually typing Supabase credentials.
+Add QR code-based server sharing to Ardent Forge. A configured user can generate a QR code (and copyable invite link) from Settings that encodes their backend connection details. A new user can scan that QR code (mobile) or paste the invite link (browser) on the setup screen to auto-configure their app without manually typing Supabase credentials.
 
 ### Problem Statement
 
@@ -15,7 +15,7 @@ Onboarding new users to a self-hosted Ardent Forge instance currently requires t
 1. **As a configured user**, I want to display a QR code in Settings so I can show it to someone who needs to connect to my server.
 2. **As a configured user**, I want to copy an invite link so I can send it via chat/email to someone who needs to connect.
 3. **As a new mobile user**, I want to scan a QR code on the setup screen so I can connect without typing URLs.
-4. **As a new browser/desktop user**, I want to paste an invite link on the setup screen so I can connect without typing URLs.
+4. **As a new browser user**, I want to paste an invite link on the setup screen so I can connect without typing URLs.
 5. **As a new user**, I want scanned/pasted credentials to auto-validate so I can proceed to account creation immediately.
 
 ### Requirements

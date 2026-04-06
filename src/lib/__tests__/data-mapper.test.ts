@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { ZodError } from 'zod'
 import {
   toExercise,
@@ -1824,6 +1824,7 @@ const scheduledSessionRow: ScheduledSessionRow = {
   session_type: 'STRENGTH',
   session_template_id: 'st-upper-001',
   notes: 'Heavy day',
+  overrides: null,
   created_at: now,
   updated_at: now,
 }
@@ -2033,6 +2034,75 @@ describe('toScheduledSession / fromScheduledSession', () => {
     const row = fromScheduledSession(body)
     expect(row.day_of_week).toBe(1)
     expect(row.notes).toBe('Heavy day')
+  })
+
+  // -------------------------------------------------------------------------
+  // overrides field coverage
+  // -------------------------------------------------------------------------
+
+  it('parses overrides from a valid JSON string (Tauri path)', () => {
+    const row = {
+      ...scheduledSessionRow,
+      overrides: JSON.stringify({
+        activityOverrides: { 'act-1': { exerciseId: 'ex-bench' } },
+      }),
+    }
+    const result = toScheduledSession(row)
+    expect(result.overrides).toBeDefined()
+    expect(result.overrides?.activityOverrides?.['act-1']?.exerciseId).toBe('ex-bench')
+  })
+
+  it('parses overrides from a pre-parsed object (Supabase path)', () => {
+    const row = {
+      ...scheduledSessionRow,
+      overrides: {
+        activityOverrides: { 'act-1': { exerciseId: 'ex-bench' } },
+      },
+    }
+    const result = toScheduledSession(row)
+    expect(result.overrides).toBeDefined()
+    expect(result.overrides?.activityOverrides?.['act-1']?.exerciseId).toBe('ex-bench')
+  })
+
+  it('falls back to undefined and warns on malformed JSON string', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const row = { ...scheduledSessionRow, overrides: '{not valid json' }
+    const result = toScheduledSession(row)
+    expect(result.overrides).toBeUndefined()
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[data-mapper] Failed to parse overrides'),
+      expect.anything(),
+    )
+    warnSpy.mockRestore()
+  })
+
+  it('falls back to undefined and warns on schema-invalid JSON', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // Valid JSON, but activityOverrides values must be objects, not strings
+    const row = {
+      ...scheduledSessionRow,
+      overrides: '{"activityOverrides":{"act-1":"not-an-object"}}',
+    }
+    const result = toScheduledSession(row)
+    expect(result.overrides).toBeUndefined()
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[data-mapper] Failed to parse overrides'),
+      expect.anything(),
+    )
+    warnSpy.mockRestore()
+  })
+
+  it('overrides survive toScheduledSession -> fromScheduledSession round-trip', () => {
+    const overridesObj = {
+      activityOverrides: { 'act-1': { exerciseId: 'ex-bench' } },
+    }
+    const row = { ...scheduledSessionRow, overrides: JSON.stringify(overridesObj) }
+    const domain = toScheduledSession(row)
+    expect(domain.overrides).toBeDefined()
+
+    const { id: _, ...body } = domain
+    const backToRow = fromScheduledSession(body)
+    expect(backToRow.overrides).toEqual(overridesObj)
   })
 })
 

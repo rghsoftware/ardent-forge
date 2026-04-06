@@ -1,5 +1,6 @@
 import { formatDuration } from '@/lib/format-duration'
 import { Icon } from '@/components/icon'
+import { EmptyState } from '@/components/shared/empty-state'
 import type { Exercise, LoggedActivityGroup, LoggedActivity, LoggedSet } from '@/domain/types'
 
 interface WorkoutDetailExercisesProps {
@@ -69,9 +70,11 @@ export function WorkoutDetailExercises({
 
   if (sortedGroups.length === 0) {
     return (
-      <div className="flex items-center justify-center px-4 py-16">
-        <p className="font-display text-sm text-warm-ash">No exercises logged</p>
-      </div>
+      <EmptyState
+        icon="fitness_center"
+        heading="No exercises logged"
+        subtext="This workout has no exercise data recorded."
+      />
     )
   }
 

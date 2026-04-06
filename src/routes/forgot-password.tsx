@@ -46,7 +46,7 @@ function ForgotPasswordPage() {
   return (
     <AuthPageShell>
       <div className="space-y-0.5">
-        <h1 className="font-display text-xl font-bold text-bone-white">Reset password</h1>
+        <h1 className="font-display text-xl font-medium text-bone-white">Reset password</h1>
         <p className="text-sm text-warm-ash">Enter your email to receive a reset link</p>
       </div>
 

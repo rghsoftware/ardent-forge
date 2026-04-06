@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/.well-known/ardent-forge.json",
+      "destination": "/api/discovery"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

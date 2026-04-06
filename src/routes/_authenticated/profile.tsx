@@ -1,16 +1,19 @@
 import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth'
 import { useUserProfile, useUpdateUserProfile } from '@/hooks/use-user-profile'
+import { useOnboarding } from '@/hooks/use-onboarding'
 import { Button } from '@/components/ui/button'
 import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
-import { OneRmManagement } from '@/components/profile/one-rm-management'
+import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { BackendSettings } from '@/components/profile/backend-settings'
 import { NotificationSettings } from '@/components/profile/notification-settings'
 import type { PreferredUnits } from '@/domain/types'
+import { Icon } from '@/components/icon'
 
 export const Route = createFileRoute('/_authenticated/profile')({
   component: ProfilePage,
@@ -21,6 +24,7 @@ function ProfilePage() {
   const userId = auth.user?.id ?? ''
   const { data: profile, isLoading, isError } = useUserProfile(userId)
   const updateProfile = useUpdateUserProfile()
+  const { resetOnboarding } = useOnboarding()
 
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [bodyweight, setBodyweight] = useState<string | null>(null)
@@ -35,8 +39,13 @@ function ProfilePage() {
   const bodyweightUnit = effectiveUnits === 'IMPERIAL' ? 'lb' : 'kg'
   const effectiveDisplayVisible = displayVisible ?? profile?.displayVisible ?? true
 
+  const [saveError, setSaveError] = useState<string | null>(null)
+
   const handleSaveSettings = async () => {
-    if (!profile) return
+    if (!profile) {
+      console.error('[profile] Cannot save settings: no profile loaded')
+      return
+    }
 
     const bodyweightValue = parseFloat(effectiveBodyweight)
     const updates: Parameters<typeof updateProfile.mutateAsync>[0] = {
@@ -63,6 +72,7 @@ function ProfilePage() {
       setDisplayVisible(null)
     } catch (err) {
       console.error('[profile] Failed to save settings:', err)
+      setSaveError('Failed to save settings. Please try again.')
     }
   }
 
@@ -77,12 +87,19 @@ function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-full bg-surface-pit px-4 py-8 lg:px-8 lg:py-12">
+      <div className="min-h-[100dvh] bg-surface-anvil px-4 py-8 md:px-6 md:py-10 lg:px-8 lg:py-12">
         <Skeleton className="mb-8 h-8 w-32 rounded-none bg-surface-gunmetal" />
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
-          <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
-          <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+        {/* Simplified 2-col skeleton -- full 3-col layout loads with content */}
+        <div className="md:grid md:grid-cols-2 md:gap-8 lg:gap-12">
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+            <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+            <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+          </div>
+          <div className="mt-6 space-y-4 md:mt-0">
+            <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+            <Skeleton className="h-12 w-full rounded-none bg-surface-gunmetal" />
+          </div>
         </div>
       </div>
     )
@@ -90,7 +107,7 @@ function ProfilePage() {
 
   if (isError) {
     return (
-      <div className="flex min-h-full flex-col items-center justify-center bg-surface-pit px-4">
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
         <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
           cloud_off
         </span>
@@ -101,16 +118,24 @@ function ProfilePage() {
   }
 
   return (
-    <div className="min-h-full bg-surface-pit">
-      <div className="mx-auto max-w-5xl px-4 lg:px-8">
+    <div className="min-h-[100dvh] bg-surface-anvil">
+      <div className="mx-auto max-w-5xl px-4 md:px-6 lg:px-8">
         {/* Page header */}
-        <div className="pt-8 pb-6 lg:pt-12">
-          <h1 className="font-display text-3xl font-bold text-bone-white">Profile</h1>
+        <div className="flex items-center gap-3 pt-6 pb-4">
+          <Icon name="person" size={24} className="text-warm-ash" />
+          <h1 className="font-display text-2xl font-medium text-bone-white">Profile</h1>
         </div>
 
-        {/* Two-column on desktop, single column on mobile */}
-        <div className="lg:grid lg:grid-cols-2 lg:gap-12">
-          {/* Left column: settings + account */}
+        {/* First-visit hint: show when display name is not yet set */}
+        {profile && !profile.displayName && (
+          <OnboardingHint hintKey="profile-display-name">
+            Set your display name and preferred units below to personalize your experience.
+          </OnboardingHint>
+        )}
+
+        {/* Responsive grid: 1 col mobile, 2 col md, 3 col lg */}
+        <div className="flex flex-col md:grid md:grid-cols-2 md:gap-8 lg:grid-cols-3 lg:gap-10">
+          {/* Column 1: Settings + Account */}
           <div>
             {/* SETTINGS section */}
             <section className="pb-8">
@@ -186,9 +211,9 @@ function ProfilePage() {
                 >
                   {updateProfile.isPending ? 'Saving...' : 'Save settings'}
                 </Button>
-                {updateProfile.isError && (
+                {(updateProfile.isError || saveError) && (
                   <p className="mt-2 text-xs text-warning-flare">
-                    Failed to save settings. Please try again.
+                    {saveError ?? 'Failed to save settings. Please try again.'}
                   </p>
                 )}
               </div>
@@ -230,7 +255,10 @@ function ProfilePage() {
                 )}
               </div>
             </section>
+          </div>
 
+          {/* Column 2: Backend + Remote Display */}
+          <div>
             {/* BACKEND section */}
             <section className="pb-8">
               <div className="border-t border-surface-steel pb-2 pt-4">
@@ -241,18 +269,8 @@ function ProfilePage() {
               <BackendSettings />
             </section>
 
-            {/* NOTIFICATIONS section */}
-            <section className="pb-8">
-              <div className="border-t border-surface-steel pb-2 pt-4">
-                <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
-                  NOTIFICATIONS
-                </h2>
-              </div>
-              <NotificationSettings />
-            </section>
-
             {/* REMOTE DISPLAY section */}
-            <section className="pb-12">
+            <section className="pb-8">
               <div className="border-t border-surface-steel pb-2 pt-4">
                 <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
                   REMOTE DISPLAY
@@ -267,30 +285,46 @@ function ProfilePage() {
                       Show your active workout on the gym display
                     </p>
                   </div>
-                  <Switch
-                    checked={effectiveDisplayVisible}
-                    onCheckedChange={setDisplayVisible}
-                  />
+                  <Switch checked={effectiveDisplayVisible} onCheckedChange={setDisplayVisible} />
                 </label>
               </div>
             </section>
           </div>
 
-          {/* Right column: current maxes */}
+          {/* Column 3: Notifications + Onboarding */}
           <div>
+            {/* NOTIFICATIONS section */}
             <section className="pb-8">
               <div className="border-t border-surface-steel pb-2 pt-4">
                 <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
-                  CURRENT MAXES
+                  NOTIFICATIONS
+                </h2>
+              </div>
+              <NotificationSettings />
+            </section>
+
+            {/* ONBOARDING section */}
+            <section className="pb-8">
+              <div className="border-t border-surface-steel pb-2 pt-4">
+                <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
+                  ONBOARDING
                 </h2>
               </div>
 
               <div className="mt-4">
-                <OneRmManagement
-                  userId={userId}
-                  exerciseMaxes={profile?.exerciseMaxes ?? {}}
-                  preferredUnits={profile?.preferredUnits ?? 'IMPERIAL'}
-                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetOnboarding()
+                    toast("Onboarding reset. You'll see guided hints again.")
+                  }}
+                  className="min-h-[48px] px-0 font-sans text-sm text-warm-ash underline underline-offset-4 hover:text-bone-white"
+                >
+                  Reset onboarding hints
+                </button>
+                <p className="mt-1 text-[11px] leading-relaxed text-warm-ash/60">
+                  Re-enables the welcome card and all guided hints throughout the app.
+                </p>
               </div>
             </section>
           </div>

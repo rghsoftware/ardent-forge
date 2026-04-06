@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/lib/auth'
+import { useOnboarding } from '@/hooks/use-onboarding'
+import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useProgramFull, useCreateProgram, useUpdateProgram } from '@/hooks/use-programs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -24,6 +26,7 @@ import type {
   ValidationError,
 } from '@/components/program-builder/builder-state'
 import type { DayOfWeek } from '@/components/program-builder/constants'
+import { BLOCK_TYPE_STYLES } from '@/components/program-builder/constants'
 import type { SessionType } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
@@ -32,7 +35,7 @@ import type { SessionType } from '@/domain/types'
 
 export const Route = createFileRoute('/_authenticated/builder')({
   validateSearch: (search: Record<string, unknown>) => ({
-    programId: search['programId'] as string | undefined,
+    programId: typeof search['programId'] === 'string' ? search['programId'] : undefined,
   }),
   component: BuilderPage,
 })
@@ -45,6 +48,11 @@ function BuilderPage() {
   const { programId } = Route.useSearch()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { markRouteVisited } = useOnboarding()
+
+  useEffect(() => {
+    markRouteVisited('/builder')
+  }, [markRouteVisited])
 
   // Draft state
   const [draft, setDraft] = useState<ProgramDraft>(createEmptyDraft)
@@ -116,12 +124,15 @@ function BuilderPage() {
   const pickerStateRef = useRef(pickerState)
   useEffect(() => {
     pickerStateRef.current = pickerState
-  })
+  }, [pickerState])
 
   const handleSessionSelected = useCallback(
     (templateId: string, templateName: string, sessionType: SessionType) => {
       const state = pickerStateRef.current
-      if (!state) return
+      if (!state) {
+        console.warn('[builder] handleSessionSelected called with no active picker state')
+        return
+      }
       setDraft((prev) =>
         assignSession(
           prev,
@@ -168,6 +179,7 @@ function BuilderPage() {
     }
 
     if (!userId) {
+      console.error('[builder] Cannot save: no authenticated user')
       setError('You must be signed in to save a program')
       return
     }
@@ -196,6 +208,16 @@ function BuilderPage() {
   }, [draft, userId, createMutation, updateMutation, navigate])
 
   // ---------------------------------------------------------------------------
+  // Block navigation: scroll-to on click
+  // ---------------------------------------------------------------------------
+
+  const scrollBlock = useCallback((blockClientId: string) => {
+    document
+      .getElementById(`block-${blockClientId}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  // ---------------------------------------------------------------------------
   // Loading state
   // ---------------------------------------------------------------------------
 
@@ -217,64 +239,124 @@ function BuilderPage() {
 
   return (
     <div className="flex h-full flex-col bg-surface-anvil font-body text-bone-white">
-      {/* Header */}
-      <div className="flex flex-shrink-0 items-center gap-3 px-4 pt-8 pb-4">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => navigate({ to: '/library' })}
-          className="min-h-10 text-xs text-warm-ash hover:text-bone-white"
-        >
-          <Icon name="arrow_back" size={16} />
-          Back to library
-        </Button>
-
-        <div className="flex-1" />
-
-        {error && <p className="text-xs text-warning-flare">{error}</p>}
-        {fieldErrors.some((e) => e.field === 'blocks') && (
-          <p className="text-xs text-warning-flare">
-            {fieldErrors.find((e) => e.field === 'blocks')!.message}
-          </p>
-        )}
-        <Button
-          type="button"
-          variant="default"
-          size="sm"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="bg-forge text-on-forge text-xs hover:brightness-110"
-        >
-          {isSaving ? 'Saving...' : 'Save program'}
-        </Button>
+      {/* Header bar */}
+      <div className="flex flex-shrink-0 items-center justify-between gap-3 px-4 pt-6 pb-4 lg:hidden">
+        <div>
+          <div className="flex items-center gap-3">
+            <Icon name="construction" size={24} className="text-warm-ash" />
+            <h1 className="font-display text-2xl font-medium text-bone-white">Program Builder</h1>
+          </div>
+          {programId && draft.name && (
+            <p className="mt-1 text-xs font-medium text-warm-ash/60">Editing: {draft.name}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          {error && <p className="text-xs text-warning-flare">{error}</p>}
+          {fieldErrors.some((e) => e.field === 'blocks') && (
+            <p className="text-xs text-warning-flare">
+              {fieldErrors.find((e) => e.field === 'blocks')!.message}
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-forge text-on-forge text-xs hover:brightness-110"
+          >
+            {isSaving ? 'Saving...' : 'Save program'}
+          </Button>
+        </div>
       </div>
 
-      <div className="flex-shrink-0 px-4 pb-6">
-        <h1 className="font-display text-2xl font-medium text-bone-white">Program Builder</h1>
-        {programId && draft.name && (
-          <p className="mt-1 text-[11px] font-medium text-warm-ash/60">Editing: {draft.name}</p>
-        )}
+      {/* Large-screen header */}
+      <div className="hidden items-center justify-between px-4 pt-6 pb-4 lg:flex lg:px-8">
+        <div>
+          <div className="flex items-center gap-3">
+            <Icon name="construction" size={24} className="text-warm-ash" />
+            <h1 className="font-display text-2xl font-medium text-bone-white">Program Builder</h1>
+          </div>
+          {programId && draft.name && (
+            <p className="mt-1 text-xs font-medium text-warm-ash/60">Editing: {draft.name}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          {error && <p className="text-xs text-warning-flare">{error}</p>}
+          {fieldErrors.some((e) => e.field === 'blocks') && (
+            <p className="text-xs text-warning-flare">
+              {fieldErrors.find((e) => e.field === 'blocks')!.message}
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-forge text-on-forge text-xs hover:brightness-110"
+          >
+            {isSaving ? 'Saving...' : 'Save program'}
+          </Button>
+        </div>
       </div>
 
-      {/* Layout: sidebar + content on desktop, stacked on mobile */}
-      <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[320px_1fr] lg:gap-6 lg:px-4">
-        {/* Sidebar: Program form */}
-        <div className="px-4 pb-6 lg:px-0">
+      {/* Onboarding hint */}
+      <div className="px-4 lg:px-8">
+        <OnboardingHint hintKey="builder-intro">
+          Design your training program here. Add blocks, assign sessions to days, and set your
+          progression.
+        </OnboardingHint>
+      </div>
+
+      {/* Layout: independent scroll columns on large screens, stacked scroll on mobile */}
+      <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[360px_1fr] lg:gap-6 lg:overflow-hidden lg:px-4">
+        {/* Sidebar: program metadata + block navigation (sticky on large screens) */}
+        <aside className="px-4 pb-6 lg:overflow-y-auto lg:px-0 lg:pb-8">
           <ProgramForm
             draft={draft}
             onChange={handleDraftChange}
             error={fieldErrors.find((e) => e.field === 'programName')?.message}
           />
-        </div>
 
-        {/* Main content: Block list */}
-        <div className="px-4 lg:px-0">
-          {/* Weekend toggle (desktop only) */}
+          {/* Block navigation rail (large screen only) */}
+          {draft.blocks.length > 0 && (
+            <nav className="mt-8 hidden flex-col gap-1 lg:flex" aria-label="Block navigation">
+              <span className="mb-1 text-xs font-medium uppercase tracking-wider text-warm-ash/60">
+                Blocks
+              </span>
+              {draft.blocks.map((block, i) => (
+                <button
+                  key={block.clientId}
+                  type="button"
+                  onClick={() => scrollBlock(block.clientId)}
+                  className="flex items-center gap-2 px-3 py-2 text-left transition-colors text-warm-ash hover:bg-surface-charcoal hover:text-bone-white"
+                >
+                  <span
+                    className={`shrink-0 px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wider ${BLOCK_TYPE_STYLES[block.blockType] ?? 'bg-surface-steel text-warm-ash'}`}
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="truncate font-display text-xs font-medium">
+                    {block.name || 'Untitled block'}
+                  </span>
+                  <span className="ml-auto shrink-0 text-[11px] text-warm-ash/40">
+                    {block.weeks.length}w
+                  </span>
+                </button>
+              ))}
+            </nav>
+          )}
+        </aside>
+
+        {/* Workspace: block editors */}
+        <div className="px-4 lg:overflow-y-auto lg:px-0 lg:pb-8">
+          {/* Weekend toggle (large screen only) */}
           <div className="mb-3 hidden items-center justify-end md:flex">
             <button
               type="button"
               onClick={() => setShowWeekends((prev) => !prev)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium uppercase tracking-wider transition-colors ${
                 showWeekends
                   ? 'bg-forge/15 text-forge'
                   : 'bg-surface-steel text-warm-ash hover:text-bone-white'
@@ -286,7 +368,7 @@ function BuilderPage() {
             </button>
           </div>
 
-          {/* Desktop DnD builder */}
+          {/* Large screen DnD builder */}
           <div className="hidden md:block">
             <BlockList
               draft={draft}
@@ -312,7 +394,6 @@ function BuilderPage() {
         </div>
       </div>
 
-
       {/* Session picker sheet */}
       <SessionPickerSheet
         open={pickerState !== null}
@@ -335,7 +416,6 @@ function BuilderPage() {
           onCopy={handleCopyConfirm}
         />
       )}
-
     </div>
   )
 }
