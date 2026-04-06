@@ -51,7 +51,7 @@ Both gaps force users into workarounds that erode trust in the program tracking 
 | ID    | Assertion                                                                                                 | Verification       |
 | ----- | --------------------------------------------------------------------------------------------------------- | ------------------ |
 | A-001 | Editing start date to a past date persists across app reload and is reflected in the activation record.   | Unit + integration |
-| A-002 | Changing position to week 3 block 1 updates the Today page to show week 3 block 1 sessions.               | E2E / manual       |
+| A-002 | Setting start date to 7 days ago causes the Today page to show the Day 8 (Week 2) workout.                | E2E / manual       |
 | A-003 | Jumping forward from week 1 to week 4 presents a choice UI for weeks 2-3 with options: done/skipped/none. | Component test     |
 | A-004 | Selecting "leave unmarked" for a skipped week does not create or modify any records for that week.        | Unit test          |
 | A-005 | Moving backward from week 4 to week 2 does not alter any session labels or workout logs.                  | Unit test          |
@@ -60,12 +60,13 @@ Both gaps force users into workarounds that erode trust in the program tracking 
 | A-008 | The updateActiveProgram adapter method accepts startDate as an optional field.                            | Type check + unit  |
 | A-009 | After position change, program advancement (next week/block) continues correctly from the new position.   | Unit test          |
 | A-010 | Position change UI shows current position and target position before user confirms.                       | Component test     |
+| A-011 | Today session resolution computes current week/day from startDate + current date, not static position.    | Unit test          |
 
-## Open Questions
+## Resolved Questions
 
-- [ ] Where should the UI entry point live -- on the Today page program card, the program detail page, or both?
-- [ ] Should week skip labels ("done", "skipped") be stored as a new field on the activation record, a separate table, or metadata on existing block_week records?
-- [ ] If the user changes start date, should the "today" session resolution also factor in the day-of-week alignment, or is it purely a display/tracking field?
+- **UI entry point**: Both the Today page program card and the program detail page.
+- **Skip label storage**: Best-fit approach -- free to add new tables or modify existing schema since the app is pre-deployment.
+- **Start date and "today" resolution**: Start date is used for day-of-week alignment. Example: if today is Monday and the user sets start date to last Monday (7 days ago), the Today page should show the Day 8 workout (i.e., Week 2, Day 1). The `resolveTodaySession` logic must compute the current program day from `startDate` + today's date, not just rely on the static `currentWeekNumber`.
 
 ## Dependencies
 
