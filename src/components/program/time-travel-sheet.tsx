@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import {
@@ -129,7 +129,11 @@ export function TimeTravelSheet({
   const { user } = useAuth()
   const userId = user?.id
   const queryClient = useQueryClient()
-  const { upsertStatusesAsync, isUpserting } = useWeekStatuses(activation.id)
+  const {
+    upsertStatusesAsync,
+    isUpserting,
+    isError: weekStatusError,
+  } = useWeekStatuses(activation.id)
 
   const { blocks, blockWeeks } = programFull
   const sortedBlocks = useMemo(() => [...blocks].sort((a, b) => a.ordinal - b.ordinal), [blocks])
@@ -142,13 +146,15 @@ export function TimeTravelSheet({
   const [startDateSaving, setStartDateSaving] = useState(false)
   const [startDateError, setStartDateError] = useState<string | null>(null)
 
+  const today = todayISO()
+
   const startDatePreview = useMemo(() => {
     if (!startDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return null
-    return computePositionFromDate(startDate, todayISO(), blocks, blockWeeks)
-  }, [startDate, blocks, blockWeeks])
+    return computePositionFromDate(startDate, today, blocks, blockWeeks)
+  }, [startDate, today, blocks, blockWeeks])
 
   const startDateChanged = startDate !== activation.startDate
-  const startDateInFuture = startDate > todayISO()
+  const startDateInFuture = startDate > today
 
   const handleStartDateSave = useCallback(async () => {
     if (!userId) {
@@ -258,7 +264,7 @@ export function TimeTravelSheet({
   ])
 
   // Sync skipLabels when intermediateWeeks changes
-  useMemo(() => {
+  useEffect(() => {
     setSkipLabels(intermediateWeeks)
   }, [intermediateWeeks])
 
@@ -500,21 +506,21 @@ export function TimeTravelSheet({
                       <button
                         type="button"
                         onClick={() => handleBulkLabel('done')}
-                        className="min-h-[36px] bg-surface-steel px-2.5 py-1 text-[11px] font-medium text-warm-ash hover:text-bone-white"
+                        className="min-h-12 bg-surface-steel px-2.5 py-1 text-[11px] font-medium text-warm-ash hover:text-bone-white"
                       >
                         All done
                       </button>
                       <button
                         type="button"
                         onClick={() => handleBulkLabel('skipped')}
-                        className="min-h-[36px] bg-surface-steel px-2.5 py-1 text-[11px] font-medium text-warm-ash hover:text-bone-white"
+                        className="min-h-12 bg-surface-steel px-2.5 py-1 text-[11px] font-medium text-warm-ash hover:text-bone-white"
                       >
                         All skipped
                       </button>
                       <button
                         type="button"
                         onClick={() => handleBulkLabel('unmarked')}
-                        className="min-h-[36px] bg-surface-steel px-2.5 py-1 text-[11px] font-medium text-warm-ash hover:text-bone-white"
+                        className="min-h-12 bg-surface-steel px-2.5 py-1 text-[11px] font-medium text-warm-ash hover:text-bone-white"
                       >
                         Clear
                       </button>
@@ -559,6 +565,9 @@ export function TimeTravelSheet({
               )}
 
               {jumpError && <p className="text-xs text-alarm-red">{jumpError}</p>}
+              {weekStatusError && (
+                <p className="text-xs text-alarm-red">Failed to load week statuses.</p>
+              )}
 
               <Button
                 onClick={handleJumpSave}
@@ -594,7 +603,7 @@ function ToggleOption({
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-[36px] min-w-[64px] px-2 py-1 text-[11px] font-medium transition-colors ${
+      className={`min-h-12 min-w-[64px] px-2 py-1 text-[11px] font-medium ${
         active ? activeClass : 'bg-surface-charcoal text-warm-ash/40 hover:text-warm-ash'
       }`}
       aria-pressed={active}
