@@ -102,6 +102,7 @@ describe('useCreateExercise', () => {
       supports1RM: false,
       equipmentRequired: ['NONE'],
       isCustom: true,
+      isPublic: false,
     })
 
     expect(mockAdapter.createExercise).toHaveBeenCalled()

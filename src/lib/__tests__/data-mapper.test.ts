@@ -41,6 +41,8 @@ import {
   fromMessage,
   toMediaAttachment,
   fromMediaAttachment,
+  toWeekStatus,
+  fromWeekStatus,
 } from '../data-mapper'
 import type {
   ExerciseRow,
@@ -58,6 +60,7 @@ import type {
   BlockWeekRow,
   ScheduledSessionRow,
   ProgramActivationRow,
+  ProgramWeekStatusRow,
   EventItemRow,
   ConversationRow,
   ConversationParticipantRow,
@@ -87,6 +90,7 @@ const exerciseRow: ExerciseRow = {
   supports_1rm: true,
   equipment_required: ['BARBELL', 'SQUAT_RACK'],
   is_custom: false,
+  is_public: false,
   user_id: null,
   created_at: now,
   updated_at: now,
@@ -103,6 +107,7 @@ const exerciseRowMinimal: ExerciseRow = {
   supports_1rm: false,
   equipment_required: ['NONE'],
   is_custom: false,
+  is_public: false,
   user_id: null,
   created_at: now,
   updated_at: now,
@@ -1518,6 +1523,7 @@ const sessionTemplateRowFull: SessionTemplateRow = {
   rest_between_groups: JSON.stringify({ seconds: 120 }),
   time_cap: JSON.stringify({ seconds: 3600 }),
   scoring: 'NONE',
+  is_public: false,
   event_metadata: null,
   last_assigned_at: null,
   created_at: now,
@@ -1533,6 +1539,7 @@ const sessionTemplateRowNulls: SessionTemplateRow = {
   rest_between_groups: null,
   time_cap: null,
   scoring: 'FOR_TIME',
+  is_public: false,
   event_metadata: null,
   last_assigned_at: null,
   created_at: now,
@@ -2132,6 +2139,79 @@ describe('toProgramActivation / fromProgramActivation', () => {
     expect(row.current_block_ordinal).toBe(1)
     expect(row.current_week_number).toBe(2)
     expect(row.start_date).toBe('2025-06-15')
+  })
+})
+
+// ===========================================================================
+// WeekStatus (Program Time Travel)
+// ===========================================================================
+
+const weekStatusRow: ProgramWeekStatusRow = {
+  id: 'ws-001',
+  activation_id: 'pa-001',
+  block_ordinal: 2,
+  week_number: 3,
+  status: 'done',
+  created_at: now,
+}
+
+describe('toWeekStatus / fromWeekStatus', () => {
+  it('maps all fields from snake_case to camelCase', () => {
+    const result = toWeekStatus(weekStatusRow)
+    expect(result.id).toBe('ws-001')
+    expect(result.activationId).toBe('pa-001')
+    expect(result.blockOrdinal).toBe(2)
+    expect(result.weekNumber).toBe(3)
+    expect(result.status).toBe('done')
+    expect(result.createdAt).toBe(now)
+  })
+
+  it('maps skipped status correctly', () => {
+    const skippedRow = { ...weekStatusRow, status: 'skipped' }
+    const result = toWeekStatus(skippedRow)
+    expect(result.status).toBe('skipped')
+  })
+
+  it('throws on invalid status enum value', () => {
+    const bad = { ...weekStatusRow, status: 'completed' }
+    expect(() => toWeekStatus(bad as ProgramWeekStatusRow)).toThrow()
+  })
+
+  it('fromWeekStatus maps camelCase to snake_case', () => {
+    const domain = toWeekStatus(weekStatusRow)
+    const { id: _, createdAt: _c, ...body } = domain
+    const row = fromWeekStatus(body)
+    expect(row.activation_id).toBe('pa-001')
+    expect(row.block_ordinal).toBe(2)
+    expect(row.week_number).toBe(3)
+    expect(row.status).toBe('done')
+  })
+
+  it('fromWeekStatus omits id and createdAt', () => {
+    const domain = toWeekStatus(weekStatusRow)
+    const { id: _, createdAt: _c, ...body } = domain
+    const row = fromWeekStatus(body)
+    expect(row).not.toHaveProperty('id')
+    expect(row).not.toHaveProperty('created_at')
+  })
+
+  it('round-trip: fromWeekStatus -> reconstruct row -> toWeekStatus preserves data', () => {
+    const domain = toWeekStatus(weekStatusRow)
+    const { id: _, createdAt: _c, ...body } = domain
+    const partialRow = fromWeekStatus(body)
+
+    // Reconstruct a full row for round-trip verification
+    const fullRow: ProgramWeekStatusRow = {
+      id: 'ws-roundtrip',
+      created_at: now,
+      ...partialRow,
+    } as ProgramWeekStatusRow
+
+    const roundTripped = toWeekStatus(fullRow)
+    expect(roundTripped.activationId).toBe(domain.activationId)
+    expect(roundTripped.blockOrdinal).toBe(domain.blockOrdinal)
+    expect(roundTripped.weekNumber).toBe(domain.weekNumber)
+    expect(roundTripped.status).toBe(domain.status)
   })
 })
 

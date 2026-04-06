@@ -15,6 +15,7 @@ function makeTemplate(overrides: Partial<SessionTemplate> = {}): SessionTemplate
     name: 'Test Session',
     category: 'STRENGTH',
     scoring: 'NONE',
+    isPublic: false,
     createdAt: NOW,
     updatedAt: NOW,
     ...overrides,

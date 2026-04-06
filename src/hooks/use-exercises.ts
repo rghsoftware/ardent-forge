@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAdapter } from '@/lib/adapter'
+import { toast } from 'sonner'
 import type { ExerciseFilters } from '@/lib/data-adapter'
 import type { Exercise } from '@/domain/types'
 
@@ -58,5 +59,35 @@ export function useExerciseWorkoutHistory(
     queryKey: ['exercise-workout-history', userId, exerciseId, limit],
     queryFn: () => getAdapter().getExerciseWorkoutHistory(userId!, exerciseId!, limit),
     enabled: !!userId && !!exerciseId,
+  })
+}
+
+export function usePublishExercise() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (exerciseId: string) => getAdapter().publishExercise(exerciseId),
+    onError: (err) => {
+      console.error('[exercises] Failed to publish exercise:', err)
+      toast('Failed to publish exercise. Please try again.')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['exercises'] })
+    },
+  })
+}
+
+export function useUnpublishExercise() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (exerciseId: string) => getAdapter().unpublishExercise(exerciseId),
+    onError: (err) => {
+      console.error('[exercises] Failed to unpublish exercise:', err)
+      toast('Failed to unpublish exercise. Please try again.')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['exercises'] })
+    },
   })
 }

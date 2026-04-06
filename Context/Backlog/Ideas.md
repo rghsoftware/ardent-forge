@@ -21,20 +21,11 @@ skill. Prioritize via the backlog-prioritize skill.
 | S-5 | Supabase migration | CH-2 uniqueness trigger is O(N) per participant INSERT -- consider materialized lookup          | Done (PR #71) |
 | S-6 | `tauri-adapter.ts` | `findDirectConversation` is N+1; error handling added (PR #71), batch requires new Rust command | Done          |
 
-## P10 Review: Session builder type narrowing and test coverage
+## ~~P10 Review: Session builder type narrowing and test coverage~~ (Resolved 2026-04-05)
 
 **Added:** 2026-04-05
 **Source:** `Context/Reviews/0010-program-builder-ui-redesign-2026-04-05.md`
-**Priority:** Medium
-
-| #       | File(s)                      | Task                                                                                                                                              | Status         |
-| ------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| P10-008 | `scheme-fields/*.tsx`        | Narrow `onChange` in all 12 scheme-fields to specific variant type (e.g., `SetScheme & { type: 'fixedSets' }`) to prevent cross-variant emissions | Done (f067a63) |
-| P10-025 | `load-spec-editor.tsx`       | Add tests for `useEffect` auto-reset when load type becomes disallowed and `handleTypeChange` 7-branch defaults                                   | Done (cb9930a) |
-| P10-026 | `duration-input.tsx`         | Add tests for compact/clearable mode `undefined` emission (currently mocked in session-template-form tests)                                       | Done (cb9930a) |
-| P10-027 | `descending-reps-fields.tsx` | Add tests for rep ladder parsing edge cases: single number rejected, negatives filtered, comma+space splitting                                    | Done (cb9930a) |
-| P10-028 | `set-scheme-editor.tsx`      | Add tests for `sessionCategory` prop filtering of visible scheme types and "Show all types" toggle                                                | Done (cb9930a) |
-| P10-029 | `fixed-sets-fields.tsx`      | Add tests for range vs scalar branching (`typeof value.sets === 'object'`); existing test only covers the scalar path                             | Done (cb9930a) |
+**Resolution:** All 6 items completed -- type narrowing in `f067a63`, test coverage in `cb9930a`.
 
 ## ~~P9-010: Domain type tests for conversation, message, media~~ (Resolved 2026-04-04)
 

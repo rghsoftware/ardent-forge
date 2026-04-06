@@ -211,6 +211,7 @@ export function buildExercise(overrides?: Partial<Exercise>): Exercise {
     supports1RM: true,
     equipmentRequired: ['BARBELL', 'SQUAT_RACK'],
     isCustom: false,
+    isPublic: false,
     ...overrides,
   }
 }
@@ -273,6 +274,7 @@ export function buildSessionTemplate(overrides?: Partial<SessionTemplate>): Sess
     name: `Test Session ${sessionTemplateCounter}`,
     category: 'STRENGTH',
     scoring: 'NONE',
+    isPublic: false,
     ...overrides,
   }
 }

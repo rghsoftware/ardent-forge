@@ -30,3 +30,8 @@ High-priority bugs should be addressed before starting new features.
 
 **Severity:** High
 **Resolution:** Feature 014 (Mobile Bug Bash) -- S004/S005: Safe area insets plugin + CSS custom properties. Commit `d5c9fe9`.
+
+## ~~B006: Delete week doesn't work~~ (Resolved 2026-04-05)
+
+**Severity:** Medium
+**Resolution:** Fixed in `5d2335c` -- disable delete-week button when block has only one week.

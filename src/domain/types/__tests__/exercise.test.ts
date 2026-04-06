@@ -13,6 +13,7 @@ const baseExercise = {
   supports1RM: true,
   equipmentRequired: ['BARBELL', 'SQUAT_RACK'],
   isCustom: false,
+  isPublic: false,
 }
 
 describe('EX-1: Exercise name must be 1-100 chars', () => {

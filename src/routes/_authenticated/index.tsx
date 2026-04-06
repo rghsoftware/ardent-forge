@@ -6,6 +6,7 @@ import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useActiveProgram, useProgramFull } from '@/hooks/use-programs'
 import { CrashRecoveryDialog } from '@/components/workout/crash-recovery-dialog'
 import { ProgramSessionCard } from '@/components/today/program-session-card'
+import { TimeTravelSheet } from '@/components/program/time-travel-sheet'
 import { EventCountdownBadge } from '@/components/event-builder/event-countdown-badge'
 import { GhostSessionPreview } from '@/components/shared/ghost-session-preview'
 import { WelcomeCard } from '@/components/onboarding/welcome-card'
@@ -84,6 +85,7 @@ function TodayPage() {
 
   const { data: recentWorkouts = [], isError: isWorkoutsError } = useWorkoutLogs(userId, 5)
   const [startError, setStartError] = useState<string | null>(null)
+  const [timeTravelOpen, setTimeTravelOpen] = useState(false)
 
   useEffect(() => {
     markRouteVisited('/')
@@ -238,6 +240,7 @@ function TodayPage() {
                   sessionName={todayContext?.session?.dayLabel}
                   sessionType={todayContext?.session?.sessionType}
                   onStartSession={handleStartProgrammedSession}
+                  onTimeTravel={hasActiveProgram ? () => setTimeTravelOpen(true) : undefined}
                   isLoading={isProgramLoading}
                   isRestDay={hasActiveProgram && !todayContext?.session && !todayContext?.error}
                 />
@@ -321,6 +324,16 @@ function TodayPage() {
           )}
         </div>
       </div>
+
+      {/* Time Travel Sheet */}
+      {activation && programFull && (
+        <TimeTravelSheet
+          open={timeTravelOpen}
+          onOpenChange={setTimeTravelOpen}
+          activation={activation}
+          programFull={programFull}
+        />
+      )}
     </div>
   )
 }

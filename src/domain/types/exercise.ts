@@ -112,5 +112,6 @@ export const exerciseSchema = syncableEntitySchema.extend({
   supports1RM: z.boolean(),
   equipmentRequired: z.array(equipmentSchema),
   isCustom: z.boolean(),
+  isPublic: z.boolean(),
 })
 export type Exercise = z.infer<typeof exerciseSchema>
