@@ -164,6 +164,23 @@
   - **Depends:** S014
   - **Parallel:** false
 
+- [ ] S018-T: Test `handleStartDateSave` success and error paths -- click "Update start date" after changing date, verify `updateActiveProgram` called with correct args (startDate, computed position), verify sheet closes on success, verify error message renders on failure. Relates to A-001, A-002, A-011.
+  - **Assigned:** builder-ui
+  - **Depends:** S014
+  - **Parallel:** false
+- [ ] S019-T: Test `handleJumpSave` success and error paths -- click "Jump to position" after valid change, verify adapter call with correct args, verify `upsertStatusesAsync` called for labeled weeks, verify unmarked-filtering logic, verify sheet closes on success, verify error rendering on failure. Relates to A-003, A-004, A-005, A-009.
+  - **Assigned:** builder-ui
+  - **Depends:** S014
+  - **Parallel:** false
+- [ ] S020-T: Add `useWeekStatuses` hook unit tests -- renderHook-based tests verifying optimistic cache updates (findIndex by composite key, synthetic IDs for new entries), rollback on mutation failure, and disabled query when activationId is undefined.
+  - **Assigned:** builder-ui
+  - **Depends:** S013
+  - **Parallel:** false
+- [ ] S021: Add `deleteWeekStatuses(activationId, keys[])` method to `DataAdapter` interface and both adapter implementations -- needed for the "unmarked" removal path where a user previously labeled a week "done" and later wants it unmarked. Implement in Supabase adapter (DELETE WHERE activation_id + block_ordinal + week_number) and Tauri adapter (new Rust command `delete_week_statuses`). Relates to A-004.
+  - **Assigned:** builder-adapters
+  - **Depends:** S003
+  - **Parallel:** true
+
 🏁 MILESTONE: Phase 4 complete -- UI components ready. Verify against A-002, A-003, A-005, A-010, A-011.
 **Contracts:**
 

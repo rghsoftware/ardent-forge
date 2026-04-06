@@ -29,6 +29,7 @@ import type {
   ScheduledSession,
   ProgramActivation,
   WeekStatus,
+  WeekStatusValue,
   ShareLink,
   ShareableEntityType,
   WeeklyVolumeEntry,
@@ -1347,7 +1348,7 @@ export class SupabaseAdapter implements DataAdapter {
 
   async upsertWeekStatuses(
     activationId: string,
-    statuses: Array<{ blockOrdinal: number; weekNumber: number; status: 'done' | 'skipped' }>,
+    statuses: Array<{ blockOrdinal: number; weekNumber: number; status: WeekStatusValue }>,
   ): Promise<WeekStatus[]> {
     const rows = statuses.map((s) => ({
       activation_id: activationId,

@@ -33,10 +33,14 @@ vi.mock('@/hooks/use-week-statuses', () => ({
 // Mock computePositionFromDate to return a deterministic preview
 const mockComputePosition = vi.fn()
 const mockValidatePosition = vi.fn()
-vi.mock('@/lib/program-position', () => ({
-  computePositionFromDate: (...args: unknown[]) => mockComputePosition(...args),
-  validateProgramPosition: (...args: unknown[]) => mockValidatePosition(...args),
-}))
+vi.mock('@/lib/program-position', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/program-position')>()
+  return {
+    ...actual,
+    computePositionFromDate: (...args: unknown[]) => mockComputePosition(...args),
+    validateProgramPosition: (...args: unknown[]) => mockValidatePosition(...args),
+  }
+})
 
 // ---------------------------------------------------------------------------
 // Test data: 2 blocks, Block 1 has 3 weeks, Block 2 has 2 weeks

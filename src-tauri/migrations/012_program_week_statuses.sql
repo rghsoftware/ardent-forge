@@ -15,5 +15,6 @@ CREATE TABLE IF NOT EXISTS program_week_statuses (
 CREATE INDEX IF NOT EXISTS idx_program_week_statuses_activation
     ON program_week_statuses(activation_id);
 
--- Register for sync
+-- Tables in sync_metadata are tracked by the Tauri sync engine for eventual
+-- consistency with Supabase.
 INSERT OR IGNORE INTO sync_metadata (table_name) VALUES ('program_week_statuses');

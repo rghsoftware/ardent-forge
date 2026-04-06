@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import {
@@ -12,9 +12,15 @@ import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { useAuth } from '@/lib/auth'
 import { getAdapter } from '@/lib/adapter'
-import { computePositionFromDate, validateProgramPosition } from '@/lib/program-position'
+import {
+  computePositionFromDate,
+  validateProgramPosition,
+  linearize,
+  buildIntermediateWeeks,
+} from '@/lib/program-position'
+import type { IntermediateWeek } from '@/lib/program-position'
 import { useWeekStatuses } from '@/hooks/use-week-statuses'
-import type { ProgramActivation, Block, BlockWeek } from '@/domain/types'
+import type { ProgramActivation } from '@/domain/types'
 import type { ProgramFull } from '@/lib/data-adapter'
 
 // ---------------------------------------------------------------------------
@@ -30,13 +36,6 @@ interface TimeTravelSheetProps {
 
 type SkipLabel = 'done' | 'skipped' | 'unmarked'
 
-interface IntermediateWeek {
-  blockOrdinal: number
-  blockName: string
-  weekNumber: number
-  label: SkipLabel
-}
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -45,75 +44,6 @@ interface IntermediateWeek {
 function todayISO(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-/** Get the max week number for a block from blockWeeks */
-function maxWeekForBlock(blockId: string, blockWeeks: BlockWeek[]): number {
-  return blockWeeks
-    .filter((w) => w.blockId === blockId)
-    .reduce((max, w) => Math.max(max, w.weekNumber), 0)
-}
-
-/**
- * Linearize a position into a global week index for comparison.
- * Returns -1 if the position cannot be resolved.
- */
-function linearize(
-  blockOrdinal: number,
-  weekNumber: number,
-  blocks: Block[],
-  blockWeeks: BlockWeek[],
-): number {
-  const sorted = [...blocks].sort((a, b) => a.ordinal - b.ordinal)
-  let accumulated = 0
-  for (const block of sorted) {
-    const maxWeek = maxWeekForBlock(block.id, blockWeeks)
-    if (block.ordinal === blockOrdinal) {
-      return accumulated + weekNumber
-    }
-    accumulated += maxWeek
-  }
-  return -1
-}
-
-/**
- * Build the list of intermediate weeks between current and target (exclusive of both).
- */
-function buildIntermediateWeeks(
-  currentOrdinal: number,
-  currentWeek: number,
-  targetOrdinal: number,
-  targetWeek: number,
-  blocks: Block[],
-  blockWeeks: BlockWeek[],
-): IntermediateWeek[] {
-  const sorted = [...blocks].sort((a, b) => a.ordinal - b.ordinal)
-  const currentLinear = linearize(currentOrdinal, currentWeek, blocks, blockWeeks)
-  const targetLinear = linearize(targetOrdinal, targetWeek, blocks, blockWeeks)
-
-  if (currentLinear < 0 || targetLinear < 0 || targetLinear <= currentLinear) return []
-
-  const weeks: IntermediateWeek[] = []
-  let accumulated = 0
-
-  for (const block of sorted) {
-    const maxWeek = maxWeekForBlock(block.id, blockWeeks)
-    for (let w = 1; w <= maxWeek; w++) {
-      const globalIdx = accumulated + w
-      // Include weeks strictly between current and target
-      if (globalIdx > currentLinear && globalIdx < targetLinear) {
-        weeks.push({
-          blockOrdinal: block.ordinal,
-          blockName: block.name,
-          weekNumber: w,
-          label: 'unmarked',
-        })
-      }
-    }
-    accumulated += maxWeek
-  }
-
-  return weeks
 }
 
 // ---------------------------------------------------------------------------
@@ -263,10 +193,12 @@ export function TimeTravelSheet({
     blockWeeks,
   ])
 
-  // Sync skipLabels when intermediateWeeks changes
-  useEffect(() => {
+  // Sync skipLabels when intermediateWeeks changes (render-time sync avoids extra cycle)
+  const prevIntermediateRef = useRef(intermediateWeeks)
+  if (prevIntermediateRef.current !== intermediateWeeks) {
+    prevIntermediateRef.current = intermediateWeeks
     setSkipLabels(intermediateWeeks)
-  }, [intermediateWeeks])
+  }
 
   const handleBlockChange = useCallback((value: string) => {
     const ordinal = Number(value)
@@ -304,13 +236,20 @@ export function TimeTravelSheet({
     setJumpError(null)
     setJumpSaving(true)
     try {
-      // Update position
+      // Step 1: Update position
       await getAdapter().updateActiveProgram(userId, {
         currentBlockOrdinal: selectedBlockOrdinal,
         currentWeekNumber: selectedWeekNumber,
       })
+    } catch (err) {
+      console.error('[time-travel] Failed to update position:', err)
+      setJumpError('Failed to save position. Please try again.')
+      setJumpSaving(false)
+      return
+    }
 
-      // Upsert labeled weeks (skip "unmarked" -- only persist done/skipped)
+    try {
+      // Step 2: Upsert labeled weeks (skip "unmarked" -- only persist done/skipped)
       const labeled = skipLabels.filter((w) => w.label !== 'unmarked')
       if (labeled.length > 0) {
         await upsertStatusesAsync(
@@ -326,8 +265,9 @@ export function TimeTravelSheet({
       queryClient.invalidateQueries({ queryKey: ['week-statuses', activation.id] })
       onOpenChange(false)
     } catch (err) {
-      console.error('[time-travel] Failed to jump position:', err)
-      setJumpError('Failed to save position. Please try again.')
+      console.error('[time-travel] Position updated but failed to save week labels:', err)
+      queryClient.invalidateQueries({ queryKey: ['active-program', userId] })
+      setJumpError('Position updated, but week labels failed to save. Please try again.')
     } finally {
       setJumpSaving(false)
     }

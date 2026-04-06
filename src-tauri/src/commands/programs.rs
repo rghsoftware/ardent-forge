@@ -817,6 +817,20 @@ pub async fn update_active_program(
         ));
     }
 
+    // Validate YYYY-MM-DD format at the system boundary
+    if let Some(ref date) = start_date {
+        let valid = date.len() == 10
+            && date.as_bytes().get(4) == Some(&b'-')
+            && date.as_bytes().get(7) == Some(&b'-')
+            && chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").is_ok();
+        if !valid {
+            return Err(AppError::validation(
+                "start_date",
+                "[programs] start_date must be a valid date in YYYY-MM-DD format",
+            ));
+        }
+    }
+
     let now = now_unix();
     let mut set_clauses: Vec<String> = Vec::new();
 

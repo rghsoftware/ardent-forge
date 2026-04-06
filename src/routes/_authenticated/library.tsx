@@ -545,7 +545,9 @@ function ProgramList({ userId }: { userId: string | undefined }) {
     scope,
   })
   const { data: activeProgram, error: activeProgramError } = useActiveProgram(userId)
-  const { data: activeProgramFull } = useProgramFull(activeProgram?.programId)
+  const { data: activeProgramFull, isError: activeProgramFullError } = useProgramFull(
+    activeProgram?.programId,
+  )
   const [timeTravelOpen, setTimeTravelOpen] = useState(false)
   const setActiveMutation = useSetActiveProgram()
   const clearActiveMutation = useClearActiveProgram()
@@ -711,7 +713,11 @@ function ProgramList({ userId }: { userId: string | undefined }) {
                     onEdit={() => handleEdit(program.id)}
                     onDelete={() => setConfirmDeleteId(program.id)}
                     onTimeTravel={
-                      isActive && activeProgramFull ? () => setTimeTravelOpen(true) : undefined
+                      isActive && activeProgramFull
+                        ? () => setTimeTravelOpen(true)
+                        : isActive && activeProgramFullError
+                          ? () => toast.error('Failed to load program data. Please try again.')
+                          : undefined
                     }
                     scope={scope}
                     isOwned={isOwned}

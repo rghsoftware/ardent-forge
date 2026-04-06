@@ -77,19 +77,99 @@ export function computePositionFromDate(
   }
 
   // --- Global week exceeds total program weeks -- clamp to last valid position ---
-  // Walk backwards through sorted blocks to find the last block with weeks
+  // The forward loop already visited every block; the last one with weeks is
+  // the clamp target. If no block had weeks we fall back to start.
   for (let i = sorted.length - 1; i >= 0; i--) {
-    const block = sorted[i]
-    const weeksForBlock = blockWeeks.filter((w) => w.blockId === block.id)
-    const maxWeek = weeksForBlock.reduce((max, w) => Math.max(max, w.weekNumber), 0)
-
+    const maxWeek = blockWeeks
+      .filter((w) => w.blockId === sorted[i].id)
+      .reduce((max, w) => Math.max(max, w.weekNumber), 0)
     if (maxWeek > 0) {
-      return { blockOrdinal: block.ordinal, weekNumber: maxWeek }
+      return { blockOrdinal: sorted[i].ordinal, weekNumber: maxWeek }
     }
   }
 
-  // Every block had zero weeks -- fall back to start
   return fallback
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Get the max week number for a block from blockWeeks */
+export function maxWeekForBlock(blockId: string, blockWeeks: BlockWeek[]): number {
+  return blockWeeks
+    .filter((w) => w.blockId === blockId)
+    .reduce((max, w) => Math.max(max, w.weekNumber), 0)
+}
+
+/**
+ * Linearize a position into a global week index for comparison.
+ * Returns -1 if the position cannot be resolved.
+ */
+export function linearize(
+  blockOrdinal: number,
+  weekNumber: number,
+  blocks: Block[],
+  blockWeeks: BlockWeek[],
+): number {
+  const sorted = [...blocks].sort((a, b) => a.ordinal - b.ordinal)
+  let accumulated = 0
+  for (const block of sorted) {
+    const maxWeek = maxWeekForBlock(block.id, blockWeeks)
+    if (block.ordinal === blockOrdinal) {
+      return accumulated + weekNumber
+    }
+    accumulated += maxWeek
+  }
+  return -1
+}
+
+export interface IntermediateWeek {
+  blockOrdinal: number
+  blockName: string
+  weekNumber: number
+  label: 'done' | 'skipped' | 'unmarked'
+}
+
+/**
+ * Build the list of intermediate weeks between current and target positions.
+ * Includes weeks strictly after the current position and strictly before the
+ * target position (current and target weeks themselves are excluded).
+ */
+export function buildIntermediateWeeks(
+  currentOrdinal: number,
+  currentWeek: number,
+  targetOrdinal: number,
+  targetWeek: number,
+  blocks: Block[],
+  blockWeeks: BlockWeek[],
+): IntermediateWeek[] {
+  const sorted = [...blocks].sort((a, b) => a.ordinal - b.ordinal)
+  const currentLinear = linearize(currentOrdinal, currentWeek, blocks, blockWeeks)
+  const targetLinear = linearize(targetOrdinal, targetWeek, blocks, blockWeeks)
+
+  if (currentLinear < 0 || targetLinear < 0 || targetLinear <= currentLinear) return []
+
+  const weeks: IntermediateWeek[] = []
+  let accumulated = 0
+
+  for (const block of sorted) {
+    const maxWeek = maxWeekForBlock(block.id, blockWeeks)
+    for (let w = 1; w <= maxWeek; w++) {
+      const globalIdx = accumulated + w
+      if (globalIdx > currentLinear && globalIdx < targetLinear) {
+        weeks.push({
+          blockOrdinal: block.ordinal,
+          blockName: block.name,
+          weekNumber: w,
+          label: 'unmarked',
+        })
+      }
+    }
+    accumulated += maxWeek
+  }
+
+  return weeks
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getAdapter } from '@/lib/adapter'
-import type { WeekStatus } from '@/domain/types'
+import type { WeekStatus, WeekStatusValue } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // Query key
@@ -26,9 +26,12 @@ export function useWeekStatuses(activationId: string | undefined) {
       statuses: Array<{
         blockOrdinal: number
         weekNumber: number
-        status: 'done' | 'skipped'
+        status: WeekStatusValue
       }>,
     ) => getAdapter().upsertWeekStatuses(activationId!, statuses),
+    // Optimistic update: merge incoming statuses into the cached list by
+    // matching on (blockOrdinal, weekNumber). New entries get synthetic IDs
+    // that are replaced when the server response arrives via onSettled.
     onMutate: async (incoming) => {
       await queryClient.cancelQueries({
         queryKey: weekStatusesKey(activationId),
@@ -66,6 +69,8 @@ export function useWeekStatuses(activationId: string | undefined) {
       console.error('[week-statuses] Failed to upsert week statuses:', err)
       if (context?.previous) {
         queryClient.setQueryData(weekStatusesKey(activationId), context.previous)
+      } else {
+        console.warn('[week-statuses] No previous data to rollback to')
       }
     },
     onSettled: () => {

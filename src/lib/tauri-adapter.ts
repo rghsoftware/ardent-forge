@@ -32,6 +32,7 @@ import type {
   ShareLink,
   ShareableEntityType,
   WeekStatus,
+  WeekStatusValue,
   WeeklyVolumeEntry,
   AccountabilityGroup,
   GroupMember,
@@ -1882,7 +1883,7 @@ export class TauriAdapter implements DataAdapter {
 
   async upsertWeekStatuses(
     activationId: string,
-    statuses: Array<{ blockOrdinal: number; weekNumber: number; status: 'done' | 'skipped' }>,
+    statuses: Array<{ blockOrdinal: number; weekNumber: number; status: WeekStatusValue }>,
   ): Promise<WeekStatus[]> {
     const rows = await invokeCommand<TauriWeekStatusResponse[]>('upsert_week_statuses', {
       activation_id: activationId,

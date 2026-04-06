@@ -15,6 +15,7 @@ import type {
   ScheduledSession,
   ProgramActivation,
   WeekStatus,
+  WeekStatusValue,
   AccountabilityGroup,
   GroupMember,
   GroupInvite,
@@ -284,7 +285,7 @@ export interface DataAdapter {
   getWeekStatuses(activationId: string): Promise<WeekStatus[]>
   upsertWeekStatuses(
     activationId: string,
-    statuses: Array<{ blockOrdinal: number; weekNumber: number; status: 'done' | 'skipped' }>,
+    statuses: Array<{ blockOrdinal: number; weekNumber: number; status: WeekStatusValue }>,
   ): Promise<WeekStatus[]>
 
   // Share link operations
