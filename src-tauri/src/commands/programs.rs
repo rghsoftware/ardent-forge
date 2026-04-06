@@ -85,50 +85,111 @@ pub struct CreateProgramInput {
 }
 
 // ---------------------------------------------------------------------------
-// Commands
+// Commands (thin wrappers delegating to inner functions for testability)
 // ---------------------------------------------------------------------------
 
-/// Lists all programs owned by the given user.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `user_id`: The owner's user ID to filter programs by.
-///
-/// # Returns
-/// A vector of `ProgramRow` ordered by creation date descending.
 #[tauri::command]
 pub async fn get_programs(
     pool: State<'_, SqlitePool>,
+    user_id: String,
+) -> Result<Vec<ProgramRow>, AppError> {
+    get_programs_inner(pool.inner(), user_id).await
+}
+
+#[tauri::command]
+pub async fn get_program_full(
+    pool: State<'_, SqlitePool>,
+    id: String,
+) -> Result<Option<ProgramFull>, AppError> {
+    get_program_full_inner(pool.inner(), id).await
+}
+
+#[tauri::command]
+pub async fn create_program_full(
+    pool: State<'_, SqlitePool>,
+    program: CreateProgramInput,
+    blocks: Vec<CreateBlockFullInput>,
+) -> Result<ProgramFull, AppError> {
+    create_program_full_inner(pool.inner(), program, blocks).await
+}
+
+#[tauri::command]
+pub async fn update_program_full(
+    pool: State<'_, SqlitePool>,
+    program: CreateProgramInput,
+    blocks: Vec<CreateBlockFullInput>,
+) -> Result<ProgramFull, AppError> {
+    update_program_full_inner(pool.inner(), program, blocks).await
+}
+
+#[tauri::command]
+pub async fn delete_program(pool: State<'_, SqlitePool>, id: String) -> Result<(), AppError> {
+    delete_program_inner(pool.inner(), id).await
+}
+
+#[tauri::command]
+pub async fn assign_program_to_member(
+    pool: State<'_, SqlitePool>,
+    caller_id: String,
+    program_id: String,
+    member_id: String,
+    group_id: String,
+) -> Result<ProgramRow, AppError> {
+    assign_program_to_member_inner(pool.inner(), caller_id, program_id, member_id, group_id).await
+}
+
+#[tauri::command]
+pub async fn get_active_program(
+    pool: State<'_, SqlitePool>,
+    user_id: String,
+) -> Result<Option<ProgramActivationRow>, AppError> {
+    get_active_program_inner(pool.inner(), user_id).await
+}
+
+#[tauri::command]
+pub async fn set_active_program(
+    pool: State<'_, SqlitePool>,
+    user_id: String,
+    program_id: String,
+    start_date: Option<String>,
+) -> Result<ProgramActivationRow, AppError> {
+    set_active_program_inner(pool.inner(), user_id, program_id, start_date).await
+}
+
+#[tauri::command]
+pub async fn clear_active_program(
+    pool: State<'_, SqlitePool>,
+    user_id: String,
+) -> Result<(), AppError> {
+    clear_active_program_inner(pool.inner(), user_id).await
+}
+
+// ---------------------------------------------------------------------------
+// Inner functions (testable, take &SqlitePool directly)
+// ---------------------------------------------------------------------------
+
+pub(crate) async fn get_programs_inner(
+    pool: &SqlitePool,
     user_id: String,
 ) -> Result<Vec<ProgramRow>, AppError> {
     let rows = sqlx::query_as::<_, ProgramRow>(
         "SELECT * FROM programs WHERE user_id = ? ORDER BY created_at DESC",
     )
     .bind(&user_id)
-    .fetch_all(pool.inner())
+    .fetch_all(pool)
     .await?;
 
     Ok(rows)
 }
 
-/// Fetches a program with all its blocks, block weeks, and scheduled sessions.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `id`: The program's unique identifier.
-///
-/// # Returns
-/// `Some(ProgramFull)` containing the program, its blocks, block weeks, and
-/// scheduled sessions, or `None` if no program matches the ID.
-#[tauri::command]
-pub async fn get_program_full(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn get_program_full_inner(
+    pool: &SqlitePool,
     id: String,
 ) -> Result<Option<ProgramFull>, AppError> {
     // Fetch the program
     let program = sqlx::query_as::<_, ProgramRow>("SELECT * FROM programs WHERE id = ?")
         .bind(&id)
-        .fetch_optional(pool.inner())
+        .fetch_optional(pool)
         .await?;
 
     let program = match program {
@@ -140,7 +201,7 @@ pub async fn get_program_full(
     let blocks =
         sqlx::query_as::<_, BlockRow>("SELECT * FROM blocks WHERE program_id = ? ORDER BY ordinal")
             .bind(&id)
-            .fetch_all(pool.inner())
+            .fetch_all(pool)
             .await?;
 
     let block_ids: Vec<String> = blocks.iter().map(|b| b.id.clone()).collect();
@@ -163,7 +224,7 @@ pub async fn get_program_full(
     for bid in &block_ids {
         weeks_query = weeks_query.bind(bid);
     }
-    let block_weeks = weeks_query.fetch_all(pool.inner()).await?;
+    let block_weeks = weeks_query.fetch_all(pool).await?;
 
     let week_ids: Vec<String> = block_weeks.iter().map(|w| w.id.clone()).collect();
 
@@ -185,7 +246,7 @@ pub async fn get_program_full(
     for wid in &week_ids {
         sessions_query = sessions_query.bind(wid);
     }
-    let scheduled_sessions = sessions_query.fetch_all(pool.inner()).await?;
+    let scheduled_sessions = sessions_query.fetch_all(pool).await?;
 
     Ok(Some(ProgramFull {
         program,
@@ -195,19 +256,8 @@ pub async fn get_program_full(
     }))
 }
 
-/// Creates a new program with all its blocks, block weeks, and scheduled
-/// sessions in a single transaction.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `program`: The program header (name, source, duration, etc.).
-/// - `blocks`: A vector of blocks, each containing weeks with their sessions.
-///
-/// # Returns
-/// The fully created `ProgramFull` with all generated IDs and timestamps.
-#[tauri::command]
-pub async fn create_program_full(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn create_program_full_inner(
+    pool: &SqlitePool,
     program: CreateProgramInput,
     blocks: Vec<CreateBlockFullInput>,
 ) -> Result<ProgramFull, AppError> {
@@ -366,22 +416,8 @@ pub async fn create_program_full(
     })
 }
 
-/// Updates an existing program by replacing all its blocks, block weeks, and
-/// scheduled sessions in a single transaction. Existing blocks (and their
-/// children) are deleted via ON DELETE CASCADE and re-inserted from the
-/// provided input.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `program`: The updated program header; `id` is required.
-/// - `blocks`: The full replacement set of blocks, weeks, and sessions.
-///
-/// # Returns
-/// The fully updated `ProgramFull`, or an error if the program ID is missing
-/// or the program does not exist.
-#[tauri::command]
-pub async fn update_program_full(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn update_program_full_inner(
+    pool: &SqlitePool,
     program: CreateProgramInput,
     blocks: Vec<CreateBlockFullInput>,
 ) -> Result<ProgramFull, AppError> {
@@ -550,20 +586,10 @@ pub async fn update_program_full(
     })
 }
 
-/// Deletes a program and all its associated blocks, block weeks, and scheduled
-/// sessions (cascaded via foreign key constraints).
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `id`: The program's unique identifier.
-///
-/// # Returns
-/// `Ok(())` on success, or a not-found error if no program matches the ID.
-#[tauri::command]
-pub async fn delete_program(pool: State<'_, SqlitePool>, id: String) -> Result<(), AppError> {
+pub(crate) async fn delete_program_inner(pool: &SqlitePool, id: String) -> Result<(), AppError> {
     let result = sqlx::query("DELETE FROM programs WHERE id = ?")
         .bind(&id)
-        .execute(pool.inner())
+        .execute(pool)
         .await?;
 
     if result.rows_affected() == 0 {
@@ -572,25 +598,8 @@ pub async fn delete_program(pool: State<'_, SqlitePool>, id: String) -> Result<(
     Ok(())
 }
 
-/// Assigns a program owned by the caller (a coach) to a group member.
-///
-/// This transfers ownership of the program and its linked session templates
-/// from the caller to the target member. The caller must be a COACH in the
-/// specified group, the target must be a MEMBER, and the program must be
-/// owned by the caller.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `caller_id`: The coach's user ID.
-/// - `program_id`: The program to assign.
-/// - `member_id`: The target member's user ID.
-/// - `group_id`: The accountability group ID for role validation.
-///
-/// # Returns
-/// The updated `ProgramRow` with ownership transferred to the member.
-#[tauri::command]
-pub async fn assign_program_to_member(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn assign_program_to_member_inner(
+    pool: &SqlitePool,
     caller_id: String,
     program_id: String,
     member_id: String,
@@ -602,7 +611,7 @@ pub async fn assign_program_to_member(
     )
     .bind(&group_id)
     .bind(&caller_id)
-    .fetch_optional(pool.inner())
+    .fetch_optional(pool)
     .await?;
 
     match caller_role.as_deref() {
@@ -620,7 +629,7 @@ pub async fn assign_program_to_member(
     )
     .bind(&group_id)
     .bind(&member_id)
-    .fetch_optional(pool.inner())
+    .fetch_optional(pool)
     .await?;
 
     match member_role.as_deref() {
@@ -637,7 +646,7 @@ pub async fn assign_program_to_member(
         sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM programs WHERE id = ? AND user_id = ?")
             .bind(&program_id)
             .bind(&caller_id)
-            .fetch_one(pool.inner())
+            .fetch_one(pool)
             .await?;
 
     if owned == 0 {
@@ -684,47 +693,22 @@ pub async fn assign_program_to_member(
     Ok(program)
 }
 
-/// Fetches the active program activation for a user.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `user_id`: The user's unique identifier.
-///
-/// # Returns
-/// `Some(ProgramActivationRow)` if the user has an active program, or `None`.
-#[tauri::command]
-pub async fn get_active_program(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn get_active_program_inner(
+    pool: &SqlitePool,
     user_id: String,
 ) -> Result<Option<ProgramActivationRow>, AppError> {
     let row = sqlx::query_as::<_, ProgramActivationRow>(
         "SELECT * FROM program_activations WHERE user_id = ?",
     )
     .bind(&user_id)
-    .fetch_optional(pool.inner())
+    .fetch_optional(pool)
     .await?;
 
     Ok(row)
 }
 
-/// Sets (or replaces) the active program for a user. Uses INSERT ... ON
-/// CONFLICT to enforce the UNIQUE(user_id) constraint, ensuring only one
-/// active program per user.
-///
-/// Note: Uses INSERT ... ON CONFLICT to preserve the original created_at
-/// timestamp when replacing an existing activation.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `user_id`: The user's unique identifier.
-/// - `program_id`: The program to activate.
-/// - `start_date`: Optional start date (YYYY-MM-DD). Defaults to today.
-///
-/// # Returns
-/// The created or replaced `ProgramActivationRow`.
-#[tauri::command]
-pub async fn set_active_program(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn set_active_program_inner(
+    pool: &SqlitePool,
     user_id: String,
     program_id: String,
     start_date: Option<String>,
@@ -751,39 +735,470 @@ pub async fn set_active_program(
     .bind(&date)
     .bind(now)
     .bind(now)
-    .execute(pool.inner())
+    .execute(pool)
     .await?;
 
     let row = sqlx::query_as::<_, ProgramActivationRow>(
         "SELECT * FROM program_activations WHERE user_id = ?",
     )
     .bind(&user_id)
-    .fetch_one(pool.inner())
+    .fetch_one(pool)
     .await?;
 
     Ok(row)
 }
 
-/// Clears the active program for a user.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `user_id`: The user's unique identifier.
-///
-/// # Returns
-/// `Ok(())` on success, or a not-found error if the user has no active program.
-#[tauri::command]
-pub async fn clear_active_program(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn clear_active_program_inner(
+    pool: &SqlitePool,
     user_id: String,
 ) -> Result<(), AppError> {
     let result = sqlx::query("DELETE FROM program_activations WHERE user_id = ?")
         .bind(&user_id)
-        .execute(pool.inner())
+        .execute(pool)
         .await?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::not_found("ProgramActivation", &user_id));
     }
     Ok(())
+}
+
+// ===========================================================================
+// Tests
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    const PROGRAMS_DDL: &str = "\
+        PRAGMA foreign_keys = ON;\
+        CREATE TABLE IF NOT EXISTS session_templates (\
+            id TEXT PRIMARY KEY, \
+            user_id TEXT NOT NULL, \
+            name TEXT NOT NULL, \
+            description TEXT, \
+            category TEXT NOT NULL, \
+            rest_between_groups TEXT, \
+            time_cap TEXT, \
+            scoring TEXT NOT NULL, \
+            last_assigned_at INTEGER, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );\
+        CREATE TABLE IF NOT EXISTS programs (\
+            id TEXT PRIMARY KEY, \
+            user_id TEXT NOT NULL, \
+            name TEXT NOT NULL, \
+            description TEXT, \
+            source TEXT NOT NULL, \
+            duration_weeks INTEGER, \
+            is_public INTEGER NOT NULL DEFAULT 0, \
+            created_by TEXT, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );\
+        CREATE TABLE IF NOT EXISTS blocks (\
+            id TEXT PRIMARY KEY, \
+            program_id TEXT NOT NULL REFERENCES programs(id) ON DELETE CASCADE, \
+            name TEXT NOT NULL, \
+            ordinal INTEGER NOT NULL, \
+            duration_weeks INTEGER NOT NULL, \
+            block_type TEXT NOT NULL, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );\
+        CREATE TABLE IF NOT EXISTS block_weeks (\
+            id TEXT PRIMARY KEY, \
+            block_id TEXT NOT NULL REFERENCES blocks(id) ON DELETE CASCADE, \
+            week_number INTEGER NOT NULL, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );\
+        CREATE TABLE IF NOT EXISTS scheduled_sessions (\
+            id TEXT PRIMARY KEY, \
+            block_week_id TEXT NOT NULL REFERENCES block_weeks(id) ON DELETE CASCADE, \
+            day_of_week INTEGER, \
+            day_label TEXT NOT NULL, \
+            session_type TEXT NOT NULL, \
+            session_template_id TEXT NOT NULL, \
+            notes TEXT, \
+            overrides TEXT, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );\
+        CREATE TABLE IF NOT EXISTS program_activations (\
+            id TEXT PRIMARY KEY, \
+            user_id TEXT NOT NULL UNIQUE, \
+            program_id TEXT NOT NULL, \
+            current_block_ordinal INTEGER NOT NULL DEFAULT 1, \
+            current_week_number INTEGER NOT NULL DEFAULT 1, \
+            start_date TEXT NOT NULL, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );\
+        CREATE TABLE IF NOT EXISTS group_members (\
+            id TEXT PRIMARY KEY, \
+            group_id TEXT NOT NULL, \
+            user_id TEXT NOT NULL, \
+            role TEXT NOT NULL, \
+            share_history_before_join INTEGER NOT NULL DEFAULT 0, \
+            joined_at INTEGER, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );";
+
+    async fn setup_test_db() -> SqlitePool {
+        let pool = SqlitePoolOptions::new()
+            .connect(":memory:")
+            .await
+            .expect("in-memory pool");
+
+        for stmt in PROGRAMS_DDL.split(';') {
+            let trimmed = stmt.trim();
+            if !trimmed.is_empty() {
+                sqlx::query(trimmed)
+                    .execute(&pool)
+                    .await
+                    .unwrap_or_else(|e| panic!("DDL failed: {e}\nSQL: {trimmed}"));
+            }
+        }
+
+        pool
+    }
+
+    fn make_program_input(id: Option<&str>) -> CreateProgramInput {
+        CreateProgramInput {
+            id: id.map(String::from),
+            user_id: "user-1".into(),
+            name: "Strength Base".into(),
+            description: Some("12-week linear periodization".into()),
+            source: "SELF_CREATED".into(),
+            duration_weeks: Some(12),
+            is_public: false,
+            created_by: None,
+        }
+    }
+
+    fn make_blocks() -> Vec<CreateBlockFullInput> {
+        vec![CreateBlockFullInput {
+            block: CreateBlockInput {
+                id: None,
+                name: "Hypertrophy".into(),
+                ordinal: 1,
+                duration_weeks: 4,
+                block_type: "hypertrophy".into(),
+            },
+            weeks: vec![CreateBlockWeekFullInput {
+                week: CreateBlockWeekInput {
+                    id: None,
+                    week_number: 1,
+                },
+                sessions: vec![CreateScheduledSessionInput {
+                    id: None,
+                    day_of_week: Some(1),
+                    day_label: "Monday".into(),
+                    session_type: "strength".into(),
+                    session_template_id: "tmpl-1".into(),
+                    notes: None,
+                    overrides: None,
+                }],
+            }],
+        }]
+    }
+
+    /// Creates a program via create_program_full_inner and returns it.
+    async fn seed_program(pool: &SqlitePool) -> ProgramFull {
+        create_program_full_inner(pool, make_program_input(None), make_blocks())
+            .await
+            .expect("seed program")
+    }
+
+    // -----------------------------------------------------------------------
+    // get_programs
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_programs_returns_user_programs() {
+        let pool = setup_test_db().await;
+        seed_program(&pool).await;
+
+        let rows = get_programs_inner(&pool, "user-1".into()).await.unwrap();
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].name, "Strength Base");
+    }
+
+    #[tokio::test]
+    async fn get_programs_returns_empty_for_unknown_user() {
+        let pool = setup_test_db().await;
+
+        let rows = get_programs_inner(&pool, "nobody".into()).await.unwrap();
+
+        assert!(rows.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // get_program_full
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_program_full_returns_nested_data() {
+        let pool = setup_test_db().await;
+        let created = seed_program(&pool).await;
+
+        let full = get_program_full_inner(&pool, created.program.id.clone())
+            .await
+            .unwrap()
+            .expect("should be Some");
+
+        assert_eq!(full.program.id, created.program.id);
+        assert_eq!(full.blocks.len(), 1);
+        assert_eq!(full.blocks[0].name, "Hypertrophy");
+        assert_eq!(full.block_weeks.len(), 1);
+        assert_eq!(full.block_weeks[0].week_number, 1);
+        assert_eq!(full.scheduled_sessions.len(), 1);
+        assert_eq!(full.scheduled_sessions[0].day_label, "Monday");
+    }
+
+    #[tokio::test]
+    async fn get_program_full_returns_none_for_missing() {
+        let pool = setup_test_db().await;
+
+        let result = get_program_full_inner(&pool, "nonexistent".into())
+            .await
+            .unwrap();
+
+        assert!(result.is_none());
+    }
+
+    // -----------------------------------------------------------------------
+    // create_program_full
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn create_program_full_persists_all_rows() {
+        let pool = setup_test_db().await;
+
+        let result = create_program_full_inner(&pool, make_program_input(None), make_blocks())
+            .await
+            .unwrap();
+
+        assert_eq!(result.program.name, "Strength Base");
+        assert_eq!(result.program.source, "SELF_CREATED");
+        assert_eq!(result.program.is_public, 0);
+        assert_eq!(result.blocks.len(), 1);
+        assert_eq!(result.block_weeks.len(), 1);
+        assert_eq!(result.scheduled_sessions.len(), 1);
+    }
+
+    // -----------------------------------------------------------------------
+    // update_program_full
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn update_program_full_replaces_blocks() {
+        let pool = setup_test_db().await;
+        let created = seed_program(&pool).await;
+        let pid = created.program.id.clone();
+
+        let new_blocks = vec![CreateBlockFullInput {
+            block: CreateBlockInput {
+                id: None,
+                name: "Peaking".into(),
+                ordinal: 1,
+                duration_weeks: 2,
+                block_type: "peaking".into(),
+            },
+            weeks: vec![
+                CreateBlockWeekFullInput {
+                    week: CreateBlockWeekInput {
+                        id: None,
+                        week_number: 1,
+                    },
+                    sessions: vec![CreateScheduledSessionInput {
+                        id: None,
+                        day_of_week: Some(1),
+                        day_label: "Mon".into(),
+                        session_type: "strength".into(),
+                        session_template_id: "tmpl-2".into(),
+                        notes: None,
+                        overrides: None,
+                    }],
+                },
+                CreateBlockWeekFullInput {
+                    week: CreateBlockWeekInput {
+                        id: None,
+                        week_number: 2,
+                    },
+                    sessions: vec![],
+                },
+            ],
+        }];
+
+        let mut updated_input = make_program_input(Some(&pid));
+        updated_input.name = "Peaking Program".into();
+
+        let updated = update_program_full_inner(&pool, updated_input, new_blocks)
+            .await
+            .unwrap();
+
+        assert_eq!(updated.program.name, "Peaking Program");
+        assert_eq!(updated.blocks.len(), 1);
+        assert_eq!(updated.blocks[0].name, "Peaking");
+        assert_eq!(updated.block_weeks.len(), 2);
+        assert_eq!(updated.scheduled_sessions.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn update_program_full_rejects_missing_id() {
+        let pool = setup_test_db().await;
+
+        let err = update_program_full_inner(&pool, make_program_input(None), make_blocks())
+            .await
+            .unwrap_err();
+
+        assert!(err.message.contains("required for update"));
+    }
+
+    // -----------------------------------------------------------------------
+    // delete_program
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn delete_program_removes_program() {
+        let pool = setup_test_db().await;
+        let created = seed_program(&pool).await;
+
+        delete_program_inner(&pool, created.program.id.clone())
+            .await
+            .unwrap();
+
+        let result = get_program_full_inner(&pool, created.program.id)
+            .await
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn delete_program_returns_not_found() {
+        let pool = setup_test_db().await;
+
+        let err = delete_program_inner(&pool, "nonexistent".into())
+            .await
+            .unwrap_err();
+
+        assert!(err.message.contains("not found"));
+    }
+
+    // -----------------------------------------------------------------------
+    // set_active_program / get_active_program / clear_active_program
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn set_and_get_active_program() {
+        let pool = setup_test_db().await;
+        let created = seed_program(&pool).await;
+
+        let activation = set_active_program_inner(
+            &pool,
+            "user-1".into(),
+            created.program.id.clone(),
+            Some("2025-01-06".into()),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(activation.program_id, created.program.id);
+        assert_eq!(activation.start_date, "2025-01-06");
+        assert_eq!(activation.current_block_ordinal, 1);
+        assert_eq!(activation.current_week_number, 1);
+
+        let fetched = get_active_program_inner(&pool, "user-1".into())
+            .await
+            .unwrap()
+            .expect("should be Some");
+        assert_eq!(fetched.program_id, created.program.id);
+    }
+
+    #[tokio::test]
+    async fn set_active_program_replaces_existing() {
+        let pool = setup_test_db().await;
+        let p1 = seed_program(&pool).await;
+
+        set_active_program_inner(
+            &pool,
+            "user-1".into(),
+            p1.program.id.clone(),
+            Some("2025-01-01".into()),
+        )
+        .await
+        .unwrap();
+
+        // Create a second program and activate it
+        let mut p2_input = make_program_input(None);
+        p2_input.name = "Program 2".into();
+        let p2 = create_program_full_inner(&pool, p2_input, vec![])
+            .await
+            .unwrap();
+
+        let activation = set_active_program_inner(
+            &pool,
+            "user-1".into(),
+            p2.program.id.clone(),
+            Some("2025-02-01".into()),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(activation.program_id, p2.program.id);
+        assert_eq!(activation.start_date, "2025-02-01");
+    }
+
+    #[tokio::test]
+    async fn clear_active_program_deletes_activation() {
+        let pool = setup_test_db().await;
+        let created = seed_program(&pool).await;
+
+        set_active_program_inner(
+            &pool,
+            "user-1".into(),
+            created.program.id,
+            Some("2025-01-06".into()),
+        )
+        .await
+        .unwrap();
+
+        clear_active_program_inner(&pool, "user-1".into())
+            .await
+            .unwrap();
+
+        let result = get_active_program_inner(&pool, "user-1".into())
+            .await
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn clear_active_program_returns_not_found() {
+        let pool = setup_test_db().await;
+
+        let err = clear_active_program_inner(&pool, "nobody".into())
+            .await
+            .unwrap_err();
+
+        assert!(err.message.contains("not found"));
+    }
+
+    #[tokio::test]
+    async fn get_active_program_returns_none_when_unset() {
+        let pool = setup_test_db().await;
+
+        let result = get_active_program_inner(&pool, "user-1".into())
+            .await
+            .unwrap();
+
+        assert!(result.is_none());
+    }
 }

@@ -293,4 +293,72 @@ mod tests {
             .unwrap();
         assert!(!needs_initial_pull(&pool).await);
     }
+
+    #[tokio::test]
+    async fn sync_metadata_round_trip_write_and_read() {
+        let pool = test_pool().await;
+        sqlx::query(
+            "INSERT INTO sync_metadata (table_name, last_push_at, last_pull_at) VALUES ('exercises', 1000, 2000)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let row: (i64, i64) = sqlx::query_as(
+            "SELECT last_push_at, last_pull_at FROM sync_metadata WHERE table_name = 'exercises'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(row.0, 1000);
+        assert_eq!(row.1, 2000);
+    }
+
+    #[tokio::test]
+    async fn sync_metadata_update_preserves_other_fields() {
+        let pool = test_pool().await;
+        sqlx::query(
+            "INSERT INTO sync_metadata (table_name, last_push_at, last_pull_at) VALUES ('exercises', 100, 200)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // Update only last_push_at
+        sqlx::query("UPDATE sync_metadata SET last_push_at = 999 WHERE table_name = 'exercises'")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let row: (i64, i64) = sqlx::query_as(
+            "SELECT last_push_at, last_pull_at FROM sync_metadata WHERE table_name = 'exercises'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(row.0, 999);
+        assert_eq!(row.1, 200, "last_pull_at should remain unchanged");
+    }
+
+    #[test]
+    fn syncable_tables_contains_expected_core_tables() {
+        assert!(SYNCABLE_TABLES.contains(&"exercises"));
+        assert!(SYNCABLE_TABLES.contains(&"workout_logs"));
+        assert!(SYNCABLE_TABLES.contains(&"logged_sets"));
+        assert!(SYNCABLE_TABLES.contains(&"user_profiles"));
+        assert!(SYNCABLE_TABLES.contains(&"messages"));
+    }
+
+    #[test]
+    fn syncable_tables_has_no_duplicates() {
+        let mut seen = std::collections::HashSet::new();
+        for table in SYNCABLE_TABLES {
+            assert!(
+                seen.insert(table),
+                "Duplicate table found in SYNCABLE_TABLES: {table}"
+            );
+        }
+    }
 }

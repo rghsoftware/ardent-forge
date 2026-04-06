@@ -22,7 +22,15 @@ pub async fn schedule_session_reminder(
     reminder_state: State<'_, SessionReminderState>,
     app: AppHandle,
 ) -> Result<(), AppError> {
-    reminder_state.start(pool.inner().clone(), app).await;
+    schedule_session_reminder_inner(pool.inner(), reminder_state.inner(), app).await
+}
+
+pub(crate) async fn schedule_session_reminder_inner(
+    pool: &SqlitePool,
+    reminder_state: &SessionReminderState,
+    app: AppHandle,
+) -> Result<(), AppError> {
+    reminder_state.start(pool.clone(), app).await;
     Ok(())
 }
 
@@ -30,6 +38,12 @@ pub async fn schedule_session_reminder(
 #[tauri::command]
 pub async fn cancel_session_reminder(
     reminder_state: State<'_, SessionReminderState>,
+) -> Result<(), AppError> {
+    cancel_session_reminder_inner(reminder_state.inner()).await
+}
+
+pub(crate) async fn cancel_session_reminder_inner(
+    reminder_state: &SessionReminderState,
 ) -> Result<(), AppError> {
     reminder_state.stop().await;
     Ok(())
@@ -49,7 +63,15 @@ pub async fn schedule_event_reminders(
     reminder_state: State<'_, EventReminderState>,
     app: AppHandle,
 ) -> Result<(), AppError> {
-    reminder_state.start(pool.inner().clone(), app).await;
+    schedule_event_reminders_inner(pool.inner(), reminder_state.inner(), app).await
+}
+
+pub(crate) async fn schedule_event_reminders_inner(
+    pool: &SqlitePool,
+    reminder_state: &EventReminderState,
+    app: AppHandle,
+) -> Result<(), AppError> {
+    reminder_state.start(pool.clone(), app).await;
     Ok(())
 }
 
@@ -58,6 +80,31 @@ pub async fn schedule_event_reminders(
 pub async fn cancel_event_reminders(
     reminder_state: State<'_, EventReminderState>,
 ) -> Result<(), AppError> {
+    cancel_event_reminders_inner(reminder_state.inner()).await
+}
+
+pub(crate) async fn cancel_event_reminders_inner(
+    reminder_state: &EventReminderState,
+) -> Result<(), AppError> {
     reminder_state.stop().await;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn cancel_session_reminder_succeeds_when_idle() {
+        let state = SessionReminderState::new();
+        let result = cancel_session_reminder_inner(&state).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn cancel_event_reminders_succeeds_when_idle() {
+        let state = EventReminderState::new();
+        let result = cancel_event_reminders_inner(&state).await;
+        assert!(result.is_ok());
+    }
 }

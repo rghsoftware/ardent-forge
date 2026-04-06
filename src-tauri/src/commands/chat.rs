@@ -1418,4 +1418,146 @@ mod tests {
 
         assert!(result.is_empty());
     }
+
+    // -----------------------------------------------------------------------
+    // find_direct_conversation
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn find_direct_conversation_returns_existing() {
+        let pool = setup_test_db().await;
+        let conv_id = seed_direct_conversation(&pool).await;
+
+        let result = find_direct_conversation_inner(&pool, "user-a".into(), "user-b".into())
+            .await
+            .unwrap();
+
+        assert!(result.is_some());
+        let cwp = result.unwrap();
+        assert_eq!(cwp.conversation.id, conv_id);
+        assert_eq!(cwp.participants.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn find_direct_conversation_returns_none_for_strangers() {
+        let pool = setup_test_db().await;
+        seed_direct_conversation(&pool).await;
+
+        let result = find_direct_conversation_inner(&pool, "user-a".into(), "user-c".into())
+            .await
+            .unwrap();
+
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn find_direct_conversation_excludes_left_users() {
+        let pool = setup_test_db().await;
+        let conv_id = seed_direct_conversation(&pool).await;
+
+        leave_conversation_inner(&pool, conv_id, "user-a".into())
+            .await
+            .unwrap();
+
+        let result = find_direct_conversation_inner(&pool, "user-a".into(), "user-b".into())
+            .await
+            .unwrap();
+
+        assert!(result.is_none());
+    }
+
+    // -----------------------------------------------------------------------
+    // send_message (system message with no sender)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn send_system_message_without_sender() {
+        let pool = setup_test_db().await;
+        let conv_id = seed_direct_conversation(&pool).await;
+
+        let msg = send_message_inner(
+            &pool,
+            SendMessageInput {
+                conversation_id: conv_id,
+                sender_id: None,
+                message_type: "system".into(),
+                content: Some("User joined".into()),
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(msg.message_type, "system");
+        assert!(msg.sender_id.is_none());
+    }
+
+    // -----------------------------------------------------------------------
+    // get_messages default limit
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_messages_default_limit_caps_at_50() {
+        let pool = setup_test_db().await;
+        let conv_id = seed_direct_conversation(&pool).await;
+
+        // Insert 60 messages
+        for i in 0..60 {
+            sqlx::query(
+                "INSERT INTO messages (id, conversation_id, sender_id, message_type, content, created_at, updated_at, sync_status) \
+                 VALUES (?, ?, 'user-a', 'text', ?, ?, ?, 'synced')"
+            )
+            .bind(format!("msg-{i}"))
+            .bind(&conv_id)
+            .bind(format!("Message {i}"))
+            .bind(1000i64 + i as i64)
+            .bind(1000i64 + i as i64)
+            .execute(&pool).await.unwrap();
+        }
+
+        // Call with no explicit limit (defaults to 50)
+        let msgs = get_messages_inner(&pool, conv_id, None, None)
+            .await
+            .unwrap();
+
+        assert_eq!(msgs.len(), 50);
+    }
+
+    // -----------------------------------------------------------------------
+    // send_message updates conversation updated_at
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn send_message_updates_conversation_timestamp() {
+        let pool = setup_test_db().await;
+        let conv_id = seed_direct_conversation(&pool).await;
+
+        let before: (i64,) = sqlx::query_as("SELECT updated_at FROM conversations WHERE id = ?")
+            .bind(&conv_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        // Small delay to ensure distinct timestamp
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+        send_message_inner(
+            &pool,
+            SendMessageInput {
+                conversation_id: conv_id.clone(),
+                sender_id: Some("user-a".into()),
+                message_type: "text".into(),
+                content: Some("Bump".into()),
+            },
+        )
+        .await
+        .unwrap();
+
+        let after: (i64,) = sqlx::query_as("SELECT updated_at FROM conversations WHERE id = ?")
+            .bind(&conv_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert!(after.0 >= before.0);
+    }
 }

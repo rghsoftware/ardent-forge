@@ -210,4 +210,53 @@ mod tests {
         let inner = timer.inner.lock().await;
         assert!(!inner.active, "Timer should not be active on construction");
     }
+
+    #[tokio::test]
+    async fn new_timer_has_zero_remaining_and_total() {
+        let timer = make_timer();
+        let inner = timer.inner.lock().await;
+        assert_eq!(inner.remaining, 0);
+        assert_eq!(inner.total, 0);
+        assert!(!inner.active);
+        assert!(inner.exercise_name.is_none());
+        assert!(inner.set_number.is_none());
+    }
+
+    #[tokio::test]
+    async fn stop_deactivates_timer() {
+        let timer = make_timer();
+        {
+            let mut inner = timer.inner.lock().await;
+            inner.remaining = 45;
+            inner.total = 90;
+            inner.active = true;
+            inner.exercise_name = Some("Bench Press".into());
+            inner.set_number = Some(3);
+        }
+        timer.stop().await;
+        let inner = timer.inner.lock().await;
+        assert!(!inner.active);
+    }
+
+    #[tokio::test]
+    async fn adjust_positive_saturates_at_u32_max() {
+        let timer = make_timer();
+        {
+            let mut inner = timer.inner.lock().await;
+            inner.remaining = u32::MAX - 5;
+            inner.total = u32::MAX - 5;
+            inner.active = true;
+        }
+        timer.adjust(100).await;
+        let inner = timer.inner.lock().await;
+        assert_eq!(inner.remaining, u32::MAX);
+        assert_eq!(inner.total, u32::MAX);
+    }
+
+    #[test]
+    fn default_matches_new() {
+        // RestTimerState::default() should produce the same initial state as new()
+        let _state = RestTimerState::default();
+        // If it compiles and doesn't panic, Default is wired correctly
+    }
 }

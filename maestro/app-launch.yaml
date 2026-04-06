@@ -1,0 +1,24 @@
+appId: com.rghsoftware.ardentforge
+name: App Launch & WebView Rendering
+tags:
+  - smoke
+  - android
+---
+# Verify the app launches, WebView initializes, and the initial screen renders.
+# On first launch with no config, the app should show the setup page.
+
+- launchApp
+
+# WebView should be present and rendered
+- assertVisible:
+    id: '.*webview.*'
+    optional: true
+
+# The setup page should render (no stored config on fresh install)
+# Tauri WebView renders HTML content -- assert on text visible in the WebView
+- waitForAnimationToEnd
+
+# Look for setup-related content (the first screen users see)
+- assertVisible:
+    text: '.*[Ss]etup.*|.*[Cc]onnect.*|.*[Ss]elf.[Hh]ost.*'
+    optional: false

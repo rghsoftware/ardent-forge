@@ -1,0 +1,30 @@
+appId: com.rghsoftware.ardentforge
+name: Android Back Button Navigation
+tags:
+  - navigation
+  - android
+---
+# Verify the Android hardware/gesture back button works correctly in the WebView.
+# WebView apps frequently break back navigation -- the system back button should
+# navigate backward in the WebView history, not immediately close the app.
+
+- launchApp
+
+- waitForAnimationToEnd
+
+# Navigate to a second page (tap sign-in link or any navigation element)
+- tapOn:
+    text: '.*[Ss]ign.[Ii]n.*|.*[Mm]anual.*|.*[Cc]onfigure.*'
+    optional: true
+
+- waitForAnimationToEnd
+
+# Press the Android back button
+- pressKey: back
+
+- waitForAnimationToEnd
+
+# The app should still be visible (not closed) and navigated back
+- assertVisible:
+    text: '.*[Ss]etup.*|.*[Ss]ign.[Ii]n.*|.*[Aa]rdent.*'
+    optional: false

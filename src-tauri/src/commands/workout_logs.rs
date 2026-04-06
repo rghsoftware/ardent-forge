@@ -105,12 +105,147 @@ pub struct CreateLoggedActivityFullInput {
 const VALID_SET_TYPES: &[&str] = &["WORKING", "WARMUP", "DROPSET", "BACKOFF", "FAILURE", "MAX"];
 
 // ---------------------------------------------------------------------------
-// Commands
+// Commands (thin wrappers delegating to inner functions for testability)
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
 pub async fn get_workout_logs(
     pool: State<'_, SqlitePool>,
+    user_id: String,
+    limit: Option<i64>,
+) -> Result<Vec<WorkoutLogRow>, AppError> {
+    get_workout_logs_inner(pool.inner(), user_id, limit).await
+}
+
+#[tauri::command]
+pub async fn get_workout_logs_summary(
+    pool: State<'_, SqlitePool>,
+    user_id: String,
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Result<Vec<WorkoutLogSummary>, AppError> {
+    get_workout_logs_summary_inner(pool.inner(), user_id, limit, offset).await
+}
+
+#[tauri::command]
+pub async fn get_workout_log(
+    pool: State<'_, SqlitePool>,
+    id: String,
+) -> Result<Option<WorkoutLogRow>, AppError> {
+    get_workout_log_inner(pool.inner(), id).await
+}
+
+#[tauri::command]
+pub async fn get_workout_log_full(
+    pool: State<'_, SqlitePool>,
+    id: String,
+) -> Result<Option<WorkoutLogFull>, AppError> {
+    get_workout_log_full_inner(pool.inner(), id).await
+}
+
+#[tauri::command]
+pub async fn create_workout_log(
+    pool: State<'_, SqlitePool>,
+    log: CreateWorkoutLogInput,
+) -> Result<WorkoutLogRow, AppError> {
+    create_workout_log_inner(pool.inner(), log).await
+}
+
+#[tauri::command]
+pub async fn update_workout_log(
+    pool: State<'_, SqlitePool>,
+    id: String,
+    title: Option<String>,
+    completed_at: Option<i64>,
+    overall_notes: Option<String>,
+    perceived_difficulty: Option<i32>,
+) -> Result<WorkoutLogRow, AppError> {
+    update_workout_log_inner(
+        pool.inner(),
+        id,
+        title,
+        completed_at,
+        overall_notes,
+        perceived_difficulty,
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn delete_workout_log(pool: State<'_, SqlitePool>, id: String) -> Result<(), AppError> {
+    delete_workout_log_inner(pool.inner(), id).await
+}
+
+#[tauri::command]
+pub async fn create_logged_activity_group(
+    pool: State<'_, SqlitePool>,
+    group: CreateLoggedActivityGroupInput,
+    user_id: String,
+) -> Result<LoggedActivityGroupRow, AppError> {
+    create_logged_activity_group_inner(pool.inner(), group, user_id).await
+}
+
+#[tauri::command]
+pub async fn create_logged_activity(
+    pool: State<'_, SqlitePool>,
+    activity: CreateLoggedActivityInput,
+    user_id: String,
+) -> Result<LoggedActivityRow, AppError> {
+    create_logged_activity_inner(pool.inner(), activity, user_id).await
+}
+
+#[tauri::command]
+pub async fn create_logged_set(
+    pool: State<'_, SqlitePool>,
+    set: CreateLoggedSetInput,
+    user_id: String,
+) -> Result<LoggedSetRow, AppError> {
+    create_logged_set_inner(pool.inner(), set, user_id).await
+}
+
+#[tauri::command]
+pub async fn update_logged_set(
+    pool: State<'_, SqlitePool>,
+    set: UpdateLoggedSetInput,
+    user_id: String,
+) -> Result<LoggedSetRow, AppError> {
+    update_logged_set_inner(pool.inner(), set, user_id).await
+}
+
+#[tauri::command]
+pub async fn get_recently_used_exercise_ids(
+    pool: State<'_, SqlitePool>,
+    user_id: String,
+    limit: Option<i64>,
+) -> Result<Vec<String>, AppError> {
+    get_recently_used_exercise_ids_inner(pool.inner(), user_id, limit).await
+}
+
+#[tauri::command]
+pub async fn get_exercise_workout_history(
+    pool: State<'_, SqlitePool>,
+    user_id: String,
+    exercise_id: String,
+    limit: Option<i64>,
+) -> Result<Vec<WorkoutWithSets>, AppError> {
+    get_exercise_workout_history_inner(pool.inner(), user_id, exercise_id, limit).await
+}
+
+#[tauri::command]
+pub async fn create_workout_log_full(
+    pool: State<'_, SqlitePool>,
+    input: CreateWorkoutLogFullInput,
+    user_id: String,
+) -> Result<WorkoutLogFull, AppError> {
+    create_workout_log_full_inner(pool.inner(), input, user_id).await
+}
+
+// ---------------------------------------------------------------------------
+// Inner functions (testable, take &SqlitePool directly)
+// ---------------------------------------------------------------------------
+
+pub(crate) async fn get_workout_logs_inner(
+    pool: &SqlitePool,
     user_id: String,
     limit: Option<i64>,
 ) -> Result<Vec<WorkoutLogRow>, AppError> {
@@ -120,15 +255,14 @@ pub async fn get_workout_logs(
     )
     .bind(&user_id)
     .bind(lim)
-    .fetch_all(pool.inner())
+    .fetch_all(pool)
     .await?;
 
     Ok(rows)
 }
 
-#[tauri::command]
-pub async fn get_workout_logs_summary(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn get_workout_logs_summary_inner(
+    pool: &SqlitePool,
     user_id: String,
     limit: Option<i64>,
     offset: Option<i64>,
@@ -145,7 +279,7 @@ pub async fn get_workout_logs_summary(
     .bind(&user_id)
     .bind(lim)
     .bind(off)
-    .fetch_all(pool.inner())
+    .fetch_all(pool)
     .await?;
 
     if logs.is_empty() {
@@ -184,7 +318,7 @@ pub async fn get_workout_logs_summary(
     for id in &log_ids {
         query = query.bind(id);
     }
-    let agg_rows = query.fetch_all(pool.inner()).await?;
+    let agg_rows = query.fetch_all(pool).await?;
 
     // Build a map: workout_log_id -> (exercise_names, set_count)
     let mut agg_map: HashMap<String, (Vec<String>, i64)> = HashMap::new();
@@ -214,28 +348,26 @@ pub async fn get_workout_logs_summary(
     Ok(summaries)
 }
 
-#[tauri::command]
-pub async fn get_workout_log(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn get_workout_log_inner(
+    pool: &SqlitePool,
     id: String,
 ) -> Result<Option<WorkoutLogRow>, AppError> {
     let row = sqlx::query_as::<_, WorkoutLogRow>("SELECT * FROM workout_logs WHERE id = ?")
         .bind(&id)
-        .fetch_optional(pool.inner())
+        .fetch_optional(pool)
         .await?;
 
     Ok(row)
 }
 
-#[tauri::command]
-pub async fn get_workout_log_full(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn get_workout_log_full_inner(
+    pool: &SqlitePool,
     id: String,
 ) -> Result<Option<WorkoutLogFull>, AppError> {
     // Fetch the workout log
     let log_row = sqlx::query_as::<_, WorkoutLogRow>("SELECT * FROM workout_logs WHERE id = ?")
         .bind(&id)
-        .fetch_optional(pool.inner())
+        .fetch_optional(pool)
         .await?;
 
     let log_row = match log_row {
@@ -248,7 +380,7 @@ pub async fn get_workout_log_full(
         "SELECT * FROM logged_activity_groups WHERE workout_log_id = ? ORDER BY ordinal",
     )
     .bind(&id)
-    .fetch_all(pool.inner())
+    .fetch_all(pool)
     .await?;
 
     let group_ids: Vec<String> = group_rows.iter().map(|g| g.id.clone()).collect();
@@ -271,7 +403,7 @@ pub async fn get_workout_log_full(
     for gid in &group_ids {
         act_query = act_query.bind(gid);
     }
-    let act_rows = act_query.fetch_all(pool.inner()).await?;
+    let act_rows = act_query.fetch_all(pool).await?;
 
     let activity_ids: Vec<String> = act_rows.iter().map(|a| a.id.clone()).collect();
 
@@ -297,7 +429,7 @@ pub async fn get_workout_log_full(
     for aid in &activity_ids {
         set_query = set_query.bind(aid);
     }
-    let set_rows = set_query.fetch_all(pool.inner()).await?;
+    let set_rows = set_query.fetch_all(pool).await?;
 
     Ok(Some(WorkoutLogFull {
         log: log_row,
@@ -307,9 +439,8 @@ pub async fn get_workout_log_full(
     }))
 }
 
-#[tauri::command]
-pub async fn create_workout_log(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn create_workout_log_inner(
+    pool: &SqlitePool,
     log: CreateWorkoutLogInput,
 ) -> Result<WorkoutLogRow, AppError> {
     // Validation
@@ -362,9 +493,8 @@ pub async fn create_workout_log(
     Ok(row)
 }
 
-#[tauri::command]
-pub async fn update_workout_log(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn update_workout_log_inner(
+    pool: &SqlitePool,
     id: String,
     title: Option<String>,
     completed_at: Option<i64>,
@@ -388,7 +518,7 @@ pub async fn update_workout_log(
     .bind(perceived_difficulty)
     .bind(now)
     .bind(&id)
-    .execute(pool.inner())
+    .execute(pool)
     .await?;
 
     if result.rows_affected() == 0 {
@@ -397,17 +527,19 @@ pub async fn update_workout_log(
 
     let row = sqlx::query_as::<_, WorkoutLogRow>("SELECT * FROM workout_logs WHERE id = ?")
         .bind(&id)
-        .fetch_one(pool.inner())
+        .fetch_one(pool)
         .await?;
 
     Ok(row)
 }
 
-#[tauri::command]
-pub async fn delete_workout_log(pool: State<'_, SqlitePool>, id: String) -> Result<(), AppError> {
+pub(crate) async fn delete_workout_log_inner(
+    pool: &SqlitePool,
+    id: String,
+) -> Result<(), AppError> {
     let result = sqlx::query("DELETE FROM workout_logs WHERE id = ?")
         .bind(&id)
-        .execute(pool.inner())
+        .execute(pool)
         .await?;
 
     if result.rows_affected() == 0 {
@@ -416,9 +548,8 @@ pub async fn delete_workout_log(pool: State<'_, SqlitePool>, id: String) -> Resu
     Ok(())
 }
 
-#[tauri::command]
-pub async fn create_logged_activity_group(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn create_logged_activity_group_inner(
+    pool: &SqlitePool,
     group: CreateLoggedActivityGroupInput,
     user_id: String,
 ) -> Result<LoggedActivityGroupRow, AppError> {
@@ -457,9 +588,8 @@ pub async fn create_logged_activity_group(
     Ok(row)
 }
 
-#[tauri::command]
-pub async fn create_logged_activity(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn create_logged_activity_inner(
+    pool: &SqlitePool,
     activity: CreateLoggedActivityInput,
     user_id: String,
 ) -> Result<LoggedActivityRow, AppError> {
@@ -495,9 +625,8 @@ pub async fn create_logged_activity(
     Ok(row)
 }
 
-#[tauri::command]
-pub async fn create_logged_set(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn create_logged_set_inner(
+    pool: &SqlitePool,
     set: CreateLoggedSetInput,
     user_id: String,
 ) -> Result<LoggedSetRow, AppError> {
@@ -566,9 +695,8 @@ pub async fn create_logged_set(
     Ok(row)
 }
 
-#[tauri::command]
-pub async fn update_logged_set(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn update_logged_set_inner(
+    pool: &SqlitePool,
     set: UpdateLoggedSetInput,
     user_id: String,
 ) -> Result<LoggedSetRow, AppError> {
@@ -616,9 +744,8 @@ pub async fn update_logged_set(
     Ok(row)
 }
 
-#[tauri::command]
-pub async fn get_recently_used_exercise_ids(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn get_recently_used_exercise_ids_inner(
+    pool: &SqlitePool,
     user_id: String,
     limit: Option<i64>,
 ) -> Result<Vec<String>, AppError> {
@@ -641,15 +768,14 @@ pub async fn get_recently_used_exercise_ids(
     )
     .bind(&user_id)
     .bind(lim)
-    .fetch_all(pool.inner())
+    .fetch_all(pool)
     .await?;
 
     Ok(rows.into_iter().map(|r| r.exercise_id).collect())
 }
 
-#[tauri::command]
-pub async fn get_exercise_workout_history(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn get_exercise_workout_history_inner(
+    pool: &SqlitePool,
     user_id: String,
     exercise_id: String,
     limit: Option<i64>,
@@ -673,7 +799,7 @@ pub async fn get_exercise_workout_history(
     .bind(&exercise_id)
     .bind(&user_id)
     .bind(lim)
-    .fetch_all(pool.inner())
+    .fetch_all(pool)
     .await?
     .into_iter()
     .map(|r| r.workout_log_id)
@@ -691,7 +817,7 @@ pub async fn get_exercise_workout_history(
     for id in &log_ids {
         logs_query = logs_query.bind(id);
     }
-    let logs = logs_query.fetch_all(pool.inner()).await?;
+    let logs = logs_query.fetch_all(pool).await?;
 
     // Step 3: Fetch all relevant sets in one query with workout_log_id tag
     #[derive(sqlx::FromRow)]
@@ -730,7 +856,7 @@ pub async fn get_exercise_workout_history(
         sets_query = sets_query.bind(id);
     }
     sets_query = sets_query.bind(&exercise_id);
-    let flat_sets = sets_query.fetch_all(pool.inner()).await?;
+    let flat_sets = sets_query.fetch_all(pool).await?;
 
     // Group sets by workout_log_id
     let mut sets_map: HashMap<String, Vec<LoggedSetRow>> = HashMap::new();
@@ -770,9 +896,8 @@ pub async fn get_exercise_workout_history(
     Ok(results)
 }
 
-#[tauri::command]
-pub async fn create_workout_log_full(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn create_workout_log_full_inner(
+    pool: &SqlitePool,
     input: CreateWorkoutLogFullInput,
     user_id: String,
 ) -> Result<WorkoutLogFull, AppError> {
@@ -925,4 +1050,782 @@ pub async fn create_workout_log_full(
         activities: all_activities,
         sets: all_sets,
     })
+}
+
+// ===========================================================================
+// Tests
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    const WORKOUT_DDL: &str = "\
+        CREATE TABLE IF NOT EXISTS exercises (\
+            id TEXT PRIMARY KEY, \
+            name TEXT NOT NULL, \
+            aliases TEXT, \
+            category TEXT NOT NULL, \
+            movement_pattern TEXT, \
+            muscle_groups TEXT, \
+            is_bilateral INTEGER, \
+            supports_1rm INTEGER, \
+            equipment_required TEXT, \
+            is_custom INTEGER DEFAULT 0, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );\
+        CREATE TABLE IF NOT EXISTS workout_logs (\
+            id TEXT PRIMARY KEY, \
+            user_id TEXT, \
+            title TEXT, \
+            started_at INTEGER NOT NULL, \
+            completed_at INTEGER, \
+            session_template_id TEXT, \
+            program_context TEXT, \
+            overall_notes TEXT, \
+            perceived_difficulty INTEGER, \
+            bodyweight_at_session TEXT, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );\
+        CREATE TABLE IF NOT EXISTS logged_activity_groups (\
+            id TEXT PRIMARY KEY, \
+            workout_log_id TEXT NOT NULL, \
+            user_id TEXT, \
+            group_type TEXT NOT NULL, \
+            ordinal INTEGER NOT NULL, \
+            actual_rounds_completed INTEGER, \
+            completion_time TEXT, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );\
+        CREATE TABLE IF NOT EXISTS logged_activities (\
+            id TEXT PRIMARY KEY, \
+            logged_group_id TEXT NOT NULL, \
+            user_id TEXT, \
+            exercise_id TEXT NOT NULL, \
+            ordinal INTEGER NOT NULL, \
+            notes TEXT, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );\
+        CREATE TABLE IF NOT EXISTS logged_sets (\
+            id TEXT PRIMARY KEY, \
+            logged_activity_id TEXT NOT NULL, \
+            user_id TEXT, \
+            set_number INTEGER NOT NULL, \
+            set_type TEXT NOT NULL, \
+            prescribed TEXT, \
+            actual_reps INTEGER, \
+            actual_weight TEXT, \
+            actual_duration TEXT, \
+            actual_distance TEXT, \
+            actual_pace TEXT, \
+            actual_heart_rate INTEGER, \
+            ruck_load TEXT, \
+            elevation_gain TEXT, \
+            rpe INTEGER, \
+            completed INTEGER, \
+            notes TEXT, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );";
+
+    async fn setup_test_db() -> SqlitePool {
+        let pool = SqlitePoolOptions::new()
+            .connect(":memory:")
+            .await
+            .expect("in-memory pool");
+
+        for stmt in WORKOUT_DDL.split(';') {
+            let trimmed = stmt.trim();
+            if !trimmed.is_empty() {
+                sqlx::query(trimmed)
+                    .execute(&pool)
+                    .await
+                    .unwrap_or_else(|e| panic!("DDL failed: {e}\nSQL: {trimmed}"));
+            }
+        }
+
+        pool
+    }
+
+    /// Seeds an exercise row for use in workout tests.
+    async fn seed_exercise(pool: &SqlitePool, id: &str, name: &str) {
+        sqlx::query(
+            "INSERT INTO exercises (id, name, category, created_at, updated_at) \
+             VALUES (?, ?, 'strength', 1000, 1000)",
+        )
+        .bind(id)
+        .bind(name)
+        .execute(pool)
+        .await
+        .expect("seed exercise");
+    }
+
+    /// Helper: creates a basic workout log and returns its id.
+    async fn seed_workout_log(pool: &SqlitePool, user_id: &str, started_at: i64) -> String {
+        let row = create_workout_log_inner(
+            pool,
+            CreateWorkoutLogInput {
+                user_id: user_id.into(),
+                title: Some("Test Workout".into()),
+                started_at,
+                completed_at: Some(started_at + 3600),
+                session_template_id: None,
+                program_context: None,
+                overall_notes: None,
+                perceived_difficulty: None,
+                bodyweight_at_session: None,
+            },
+        )
+        .await
+        .expect("seed workout log");
+        row.id
+    }
+
+    /// Helper: creates a full workout log with a group, activity, and set.
+    /// Returns (log_id, group_id, activity_id, set_id).
+    async fn seed_full_workout(pool: &SqlitePool) -> (String, String, String, String) {
+        seed_exercise(pool, "ex-squat", "Back Squat").await;
+
+        let result = create_workout_log_full_inner(
+            pool,
+            CreateWorkoutLogFullInput {
+                log: CreateWorkoutLogInput {
+                    user_id: "user-1".into(),
+                    title: Some("Full Workout".into()),
+                    started_at: 1_700_000_000,
+                    completed_at: Some(1_700_003_600),
+                    session_template_id: None,
+                    program_context: None,
+                    overall_notes: None,
+                    perceived_difficulty: Some(7),
+                    bodyweight_at_session: None,
+                },
+                groups: vec![CreateLoggedActivityGroupFullInput {
+                    group: CreateLoggedActivityGroupInput {
+                        workout_log_id: String::new(), // ignored by create_workout_log_full_inner
+                        group_type: "STRAIGHT".into(),
+                        ordinal: 0,
+                        actual_rounds_completed: None,
+                        completion_time: None,
+                    },
+                    activities: vec![CreateLoggedActivityFullInput {
+                        activity: CreateLoggedActivityInput {
+                            logged_group_id: String::new(), // ignored
+                            exercise_id: "ex-squat".into(),
+                            ordinal: 0,
+                            notes: None,
+                        },
+                        sets: vec![CreateLoggedSetInput {
+                            logged_activity_id: String::new(), // ignored
+                            set_number: 1,
+                            set_type: "WORKING".into(),
+                            prescribed: None,
+                            actual_reps: Some(5),
+                            actual_weight: Some(r#"{"value":315,"unit":"lb"}"#.into()),
+                            actual_duration: None,
+                            actual_distance: None,
+                            actual_pace: None,
+                            actual_heart_rate: None,
+                            ruck_load: None,
+                            elevation_gain: None,
+                            rpe: Some(8),
+                            completed: Some(true),
+                            notes: None,
+                        }],
+                    }],
+                }],
+            },
+            "user-1".into(),
+        )
+        .await
+        .expect("seed full workout");
+
+        (
+            result.log.id,
+            result.groups[0].id.clone(),
+            result.activities[0].id.clone(),
+            result.sets[0].id.clone(),
+        )
+    }
+
+    // -----------------------------------------------------------------------
+    // get_workout_logs -- empty results
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_workout_logs_empty_for_unknown_user() {
+        let pool = setup_test_db().await;
+
+        let rows = get_workout_logs_inner(&pool, "nobody".into(), None)
+            .await
+            .unwrap();
+
+        assert!(rows.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // create_workout_log -- CRUD
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn create_workout_log_basic() {
+        let pool = setup_test_db().await;
+
+        let row = create_workout_log_inner(
+            &pool,
+            CreateWorkoutLogInput {
+                user_id: "user-1".into(),
+                title: Some("Morning Session".into()),
+                started_at: 1_700_000_000,
+                completed_at: None,
+                session_template_id: None,
+                program_context: None,
+                overall_notes: None,
+                perceived_difficulty: None,
+                bodyweight_at_session: None,
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(row.user_id, Some("user-1".into()));
+        assert_eq!(row.title, Some("Morning Session".into()));
+        assert_eq!(row.started_at, 1_700_000_000);
+        assert!(row.completed_at.is_none());
+    }
+
+    #[tokio::test]
+    async fn create_workout_log_rejects_invalid_started_at() {
+        let pool = setup_test_db().await;
+
+        let err = create_workout_log_inner(
+            &pool,
+            CreateWorkoutLogInput {
+                user_id: "user-1".into(),
+                title: None,
+                started_at: 0,
+                completed_at: None,
+                session_template_id: None,
+                program_context: None,
+                overall_notes: None,
+                perceived_difficulty: None,
+                bodyweight_at_session: None,
+            },
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.message.contains("started_at"));
+    }
+
+    #[tokio::test]
+    async fn create_workout_log_rejects_invalid_perceived_difficulty() {
+        let pool = setup_test_db().await;
+
+        let err = create_workout_log_inner(
+            &pool,
+            CreateWorkoutLogInput {
+                user_id: "user-1".into(),
+                title: None,
+                started_at: 1_700_000_000,
+                completed_at: None,
+                session_template_id: None,
+                program_context: None,
+                overall_notes: None,
+                perceived_difficulty: Some(11),
+                bodyweight_at_session: None,
+            },
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.message.contains("1-10"));
+    }
+
+    // -----------------------------------------------------------------------
+    // update_workout_log
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn update_workout_log_modifies_fields() {
+        let pool = setup_test_db().await;
+        let log_id = seed_workout_log(&pool, "user-1", 1_700_000_000).await;
+
+        let updated = update_workout_log_inner(
+            &pool,
+            log_id.clone(),
+            Some("Renamed".into()),
+            Some(1_700_003_600),
+            Some("Great session".into()),
+            Some(8),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(updated.title, Some("Renamed".into()));
+        assert_eq!(updated.completed_at, Some(1_700_003_600));
+        assert_eq!(updated.overall_notes, Some("Great session".into()));
+        assert_eq!(updated.perceived_difficulty, Some(8));
+    }
+
+    #[tokio::test]
+    async fn update_workout_log_not_found() {
+        let pool = setup_test_db().await;
+
+        let err = update_workout_log_inner(&pool, "nonexistent".into(), None, None, None, None)
+            .await
+            .unwrap_err();
+
+        assert!(err.message.contains("not found"));
+    }
+
+    // -----------------------------------------------------------------------
+    // delete_workout_log
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn delete_workout_log_removes_row() {
+        let pool = setup_test_db().await;
+        let log_id = seed_workout_log(&pool, "user-1", 1_700_000_000).await;
+
+        delete_workout_log_inner(&pool, log_id.clone())
+            .await
+            .unwrap();
+
+        let fetched = get_workout_log_inner(&pool, log_id).await.unwrap();
+        assert!(fetched.is_none());
+    }
+
+    #[tokio::test]
+    async fn delete_workout_log_not_found() {
+        let pool = setup_test_db().await;
+
+        let err = delete_workout_log_inner(&pool, "nonexistent".into())
+            .await
+            .unwrap_err();
+
+        assert!(err.message.contains("not found"));
+    }
+
+    // -----------------------------------------------------------------------
+    // get_workout_log / get_workout_log_full -- assembly
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_workout_log_returns_none_for_missing() {
+        let pool = setup_test_db().await;
+
+        let result = get_workout_log_inner(&pool, "nonexistent".into())
+            .await
+            .unwrap();
+
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn get_workout_log_full_assembles_nested_data() {
+        let pool = setup_test_db().await;
+        let (log_id, _, _, _) = seed_full_workout(&pool).await;
+
+        let full = get_workout_log_full_inner(&pool, log_id)
+            .await
+            .unwrap()
+            .expect("should find full log");
+
+        assert_eq!(full.groups.len(), 1);
+        assert_eq!(full.activities.len(), 1);
+        assert_eq!(full.sets.len(), 1);
+        assert_eq!(full.sets[0].actual_reps, Some(5));
+        assert_eq!(full.sets[0].rpe, Some(8));
+        assert_eq!(full.sets[0].completed, Some(1));
+    }
+
+    #[tokio::test]
+    async fn get_workout_log_full_returns_none_for_missing() {
+        let pool = setup_test_db().await;
+
+        let result = get_workout_log_full_inner(&pool, "nonexistent".into())
+            .await
+            .unwrap();
+
+        assert!(result.is_none());
+    }
+
+    // -----------------------------------------------------------------------
+    // create_logged_set -- validation
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn create_logged_set_rejects_invalid_set_type() {
+        let pool = setup_test_db().await;
+
+        let err = create_logged_set_inner(
+            &pool,
+            CreateLoggedSetInput {
+                logged_activity_id: "act-1".into(),
+                set_number: 1,
+                set_type: "INVALID".into(),
+                prescribed: None,
+                actual_reps: None,
+                actual_weight: None,
+                actual_duration: None,
+                actual_distance: None,
+                actual_pace: None,
+                actual_heart_rate: None,
+                ruck_load: None,
+                elevation_gain: None,
+                rpe: None,
+                completed: None,
+                notes: None,
+            },
+            "user-1".into(),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.message.contains("Invalid set_type"));
+    }
+
+    #[tokio::test]
+    async fn create_logged_set_rejects_invalid_set_number() {
+        let pool = setup_test_db().await;
+
+        let err = create_logged_set_inner(
+            &pool,
+            CreateLoggedSetInput {
+                logged_activity_id: "act-1".into(),
+                set_number: 0,
+                set_type: "WORKING".into(),
+                prescribed: None,
+                actual_reps: None,
+                actual_weight: None,
+                actual_duration: None,
+                actual_distance: None,
+                actual_pace: None,
+                actual_heart_rate: None,
+                ruck_load: None,
+                elevation_gain: None,
+                rpe: None,
+                completed: None,
+                notes: None,
+            },
+            "user-1".into(),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.message.contains(">= 1"));
+    }
+
+    #[tokio::test]
+    async fn create_logged_set_rejects_invalid_rpe() {
+        let pool = setup_test_db().await;
+
+        let err = create_logged_set_inner(
+            &pool,
+            CreateLoggedSetInput {
+                logged_activity_id: "act-1".into(),
+                set_number: 1,
+                set_type: "WORKING".into(),
+                prescribed: None,
+                actual_reps: None,
+                actual_weight: None,
+                actual_duration: None,
+                actual_distance: None,
+                actual_pace: None,
+                actual_heart_rate: None,
+                ruck_load: None,
+                elevation_gain: None,
+                rpe: Some(11),
+                completed: None,
+                notes: None,
+            },
+            "user-1".into(),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.message.contains("1-10"));
+    }
+
+    // -----------------------------------------------------------------------
+    // create_workout_log_full -- full nested create
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn create_workout_log_full_creates_nested_entities() {
+        let pool = setup_test_db().await;
+        seed_exercise(&pool, "ex-bench", "Bench Press").await;
+
+        let result = create_workout_log_full_inner(
+            &pool,
+            CreateWorkoutLogFullInput {
+                log: CreateWorkoutLogInput {
+                    user_id: "user-1".into(),
+                    title: Some("Chest Day".into()),
+                    started_at: 1_700_000_000,
+                    completed_at: Some(1_700_003_600),
+                    session_template_id: None,
+                    program_context: None,
+                    overall_notes: None,
+                    perceived_difficulty: Some(6),
+                    bodyweight_at_session: None,
+                },
+                groups: vec![CreateLoggedActivityGroupFullInput {
+                    group: CreateLoggedActivityGroupInput {
+                        workout_log_id: String::new(),
+                        group_type: "STRAIGHT".into(),
+                        ordinal: 0,
+                        actual_rounds_completed: None,
+                        completion_time: None,
+                    },
+                    activities: vec![CreateLoggedActivityFullInput {
+                        activity: CreateLoggedActivityInput {
+                            logged_group_id: String::new(),
+                            exercise_id: "ex-bench".into(),
+                            ordinal: 0,
+                            notes: Some("Felt strong".into()),
+                        },
+                        sets: vec![
+                            CreateLoggedSetInput {
+                                logged_activity_id: String::new(),
+                                set_number: 1,
+                                set_type: "WORKING".into(),
+                                prescribed: None,
+                                actual_reps: Some(8),
+                                actual_weight: Some(r#"{"value":225,"unit":"lb"}"#.into()),
+                                actual_duration: None,
+                                actual_distance: None,
+                                actual_pace: None,
+                                actual_heart_rate: None,
+                                ruck_load: None,
+                                elevation_gain: None,
+                                rpe: Some(7),
+                                completed: Some(true),
+                                notes: None,
+                            },
+                            CreateLoggedSetInput {
+                                logged_activity_id: String::new(),
+                                set_number: 2,
+                                set_type: "WORKING".into(),
+                                prescribed: None,
+                                actual_reps: Some(6),
+                                actual_weight: Some(r#"{"value":225,"unit":"lb"}"#.into()),
+                                actual_duration: None,
+                                actual_distance: None,
+                                actual_pace: None,
+                                actual_heart_rate: None,
+                                ruck_load: None,
+                                elevation_gain: None,
+                                rpe: Some(9),
+                                completed: Some(true),
+                                notes: None,
+                            },
+                        ],
+                    }],
+                }],
+            },
+            "user-1".into(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(result.log.title, Some("Chest Day".into()));
+        assert_eq!(result.groups.len(), 1);
+        assert_eq!(result.activities.len(), 1);
+        assert_eq!(result.sets.len(), 2);
+        assert_eq!(result.sets[0].set_number, 1);
+        assert_eq!(result.sets[1].set_number, 2);
+    }
+
+    #[tokio::test]
+    async fn create_workout_log_full_rejects_invalid_started_at() {
+        let pool = setup_test_db().await;
+
+        let err = create_workout_log_full_inner(
+            &pool,
+            CreateWorkoutLogFullInput {
+                log: CreateWorkoutLogInput {
+                    user_id: "user-1".into(),
+                    title: None,
+                    started_at: -1,
+                    completed_at: None,
+                    session_template_id: None,
+                    program_context: None,
+                    overall_notes: None,
+                    perceived_difficulty: None,
+                    bodyweight_at_session: None,
+                },
+                groups: vec![],
+            },
+            "user-1".into(),
+        )
+        .await
+        .unwrap_err();
+
+        assert!(err.message.contains("started_at"));
+    }
+
+    // -----------------------------------------------------------------------
+    // get_workout_logs_summary -- with exercises table
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_workout_logs_summary_aggregates_data() {
+        let pool = setup_test_db().await;
+        let (log_id, _, _, _) = seed_full_workout(&pool).await;
+
+        let summaries = get_workout_logs_summary_inner(&pool, "user-1".into(), None, None)
+            .await
+            .unwrap();
+
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].log.id, log_id);
+        assert_eq!(summaries[0].exercise_names, vec!["Back Squat".to_string()]);
+        assert_eq!(summaries[0].set_count, 1); // 1 completed set
+        assert_eq!(summaries[0].exercise_count, 1);
+    }
+
+    #[tokio::test]
+    async fn get_workout_logs_summary_empty_for_unknown_user() {
+        let pool = setup_test_db().await;
+
+        let summaries = get_workout_logs_summary_inner(&pool, "nobody".into(), None, None)
+            .await
+            .unwrap();
+
+        assert!(summaries.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // get_recently_used_exercise_ids
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_recently_used_exercise_ids_returns_used_exercises() {
+        let pool = setup_test_db().await;
+        seed_full_workout(&pool).await;
+
+        let ids = get_recently_used_exercise_ids_inner(&pool, "user-1".into(), None)
+            .await
+            .unwrap();
+
+        assert_eq!(ids, vec!["ex-squat".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn get_recently_used_exercise_ids_empty_for_unknown_user() {
+        let pool = setup_test_db().await;
+
+        let ids = get_recently_used_exercise_ids_inner(&pool, "nobody".into(), None)
+            .await
+            .unwrap();
+
+        assert!(ids.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // get_exercise_workout_history
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_exercise_workout_history_returns_sets() {
+        let pool = setup_test_db().await;
+        seed_full_workout(&pool).await;
+
+        let history =
+            get_exercise_workout_history_inner(&pool, "user-1".into(), "ex-squat".into(), None)
+                .await
+                .unwrap();
+
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].sets.len(), 1);
+        assert_eq!(history[0].sets[0].actual_reps, Some(5));
+    }
+
+    #[tokio::test]
+    async fn get_exercise_workout_history_empty_for_unknown_exercise() {
+        let pool = setup_test_db().await;
+        seed_full_workout(&pool).await;
+
+        let history = get_exercise_workout_history_inner(
+            &pool,
+            "user-1".into(),
+            "ex-nonexistent".into(),
+            None,
+        )
+        .await
+        .unwrap();
+
+        assert!(history.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // delete cascade behavior (manual cascade since SQLite FK off by default)
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn delete_workout_log_leaves_child_rows_orphaned() {
+        let pool = setup_test_db().await;
+        let (log_id, group_id, _, _) = seed_full_workout(&pool).await;
+
+        // Delete the parent log
+        delete_workout_log_inner(&pool, log_id).await.unwrap();
+
+        // Child rows still exist (no FK cascade in test schema)
+        let group: Option<LoggedActivityGroupRow> =
+            sqlx::query_as("SELECT * FROM logged_activity_groups WHERE id = ?")
+                .bind(&group_id)
+                .fetch_optional(&pool)
+                .await
+                .unwrap();
+
+        // The group row is still present since we have no ON DELETE CASCADE
+        assert!(group.is_some());
+    }
+
+    // -----------------------------------------------------------------------
+    // update_logged_set
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn update_logged_set_modifies_fields() {
+        let pool = setup_test_db().await;
+        let (_, _, act_id, set_id) = seed_full_workout(&pool).await;
+
+        let updated = update_logged_set_inner(
+            &pool,
+            UpdateLoggedSetInput {
+                id: set_id.clone(),
+                logged_activity_id: act_id,
+                set_number: 1,
+                set_type: "WORKING".into(),
+                prescribed: None,
+                actual_reps: Some(10),
+                actual_weight: Some(r#"{"value":335,"unit":"lb"}"#.into()),
+                actual_duration: None,
+                actual_distance: None,
+                actual_pace: None,
+                actual_heart_rate: None,
+                ruck_load: None,
+                elevation_gain: None,
+                rpe: Some(9),
+                completed: Some(true),
+                notes: Some("PR attempt".into()),
+            },
+            "user-1".into(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(updated.actual_reps, Some(10));
+        assert_eq!(updated.rpe, Some(9));
+        assert_eq!(updated.notes, Some("PR attempt".into()));
+        assert!(updated.actual_weight.as_deref().unwrap().contains("335"));
+    }
 }

@@ -319,4 +319,54 @@ mod tests {
             .expect("count");
         assert_eq!(count.0, 0);
     }
+
+    #[tokio::test]
+    async fn enqueue_with_null_payload_stores_none() {
+        let pool = setup_pool().await;
+        enqueue(&pool, "exercises", "ex-1", "DELETE", None)
+            .await
+            .expect("enqueue");
+        let items = dequeue_batch(&pool, 10).await.expect("dequeue");
+        assert_eq!(items.len(), 1);
+        assert!(items[0].payload.is_none());
+        assert_eq!(items[0].operation, "DELETE");
+    }
+
+    #[tokio::test]
+    async fn dequeue_batch_respects_limit() {
+        let pool = setup_pool().await;
+        for i in 1..=5 {
+            enqueue(&pool, "workout_logs", &format!("row-{i}"), "INSERT", None)
+                .await
+                .expect("enqueue");
+            tokio::time::sleep(tokio::time::Duration::from_millis(2)).await;
+        }
+
+        let items = dequeue_batch(&pool, 3).await.expect("dequeue");
+        assert_eq!(items.len(), 3);
+        // Should be the first 3 in FIFO order
+        assert_eq!(items[0].row_id, "row-1");
+        assert_eq!(items[2].row_id, "row-3");
+    }
+
+    #[tokio::test]
+    async fn enqueue_preserves_json_payload() {
+        let pool = setup_pool().await;
+        let payload = serde_json::json!({
+            "id": "row-1",
+            "name": "Squat",
+            "weight": 225.5
+        });
+        enqueue(&pool, "exercises", "row-1", "UPDATE", Some(&payload))
+            .await
+            .expect("enqueue");
+
+        let items = dequeue_batch(&pool, 10).await.expect("dequeue");
+        assert_eq!(items.len(), 1);
+        let stored: Value =
+            serde_json::from_str(items[0].payload.as_ref().expect("payload present"))
+                .expect("valid json");
+        assert_eq!(stored["name"], "Squat");
+        assert_eq!(stored["weight"], 225.5);
+    }
 }

@@ -1,0 +1,36 @@
+appId: com.rghsoftware.ardentforge
+name: QR Scanner Camera Initialization
+tags:
+  - camera
+  - android
+---
+# Verify the QR scanner flow initializes without crashing.
+# The barcode-scanner plugin requires camera permission and WebView transparency.
+# This test ensures the scanner can be triggered and the app handles
+# the camera permission dialog (allowing it for a functional test, or
+# verifying graceful handling if denied).
+
+# Note: This test requires the app to be in a state where the QR scan
+# button is accessible. On fresh install, this may be on the setup/connect page.
+
+- launchApp
+
+- waitForAnimationToEnd
+
+# Look for a QR scan trigger (button or link on the setup/connect page)
+- tapOn:
+    text: '.*[Ss]can.*|.*QR.*|.*[Cc]amera.*'
+    optional: true
+
+# If camera permission dialog appears, allow it
+- tapOn:
+    text: '.*[Ww]hile [Uu]sing.*|.*[Aa]llow.*'
+    optional: true
+
+- waitForAnimationToEnd
+
+# The app should either show the camera viewfinder or remain on the current page
+# (if no scan button was found). Either way, no crash.
+- assertVisible:
+    text: '.*[Ss]can.*|.*[Ss]etup.*|.*[Cc]onnect.*|.*[Cc]ancel.*|.*[Cc]amera.*'
+    optional: false

@@ -467,3 +467,265 @@ pub struct MediaAttachmentRow {
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_required")]
     pub updated_at: i64,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exercise_row_serializes_all_fields() {
+        let row = ExerciseRow {
+            id: "ex-1".into(),
+            name: "Back Squat".into(),
+            aliases: Some(r#"["squat","barbell squat"]"#.into()),
+            category: "barbell".into(),
+            movement_pattern: Some("squat".into()),
+            muscle_groups: Some(r#"["quads","glutes"]"#.into()),
+            is_bilateral: Some(1),
+            supports_1rm: Some(1),
+            equipment_required: Some(r#"["barbell","rack"]"#.into()),
+            is_custom: Some(0),
+            created_at: Some(1700000000),
+            updated_at: Some(1700000000),
+        };
+        let json = serde_json::to_string(&row).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(val["id"], "ex-1");
+        assert_eq!(val["name"], "Back Squat");
+        assert_eq!(val["category"], "barbell");
+        assert_eq!(val["is_bilateral"], 1);
+        // Timestamps are serialized as ISO strings by serde_unix
+        assert!(val["created_at"]
+            .as_str()
+            .unwrap()
+            .starts_with("2023-11-14"));
+    }
+
+    #[test]
+    fn exercise_row_optional_fields_none() {
+        let row = ExerciseRow {
+            id: "ex-2".into(),
+            name: "Custom Move".into(),
+            aliases: None,
+            category: "other".into(),
+            movement_pattern: None,
+            muscle_groups: None,
+            is_bilateral: None,
+            supports_1rm: None,
+            equipment_required: None,
+            is_custom: None,
+            created_at: None,
+            updated_at: None,
+        };
+        let json = serde_json::to_string(&row).unwrap();
+        let back: ExerciseRow = serde_json::from_str(&json).unwrap();
+        assert!(back.aliases.is_none());
+        assert!(back.movement_pattern.is_none());
+        assert!(back.muscle_groups.is_none());
+    }
+
+    /// WorkoutLogSummary contains a WorkoutLogRow whose timestamps use serde_unix
+    /// custom serializers (i64 -> ISO string). Verify serialization output via Value.
+    #[test]
+    fn workout_log_summary_serializes_correctly() {
+        let summary = WorkoutLogSummary {
+            log: WorkoutLogRow {
+                id: "wl-1".into(),
+                user_id: Some("u-1".into()),
+                title: Some("Morning Lift".into()),
+                started_at: 1700000000,
+                completed_at: Some(1700003600),
+                session_template_id: None,
+                program_context: None,
+                overall_notes: None,
+                perceived_difficulty: Some(7),
+                bodyweight_at_session: None,
+                created_at: Some(1700000000),
+                updated_at: Some(1700000000),
+            },
+            exercise_names: vec!["Squat".into(), "Bench".into()],
+            set_count: 15,
+            exercise_count: 2,
+        };
+        let json = serde_json::to_string(&summary).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(val["set_count"], 15);
+        assert_eq!(val["exercise_count"], 2);
+        assert_eq!(val["exercise_names"].as_array().unwrap().len(), 2);
+        // Timestamps become ISO strings
+        assert!(val["log"]["started_at"]
+            .as_str()
+            .unwrap()
+            .starts_with("2023-11-14"));
+    }
+
+    #[test]
+    fn user_profile_row_serializes_correctly() {
+        let row = UserProfileRow {
+            id: "u-1".into(),
+            display_name: Some("Athlete".into()),
+            preferred_units: Some("IMPERIAL".into()),
+            bodyweight: None,
+            training_age: None,
+            exercise_maxes: None,
+            max_reps: None,
+            display_visible: Some(1),
+            created_at: Some(1700000000),
+            updated_at: Some(1700000000),
+        };
+        let json = serde_json::to_string(&row).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(val["id"], "u-1");
+        assert_eq!(val["preferred_units"], "IMPERIAL");
+        assert_eq!(val["display_visible"], 1);
+        assert!(val["created_at"]
+            .as_str()
+            .unwrap()
+            .starts_with("2023-11-14"));
+    }
+
+    #[test]
+    fn workout_log_full_serializes_correctly() {
+        let full = WorkoutLogFull {
+            log: WorkoutLogRow {
+                id: "wl-2".into(),
+                user_id: None,
+                title: None,
+                started_at: 1700000000,
+                completed_at: None,
+                session_template_id: None,
+                program_context: None,
+                overall_notes: None,
+                perceived_difficulty: None,
+                bodyweight_at_session: None,
+                created_at: None,
+                updated_at: None,
+            },
+            groups: vec![],
+            activities: vec![],
+            sets: vec![],
+        };
+        let json = serde_json::to_string(&full).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(val["log"]["id"], "wl-2");
+        assert!(val["groups"].as_array().unwrap().is_empty());
+        assert!(val["activities"].as_array().unwrap().is_empty());
+        assert!(val["sets"].as_array().unwrap().is_empty());
+        // started_at is required and serialized as ISO
+        assert!(val["log"]["started_at"]
+            .as_str()
+            .unwrap()
+            .starts_with("2023-11-14"));
+        // Optional None timestamps serialize as null
+        assert!(val["log"]["completed_at"].is_null());
+    }
+
+    #[test]
+    fn session_template_row_serializes_correctly() {
+        let row = SessionTemplateRow {
+            id: "st-1".into(),
+            user_id: "u-1".into(),
+            name: "Push Day".into(),
+            description: Some("Upper body pushing".into()),
+            category: "strength".into(),
+            rest_between_groups: None,
+            time_cap: None,
+            scoring: "none".into(),
+            last_assigned_at: None,
+            created_at: Some(1700000000),
+            updated_at: Some(1700000000),
+        };
+        let json = serde_json::to_string(&row).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(val["name"], "Push Day");
+        assert_eq!(val["scoring"], "none");
+        assert!(val["created_at"]
+            .as_str()
+            .unwrap()
+            .starts_with("2023-11-14"));
+    }
+
+    #[test]
+    fn program_row_serializes_correctly() {
+        let row = ProgramRow {
+            id: "p-1".into(),
+            user_id: "u-1".into(),
+            name: "5/3/1".into(),
+            description: None,
+            source: "user".into(),
+            duration_weeks: Some(16),
+            is_public: 0,
+            created_by: Some("u-1".into()),
+            created_at: Some(1700000000),
+            updated_at: Some(1700000000),
+        };
+        let json = serde_json::to_string(&row).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(val["name"], "5/3/1");
+        assert_eq!(val["duration_weeks"], 16);
+        assert_eq!(val["is_public"], 0);
+    }
+
+    #[test]
+    fn group_activity_feed_entry_round_trip() {
+        let entry = GroupActivityFeedEntry {
+            id: "wl-1".into(),
+            user_id: "u-1".into(),
+            title: Some("Evening Session".into()),
+            started_at: "2024-11-15T18:00:00+00:00".into(),
+            completed_at: Some("2024-11-15T19:30:00+00:00".into()),
+            duration_seconds: Some(5400),
+            exercise_count: 5,
+            group_id: "g-1".into(),
+            member_role: "owner".into(),
+        };
+        let json = serde_json::to_string(&entry).unwrap();
+        let back: GroupActivityFeedEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.duration_seconds, Some(5400));
+        assert_eq!(back.exercise_count, 5);
+        assert_eq!(back.member_role, "owner");
+    }
+
+    #[test]
+    fn conversation_row_type_field_renamed() {
+        let row = ConversationRow {
+            id: "c-1".into(),
+            type_: "direct".into(),
+            title: None,
+            group_id: None,
+            created_at: 1700000000,
+            updated_at: 1700000000,
+        };
+        let json = serde_json::to_string(&row).unwrap();
+        // The field should serialize as "type", not "type_"
+        assert!(json.contains("\"type\":\"direct\""));
+        assert!(!json.contains("\"type_\""));
+        // Verify timestamps are ISO strings
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(val["created_at"]
+            .as_str()
+            .unwrap()
+            .starts_with("2023-11-14"));
+    }
+
+    #[test]
+    fn clone_produces_independent_copy() {
+        let original = ExerciseRow {
+            id: "ex-1".into(),
+            name: "Deadlift".into(),
+            aliases: None,
+            category: "barbell".into(),
+            movement_pattern: None,
+            muscle_groups: None,
+            is_bilateral: None,
+            supports_1rm: Some(1),
+            equipment_required: None,
+            is_custom: Some(0),
+            created_at: None,
+            updated_at: None,
+        };
+        let cloned = original.clone();
+        assert_eq!(original.id, cloned.id);
+        assert_eq!(original.name, cloned.name);
+    }
+}

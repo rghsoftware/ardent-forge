@@ -56,3 +56,94 @@ pub mod serde_unix {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unix_to_iso_known_timestamp() {
+        // 2023-11-14T22:13:20+00:00
+        let iso = unix_to_iso(1700000000);
+        assert!(iso.starts_with("2023-11-14"));
+        assert!(iso.contains("22:13:20"));
+    }
+
+    #[test]
+    fn unix_to_iso_epoch_zero() {
+        let iso = unix_to_iso(0);
+        assert!(iso.starts_with("1970-01-01"));
+    }
+
+    #[test]
+    fn unix_to_iso_negative_timestamp() {
+        // Before epoch -- chrono handles this fine (1969-12-31)
+        let iso = unix_to_iso(-86400);
+        assert!(iso.starts_with("1969-12-31"));
+    }
+
+    #[test]
+    fn unix_to_iso_opt_some() {
+        let result = unix_to_iso_opt(Some(1700000000));
+        assert!(result.is_some());
+        assert!(result.unwrap().starts_with("2023-11-14"));
+    }
+
+    #[test]
+    fn unix_to_iso_opt_none() {
+        let result = unix_to_iso_opt(None);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn now_unix_returns_reasonable_value() {
+        let ts = now_unix();
+        // Should be after 2024-01-01 (1704067200) and before 2100-01-01 (4102444800)
+        assert!(ts > 1704067200, "now_unix returned a timestamp before 2024");
+        assert!(ts < 4102444800, "now_unix returned a timestamp after 2100");
+    }
+
+    #[test]
+    fn now_unix_monotonic_within_call() {
+        let t1 = now_unix();
+        let t2 = now_unix();
+        assert!(t2 >= t1, "second call should not be earlier than first");
+    }
+
+    // Test the serde_unix serializers via a helper struct
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct TestRequired {
+        #[serde(serialize_with = "serde_unix::serialize_required")]
+        ts: i64,
+    }
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct TestOptional {
+        #[serde(serialize_with = "serde_unix::serialize_optional")]
+        ts: Option<i64>,
+    }
+
+    #[test]
+    fn serde_unix_required_serializes_to_iso_string() {
+        let val = TestRequired { ts: 1700000000 };
+        let json = serde_json::to_string(&val).unwrap();
+        assert!(json.contains("2023-11-14"));
+        assert!(json.contains("22:13:20"));
+    }
+
+    #[test]
+    fn serde_unix_optional_some_serializes_to_iso_string() {
+        let val = TestOptional {
+            ts: Some(1700000000),
+        };
+        let json = serde_json::to_string(&val).unwrap();
+        assert!(json.contains("2023-11-14"));
+    }
+
+    #[test]
+    fn serde_unix_optional_none_serializes_to_null() {
+        let val = TestOptional { ts: None };
+        let json = serde_json::to_string(&val).unwrap();
+        assert!(json.contains("null"));
+    }
+}

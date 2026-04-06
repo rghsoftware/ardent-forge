@@ -1,0 +1,23 @@
+appId: com.rghsoftware.ardentforge
+name: Deep Link - Connect/Invite
+tags:
+  - deep-link
+  - android
+---
+# Verify the ardentforge://connect deep link scheme triggers the app
+# and routes to the connection/invite handler.
+
+- launchApp
+
+- waitForAnimationToEnd
+
+# Send connect deep link -- simulates scanning a QR code or tapping an invite link
+- openLink: 'ardentforge://connect?key=test-invite-key'
+
+- waitForAnimationToEnd
+
+# The app should navigate to the connect flow or show the setup page
+# (if no config is stored yet). Either way, it should not crash.
+- assertVisible:
+    text: '.*[Cc]onnect.*|.*[Ss]etup.*|.*[Ii]nvite.*|.*[Ss]ign.[Ii]n.*'
+    optional: false

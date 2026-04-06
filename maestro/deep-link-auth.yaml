@@ -1,0 +1,24 @@
+appId: com.rghsoftware.ardentforge
+name: Deep Link - Auth Callback
+tags:
+  - deep-link
+  - android
+---
+# Verify the ardentforge://auth deep link scheme triggers the app
+# and routes to the auth callback handler.
+
+- launchApp
+
+- waitForAnimationToEnd
+
+# Send deep link intent via adb -- simulates OAuth redirect back to the app
+- openLink: 'ardentforge://auth?code=test-code&state=test-state'
+
+- waitForAnimationToEnd
+
+# The app should have navigated to handle the auth callback.
+# On failure (invalid code), it should show the sign-in page or an error.
+# The key assertion: the deep link didn't crash the app and navigation occurred.
+- assertVisible:
+    text: '.*[Ss]ign.[Ii]n.*|.*[Ee]rror.*|.*[Cc]allback.*|.*[Aa]uth.*'
+    optional: false

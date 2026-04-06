@@ -211,4 +211,162 @@ mod tests {
 
         assert!(result.is_ok());
     }
+
+    #[tokio::test]
+    async fn push_table_skips_rows_before_last_push_at() {
+        let pool = SqlitePoolOptions::new()
+            .connect(":memory:")
+            .await
+            .expect("pool");
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS sync_metadata (
+                table_name TEXT PRIMARY KEY,
+                last_push_at INTEGER NOT NULL DEFAULT 0,
+                last_pull_at INTEGER NOT NULL DEFAULT 0
+            )",
+        )
+        .execute(&pool)
+        .await
+        .expect("create sync_metadata");
+
+        sqlx::query(
+            "CREATE TABLE exercises (
+                id TEXT PRIMARY KEY,
+                name TEXT,
+                is_custom INTEGER,
+                updated_at INTEGER,
+                aliases TEXT
+            )",
+        )
+        .execute(&pool)
+        .await
+        .expect("create exercises table");
+
+        // Set last_push_at to a high timestamp so all rows are "already pushed"
+        sqlx::query(
+            "INSERT INTO sync_metadata (table_name, last_push_at) VALUES ('exercises', 9999999999)",
+        )
+        .execute(&pool)
+        .await
+        .expect("seed sync_metadata");
+
+        // Insert a row with updated_at older than last_push_at
+        sqlx::query(
+            "INSERT INTO exercises (id, name, is_custom, updated_at) VALUES ('ex-1', 'Squat', 0, 1000)",
+        )
+        .execute(&pool)
+        .await
+        .expect("seed exercise");
+
+        let client = Client::new();
+
+        // Should return Ok because no rows match updated_at > last_push_at
+        let result = push_table(
+            &pool,
+            &client,
+            "exercises",
+            "http://example.com",
+            "key",
+            "token",
+        )
+        .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn push_table_builds_json_from_all_columns() {
+        let pool = SqlitePoolOptions::new()
+            .connect(":memory:")
+            .await
+            .expect("pool");
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS sync_metadata (
+                table_name TEXT PRIMARY KEY,
+                last_push_at INTEGER NOT NULL DEFAULT 0,
+                last_pull_at INTEGER NOT NULL DEFAULT 0
+            )",
+        )
+        .execute(&pool)
+        .await
+        .expect("create sync_metadata");
+
+        sqlx::query(
+            "CREATE TABLE exercises (
+                id TEXT PRIMARY KEY,
+                name TEXT,
+                is_custom INTEGER,
+                updated_at INTEGER,
+                aliases TEXT
+            )",
+        )
+        .execute(&pool)
+        .await
+        .expect("create exercises table");
+
+        sqlx::query(
+            "INSERT INTO exercises (id, name, is_custom, updated_at, aliases) \
+             VALUES ('ex-1', 'Deadlift', 1, 1000, 'DL')",
+        )
+        .execute(&pool)
+        .await
+        .expect("seed exercise");
+
+        // Verify the json_object query works correctly by running the same
+        // pattern that push_table uses internally.
+        let columns: Vec<(String,)> =
+            sqlx::query_as("SELECT name FROM pragma_table_info('exercises') ORDER BY cid")
+                .fetch_all(&pool)
+                .await
+                .expect("pragma");
+
+        let col_args: Vec<String> = columns
+            .iter()
+            .map(|(name,)| format!("'{}', {}", name, name))
+            .collect();
+        let json_expr = format!("json_object({})", col_args.join(", "));
+        let query = format!(
+            "SELECT {} AS json_row FROM exercises WHERE updated_at > 0",
+            json_expr
+        );
+        let raw_rows: Vec<(String,)> = sqlx::query_as(&query)
+            .fetch_all(&pool)
+            .await
+            .expect("query");
+
+        assert_eq!(raw_rows.len(), 1);
+        let parsed: Value = serde_json::from_str(&raw_rows[0].0).expect("parse json");
+        assert_eq!(parsed["id"], "ex-1");
+        assert_eq!(parsed["name"], "Deadlift");
+        assert_eq!(parsed["is_custom"], 1);
+        assert_eq!(parsed["aliases"], "DL");
+    }
+
+    #[tokio::test]
+    async fn push_all_rejects_if_any_table_missing() {
+        // push_all iterates SYNCABLE_TABLES; if one table doesn't exist in
+        // the DB schema the underlying query will fail. Verify push_all
+        // surfaces the error rather than silently continuing.
+        let pool = SqlitePoolOptions::new()
+            .connect(":memory:")
+            .await
+            .expect("pool");
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS sync_metadata (
+                table_name TEXT PRIMARY KEY,
+                last_push_at INTEGER NOT NULL DEFAULT 0,
+                last_pull_at INTEGER NOT NULL DEFAULT 0
+            )",
+        )
+        .execute(&pool)
+        .await
+        .expect("create sync_metadata");
+
+        // Do NOT create any of the syncable tables -- push_all should error
+        let result = push_all(&pool, "http://example.com", "key", "token").await;
+        assert!(result.is_err());
+    }
 }

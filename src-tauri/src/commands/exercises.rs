@@ -56,6 +56,13 @@ pub async fn get_exercises(
     pool: State<'_, SqlitePool>,
     filters: Option<ExerciseFilters>,
 ) -> Result<Vec<ExerciseRow>, AppError> {
+    get_exercises_inner(pool.inner(), filters).await
+}
+
+pub(crate) async fn get_exercises_inner(
+    pool: &SqlitePool,
+    filters: Option<ExerciseFilters>,
+) -> Result<Vec<ExerciseRow>, AppError> {
     let mut sql = String::from("SELECT * FROM exercises WHERE 1=1");
     let mut bind_values: Vec<String> = Vec::new();
 
@@ -87,7 +94,7 @@ pub async fn get_exercises(
         query = query.bind(val);
     }
 
-    let rows = query.fetch_all(pool.inner()).await?;
+    let rows = query.fetch_all(pool).await?;
     Ok(rows)
 }
 
@@ -96,9 +103,16 @@ pub async fn get_exercise(
     pool: State<'_, SqlitePool>,
     id: String,
 ) -> Result<Option<ExerciseRow>, AppError> {
+    get_exercise_inner(pool.inner(), id).await
+}
+
+pub(crate) async fn get_exercise_inner(
+    pool: &SqlitePool,
+    id: String,
+) -> Result<Option<ExerciseRow>, AppError> {
     let row = sqlx::query_as::<_, ExerciseRow>("SELECT * FROM exercises WHERE id = ?")
         .bind(&id)
-        .fetch_optional(pool.inner())
+        .fetch_optional(pool)
         .await?;
 
     Ok(row)
@@ -107,6 +121,13 @@ pub async fn get_exercise(
 #[tauri::command]
 pub async fn create_exercise(
     pool: State<'_, SqlitePool>,
+    exercise: CreateExerciseInput,
+) -> Result<ExerciseRow, AppError> {
+    create_exercise_inner(pool.inner(), exercise).await
+}
+
+pub(crate) async fn create_exercise_inner(
+    pool: &SqlitePool,
     exercise: CreateExerciseInput,
 ) -> Result<ExerciseRow, AppError> {
     // Input validation
@@ -165,4 +186,157 @@ pub async fn create_exercise(
     tx.commit().await?;
 
     Ok(row)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::error::ErrorKind;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    async fn setup_test_db() -> SqlitePool {
+        let pool = SqlitePoolOptions::new()
+            .connect(":memory:")
+            .await
+            .expect("pool");
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS exercises (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                aliases TEXT,
+                category TEXT NOT NULL,
+                movement_pattern TEXT,
+                muscle_groups TEXT,
+                is_bilateral INTEGER,
+                supports_1rm INTEGER,
+                equipment_required TEXT,
+                is_custom INTEGER DEFAULT 0,
+                created_at INTEGER,
+                updated_at INTEGER
+            )",
+        )
+        .execute(&pool)
+        .await
+        .expect("ddl");
+        pool
+    }
+
+    fn valid_input(name: &str) -> CreateExerciseInput {
+        CreateExerciseInput {
+            name: name.to_string(),
+            aliases: None,
+            category: "BARBELL".to_string(),
+            movement_pattern: Some("SQUAT".to_string()),
+            muscle_groups: None,
+            is_bilateral: Some(true),
+            supports_1rm: Some(true),
+            equipment_required: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn get_exercises_returns_empty_for_no_data() {
+        let pool = setup_test_db().await;
+        let result = get_exercises_inner(&pool, None).await.unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[tokio::test]
+    async fn create_and_get_exercise() {
+        let pool = setup_test_db().await;
+        let created = create_exercise_inner(&pool, valid_input("Back Squat"))
+            .await
+            .unwrap();
+        assert_eq!(created.name, "Back Squat");
+        assert_eq!(created.category, "BARBELL");
+        assert_eq!(created.is_custom, Some(1));
+
+        let fetched = get_exercise_inner(&pool, created.id.clone()).await.unwrap();
+        assert!(fetched.is_some());
+        assert_eq!(fetched.unwrap().name, "Back Squat");
+    }
+
+    #[tokio::test]
+    async fn get_exercise_returns_none_for_missing_id() {
+        let pool = setup_test_db().await;
+        let result = get_exercise_inner(&pool, "nonexistent".into())
+            .await
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn create_exercise_rejects_empty_name() {
+        let pool = setup_test_db().await;
+        let err = create_exercise_inner(&pool, valid_input("   "))
+            .await
+            .unwrap_err();
+        assert!(matches!(err.kind, ErrorKind::Validation));
+        assert_eq!(err.field.as_deref(), Some("name"));
+    }
+
+    #[tokio::test]
+    async fn create_exercise_rejects_invalid_category() {
+        let pool = setup_test_db().await;
+        let mut input = valid_input("Bench Press");
+        input.category = "INVALID".to_string();
+        let err = create_exercise_inner(&pool, input).await.unwrap_err();
+        assert!(matches!(err.kind, ErrorKind::Validation));
+        assert_eq!(err.field.as_deref(), Some("category"));
+    }
+
+    #[tokio::test]
+    async fn create_exercise_rejects_invalid_movement_pattern() {
+        let pool = setup_test_db().await;
+        let mut input = valid_input("Deadlift");
+        input.movement_pattern = Some("INVALID".to_string());
+        let err = create_exercise_inner(&pool, input).await.unwrap_err();
+        assert!(matches!(err.kind, ErrorKind::Validation));
+        assert_eq!(err.field.as_deref(), Some("movement_pattern"));
+    }
+
+    #[tokio::test]
+    async fn get_exercises_filters_by_category() {
+        let pool = setup_test_db().await;
+        create_exercise_inner(&pool, valid_input("Back Squat"))
+            .await
+            .unwrap();
+
+        let mut bw_input = valid_input("Push-Up");
+        bw_input.category = "BODYWEIGHT".to_string();
+        create_exercise_inner(&pool, bw_input).await.unwrap();
+
+        let filters = Some(ExerciseFilters {
+            category: Some("BODYWEIGHT".to_string()),
+            movement_pattern: None,
+            search: None,
+            is_custom: None,
+        });
+        let result = get_exercises_inner(&pool, filters).await.unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].name, "Push-Up");
+    }
+
+    #[tokio::test]
+    async fn get_exercises_filters_by_search() {
+        let pool = setup_test_db().await;
+        create_exercise_inner(&pool, valid_input("Back Squat"))
+            .await
+            .unwrap();
+        create_exercise_inner(&pool, valid_input("Front Squat"))
+            .await
+            .unwrap();
+        create_exercise_inner(&pool, valid_input("Bench Press"))
+            .await
+            .unwrap();
+
+        let filters = Some(ExerciseFilters {
+            category: None,
+            movement_pattern: None,
+            search: Some("Squat".to_string()),
+            is_custom: None,
+        });
+        let result = get_exercises_inner(&pool, filters).await.unwrap();
+        assert_eq!(result.len(), 2);
+    }
 }

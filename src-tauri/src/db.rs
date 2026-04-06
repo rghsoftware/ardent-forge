@@ -59,3 +59,91 @@ async fn connect_pool(db_url: &str) -> Result<SqlitePool, Box<dyn std::error::Er
 
     Ok(pool)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Helper: create an in-memory SQLite pool using the same options pattern as connect_pool.
+    async fn memory_pool() -> SqlitePool {
+        let options = SqliteConnectOptions::from_str("sqlite::memory:")
+            .unwrap()
+            .create_if_missing(true)
+            .foreign_keys(true);
+
+        SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(options)
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn in_memory_pool_connects() {
+        let pool = memory_pool().await;
+        let row: (i64,) = sqlx::query_as("SELECT 1").fetch_one(&pool).await.unwrap();
+        assert_eq!(row.0, 1);
+    }
+
+    #[tokio::test]
+    async fn foreign_keys_enabled() {
+        let pool = memory_pool().await;
+        let row: (i64,) = sqlx::query_as("PRAGMA foreign_keys")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(row.0, 1, "foreign_keys pragma should be enabled");
+    }
+
+    #[tokio::test]
+    async fn create_table_and_insert() {
+        let pool = memory_pool().await;
+
+        sqlx::query(
+            "CREATE TABLE test_exercises (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL
+            )",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query("INSERT INTO test_exercises (id, name) VALUES ('ex-1', 'Squat')")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let row: (String, String) =
+            sqlx::query_as("SELECT id, name FROM test_exercises WHERE id = 'ex-1'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+
+        assert_eq!(row.0, "ex-1");
+        assert_eq!(row.1, "Squat");
+    }
+
+    #[tokio::test]
+    async fn foreign_key_constraint_enforced() {
+        let pool = memory_pool().await;
+
+        sqlx::query(
+            "CREATE TABLE parent (id TEXT PRIMARY KEY);
+             CREATE TABLE child (
+                 id TEXT PRIMARY KEY,
+                 parent_id TEXT NOT NULL REFERENCES parent(id)
+             );",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // Insert into child without a matching parent should fail
+        let result = sqlx::query("INSERT INTO child (id, parent_id) VALUES ('c-1', 'nonexistent')")
+            .execute(&pool)
+            .await;
+
+        assert!(result.is_err(), "FK constraint should reject orphan insert");
+    }
+}

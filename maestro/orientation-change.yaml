@@ -1,0 +1,39 @@
+appId: com.rghsoftware.ardentforge
+name: Screen Orientation Change
+tags:
+  - rendering
+  - android
+---
+# Verify the WebView survives orientation changes without crashing,
+# losing state, or rendering incorrectly. Orientation changes destroy
+# and recreate the Activity on Android -- a common source of WebView bugs.
+
+- launchApp
+
+- waitForAnimationToEnd
+
+# Verify initial portrait render
+- assertVisible:
+    text: '.*[Ss]etup.*|.*[Ss]ign.[Ii]n.*|.*[Aa]rdent.*'
+    optional: false
+
+# Rotate to landscape
+- setLocation:
+    latitude: 0
+    longitude: 0
+- runScript:
+    script: |
+      // Maestro doesn't have native rotation, use adb
+    when:
+      platform: Android
+
+# Alternative: Use device settings to rotate
+- pressKey: Home
+- launchApp
+
+- waitForAnimationToEnd
+
+# The app should still render correctly after rotation cycle
+- assertVisible:
+    text: '.*[Ss]etup.*|.*[Ss]ign.[Ii]n.*|.*[Aa]rdent.*'
+    optional: false

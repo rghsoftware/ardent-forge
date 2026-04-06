@@ -1,0 +1,26 @@
+appId: com.rghsoftware.ardentforge
+name: Notification Permission Handling
+tags:
+  - notifications
+  - android
+---
+# On Android 13+ (API 33+), POST_NOTIFICATIONS requires runtime permission.
+# Verify the app handles the permission dialog gracefully -- both allow and deny.
+# This test covers the "deny" path to ensure the app doesn't crash or hang.
+
+- launchApp
+
+- waitForAnimationToEnd
+
+# If a notification permission dialog appears, deny it
+# (the app should handle denial gracefully without crashing)
+- tapOn:
+    text: '.*[Dd]on.*[Aa]llow.*|.*[Dd]eny.*'
+    optional: true
+
+- waitForAnimationToEnd
+
+# App should still be functional after permission denial
+- assertVisible:
+    text: '.*[Ss]etup.*|.*[Ss]ign.[Ii]n.*|.*[Aa]rdent.*'
+    optional: false

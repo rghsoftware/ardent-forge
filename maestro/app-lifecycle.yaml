@@ -1,0 +1,34 @@
+appId: com.rghsoftware.ardentforge
+name: App Lifecycle - Background/Foreground
+tags:
+  - lifecycle
+  - android
+---
+# Verify the app survives backgrounding and foregrounding without crashing
+# or losing WebView state. This catches process death and state restoration bugs.
+
+- launchApp
+
+- waitForAnimationToEnd
+
+# Verify initial render
+- assertVisible:
+    text: '.*[Ss]etup.*|.*[Ss]ign.[Ii]n.*|.*[Aa]rdent.*'
+    optional: false
+
+# Background the app (press Home)
+- pressKey: Home
+
+# Wait a moment in the background
+- waitForAnimationToEnd
+
+# Re-open the app from recents
+- launchApp
+
+- waitForAnimationToEnd
+
+# The app should still be rendering -- WebView should have survived the cycle.
+# If process death occurred, the app should gracefully re-initialize.
+- assertVisible:
+    text: '.*[Ss]etup.*|.*[Ss]ign.[Ii]n.*|.*[Aa]rdent.*'
+    optional: false

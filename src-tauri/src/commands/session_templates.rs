@@ -49,73 +49,107 @@ pub struct CreateActivityInput {
 }
 
 // ---------------------------------------------------------------------------
-// Commands
+// Commands (thin wrappers delegating to inner functions for testability)
 // ---------------------------------------------------------------------------
 
-/// Lists all session templates owned by the given user.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `user_id`: The owner's user ID to filter templates by.
-///
-/// # Returns
-/// A vector of `SessionTemplateRow` ordered by creation date descending.
 #[tauri::command]
 pub async fn get_session_templates(
     pool: State<'_, SqlitePool>,
+    user_id: String,
+) -> Result<Vec<SessionTemplateRow>, AppError> {
+    get_session_templates_inner(pool.inner(), user_id).await
+}
+
+#[tauri::command]
+pub async fn get_session_template(
+    pool: State<'_, SqlitePool>,
+    id: String,
+) -> Result<Option<SessionTemplateRow>, AppError> {
+    get_session_template_inner(pool.inner(), id).await
+}
+
+#[tauri::command]
+pub async fn get_session_template_full(
+    pool: State<'_, SqlitePool>,
+    id: String,
+) -> Result<Option<SessionTemplateFull>, AppError> {
+    get_session_template_full_inner(pool.inner(), id).await
+}
+
+#[tauri::command]
+pub async fn create_session_template_full(
+    pool: State<'_, SqlitePool>,
+    template: CreateSessionTemplateInput,
+    groups: Vec<CreateActivityGroupFullInput>,
+) -> Result<SessionTemplateFull, AppError> {
+    create_session_template_full_inner(pool.inner(), template, groups).await
+}
+
+#[tauri::command]
+pub async fn update_session_template_full(
+    pool: State<'_, SqlitePool>,
+    template: CreateSessionTemplateInput,
+    groups: Vec<CreateActivityGroupFullInput>,
+) -> Result<SessionTemplateFull, AppError> {
+    update_session_template_full_inner(pool.inner(), template, groups).await
+}
+
+#[tauri::command]
+pub async fn touch_session_template_last_assigned(
+    pool: State<'_, SqlitePool>,
+    id: String,
+) -> Result<(), AppError> {
+    touch_session_template_last_assigned_inner(pool.inner(), id).await
+}
+
+#[tauri::command]
+pub async fn delete_session_template(
+    pool: State<'_, SqlitePool>,
+    id: String,
+) -> Result<(), AppError> {
+    delete_session_template_inner(pool.inner(), id).await
+}
+
+// ---------------------------------------------------------------------------
+// Inner functions (testable, take &SqlitePool directly)
+// ---------------------------------------------------------------------------
+
+pub(crate) async fn get_session_templates_inner(
+    pool: &SqlitePool,
     user_id: String,
 ) -> Result<Vec<SessionTemplateRow>, AppError> {
     let rows = sqlx::query_as::<_, SessionTemplateRow>(
         "SELECT * FROM session_templates WHERE user_id = ? ORDER BY created_at DESC",
     )
     .bind(&user_id)
-    .fetch_all(pool.inner())
+    .fetch_all(pool)
     .await?;
 
     Ok(rows)
 }
 
-/// Fetches a single session template by its ID.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `id`: The template's unique identifier.
-///
-/// # Returns
-/// `Some(SessionTemplateRow)` if found, or `None` if no template matches the ID.
-#[tauri::command]
-pub async fn get_session_template(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn get_session_template_inner(
+    pool: &SqlitePool,
     id: String,
 ) -> Result<Option<SessionTemplateRow>, AppError> {
     let row =
         sqlx::query_as::<_, SessionTemplateRow>("SELECT * FROM session_templates WHERE id = ?")
             .bind(&id)
-            .fetch_optional(pool.inner())
+            .fetch_optional(pool)
             .await?;
 
     Ok(row)
 }
 
-/// Fetches a session template with all its activity groups and activities.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `id`: The template's unique identifier.
-///
-/// # Returns
-/// `Some(SessionTemplateFull)` containing the template, its groups, and their
-/// activities, or `None` if no template matches the ID.
-#[tauri::command]
-pub async fn get_session_template_full(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn get_session_template_full_inner(
+    pool: &SqlitePool,
     id: String,
 ) -> Result<Option<SessionTemplateFull>, AppError> {
     // Fetch the template
     let template =
         sqlx::query_as::<_, SessionTemplateRow>("SELECT * FROM session_templates WHERE id = ?")
             .bind(&id)
-            .fetch_optional(pool.inner())
+            .fetch_optional(pool)
             .await?;
 
     let template = match template {
@@ -128,7 +162,7 @@ pub async fn get_session_template_full(
         "SELECT * FROM activity_groups WHERE session_template_id = ? ORDER BY ordinal",
     )
     .bind(&id)
-    .fetch_all(pool.inner())
+    .fetch_all(pool)
     .await?;
 
     let group_ids: Vec<String> = groups.iter().map(|g| g.id.clone()).collect();
@@ -150,7 +184,7 @@ pub async fn get_session_template_full(
     for gid in &group_ids {
         act_query = act_query.bind(gid);
     }
-    let activities = act_query.fetch_all(pool.inner()).await?;
+    let activities = act_query.fetch_all(pool).await?;
 
     Ok(Some(SessionTemplateFull {
         template,
@@ -159,20 +193,8 @@ pub async fn get_session_template_full(
     }))
 }
 
-/// Creates a new session template with all its activity groups and activities
-/// in a single transaction.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `template`: The session template header (name, category, scoring, etc.).
-/// - `groups`: A vector of activity groups, each containing its child activities
-///   with validated JSON `set_scheme` fields.
-///
-/// # Returns
-/// The fully created `SessionTemplateFull` with all generated IDs and timestamps.
-#[tauri::command]
-pub async fn create_session_template_full(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn create_session_template_full_inner(
+    pool: &SqlitePool,
     template: CreateSessionTemplateInput,
     groups: Vec<CreateActivityGroupFullInput>,
 ) -> Result<SessionTemplateFull, AppError> {
@@ -297,22 +319,8 @@ pub async fn create_session_template_full(
     })
 }
 
-/// Updates an existing session template by replacing all its activity groups
-/// and activities in a single transaction. Existing groups and activities are
-/// deleted (via ON DELETE CASCADE) and re-inserted from the provided input.
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `template`: The updated template header; `id` is required.
-/// - `groups`: The full replacement set of activity groups and their activities
-///   with validated JSON `set_scheme` fields.
-///
-/// # Returns
-/// The fully updated `SessionTemplateFull`, or an error if the template ID is
-/// missing or the template does not exist.
-#[tauri::command]
-pub async fn update_session_template_full(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn update_session_template_full_inner(
+    pool: &SqlitePool,
     template: CreateSessionTemplateInput,
     groups: Vec<CreateActivityGroupFullInput>,
 ) -> Result<SessionTemplateFull, AppError> {
@@ -447,18 +455,15 @@ pub async fn update_session_template_full(
     })
 }
 
-/// Updates the `last_assigned_at` timestamp on a session template to the
-/// current time. Called when a template is assigned to a program session slot.
-#[tauri::command]
-pub async fn touch_session_template_last_assigned(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn touch_session_template_last_assigned_inner(
+    pool: &SqlitePool,
     id: String,
 ) -> Result<(), AppError> {
     let now = now_unix();
     let result = sqlx::query("UPDATE session_templates SET last_assigned_at = ? WHERE id = ?")
         .bind(now)
         .bind(&id)
-        .execute(pool.inner())
+        .execute(pool)
         .await?;
 
     if result.rows_affected() == 0 {
@@ -467,27 +472,348 @@ pub async fn touch_session_template_last_assigned(
     Ok(())
 }
 
-/// Deletes a session template and all its associated activity groups and
-/// activities (cascaded via foreign key constraints).
-///
-/// # Parameters
-/// - `pool`: SQLite connection pool (injected by Tauri state).
-/// - `id`: The template's unique identifier.
-///
-/// # Returns
-/// `Ok(())` on success, or a not-found error if no template matches the ID.
-#[tauri::command]
-pub async fn delete_session_template(
-    pool: State<'_, SqlitePool>,
+pub(crate) async fn delete_session_template_inner(
+    pool: &SqlitePool,
     id: String,
 ) -> Result<(), AppError> {
     let result = sqlx::query("DELETE FROM session_templates WHERE id = ?")
         .bind(&id)
-        .execute(pool.inner())
+        .execute(pool)
         .await?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::not_found("SessionTemplate", &id));
     }
     Ok(())
+}
+
+// ===========================================================================
+// Tests
+// ===========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    const SESSION_TEMPLATE_DDL: &str = "\
+        PRAGMA foreign_keys = ON;\
+        CREATE TABLE IF NOT EXISTS session_templates (\
+            id TEXT PRIMARY KEY, \
+            user_id TEXT NOT NULL, \
+            name TEXT NOT NULL, \
+            description TEXT, \
+            category TEXT NOT NULL, \
+            rest_between_groups TEXT, \
+            time_cap TEXT, \
+            scoring TEXT NOT NULL, \
+            last_assigned_at INTEGER, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );\
+        CREATE TABLE IF NOT EXISTS activity_groups (\
+            id TEXT PRIMARY KEY, \
+            session_template_id TEXT NOT NULL REFERENCES session_templates(id) ON DELETE CASCADE, \
+            group_type TEXT NOT NULL, \
+            ordinal INTEGER NOT NULL, \
+            rounds INTEGER, \
+            rest_between_rounds TEXT, \
+            rest_between_activities TEXT, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );\
+        CREATE TABLE IF NOT EXISTS activities (\
+            id TEXT PRIMARY KEY, \
+            activity_group_id TEXT NOT NULL REFERENCES activity_groups(id) ON DELETE CASCADE, \
+            exercise_id TEXT NOT NULL, \
+            ordinal INTEGER NOT NULL, \
+            set_scheme TEXT NOT NULL, \
+            notes TEXT, \
+            created_at INTEGER, \
+            updated_at INTEGER\
+        );";
+
+    async fn setup_test_db() -> SqlitePool {
+        let pool = SqlitePoolOptions::new()
+            .connect(":memory:")
+            .await
+            .expect("in-memory pool");
+
+        for stmt in SESSION_TEMPLATE_DDL.split(';') {
+            let trimmed = stmt.trim();
+            if !trimmed.is_empty() {
+                sqlx::query(trimmed)
+                    .execute(&pool)
+                    .await
+                    .unwrap_or_else(|e| panic!("DDL failed: {e}\nSQL: {trimmed}"));
+            }
+        }
+
+        pool
+    }
+
+    fn make_template_input(id: Option<&str>) -> CreateSessionTemplateInput {
+        CreateSessionTemplateInput {
+            id: id.map(String::from),
+            user_id: "user-1".into(),
+            name: "Push Day".into(),
+            description: Some("Chest + shoulders".into()),
+            category: "strength".into(),
+            rest_between_groups: Some(r#"{"seconds":120}"#.into()),
+            time_cap: None,
+            scoring: "none".into(),
+        }
+    }
+
+    fn make_groups() -> Vec<CreateActivityGroupFullInput> {
+        vec![CreateActivityGroupFullInput {
+            group: CreateActivityGroupInput {
+                id: None,
+                group_type: "standard".into(),
+                ordinal: 0,
+                rounds: Some(3),
+                rest_between_rounds: None,
+                rest_between_activities: None,
+            },
+            activities: vec![CreateActivityInput {
+                id: None,
+                exercise_id: "ex-bench".into(),
+                ordinal: 0,
+                set_scheme: r#"{"sets":3,"reps":5}"#.into(),
+                notes: None,
+            }],
+        }]
+    }
+
+    /// Creates a template via create_session_template_full_inner and returns it.
+    async fn seed_template(pool: &SqlitePool) -> SessionTemplateFull {
+        create_session_template_full_inner(pool, make_template_input(None), make_groups())
+            .await
+            .expect("seed template")
+    }
+
+    // -----------------------------------------------------------------------
+    // get_session_templates
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_session_templates_returns_user_templates() {
+        let pool = setup_test_db().await;
+        seed_template(&pool).await;
+
+        let rows = get_session_templates_inner(&pool, "user-1".into())
+            .await
+            .unwrap();
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].name, "Push Day");
+    }
+
+    #[tokio::test]
+    async fn get_session_templates_returns_empty_for_unknown_user() {
+        let pool = setup_test_db().await;
+
+        let rows = get_session_templates_inner(&pool, "nobody".into())
+            .await
+            .unwrap();
+
+        assert!(rows.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // get_session_template_full
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_session_template_full_returns_nested_data() {
+        let pool = setup_test_db().await;
+        let created = seed_template(&pool).await;
+
+        let full = get_session_template_full_inner(&pool, created.template.id.clone())
+            .await
+            .unwrap()
+            .expect("should be Some");
+
+        assert_eq!(full.template.id, created.template.id);
+        assert_eq!(full.groups.len(), 1);
+        assert_eq!(full.activities.len(), 1);
+        assert_eq!(full.activities[0].exercise_id, "ex-bench");
+    }
+
+    #[tokio::test]
+    async fn get_session_template_full_returns_none_for_missing() {
+        let pool = setup_test_db().await;
+
+        let result = get_session_template_full_inner(&pool, "nonexistent".into())
+            .await
+            .unwrap();
+
+        assert!(result.is_none());
+    }
+
+    // -----------------------------------------------------------------------
+    // create_session_template_full
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn create_session_template_full_persists_all_rows() {
+        let pool = setup_test_db().await;
+
+        let result =
+            create_session_template_full_inner(&pool, make_template_input(None), make_groups())
+                .await
+                .unwrap();
+
+        assert_eq!(result.template.name, "Push Day");
+        assert_eq!(result.template.category, "strength");
+        assert_eq!(result.groups.len(), 1);
+        assert_eq!(result.groups[0].group_type, "standard");
+        assert_eq!(result.groups[0].rounds, Some(3));
+        assert_eq!(result.activities.len(), 1);
+        assert_eq!(result.activities[0].set_scheme, r#"{"sets":3,"reps":5}"#);
+    }
+
+    #[tokio::test]
+    async fn create_session_template_full_rejects_invalid_set_scheme() {
+        let pool = setup_test_db().await;
+        let bad_groups = vec![CreateActivityGroupFullInput {
+            group: CreateActivityGroupInput {
+                id: None,
+                group_type: "standard".into(),
+                ordinal: 0,
+                rounds: None,
+                rest_between_rounds: None,
+                rest_between_activities: None,
+            },
+            activities: vec![CreateActivityInput {
+                id: None,
+                exercise_id: "ex-1".into(),
+                ordinal: 0,
+                set_scheme: "not json".into(),
+                notes: None,
+            }],
+        }];
+
+        let err = create_session_template_full_inner(&pool, make_template_input(None), bad_groups)
+            .await
+            .unwrap_err();
+
+        assert!(err.message.contains("Invalid JSON"));
+    }
+
+    // -----------------------------------------------------------------------
+    // update_session_template_full
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn update_session_template_full_replaces_groups() {
+        let pool = setup_test_db().await;
+        let created = seed_template(&pool).await;
+        let tid = created.template.id.clone();
+
+        // Update with a new group containing two activities
+        let new_groups = vec![CreateActivityGroupFullInput {
+            group: CreateActivityGroupInput {
+                id: None,
+                group_type: "superset".into(),
+                ordinal: 0,
+                rounds: Some(4),
+                rest_between_rounds: None,
+                rest_between_activities: None,
+            },
+            activities: vec![
+                CreateActivityInput {
+                    id: None,
+                    exercise_id: "ex-squat".into(),
+                    ordinal: 0,
+                    set_scheme: r#"{"sets":5,"reps":5}"#.into(),
+                    notes: None,
+                },
+                CreateActivityInput {
+                    id: None,
+                    exercise_id: "ex-lunge".into(),
+                    ordinal: 1,
+                    set_scheme: r#"{"sets":3,"reps":10}"#.into(),
+                    notes: Some("each leg".into()),
+                },
+            ],
+        }];
+
+        let mut updated_input = make_template_input(Some(&tid));
+        updated_input.name = "Leg Day".into();
+
+        let updated = update_session_template_full_inner(&pool, updated_input, new_groups)
+            .await
+            .unwrap();
+
+        assert_eq!(updated.template.name, "Leg Day");
+        assert_eq!(updated.groups.len(), 1);
+        assert_eq!(updated.groups[0].group_type, "superset");
+        assert_eq!(updated.activities.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn update_session_template_full_rejects_missing_id() {
+        let pool = setup_test_db().await;
+
+        let err =
+            update_session_template_full_inner(&pool, make_template_input(None), make_groups())
+                .await
+                .unwrap_err();
+
+        assert!(err.message.contains("required for update"));
+    }
+
+    // -----------------------------------------------------------------------
+    // delete_session_template
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn delete_session_template_removes_template() {
+        let pool = setup_test_db().await;
+        let created = seed_template(&pool).await;
+
+        delete_session_template_inner(&pool, created.template.id.clone())
+            .await
+            .unwrap();
+
+        let result = get_session_template_inner(&pool, created.template.id)
+            .await
+            .unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn delete_session_template_returns_not_found() {
+        let pool = setup_test_db().await;
+
+        let err = delete_session_template_inner(&pool, "nonexistent".into())
+            .await
+            .unwrap_err();
+
+        assert!(err.message.contains("not found"));
+    }
+
+    // -----------------------------------------------------------------------
+    // touch_session_template_last_assigned
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn touch_last_assigned_updates_timestamp() {
+        let pool = setup_test_db().await;
+        let created = seed_template(&pool).await;
+        let tid = created.template.id.clone();
+
+        assert!(created.template.last_assigned_at.is_none());
+
+        touch_session_template_last_assigned_inner(&pool, tid.clone())
+            .await
+            .unwrap();
+
+        let row = get_session_template_inner(&pool, tid)
+            .await
+            .unwrap()
+            .expect("should exist");
+        assert!(row.last_assigned_at.is_some());
+    }
 }

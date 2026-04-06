@@ -3,6 +3,7 @@ name: CI
 on:
   pull_request:
     branches: [develop, main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -41,6 +42,103 @@ jobs:
 
       - name: Unit Tests
         run: bun run test
+
+  rust-tests:
+    name: Rust Tests & Clippy
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: src-tauri
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Unit Tests
+        run: cargo test
+
+  android-tests:
+    name: Android Smoke Tests (Maestro)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.base_ref == 'main' || contains(github.event.pull_request.labels.*.name, 'test-android')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: sdkmanager "ndk;27.0.12077973"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build debug APK
+        run: bunx tauri android build --target aarch64 --debug
+
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "${HOME}/.maestro/bin" >> "${GITHUB_PATH}"
+
+      - name: Start Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
+            maestro test --include-tags smoke maestro/
+
+      - name: Upload Maestro report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-report
+          path: ~/.maestro/tests/
+          if-no-files-found: ignore
+          retention-days: 14
 
   e2e:
     name: E2E Tests
