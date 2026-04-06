@@ -1,6 +1,6 @@
 [package]
 name = "ardent-forge"
-version = "1.0.0-beta.4"
+version = "1.0.0-beta.6"
 description = "Fitness and workout tracking application"
 authors = ["Robert Hamilton"]
 license = "MIT"

@@ -2,6 +2,30 @@
 
 All notable changes to Ardent Forge are documented in this file.
 
+## [1.0.0-beta.6] - 2026-04-05
+
+### Features
+
+- **New user onboarding system** -- three-layer onboarding with welcome card, contextual hints, nav discovery dots, and guided first-workout flow (Feature 015)
+- **Shared EmptyState component** -- consistent empty states across all authenticated pages with icons, headings, and CTAs
+
+### Improvements
+
+- Overhauled web responsiveness across all authenticated pages (#76)
+- Normalized page titles, headers, and icons across all pages
+- Added design context section to CLAUDE.md for Iron & Ember design system
+- Reordered sidebar nav into logical groups
+- Narrowed scheme field onChange to variant-specific types
+
+### Bug Fixes
+
+- Fixed infinite render loop caused by uncached getPageSessions selector
+- Fixed safe-area insets, barcode scanner, and auth guard on Tauri mobile
+- Skipped env var auto-validation on Tauri mobile builds
+- Added P10-025 through P10-029 test coverage for session builder
+
+---
+
 ## [1.0.0-beta.4] - 2026-04-05
 
 ### Improvements
