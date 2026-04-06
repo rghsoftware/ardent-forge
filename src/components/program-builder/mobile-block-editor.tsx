@@ -468,6 +468,11 @@ function MobileWeekSection({
     return sessions.filter((s) => s.dayOfWeek === 0 || s.dayOfWeek === 6).length
   }, [showWeekends, sessions])
 
+  const isLastWeek = useMemo(() => {
+    const block = draft.blocks.find((b) => b.clientId === blockClientId)
+    return !block || block.weeks.length <= 1
+  }, [draft.blocks, blockClientId])
+
   const handleRemoveWeek = useCallback(() => {
     onUpdate(removeWeekFromBlock(draft, blockClientId, weekClientId))
   }, [draft, blockClientId, weekClientId, onUpdate])
@@ -502,8 +507,14 @@ function MobileWeekSection({
         <button
           type="button"
           onClick={() => setShowWeekDeleteConfirm(true)}
-          className="min-h-10 p-1 text-warm-ash/40 hover:text-warning-flare"
+          disabled={isLastWeek}
+          className={`min-h-10 p-1 ${
+            isLastWeek
+              ? 'cursor-not-allowed text-warm-ash/20'
+              : 'text-warm-ash/40 hover:text-warning-flare'
+          }`}
           aria-label={`Remove week ${weekIndex + 1}`}
+          title={isLastWeek ? 'A block must have at least one week' : undefined}
         >
           <Icon name="delete" size={14} />
         </button>
