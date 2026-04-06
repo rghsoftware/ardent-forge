@@ -248,7 +248,7 @@ describe('signInWithGoogle', () => {
         await getHandle().signInWithGoogle()
       })
 
-      expect(mockOpenUrl).toHaveBeenCalledWith(oauthUrl, 'inAppBrowser')
+      expect(mockOpenUrl).toHaveBeenCalledWith(oauthUrl)
     })
 
     it('returns error when data.url is missing', async () => {

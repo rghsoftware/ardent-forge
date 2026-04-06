@@ -300,7 +300,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         const { openUrl } = await import('@tauri-apps/plugin-opener')
-        await openUrl(data.url, 'inAppBrowser')
+        await openUrl(data.url)
       } catch (err) {
         console.error('[auth] Failed to open sign-in browser:', err)
         return {

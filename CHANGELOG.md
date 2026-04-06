@@ -2,6 +2,19 @@
 
 All notable changes to Ardent Forge are documented in this file.
 
+## [1.0.0-beta.9] - 2026-04-05
+
+### Features
+
+- **Template names in builder** -- show template names when editing programs in the builder
+
+### Bug Fixes
+
+- Fixed Google OAuth sign-in on mobile by using system browser instead of Custom Chrome Tab (which can't handle custom scheme redirects)
+- Made QR scan webview transparent so camera feed is visible (#83)
+
+---
+
 ## [1.0.0-beta.8] - 2026-04-05
 
 ### Bug Fixes
