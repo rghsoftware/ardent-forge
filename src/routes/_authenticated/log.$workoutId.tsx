@@ -58,6 +58,8 @@ function ActiveWorkoutPage() {
     undoSet,
     finishWorkout,
     discardWorkout,
+    pauseWorkout,
+    unpauseWorkout,
     addExercise,
     skipRest,
     adjustRest,
@@ -117,6 +119,21 @@ function ActiveWorkoutPage() {
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [showSummary, setShowSummary] = useState(false)
   const [pageError, setPageError] = useState<string | null>(null)
+
+  // Pause/resume derived state and handlers
+  const isPaused = !!workoutLog?.pausedAt
+  const handlePause = useCallback(() => {
+    pauseWorkout().catch((err) => {
+      console.error('[workout-log] Pause failed:', err)
+      setPageError('Failed to pause workout. Please try again.')
+    })
+  }, [pauseWorkout])
+  const handleResume = useCallback(() => {
+    unpauseWorkout().catch((err) => {
+      console.error('[workout-log] Resume failed:', err)
+      setPageError('Failed to resume workout. Please try again.')
+    })
+  }, [unpauseWorkout])
   // Detected personal records (computed at workout finish time)
   const [detectedPrs, setDetectedPrs] = useState<PersonalRecord[]>([])
   // Store snapshot for summary display (captured at finish time)
@@ -384,6 +401,9 @@ function ActiveWorkoutPage() {
           onFinish={handleFinish}
           isFinishing={isFinishing}
           canFinish={true}
+          isPaused={isPaused}
+          onPause={handlePause}
+          onResume={handleResume}
         />
 
         {/* Push to remote display */}
@@ -460,6 +480,9 @@ function ActiveWorkoutPage() {
         onFinish={handleFinish}
         isFinishing={isFinishing}
         canFinish={confirmedSetCount > 0}
+        isPaused={isPaused}
+        onPause={handlePause}
+        onResume={handleResume}
       />
 
       {/* Push to remote display */}

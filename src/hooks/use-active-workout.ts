@@ -63,6 +63,8 @@ export function useActiveWorkout() {
   const storeStartRestTimer = useActiveWorkoutStore((s) => s.startRestTimer)
   const storeSkipRest = useActiveWorkoutStore((s) => s.skipRest)
   const storeAdjustRest = useActiveWorkoutStore((s) => s.adjustRest)
+  const storePauseWorkout = useActiveWorkoutStore((s) => s.pauseWorkout)
+  const storeUnpauseWorkout = useActiveWorkoutStore((s) => s.unpauseWorkout)
 
   // ---------------------------------------------------------------------------
   // TanStack Query client (for manual invalidation after program advancement)
@@ -537,6 +539,41 @@ export function useActiveWorkout() {
   )
 
   /**
+   * Pause the active workout. Sets pausedAt locally, then persists to DB.
+   */
+  const pauseWorkout = useCallback(async () => {
+    const current = useActiveWorkoutStore.getState().workoutLog
+    if (!current || current.pausedAt) return
+    storePauseWorkout()
+    const updated = useActiveWorkoutStore.getState().workoutLog
+    if (!updated) return
+    try {
+      await updateWorkoutLogMutation.mutateAsync(updated)
+    } catch (err) {
+      console.error('[active-workout] Failed to persist pause:', err)
+      throw err
+    }
+  }, [storePauseWorkout, updateWorkoutLogMutation])
+
+  /**
+   * Unpause (resume) the active workout. Clears pausedAt locally, accumulates
+   * totalPausedMs, then persists to DB.
+   */
+  const unpauseWorkout = useCallback(async () => {
+    const current = useActiveWorkoutStore.getState().workoutLog
+    if (!current || !current.pausedAt) return
+    storeUnpauseWorkout()
+    const updated = useActiveWorkoutStore.getState().workoutLog
+    if (!updated) return
+    try {
+      await updateWorkoutLogMutation.mutateAsync(updated)
+    } catch (err) {
+      console.error('[active-workout] Failed to persist resume:', err)
+      throw err
+    }
+  }, [storeUnpauseWorkout, updateWorkoutLogMutation])
+
+  /**
    * Discard the active workout. Deletes the WorkoutLog from DB, clears store.
    */
   const discardWorkout = useCallback(async () => {
@@ -582,6 +619,8 @@ export function useActiveWorkout() {
     finishWorkout,
     resumeWorkout,
     discardWorkout,
+    pauseWorkout,
+    unpauseWorkout,
 
     // Store-only actions (no DB side-effects)
     skipRest: storeSkipRest,

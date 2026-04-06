@@ -126,6 +126,8 @@ interface ActiveWorkoutActions {
   ): void
   finishWorkout(): void
   discardWorkout(): void
+  pauseWorkout(): void
+  unpauseWorkout(): void
 
   // Exercise management
   addExerciseToWorkout(
@@ -240,6 +242,40 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       _cleanupTauriRestListeners()
       if (_snapshotContext) publishSessionEnded(_snapshotContext.userId)
       set({ ...initialState })
+    },
+
+    pauseWorkout() {
+      const state = get()
+      if (!state.workoutLog || state.workoutLog.pausedAt) return
+      set({
+        workoutLog: { ...state.workoutLog, pausedAt: new Date().toISOString() },
+      })
+      _publishCurrentState()
+    },
+
+    unpauseWorkout() {
+      const state = get()
+      if (!state.workoutLog || !state.workoutLog.pausedAt) return
+      const pauseDurationMs = Date.now() - new Date(state.workoutLog.pausedAt).getTime()
+      if (!Number.isFinite(pauseDurationMs) || pauseDurationMs < 0) {
+        console.error(
+          '[active-workout] Invalid pausedAt when unpausing:',
+          state.workoutLog.pausedAt,
+        )
+        set({
+          workoutLog: { ...state.workoutLog, pausedAt: undefined },
+        })
+        _publishCurrentState()
+        return
+      }
+      set({
+        workoutLog: {
+          ...state.workoutLog,
+          pausedAt: undefined,
+          totalPausedMs: state.workoutLog.totalPausedMs + pauseDurationMs,
+        },
+      })
+      _publishCurrentState()
     },
 
     discardWorkout() {
