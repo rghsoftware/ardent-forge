@@ -9,23 +9,31 @@ set -euo pipefail
 # Prerequisites:
 #   1. Maestro CLI: curl -Ls "https://get.maestro.mobile.dev" | bash
 #   2. Android SDK (emulator + platform-tools in PATH or ~/Android/Sdk)
-#   3. Debug APK built: bun tauri android build --target aarch64 --debug
+#   3. Debug APK built: bun tauri android build --debug
 #
 # Usage:
 #   ./scripts/test-android.sh                     # Run all Maestro flows
 #   ./scripts/test-android.sh --tag smoke         # Run only smoke-tagged flows
 #   ./scripts/test-android.sh --flow app-launch.yaml  # Run a single flow
 #   ./scripts/test-android.sh --skip-install      # Skip APK install step
+#   ./scripts/test-android.sh --build             # Build debug APK before testing
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MAESTRO_DIR="$PROJECT_ROOT/maestro"
 
 AVD_NAME="ardent_forge_test"
-# Prefer the system image that's already downloaded locally
 SYSTEM_IMAGE="system-images;android-36.1;google_apis_playstore;x86_64"
 AVD_DEVICE="pixel_6"
 EMULATOR_BOOT_TIMEOUT=180  # seconds
+
+# Resolve the main git repo root. In a worktree, PROJECT_ROOT is the
+# worktree directory but the build outputs live under the main repo.
+MAIN_REPO_ROOT=$(git -C "$PROJECT_ROOT" worktree list --porcelain 2>/dev/null \
+    | head -1 | sed 's/^worktree //')
+if [ -z "$MAIN_REPO_ROOT" ]; then
+    MAIN_REPO_ROOT="$PROJECT_ROOT"
+fi
 
 # Ensure the emulator can find AVDs created by avdmanager.
 # avdmanager may write to ~/.config/.android/avd while the emulator
@@ -51,12 +59,10 @@ NC='\033[0m'
 
 find_sdk_binary() {
     local name="$1"
-    # Already on PATH
     if command -v "$name" &>/dev/null; then
         echo "$name"
         return
     fi
-    # Common install locations
     for dir in \
         "$HOME/Android/Sdk/emulator" \
         "$HOME/Android/Sdk/platform-tools" \
@@ -112,7 +118,6 @@ avd_exists() {
 
 create_avd() {
     if [ -z "$AVDMANAGER_BIN" ]; then
-        # Try to find avdmanager in common SDK cmdline-tools paths
         for dir in \
             "$HOME/Android/Sdk/cmdline-tools/latest/bin" \
             "$HOME/Android/Sdk/cmdline-tools/bin" \
@@ -130,7 +135,6 @@ create_avd() {
         exit 1
     fi
 
-    # Ensure AVD lands in a directory the emulator will find
     if [ -z "${ANDROID_AVD_HOME:-}" ]; then
         export ANDROID_AVD_HOME="$HOME/.android/avd"
         mkdir -p "$ANDROID_AVD_HOME"
@@ -192,35 +196,51 @@ ensure_emulator() {
 }
 
 # ---------------------------------------------------------------------------
-# APK install
+# APK build & install
 # ---------------------------------------------------------------------------
 
-install_apk() {
-    local apk_path
+build_apk() {
+    echo -e "${CYAN}Building debug APK from worktree...${NC}"
+    (cd "$PROJECT_ROOT" && bunx tauri android build --debug)
+    echo -e "${GREEN}Build complete.${NC}"
+}
 
-    # Look for debug APK in this directory first, then the main repo root
-    # (worktrees share the same build output via the main repo)
-    local git_root
-    git_root=$(git -C "$PROJECT_ROOT" rev-parse --show-superproject-working-tree 2>/dev/null)
-    if [ -z "$git_root" ]; then
-        git_root="$PROJECT_ROOT"
-    fi
-
-    for search_root in "$PROJECT_ROOT" "$git_root"; do
+find_apk() {
+    local apk_path=""
+    # Search the current project root first, then the main repo root.
+    # Worktrees have their own src-tauri/ but Tauri writes build outputs
+    # relative to the project it was invoked from.
+    for search_root in "$PROJECT_ROOT" "$MAIN_REPO_ROOT"; do
         apk_path=$(find "$search_root/src-tauri/gen/android/app/build/outputs" \
             -name "*.apk" -path "*/debug/*" 2>/dev/null | head -1)
         if [ -n "$apk_path" ]; then
-            break
+            echo "$apk_path"
+            return
         fi
     done
+    echo ""
+}
+
+install_apk() {
+    local apk_path
+    apk_path=$(find_apk)
 
     if [ -z "$apk_path" ]; then
-        echo -e "${YELLOW}No debug APK found. Build one with:${NC}"
-        echo "  bun tauri android build --debug"
+        echo -e "${RED}Error: No debug APK found.${NC}"
+        echo -e "Searched:"
+        echo -e "  $PROJECT_ROOT/src-tauri/gen/android/..."
+        if [ "$MAIN_REPO_ROOT" != "$PROJECT_ROOT" ]; then
+            echo -e "  $MAIN_REPO_ROOT/src-tauri/gen/android/..."
+        fi
+        echo ""
+        echo -e "Build one with:"
+        echo -e "  bun tauri android build --debug"
+        echo -e "Or re-run with --build to build automatically:"
+        echo -e "  $0 --build"
         exit 1
     fi
 
-    echo -e "${GREEN}Installing: $(basename "$apk_path")${NC}"
+    echo -e "${GREEN}Installing: $apk_path${NC}"
     "$ADB_BIN" install -r "$apk_path"
 }
 
@@ -236,7 +256,7 @@ run_tests() {
         case $1 in
             --tag)    tag="$2";  shift 2 ;;
             --flow)   flow="$2"; shift 2 ;;
-            --skip-install) shift ;;
+            --skip-install|--build) shift ;;
             *) echo "Unknown argument: $1"; exit 1 ;;
         esac
     done
@@ -258,16 +278,33 @@ run_tests() {
 # ---------------------------------------------------------------------------
 
 EMULATOR_STARTED=false
+DO_BUILD=false
+SKIP_INSTALL=false
+
+for arg in "$@"; do
+    case $arg in
+        --build) DO_BUILD=true ;;
+        --skip-install) SKIP_INSTALL=true ;;
+    esac
+done
 
 echo "================================================"
 echo "  Ardent Forge - Android Test Runner"
 echo "================================================"
 echo ""
 
+if [ "$MAIN_REPO_ROOT" != "$PROJECT_ROOT" ]; then
+    echo -e "${CYAN}Worktree detected. Main repo: $MAIN_REPO_ROOT${NC}"
+fi
+
 check_prerequisites
 ensure_emulator
 
-if [[ ! " $* " =~ " --skip-install " ]]; then
+if [ "$DO_BUILD" = true ]; then
+    build_apk
+fi
+
+if [ "$SKIP_INSTALL" = false ]; then
     install_apk
 fi
 
