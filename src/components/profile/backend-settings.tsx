@@ -10,7 +10,7 @@ import { validateConnection } from '@/lib/connection-validator'
 import type { ConnectionUiStatus } from '@/lib/connection-validator'
 import { resetSupabaseClient, initSupabaseFromConfig } from '@/lib/supabase'
 import { resetAdapter } from '@/lib/adapter'
-import { buildInviteLink } from '@/lib/invite-link'
+import { buildDeepLink, buildInviteLink } from '@/lib/invite-link'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
@@ -293,7 +293,7 @@ export function BackendSettings() {
 
               <div className="flex flex-col items-center rounded-lg bg-surface-pit p-6">
                 <QRCodeSVG
-                  value={buildInviteLink(currentConfig.supabaseUrl, currentConfig.supabaseKey)}
+                  value={buildDeepLink(currentConfig.supabaseUrl, currentConfig.supabaseKey)}
                   size={200}
                   level="M"
                   marginSize={4}
