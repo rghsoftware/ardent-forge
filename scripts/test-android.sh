@@ -200,36 +200,29 @@ build_apk() {
     local unsigned
     unsigned=$(find "$APK_OUTPUT_DIR" -name "*unsigned*.apk" 2>/dev/null | head -1 || true)
     if [ -n "$unsigned" ]; then
-        local signed="${unsigned/unsigned/debug-signed}"
         echo -e "${CYAN}Signing APK with debug keystore...${NC}"
 
-        # apksigner is in build-tools; find the latest version
-        local apksigner
-        apksigner=$(find "$HOME/Android/Sdk/build-tools" -name "apksigner" 2>/dev/null \
+        local build_tools_dir
+        build_tools_dir=$(find "$HOME/Android/Sdk/build-tools" -maxdepth 1 -type d \
             | sort -V | tail -1 || true)
-        if [ -z "$apksigner" ]; then
+        if [ -z "$build_tools_dir" ] || [ ! -x "$build_tools_dir/apksigner" ]; then
             echo -e "${RED}Error: apksigner not found in Android SDK build-tools.${NC}"
             exit 1
         fi
 
-        # zipalign first (required before signing)
-        local zipalign
-        zipalign=$(find "$HOME/Android/Sdk/build-tools" -name "zipalign" 2>/dev/null \
-            | sort -V | tail -1 || true)
-        if [ -n "$zipalign" ]; then
-            local aligned="${unsigned/unsigned/aligned}"
-            "$zipalign" -f 4 "$unsigned" "$aligned"
-            unsigned="$aligned"
-        fi
+        local signed="${APK_OUTPUT_DIR}/app-signed.apk"
 
-        "$apksigner" sign \
+        # zipalign, then sign
+        "$build_tools_dir/zipalign" -f 4 "$unsigned" "${signed}.tmp"
+        "$build_tools_dir/apksigner" sign \
             --ks "$HOME/.android/debug.keystore" \
             --ks-pass pass:android \
             --ks-key-alias androiddebugkey \
-            --out "$signed" \
-            "$unsigned"
+            --in "${signed}.tmp" \
+            --out "$signed"
+        rm -f "${signed}.tmp"
 
-        echo -e "${GREEN}Signed: $(basename "$signed")${NC}"
+        echo -e "${GREEN}Signed: $signed${NC}"
     fi
 
     echo -e "${GREEN}Build complete.${NC}"
@@ -238,12 +231,12 @@ build_apk() {
 install_apk() {
     local apk_path
 
-    # Prefer debug-signed APK, then any signed APK, then any APK
-    apk_path=$(find "$APK_OUTPUT_DIR" -name "*debug-signed*.apk" 2>/dev/null | head -1 || true)
-    if [ -z "$apk_path" ]; then
-        apk_path=$(find "$APK_OUTPUT_DIR" -name "*.apk" ! -name "*unsigned*" 2>/dev/null | head -1 || true)
+    # Prefer the signed APK we produce, then any non-unsigned APK
+    apk_path="${APK_OUTPUT_DIR}/app-signed.apk"
+    if [ ! -f "$apk_path" ]; then
+        apk_path=$(find "$APK_OUTPUT_DIR" -name "*.apk" ! -name "*unsigned*" ! -name "*aligned*" 2>/dev/null | head -1 || true)
     fi
-    if [ -z "$apk_path" ]; then
+    if [ -z "$apk_path" ] || [ ! -f "$apk_path" ]; then
         apk_path=$(find "$APK_OUTPUT_DIR" -name "*.apk" 2>/dev/null | head -1 || true)
     fi
 
