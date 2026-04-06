@@ -58,6 +58,8 @@ export {
   sessionOverridesSchema,
   scheduledSessionSchema,
   programActivationSchema,
+  weekStatusValueSchema,
+  weekStatusSchema,
 } from './program'
 export type {
   ProgramSource,
@@ -69,4 +71,6 @@ export type {
   SessionOverrides,
   ScheduledSession,
   ProgramActivation,
+  WeekStatusValue,
+  WeekStatus,
 } from './program'

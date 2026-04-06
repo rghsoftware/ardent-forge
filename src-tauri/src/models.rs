@@ -296,6 +296,17 @@ pub struct ProgramActivationRow {
     pub updated_at: Option<i64>,
 }
 
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
+pub struct ProgramWeekStatusRow {
+    pub id: String,
+    pub activation_id: String,
+    pub block_ordinal: i64,
+    pub week_number: i64,
+    pub status: String,
+    #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
+    pub created_at: Option<i64>,
+}
+
 // ============================================================
 // Program composite structs
 // ============================================================

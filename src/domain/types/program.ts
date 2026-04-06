@@ -133,3 +133,22 @@ export const programActivationSchema = syncableEntitySchema.extend({
   // against the actual program structure (collection-level concern, like P-2)
 })
 export type ProgramActivation = z.infer<typeof programActivationSchema>
+
+// ---------------------------------------------------------------------------
+// WeekStatus -- tracks completion/skip status for individual weeks
+// Used by Program Time Travel to mark weeks as done or skipped when
+// a user jumps to a different position within their active program.
+// ---------------------------------------------------------------------------
+
+export const weekStatusValueSchema = z.enum(['done', 'skipped'])
+export type WeekStatusValue = z.infer<typeof weekStatusValueSchema>
+
+export const weekStatusSchema = z.object({
+  id: entityId,
+  activationId: entityId,
+  blockOrdinal: z.number().int().positive(),
+  weekNumber: z.number().int().positive(),
+  status: weekStatusValueSchema,
+  createdAt: z.string(),
+})
+export type WeekStatus = z.infer<typeof weekStatusSchema>

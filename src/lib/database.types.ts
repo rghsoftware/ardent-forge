@@ -212,6 +212,15 @@ export interface ProgramActivationRow {
   updated_at: string
 }
 
+export interface ProgramWeekStatusRow {
+  id: string
+  activation_id: string
+  block_ordinal: number
+  week_number: number
+  status: string
+  created_at: string
+}
+
 export interface AccountabilityGroupRow {
   id: string
   user_id: string

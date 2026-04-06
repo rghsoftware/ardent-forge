@@ -31,6 +31,7 @@ import type {
   ProgramActivation,
   ShareLink,
   ShareableEntityType,
+  WeekStatus,
   WeeklyVolumeEntry,
   AccountabilityGroup,
   GroupMember,
@@ -61,6 +62,7 @@ import type {
   BlockWeekRow,
   ScheduledSessionRow,
   ProgramActivationRow,
+  ProgramWeekStatusRow,
   AccountabilityGroupRow,
   GroupMemberRow,
   GroupInviteRow,
@@ -95,6 +97,7 @@ import {
   toBlockWeek,
   toScheduledSession,
   toProgramActivation,
+  toWeekStatus,
   toConversation,
   toMessage,
   toMediaAttachment,
@@ -328,6 +331,15 @@ interface TauriProgramActivationResponse {
   start_date: string
   created_at: string | null
   updated_at: string | null
+}
+
+interface TauriWeekStatusResponse {
+  id: string
+  activation_id: string
+  block_ordinal: number
+  week_number: number
+  status: string
+  created_at: string
 }
 
 interface TauriProgramFullResponse {
@@ -818,6 +830,17 @@ function toProgramActivationRowFromTauri(r: TauriProgramActivationResponse): Pro
     start_date: r.start_date,
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
+  }
+}
+
+function toWeekStatusRowFromTauri(r: TauriWeekStatusResponse): ProgramWeekStatusRow {
+  return {
+    id: r.id,
+    activation_id: r.activation_id,
+    block_ordinal: r.block_ordinal,
+    week_number: r.week_number,
+    status: r.status,
+    created_at: r.created_at,
   }
 }
 
@@ -1831,18 +1854,41 @@ export class TauriAdapter implements DataAdapter {
 
   async updateActiveProgram(
     userId: string,
-    updates: { currentBlockOrdinal?: number; currentWeekNumber?: number },
+    updates: { currentBlockOrdinal?: number; currentWeekNumber?: number; startDate?: string },
   ): Promise<ProgramActivation> {
     const row = await invokeCommand<TauriProgramActivationResponse>('update_active_program', {
       user_id: userId,
       current_block_ordinal: updates.currentBlockOrdinal ?? null,
       current_week_number: updates.currentWeekNumber ?? null,
+      start_date: updates.startDate ?? null,
     })
     return toProgramActivation(toProgramActivationRowFromTauri(row))
   }
 
   async clearActiveProgram(userId: string): Promise<void> {
     await invokeCommand<void>('clear_active_program', { user_id: userId })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Week status operations (Program Time Travel)
+  // ---------------------------------------------------------------------------
+
+  async getWeekStatuses(activationId: string): Promise<WeekStatus[]> {
+    const rows = await invokeCommand<TauriWeekStatusResponse[]>('get_week_statuses', {
+      activation_id: activationId,
+    })
+    return rows.map((r) => toWeekStatus(toWeekStatusRowFromTauri(r)))
+  }
+
+  async upsertWeekStatuses(
+    activationId: string,
+    statuses: Array<{ blockOrdinal: number; weekNumber: number; status: 'done' | 'skipped' }>,
+  ): Promise<WeekStatus[]> {
+    const rows = await invokeCommand<TauriWeekStatusResponse[]>('upsert_week_statuses', {
+      activation_id: activationId,
+      statuses,
+    })
+    return rows.map((r) => toWeekStatus(toWeekStatusRowFromTauri(r)))
   }
 
   // ---------------------------------------------------------------------------

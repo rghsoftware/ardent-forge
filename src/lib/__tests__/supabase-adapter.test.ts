@@ -22,6 +22,7 @@ import type {
   ConversationParticipantRow,
   MessageRow,
   MediaAttachmentRow,
+  ProgramWeekStatusRow,
 } from '../database.types'
 
 // ===========================================================================
@@ -250,6 +251,24 @@ const programActivationRow: ProgramActivationRow = {
   start_date: '2025-06-01',
   created_at: now,
   updated_at: now,
+}
+
+const weekStatusRow: ProgramWeekStatusRow = {
+  id: 'ws-001',
+  activation_id: 'pa-001',
+  block_ordinal: 1,
+  week_number: 1,
+  status: 'done',
+  created_at: now,
+}
+
+const weekStatusRow2: ProgramWeekStatusRow = {
+  id: 'ws-002',
+  activation_id: 'pa-001',
+  block_ordinal: 1,
+  week_number: 2,
+  status: 'skipped',
+  created_at: now,
 }
 
 // ===========================================================================
@@ -1231,6 +1250,34 @@ describe('Program activation operations', () => {
     })
   })
 
+  describe('updateActiveProgram', () => {
+    it('includes start_date in update row when provided', async () => {
+      const updatedRow = { ...programActivationRow, start_date: '2025-07-01' }
+      mockClient.mockResponse('program_activations', 'update', [updatedRow])
+
+      const result = await adapter.updateActiveProgram('user-001', {
+        currentBlockOrdinal: 2,
+        currentWeekNumber: 1,
+        startDate: '2025-07-01',
+      })
+
+      expect(mockClient.from).toHaveBeenCalledWith('program_activations')
+      expect(result.programId).toBe('prog-001')
+    })
+
+    it('does not include start_date when not provided', async () => {
+      mockClient.mockResponse('program_activations', 'update', [programActivationRow])
+
+      const result = await adapter.updateActiveProgram('user-001', {
+        currentBlockOrdinal: 2,
+        currentWeekNumber: 1,
+      })
+
+      expect(mockClient.from).toHaveBeenCalledWith('program_activations')
+      expect(result.programId).toBe('prog-001')
+    })
+  })
+
   describe('clearActiveProgram', () => {
     it('deletes activation without error', async () => {
       mockClient.mockResponse('program_activations', 'delete', [])
@@ -1247,6 +1294,75 @@ describe('Program activation operations', () => {
       await expect(adapter.clearActiveProgram('user-001')).rejects.toEqual({
         message: 'Delete failed',
       })
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Week status operations
+// ---------------------------------------------------------------------------
+
+describe('Week status operations', () => {
+  describe('getWeekStatuses', () => {
+    it('queries program_week_statuses filtered by activation_id and ordered', async () => {
+      mockClient.mockResponse('program_week_statuses', 'select', [weekStatusRow, weekStatusRow2])
+
+      const result = await adapter.getWeekStatuses('pa-001')
+
+      expect(mockClient.from).toHaveBeenCalledWith('program_week_statuses')
+      expect(result).toHaveLength(2)
+      expect(result[0].blockOrdinal).toBe(1)
+      expect(result[0].weekNumber).toBe(1)
+      expect(result[0].status).toBe('done')
+      expect(result[1].weekNumber).toBe(2)
+      expect(result[1].status).toBe('skipped')
+    })
+
+    it('returns empty array when no statuses exist', async () => {
+      mockClient.mockResponse('program_week_statuses', 'select', [])
+
+      const result = await adapter.getWeekStatuses('pa-001')
+
+      expect(result).toEqual([])
+    })
+
+    it('throws on query error', async () => {
+      mockClient.mockResponse('program_week_statuses', 'select', null, {
+        message: 'Query failed',
+      })
+
+      await expect(adapter.getWeekStatuses('pa-001')).rejects.toEqual({
+        message: 'Query failed',
+      })
+    })
+  })
+
+  describe('upsertWeekStatuses', () => {
+    it('upserts rows with correct onConflict and returns refreshed list', async () => {
+      // First call: upsert
+      mockClient.mockResponse('program_week_statuses', 'upsert', [])
+      // Second call: getWeekStatuses (select after upsert)
+      mockClient.mockResponse('program_week_statuses', 'select', [weekStatusRow, weekStatusRow2])
+
+      const result = await adapter.upsertWeekStatuses('pa-001', [
+        { blockOrdinal: 1, weekNumber: 1, status: 'done' },
+        { blockOrdinal: 1, weekNumber: 2, status: 'skipped' },
+      ])
+
+      expect(mockClient.from).toHaveBeenCalledWith('program_week_statuses')
+      expect(result).toHaveLength(2)
+      expect(result[0].status).toBe('done')
+      expect(result[1].status).toBe('skipped')
+    })
+
+    it('throws on upsert error', async () => {
+      mockClient.mockResponse('program_week_statuses', 'upsert', null, {
+        message: 'Upsert failed',
+      })
+
+      await expect(
+        adapter.upsertWeekStatuses('pa-001', [{ blockOrdinal: 1, weekNumber: 1, status: 'done' }]),
+      ).rejects.toEqual({ message: 'Upsert failed' })
     })
   })
 })
