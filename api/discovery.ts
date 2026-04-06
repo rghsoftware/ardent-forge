@@ -1,6 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-export default function handler(_req: VercelRequest, res: VercelResponse) {
+export default function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+    return
+  }
+
   const supabaseUrl = process.env.VITE_SUPABASE_URL
   const supabaseKey = process.env.VITE_SUPABASE_PUB_KEY
 
