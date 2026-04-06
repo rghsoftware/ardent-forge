@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
   Dialog,
@@ -42,26 +42,38 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
   // Qualify the candidate: a session is only "crash-orphaned" if it has at least
   // one confirmed set OR was started more than 60s ago. Otherwise treat as a
   // transient navigation race (fresh session that was never really used).
+  // `Date.now()` is captured in an effect to comply with React 19 purity rules.
   const hasConfirmedSet = fullWorkout ? fullWorkout.sets.some((s) => s.completed) : false
-  const ageMs = incompleteWorkout ? Date.now() - new Date(incompleteWorkout.startedAt).getTime() : 0
+  const [nowMs, setNowMs] = useState(0)
+  useEffect(() => {
+    if (incompleteWorkout) setNowMs(Date.now())
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-capture when candidate identity changes
+  }, [incompleteWorkout?.id])
+  const startedMs = incompleteWorkout ? new Date(incompleteWorkout.startedAt).getTime() : 0
+  const ageMs = nowMs > 0 ? nowMs - startedMs : 0
   const qualifiesAsCrash = hasConfirmedSet || ageMs > 60_000
-
-  if (incompleteWorkout && fullWorkout && !qualifiesAsCrash) {
-    console.info('[crash-recovery] Skipping transient session (no confirmed sets, <60s old):', {
-      workoutId: incompleteWorkout.id,
-      ageMs,
-    })
-  }
 
   const [dismissed, setDismissed] = useState(false)
   const [isResuming, setIsResuming] = useState(false)
   const [isDiscarding, setIsDiscarding] = useState(false)
   const [discardError, setDiscardError] = useState<string | null>(null)
 
-  // Derive open state -- no effect needed
+  // Open the dialog while the full workout is loading (so users see a loading state)
+  // OR once it has loaded and qualifies as a real crash. Transient sessions never
+  // qualify and the dialog auto-closes once fullWorkout resolves.
   const open = Boolean(
-    incompleteWorkout && fullWorkout && qualifiesAsCrash && !isActive && !dismissed,
+    incompleteWorkout &&
+    !isActive &&
+    !dismissed &&
+    (isLoadingFullWorkout || (fullWorkout && qualifiesAsCrash)),
   )
+
+  if (incompleteWorkout && fullWorkout && !qualifiesAsCrash && !dismissed) {
+    console.info('[crash-recovery] Skipping transient session (no confirmed sets, <60s old):', {
+      workoutId: incompleteWorkout.id,
+      ageMs,
+    })
+  }
 
   const handleResume = () => {
     if (!fullWorkout || !incompleteWorkout) return
