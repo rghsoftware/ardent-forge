@@ -13,7 +13,7 @@ flowchart TB
     subgraph Clients["Platform Targets"]
         Android["📱 Android<br/>Tauri v2 Shell"]
         iOS["📱 iOS<br/>Tauri v2 Shell"]
-        Desktop["🖥️ Desktop<br/>Tauri v2 Shell"]
+        Mobile["📱 Mobile<br/>Tauri v2 Shell"]
         Browser["🌐 Web Browser<br/>Direct Access"]
     end
 
@@ -53,7 +53,7 @@ flowchart TB
 
     Android --> ReactApp
     iOS --> ReactApp
-    Desktop --> ReactApp
+    Mobile --> ReactApp
     Browser --> ReactApp
 
     Routes --> Components
@@ -101,12 +101,12 @@ flowchart LR
     end
 ```
 
-| Component      | Responsibility                                       |
-| -------------- | ---------------------------------------------------- |
-| Routes         | File-based routing via TanStack Router               |
-| Components     | React + shadcn/ui, responsive for mobile and desktop |
-| TanStack Query | Fetching, caching, and mutating server/local data    |
-| Zustand        | Active workout session state (ephemeral, in-memory)  |
+| Component      | Responsibility                                      |
+| -------------- | --------------------------------------------------- |
+| Routes         | File-based routing via TanStack Router              |
+| Components     | React + shadcn/ui, responsive for all screen sizes  |
+| TanStack Query | Fetching, caching, and mutating server/local data   |
+| Zustand        | Active workout session state (ephemeral, in-memory) |
 
 ### Domain Layer
 
@@ -437,7 +437,7 @@ flowchart TB
         MSimpleNav["Simplified navigation"]
     end
 
-    subgraph Desktop["Desktop Layout (≥ 1024px)"]
+    subgraph LargeScreen["Large Screen Layout (≥ 1024px)"]
         DNav["Sidebar navigation"]
         DContent["Multi-panel layout"]
         DDnD["Drag-drop program builder"]
@@ -451,7 +451,7 @@ flowchart TB
     end
 
     Mobile --> Shared
-    Desktop --> Shared
+    LargeScreen --> Shared
 ```
 
 ---
@@ -655,7 +655,7 @@ flowchart LR
         PlayStore["Google Play Store<br/>(single APK, runtime config)"]
         AppStore["Apple App Store"]
         Web["Web deployment<br/>(Vercel/Netlify)"]
-        GitHubRel["GitHub Releases<br/>(desktop)"]
+        GitHubRel["GitHub Releases"]
         DockerHub["Docker Compose<br/>(self-hosted)"]
     end
 
@@ -666,12 +666,9 @@ flowchart LR
 
 ### Build Targets
 
-| Target            | Build Command         | Output         | Backend Config                                                        |
-| ----------------- | --------------------- | -------------- | --------------------------------------------------------------------- |
-| Android           | `tauri android build` | APK/AAB        | Runtime (Settings)                                                    |
-| iOS               | `tauri ios build`     | IPA            | Runtime (Settings)                                                    |
-| Desktop (macOS)   | `tauri build`         | .dmg           | Runtime (Settings)                                                    |
-| Desktop (Windows) | `tauri build`         | .msi           | Runtime (Settings)                                                    |
-| Desktop (Linux)   | `tauri build`         | .deb/.AppImage | Runtime (Settings)                                                    |
-| Web               | `vite build`          | Static files   | Build-time env vars as defaults, runtime override in Settings         |
-| Docker            | `docker compose up`   | Full stack     | `.env` file sets defaults for web; mobile users configure in Settings |
+| Target  | Build Command         | Output       | Backend Config                                                        |
+| ------- | --------------------- | ------------ | --------------------------------------------------------------------- |
+| Android | `tauri android build` | APK/AAB      | Runtime (Settings)                                                    |
+| iOS     | `tauri ios build`     | IPA          | Runtime (Settings)                                                    |
+| Web     | `vite build`          | Static files | Build-time env vars as defaults, runtime override in Settings         |
+| Docker  | `docker compose up`   | Full stack   | `.env` file sets defaults for web; mobile users configure in Settings |

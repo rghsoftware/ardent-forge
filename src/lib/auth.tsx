@@ -29,7 +29,7 @@ interface AuthActions {
   signOut(): Promise<{ error?: AuthError }>
   signInWithGoogle(): Promise<{ error?: AuthError }>
   resetPassword(email: string): Promise<{ error?: AuthError }>
-  continueAsGuest(): void
+  continueAsGuest(): boolean
 }
 
 type AuthContextValue = AuthState & AuthActions
@@ -58,9 +58,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
   const [deepLinkFailed, setDeepLinkFailed] = useState(false)
 
-  const continueAsGuest = () => {
+  const continueAsGuest = (): boolean => {
+    if (!isTauri()) {
+      console.error('[auth] Guest mode is only available in Tauri')
+      return false
+    }
     setState({ user: SYNTHETIC_GUEST_USER, session: null, loading: false, isGuest: true })
     localStorage.setItem(GUEST_STORAGE_KEY, 'true')
+    return true
   }
 
   useEffect(() => {
@@ -157,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [isRestoredGuest])
 
-  // Deep-link listener for Tauri OAuth callback (mobile + desktop)
+  // Deep-link listener for Tauri OAuth callback
   useEffect(() => {
     const supabase = getSupabaseClient()
     if (!isTauri() || !supabase) return

@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Icon } from '@/components/icon'
+import { EmptyState } from '@/components/shared/empty-state'
 import { ActivityFeed } from './activity-feed'
 import { MemberCard } from './member-card'
 import { InviteCodeDisplay } from './invite-code-display'
@@ -26,17 +27,19 @@ interface GroupDetailProps {
 function DetailSkeleton() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
-      <div className="px-4 pt-6 pb-4">
-        <Skeleton className="h-6 w-48 rounded-none bg-surface-steel" />
-        <Skeleton className="mt-2 h-4 w-72 rounded-none bg-surface-steel" />
-      </div>
-      <div className="px-4 py-2">
-        <Skeleton className="h-9 w-64 rounded-none bg-surface-steel" />
-      </div>
-      <div className="px-4 py-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="mt-3 h-12 w-full rounded-none bg-surface-steel" />
-        ))}
+      <div className="mx-auto w-full max-w-5xl">
+        <div className="px-4 pt-6 pb-4 md:px-6 lg:px-8">
+          <Skeleton className="h-6 w-48 rounded-none bg-surface-steel" />
+          <Skeleton className="mt-2 h-4 w-72 rounded-none bg-surface-steel" />
+        </div>
+        <div className="px-4 py-2 md:px-6 lg:px-8">
+          <Skeleton className="h-9 w-64 rounded-none bg-surface-steel" />
+        </div>
+        <div className="px-4 py-4 md:px-6 lg:px-8">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="mt-3 h-12 w-full rounded-none bg-surface-steel" />
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -242,9 +245,12 @@ function MembersTab({
             <p className="text-xs text-warning-flare">Failed to create invite</p>
           )}
           {activeInvites.length === 0 ? (
-            <p className="text-xs text-warm-ash/40">
-              No active invites. Create one to add members.
-            </p>
+            <EmptyState
+              icon="mail"
+              heading="No active invites"
+              subtext="Create an invite to add members to this group."
+              className="px-4 py-6"
+            />
           ) : (
             activeInvites.map((inv) => (
               <InviteCodeDisplay key={inv.id} invite={inv} groupId={groupId} />
@@ -255,15 +261,24 @@ function MembersTab({
 
       {/* Members list */}
       <div className="flex flex-col">
-        {members.map((member) => (
-          <MemberCard
-            key={member.id}
-            member={member}
-            isCoach={isCoach}
-            currentUserId={currentUserId}
-            groupId={groupId}
+        {members.length === 0 ? (
+          <EmptyState
+            icon="group"
+            heading="No members yet"
+            subtext="Invite connections to join this group."
+            className="px-4 py-6"
           />
-        ))}
+        ) : (
+          members.map((member) => (
+            <MemberCard
+              key={member.id}
+              member={member}
+              isCoach={isCoach}
+              currentUserId={currentUserId}
+              groupId={groupId}
+            />
+          ))
+        )}
       </div>
     </div>
   )
@@ -287,84 +302,92 @@ export function GroupDetail({ groupId }: GroupDetailProps) {
 
   if (isError) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
-        <Icon name="error" size={36} className="mb-3 text-warning-flare" />
-        <p className="font-display text-sm text-warning-flare">Failed to load group</p>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-4"
-          onClick={() => navigate({ to: `/groups/${groupId}` })}
-        >
-          Retry
-        </Button>
+      <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 md:px-6 lg:px-8">
+          <Icon name="error" size={36} className="mb-3 text-warning-flare" />
+          <p className="font-display text-sm text-warning-flare">Failed to load group</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-4"
+            onClick={() => navigate({ to: `/groups/${groupId}` })}
+          >
+            Retry
+          </Button>
+        </div>
       </div>
     )
   }
 
   if (!group) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
-        <Icon name="search_off" size={36} className="mb-3 text-warm-ash/50" />
-        <p className="font-display text-sm text-warm-ash">Group not found</p>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-4"
-          onClick={() => navigate({ to: '/groups' })}
-        >
-          Back to groups
-        </Button>
+      <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 md:px-6 lg:px-8">
+          <Icon name="search_off" size={36} className="mb-3 text-warm-ash/50" />
+          <p className="font-display text-sm text-warm-ash">Group not found</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-4"
+            onClick={() => navigate({ to: '/groups' })}
+          >
+            Back to groups
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
-      {/* Header */}
-      <div className="px-4 pt-6 pb-2">
-        <button
-          type="button"
-          onClick={() => navigate({ to: '/groups' })}
-          className="flex items-center gap-1 text-xs text-warm-ash/60 hover:text-ember mb-3 min-h-8"
-        >
-          <Icon name="arrow_back" size={16} />
-          <span>Groups</span>
-        </button>
-        <h1 className="font-display text-xl font-medium text-bone-white">{group.name}</h1>
-        {group.description && <p className="mt-1 text-sm text-warm-ash/70">{group.description}</p>}
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="feed" className="flex-1">
-        <TabsList variant="line" className="px-4 w-full justify-start">
-          <TabsTrigger value="feed" className="min-h-10 text-xs uppercase tracking-wider">
-            Feed
-          </TabsTrigger>
-          <TabsTrigger value="members" className="min-h-10 text-xs uppercase tracking-wider">
-            Members
-          </TabsTrigger>
-          {isOwner && (
-            <TabsTrigger value="settings" className="min-h-10 text-xs uppercase tracking-wider">
-              Settings
-            </TabsTrigger>
+      <div className="mx-auto w-full max-w-5xl flex-1 flex flex-col">
+        {/* Header */}
+        <div className="px-4 pt-6 pb-2 md:px-6 lg:px-8">
+          <button
+            type="button"
+            onClick={() => navigate({ to: '/groups' })}
+            className="flex items-center gap-1 text-xs text-warm-ash/60 hover:text-ember mb-3 min-h-8"
+          >
+            <Icon name="arrow_back" size={16} />
+            <span>Groups</span>
+          </button>
+          <h1 className="font-display text-2xl font-medium text-bone-white">{group.name}</h1>
+          {group.description && (
+            <p className="mt-1 text-sm text-warm-ash/70">{group.description}</p>
           )}
-        </TabsList>
+        </div>
 
-        <TabsContent value="feed">
-          <ActivityFeed groupId={groupId} />
-        </TabsContent>
+        {/* Tabs */}
+        <Tabs defaultValue="feed" className="flex-1">
+          <TabsList variant="line" className="px-4 md:px-6 lg:px-8 w-full justify-start">
+            <TabsTrigger value="feed" className="min-h-10 text-xs uppercase tracking-wider">
+              Feed
+            </TabsTrigger>
+            <TabsTrigger value="members" className="min-h-10 text-xs uppercase tracking-wider">
+              Members
+            </TabsTrigger>
+            {isOwner && (
+              <TabsTrigger value="settings" className="min-h-10 text-xs uppercase tracking-wider">
+                Settings
+              </TabsTrigger>
+            )}
+          </TabsList>
 
-        <TabsContent value="members">
-          <MembersTab groupId={groupId} isCoach={isCoach} currentUserId={currentUserId} />
-        </TabsContent>
-
-        {isOwner && (
-          <TabsContent value="settings">
-            <GroupSettings groupId={groupId} />
+          <TabsContent value="feed">
+            <ActivityFeed groupId={groupId} />
           </TabsContent>
-        )}
-      </Tabs>
+
+          <TabsContent value="members">
+            <MembersTab groupId={groupId} isCoach={isCoach} currentUserId={currentUserId} />
+          </TabsContent>
+
+          {isOwner && (
+            <TabsContent value="settings">
+              <GroupSettings groupId={groupId} />
+            </TabsContent>
+          )}
+        </Tabs>
+      </div>
     </div>
   )
 }

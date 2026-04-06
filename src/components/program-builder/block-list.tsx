@@ -11,6 +11,7 @@ import {
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
+import { EmptyState } from '@/components/shared/empty-state'
 import { BlockEditor } from './block-editor'
 import { addBlock, reorderBlocks } from './builder-state'
 import type { ProgramDraft, ValidationError } from './builder-state'
@@ -111,9 +112,11 @@ export function BlockList({
       </DndContext>
 
       {draft.blocks.length === 0 && (
-        <p className="py-8 text-center text-sm text-warm-ash/50">
-          Start by adding your first training block.
-        </p>
+        <EmptyState
+          icon="dashboard_customize"
+          heading="Start by adding your first training block."
+          className="py-12"
+        />
       )}
 
       <Button

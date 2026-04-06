@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { entityId, syncableEntitySchema } from './units'
 import { sessionTypeSchema } from './session'
+import { setSchemeSchema } from './set-scheme'
 
 // Re-export SessionType so consumers can import it from either program.ts or session.ts
 export { sessionTypeSchema } from './session'
@@ -81,6 +82,28 @@ export const blockWeekSchema = z.object({
 export type BlockWeek = z.infer<typeof blockWeekSchema>
 
 // ---------------------------------------------------------------------------
+// ActivityOverride -- per-activity override for a scheduled session instance
+// Only changed fields are stored; unchanged fields inherit from the template.
+// Keyed by activity ID (UUID string), not ordinal position.
+// ---------------------------------------------------------------------------
+
+export const activityOverrideSchema = z.object({
+  exerciseId: entityId.optional(), // replacement exercise UUID
+  setScheme: setSchemeSchema.optional(), // full replacement set scheme
+})
+export type ActivityOverride = z.infer<typeof activityOverrideSchema>
+
+// ---------------------------------------------------------------------------
+// SessionOverrides -- wrapper for all per-instance overrides on a session
+// Extensible: future fields (e.g., groupOverrides) can be added here.
+// ---------------------------------------------------------------------------
+
+export const sessionOverridesSchema = z.object({
+  activityOverrides: z.record(z.string(), activityOverrideSchema).optional(),
+})
+export type SessionOverrides = z.infer<typeof sessionOverridesSchema>
+
+// ---------------------------------------------------------------------------
 // ScheduledSession -- a session assigned to a specific week/day in a program
 // ---------------------------------------------------------------------------
 
@@ -92,6 +115,7 @@ export const scheduledSessionSchema = z.object({
   sessionType: sessionTypeSchema,
   sessionTemplateId: entityId, // P-3: must reference a valid SessionTemplate
   notes: z.string().optional(),
+  overrides: sessionOverridesSchema.optional().nullable(),
 })
 export type ScheduledSession = z.infer<typeof scheduledSessionSchema>
 

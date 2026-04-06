@@ -1,4 +1,4 @@
-import type { BlockType, SessionType } from '@/domain/types'
+import type { BlockType, ProgramSource, SessionType } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // DayOfWeek type alias (0=Sun, 1=Mon, ..., 6=Sat -- JS convention)
@@ -11,11 +11,11 @@ export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6
 // ---------------------------------------------------------------------------
 
 export const BLOCK_TYPES: Array<{ value: BlockType; label: string }> = [
-  { value: 'ACCUMULATION', label: 'ACCUMULATION' },
-  { value: 'INTENSIFICATION', label: 'INTENSIFICATION' },
-  { value: 'REALIZATION', label: 'REALIZATION' },
-  { value: 'DELOAD', label: 'DELOAD' },
-  { value: 'TEST', label: 'TEST' },
+  { value: 'ACCUMULATION', label: 'Accumulation' },
+  { value: 'INTENSIFICATION', label: 'Intensification' },
+  { value: 'REALIZATION', label: 'Realization' },
+  { value: 'DELOAD', label: 'Deload' },
+  { value: 'TEST', label: 'Test' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -80,20 +80,16 @@ export const DAY_ORDER: DayOfWeek[] = [1, 2, 3, 4, 5, 6, 0]
 export const WEEKDAY_ORDER: DayOfWeek[] = [1, 2, 3, 4, 5]
 
 // ---------------------------------------------------------------------------
-// Source labels for program source badges
+// Session type visual mappings (tint, badge colours, borders)
 // ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// Session type visual mappings (tint, badge colours)
-// ---------------------------------------------------------------------------
-
-export const SESSION_TINT: Record<string, string> = {
+export const SESSION_TINT = {
   STRENGTH: 'session-tint-strength',
   CONDITIONING: 'session-tint-conditioning',
   SE: 'session-tint-se',
   MIXED: 'session-tint-mixed',
   EVENT: 'session-tint-event',
-}
+} satisfies Record<SessionType, string>
 
 export const SESSION_TYPE_BADGE = {
   STRENGTH: 'bg-ember/10 text-ember',
@@ -104,7 +100,7 @@ export const SESSION_TYPE_BADGE = {
 } satisfies Record<SessionType, string>
 
 // ---------------------------------------------------------------------------
-// Source labels for program source badges
+// Block type visual styles
 // ---------------------------------------------------------------------------
 
 export const BLOCK_TYPE_STYLES = {
@@ -115,12 +111,24 @@ export const BLOCK_TYPE_STYLES = {
   TEST: 'bg-warm-ash/15 text-warm-ash',
 } satisfies Record<BlockType, string>
 
-export const SOURCE_LABELS: Record<string, string> = {
-  CUSTOM: 'CUSTOM',
-  IMPORTED: 'IMPORTED',
-  SHARED: 'SHARED',
-  MARKETPLACE: 'MARKETPLACE',
+// ---------------------------------------------------------------------------
+// Source labels for program source badges
+// ---------------------------------------------------------------------------
+
+export const SOURCE_LABELS = {
+  CUSTOM: 'Custom',
+  IMPORTED: 'Imported',
+  SHARED: 'Shared',
+  MARKETPLACE: 'Marketplace',
   AI_GENERATED: 'AI',
-  COACH_ASSIGNED: 'COACH',
-  TEMPLATE: 'TEMPLATE',
-}
+  COACH_ASSIGNED: 'Coach',
+  TEMPLATE: 'Template',
+} satisfies Record<ProgramSource, string>
+
+export const SESSION_BORDER = {
+  STRENGTH: 'border-l-2 border-ember',
+  CONDITIONING: 'border-l-2 border-quenched',
+  SE: 'border-l-2 border-arc',
+  MIXED: 'border-l-2 border-bone-white/40',
+  EVENT: 'border-l-2 border-ember',
+} satisfies Record<SessionType, string>

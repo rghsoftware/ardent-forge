@@ -234,6 +234,7 @@ const scheduledSessionRow: ScheduledSessionRow = {
   session_type: 'STRENGTH',
   session_template_id: 'st-001',
   notes: null,
+  overrides: null,
   created_at: now,
   updated_at: now,
 }

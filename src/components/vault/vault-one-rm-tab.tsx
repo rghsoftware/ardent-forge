@@ -3,6 +3,7 @@ import { useAuth } from '@/lib/auth'
 import { useExercises } from '@/hooks/use-exercises'
 import { useOneRepMaxHistory } from '@/hooks/use-user-profile'
 import { OneRmChart } from '@/components/exercises/one-rm-chart'
+import { EmptyState } from '@/components/shared/empty-state'
 import {
   Select,
   SelectContent,
@@ -34,6 +35,18 @@ export function VaultOneRmTab() {
     )
   }
 
+  if (oneRmExercises.length === 0) {
+    return (
+      <div className="pt-4">
+        <EmptyState
+          icon="monitoring"
+          heading="No 1RM data yet"
+          subtext="Log a strength session to see trends here."
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4 pt-4">
       <Select
@@ -53,11 +66,11 @@ export function VaultOneRmTab() {
       </Select>
 
       {!selectedExerciseId && (
-        <div className="flex items-center justify-center bg-surface-iron p-8">
-          <p className="font-display text-sm text-warm-ash">
-            Select an exercise to view 1RM trends
-          </p>
-        </div>
+        <EmptyState
+          icon="monitoring"
+          heading="Select an exercise to view 1RM trends"
+          className="bg-surface-iron py-8"
+        />
       )}
 
       {selectedExerciseId && isLoadingHistory && (

@@ -353,7 +353,7 @@ flowchart TB
 
 ---
 
-## Flow 7: Program Builder (Web/Desktop)
+## Flow 7: Program Builder (Web)
 
 ```mermaid
 flowchart TB
@@ -467,7 +467,7 @@ flowchart TB
 
 ### Contextual Help System
 
-Complex builder screens include a `help_outline` icon (the HelpTrigger component) next to domain-specific labels. Tapping opens a popover (desktop) or bottom sheet (mobile) with a focused explanation.
+Complex builder screens include a `help_outline` icon (the HelpTrigger component) next to domain-specific labels. Tapping opens a popover (large screen) or bottom sheet (mobile) with a focused explanation.
 
 ```mermaid
 flowchart LR

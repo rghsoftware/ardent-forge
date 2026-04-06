@@ -53,6 +53,7 @@ import {
   setSchemeSchema,
   programSourceSchema,
   blockTypeSchema,
+  sessionOverridesSchema,
   shareableEntityTypeSchema,
   shareTokenSchema,
   eventMetadataSchema,
@@ -569,6 +570,20 @@ export function fromBlockWeek(
 
 export function toScheduledSession(row: ScheduledSessionRow): ScheduledSession {
   try {
+    let overrides: ScheduledSession['overrides']
+    if (row.overrides != null) {
+      try {
+        const parsed = typeof row.overrides === 'string' ? JSON.parse(row.overrides) : row.overrides
+        overrides = sessionOverridesSchema.parse(parsed)
+      } catch (err) {
+        console.warn(
+          `[data-mapper] Failed to parse overrides for scheduled session ${row.id}, falling back to undefined:`,
+          err,
+        )
+        overrides = undefined
+      }
+    }
+
     return {
       id: row.id,
       blockWeekId: row.block_week_id,
@@ -577,6 +592,7 @@ export function toScheduledSession(row: ScheduledSessionRow): ScheduledSession {
       sessionType: sessionTypeSchema.parse(row.session_type),
       sessionTemplateId: row.session_template_id,
       notes: row.notes ?? undefined,
+      overrides,
     }
   } catch (err) {
     throw new Error(
@@ -596,6 +612,7 @@ export function fromScheduledSession(
     session_type: session.sessionType,
     session_template_id: session.sessionTemplateId,
     notes: session.notes ?? null,
+    overrides: session.overrides ?? null,
   }
 }
 

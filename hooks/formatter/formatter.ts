@@ -58,7 +58,7 @@ try {
   }
 
   process.exit(0)
-} catch (err) {
-  console.error('[formatter] Hook failed:', err)
+} catch (error) {
+  console.error('[formatter] Hook failed:', error)
   process.exit(0)
 }

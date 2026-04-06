@@ -3,6 +3,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useExercises } from '@/hooks/use-exercises'
 import { useUserProfile } from '@/hooks/use-user-profile'
+import { useOnboarding } from '@/hooks/use-onboarding'
+import { useOnboardingStore } from '@/stores/onboarding-store'
+import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useProgramFull } from '@/hooks/use-programs'
 import { detectPersonalRecords } from '@/lib/pr-detection'
 import { useDisplayBroadcast } from '@/hooks/use-display-broadcast'
@@ -61,6 +64,9 @@ function ActiveWorkoutPage() {
     isFinishing,
     isDiscarding,
   } = useActiveWorkout()
+
+  const { markFirstWorkoutCompleted } = useOnboarding()
+  const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
 
   const { data: allExercises = [] } = useExercises()
   const { data: userProfile } = useUserProfile(workoutLog?.userId ?? '')
@@ -159,6 +165,11 @@ function ActiveWorkoutPage() {
       setSummaryData(snapshot)
       setShowSummary(true)
 
+      // Mark first workout as completed for onboarding
+      if (!firstWorkoutCompleted) {
+        markFirstWorkoutCompleted()
+      }
+
       // Detect personal records from the captured snapshot
       if (userProfile) {
         const allActivities = snapshot.loggedGroups.flatMap((g) => g.activities)
@@ -185,7 +196,7 @@ function ActiveWorkoutPage() {
       console.error('[workout-page] handleFinish:', err)
       setPageError('Failed to save workout. Please try again.')
     }
-  }, [workoutLog, loggedGroups, finishWorkout, programBannerProps, userProfile, exerciseNames])
+  }, [workoutLog, loggedGroups, finishWorkout, programBannerProps, userProfile, exerciseNames, firstWorkoutCompleted, markFirstWorkoutCompleted])
 
   const handleDiscard = useCallback(async () => {
     try {
@@ -571,6 +582,11 @@ function ActiveWorkoutPage() {
       {/* Add exercise button (hidden for programmed workouts) */}
       {!isProgrammedWorkout && (
         <div className="px-4 pt-6 pb-4">
+          {loggedGroups.length === 0 && !firstWorkoutCompleted && (
+            <OnboardingHint hintKey="workout-add-exercise">
+              Tap below to add your first exercise.
+            </OnboardingHint>
+          )}
           <Button
             variant="secondary"
             size="lg"

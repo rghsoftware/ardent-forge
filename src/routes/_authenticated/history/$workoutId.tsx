@@ -83,31 +83,35 @@ function WorkoutDetailPage() {
 
   if (isError) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
-        <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
-          cloud_off
-        </span>
-        <p className="font-display text-sm text-warning-flare">
-          Failed to load workout
-        </p>
-        <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
-        <Link to="/history" className="mt-4 text-xs text-ember">
-          Back to history
-        </Link>
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil">
+        <div className="mx-auto flex max-w-5xl flex-col items-center px-4">
+          <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
+            cloud_off
+          </span>
+          <p className="font-display text-sm text-warning-flare">
+            Failed to load workout
+          </p>
+          <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
+          <Link to="/history" className="mt-4 text-xs text-ember">
+            Back to history
+          </Link>
+        </div>
       </div>
     )
   }
 
   if (!workoutData) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
-        <Icon name="error_outline" size={48} className="mb-3 text-warm-ash/40" />
-        <p className="font-display text-sm text-warm-ash">
-          Workout not found
-        </p>
-        <Link to="/history" className="mt-4 text-xs text-ember">
-          Back to history
-        </Link>
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil">
+        <div className="mx-auto flex max-w-5xl flex-col items-center px-4">
+          <Icon name="error_outline" size={48} className="mb-3 text-warm-ash/40" />
+          <p className="font-display text-sm text-warm-ash">
+            Workout not found
+          </p>
+          <Link to="/history" className="mt-4 text-xs text-ember">
+            Back to history
+          </Link>
+        </div>
       </div>
     )
   }
@@ -121,6 +125,50 @@ function WorkoutDetailPage() {
   if (log.eventMetadata) {
     return (
       <div className="min-h-[100dvh] bg-surface-anvil">
+        <div className="mx-auto max-w-5xl md:px-6 lg:px-8">
+          <WorkoutDetailHeader
+            log={log}
+            allSets={sets}
+            onDelete={() => setShowDeleteDialog(true)}
+            shareAction={
+              <ShareDialog
+                entityType="WORKOUT_LOG"
+                entityId={workoutId}
+                trigger={
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 min-h-10 text-xs uppercase tracking-wider"
+                  >
+                    <Icon name="share" size={16} />
+                    Share
+                  </Button>
+                }
+              />
+            }
+          />
+
+          <EventDetail
+            workoutLogId={workoutId}
+            eventMetadata={log.eventMetadata}
+            interactive={false}
+          />
+        </div>
+
+        {/* Delete dialog */}
+        <DeleteWorkoutDialog
+          workoutId={workoutId}
+          open={showDeleteDialog}
+          onClose={() => setShowDeleteDialog(false)}
+          onSuccess={handleDeleteSuccess}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-[100dvh] bg-surface-anvil">
+      <div className="mx-auto max-w-5xl md:px-6 lg:px-8">
         <WorkoutDetailHeader
           log={log}
           allSets={sets}
@@ -143,54 +191,14 @@ function WorkoutDetailPage() {
           }
         />
 
-        <EventDetail
-          workoutLogId={workoutId}
-          eventMetadata={log.eventMetadata}
-          interactive={false}
-        />
-
-        {/* Delete dialog */}
-        <DeleteWorkoutDialog
-          workoutId={workoutId}
-          open={showDeleteDialog}
-          onClose={() => setShowDeleteDialog(false)}
-          onSuccess={handleDeleteSuccess}
+        {/* Exercise breakdown */}
+        <WorkoutDetailExercises
+          groups={groups}
+          activities={activities}
+          sets={sets}
+          exercises={exercises}
         />
       </div>
-    )
-  }
-
-  return (
-    <div className="min-h-[100dvh] bg-surface-anvil">
-      <WorkoutDetailHeader
-        log={log}
-        allSets={sets}
-        onDelete={() => setShowDeleteDialog(true)}
-        shareAction={
-          <ShareDialog
-            entityType="WORKOUT_LOG"
-            entityId={workoutId}
-            trigger={
-              <Button
-                variant="secondary"
-                size="sm"
-                className="flex-1 min-h-10 text-xs uppercase tracking-wider"
-              >
-                <Icon name="share" size={16} />
-                Share
-              </Button>
-            }
-          />
-        }
-      />
-
-      {/* Exercise breakdown */}
-      <WorkoutDetailExercises
-        groups={groups}
-        activities={activities}
-        sets={sets}
-        exercises={exercises}
-      />
 
       {/* Delete dialog */}
       <DeleteWorkoutDialog

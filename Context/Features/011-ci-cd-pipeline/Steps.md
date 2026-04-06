@@ -249,7 +249,7 @@ Add `publish` job to `release.yml`, gated on both `build-release` and `migrate`:
    - `prerelease: ${{ contains(github.ref_name, '-') }}`
    - Attach AAB file
    - Generate release notes from commits
-3. Upload to Play Store via `r0adkll/upload-google-play@v3`:
+3. Upload to Play Store via `r0adkll/upload-google-play@v1`:
    - `serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}`
    - `packageName: com.rghsoftware.ardentforge`
    - `releaseFiles: <path-to-aab>`

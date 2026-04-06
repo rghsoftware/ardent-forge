@@ -44,7 +44,11 @@ function ExerciseDetailPage() {
   const { user } = useAuth()
   const userId = user?.id
 
-  const { data: exercise, isLoading: isLoadingExercise, isError: isExerciseError } = useExercise(exerciseId)
+  const {
+    data: exercise,
+    isLoading: isLoadingExercise,
+    isError: isExerciseError,
+  } = useExercise(exerciseId)
   const { data: profile } = useUserProfile(userId ?? '')
   const { data: oneRmHistory } = useOneRepMaxHistory(userId, exerciseId)
   const { data: workoutHistory } = useExerciseWorkoutHistory(userId, exerciseId, 10)
@@ -96,17 +100,22 @@ function ExerciseDetailPage() {
     },
   })
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- React Hook Form's watch uses its own subscription model
   const estimatedValue = watch('estimated')
+
+  const [oneRmError, setOneRmError] = useState<string | null>(null)
 
   const onSubmitOneRm = async (values: OneRmFormValues) => {
     if (!userId) {
       console.error('[exercises] Cannot save 1RM: no authenticated user')
+      setOneRmError('You must be signed in to update your 1RM.')
       return
     }
 
     const weightUnitConst = profile?.preferredUnits === 'METRIC' ? ('kg' as const) : ('lb' as const)
     const now = new Date().toISOString()
 
+    setOneRmError(null)
     try {
       await saveOneRepMax.mutateAsync({
         userId,
@@ -133,239 +142,237 @@ function ExerciseDetailPage() {
 
       reset()
       setShowOneRmDialog(false)
-    } catch {
-      // Error states available via saveOneRepMax.isError / updateProfile.isError
+    } catch (err) {
+      console.error('[exercises] Failed to save 1RM:', err)
+      setOneRmError('Failed to save 1RM. Please try again.')
     }
   }
 
   if (isLoadingExercise) {
     return (
-      <div className="min-h-[100dvh] bg-surface-anvil p-4">
-        <Skeleton className="mb-4 h-8 w-48 rounded-none bg-surface-steel" />
-        <Skeleton className="mb-2 h-4 w-32 rounded-none bg-surface-steel" />
-        <Skeleton className="h-4 w-64 rounded-none bg-surface-steel" />
+      <div className="min-h-[100dvh] bg-surface-anvil">
+        <div className="mx-auto max-w-5xl p-4">
+          <Skeleton className="mb-4 h-8 w-48 rounded-none bg-surface-steel" />
+          <Skeleton className="mb-2 h-4 w-32 rounded-none bg-surface-steel" />
+          <Skeleton className="h-4 w-64 rounded-none bg-surface-steel" />
+        </div>
       </div>
     )
   }
 
   if (isExerciseError) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
-        <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">cloud_off</span>
-        <p className="font-display text-sm text-warning-flare">
-          Failed to load exercise
-        </p>
-        <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
-        <Link to="/exercises" className="mt-4 text-xs text-ember">
-          Back to library
-        </Link>
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil">
+        <div className="mx-auto flex max-w-5xl flex-col items-center px-4">
+          <span className="material-symbols-outlined mb-3 text-4xl text-warning-flare">
+            cloud_off
+          </span>
+          <p className="font-display text-sm text-warning-flare">Failed to load exercise</p>
+          <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
+          <Link to="/exercises" className="mt-4 text-xs text-ember">
+            Back to library
+          </Link>
+        </div>
       </div>
     )
   }
 
   if (!exercise) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil px-4">
-        <span className="material-symbols-outlined mb-3 text-4xl text-warm-ash/40">
-          error_outline
-        </span>
-        <p className="font-display text-sm text-warm-ash">
-          Exercise not found
-        </p>
-        <Link
-          to="/exercises"
-          className="mt-4 text-xs text-ember"
-        >
-          Back to library
-        </Link>
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-surface-anvil">
+        <div className="mx-auto flex max-w-5xl flex-col items-center px-4">
+          <span className="material-symbols-outlined mb-3 text-4xl text-warm-ash/40">
+            error_outline
+          </span>
+          <p className="font-display text-sm text-warm-ash">Exercise not found</p>
+          <Link to="/exercises" className="mt-4 text-xs text-ember">
+            Back to library
+          </Link>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="min-h-[100dvh] bg-surface-anvil">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 pt-6 pb-4">
-        <Link
-          to="/exercises"
-          className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash"
-          aria-label="Back to exercise library"
-        >
-          <span className="material-symbols-outlined text-xl">arrow_back</span>
-        </Link>
-        <h1 className="font-display text-xl font-medium text-bone-white">
-          {exercise.name}
-        </h1>
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="details" className="px-4">
-        <TabsList
-          variant="line"
-          className="w-full justify-start border-b border-b-[rgba(91,64,57,0.15)]"
-        >
-          <TabsTrigger
-            value="details"
-            className="min-h-12 font-body text-xs font-medium uppercase tracking-widest data-[state=active]:text-ember"
+      <div className="mx-auto max-w-5xl">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 pt-6 pb-4 md:px-6 lg:px-8">
+          <Link
+            to="/exercises"
+            className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash"
+            aria-label="Back to exercise library"
           >
-            DETAILS
-          </TabsTrigger>
-          <TabsTrigger
-            value="history"
-            className="min-h-12 font-body text-xs font-medium uppercase tracking-widest data-[state=active]:text-ember"
-          >
-            HISTORY
-          </TabsTrigger>
-        </TabsList>
+            <span className="material-symbols-outlined text-xl">arrow_back</span>
+          </Link>
+          <h1 className="font-display text-2xl font-medium text-bone-white">{exercise.name}</h1>
+        </div>
 
-        {/* DETAILS TAB */}
-        <TabsContent value="details" className="pt-4">
-          {/* Metadata grid */}
-          <div className="grid grid-cols-2 gap-4 pb-6">
-            <div>
-              <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
-                CATEGORY
-              </span>
-              <p className="mt-1 font-display text-sm text-bone-white">
-                {formatLabel(exercise.category)}
-              </p>
-            </div>
-            <div>
-              <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
-                MOVEMENT
-              </span>
-              <p className="mt-1 font-display text-sm text-bone-white">
-                {formatLabel(exercise.movementPattern)}
-              </p>
-            </div>
-            <div className="col-span-2">
-              <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
-                EQUIPMENT
-              </span>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {exercise.equipmentRequired.length > 0 ? (
-                  exercise.equipmentRequired.map((eq) => (
-                    <Badge key={eq} className="text-[11px]">
-                      {formatLabel(eq)}
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-sm text-warm-ash">None</span>
-                )}
+        {/* Tabs */}
+        <Tabs defaultValue="details" className="px-4 md:px-6 lg:px-8">
+          <TabsList
+            variant="line"
+            className="w-full justify-start border-b border-b-[rgba(91,64,57,0.15)]"
+          >
+            <TabsTrigger
+              value="details"
+              className="min-h-12 font-body text-xs font-medium uppercase tracking-widest data-[state=active]:text-ember"
+            >
+              DETAILS
+            </TabsTrigger>
+            <TabsTrigger
+              value="history"
+              className="min-h-12 font-body text-xs font-medium uppercase tracking-widest data-[state=active]:text-ember"
+            >
+              HISTORY
+            </TabsTrigger>
+          </TabsList>
+
+          {/* DETAILS TAB */}
+          <TabsContent value="details" className="pt-4">
+            {/* Metadata grid */}
+            <div className="grid grid-cols-2 gap-4 pb-6">
+              <div>
+                <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
+                  CATEGORY
+                </span>
+                <p className="mt-1 font-display text-sm text-bone-white">
+                  {formatLabel(exercise.category)}
+                </p>
+              </div>
+              <div>
+                <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
+                  MOVEMENT
+                </span>
+                <p className="mt-1 font-display text-sm text-bone-white">
+                  {formatLabel(exercise.movementPattern)}
+                </p>
+              </div>
+              <div className="col-span-2">
+                <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
+                  EQUIPMENT
+                </span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {exercise.equipmentRequired.length > 0 ? (
+                    exercise.equipmentRequired.map((eq) => (
+                      <Badge key={eq} className="text-[11px]">
+                        {formatLabel(eq)}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-sm text-warm-ash">None</span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Primary muscles */}
-          <div className="pb-4">
-            <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
-              PRIMARY MUSCLES
-            </span>
-            <div className="mt-1 flex flex-wrap gap-1">
-              {exercise.muscleGroups.primary.map((mg) => (
-                <Badge key={mg} variant="complete" className="text-[11px]">
-                  {formatLabel(mg)}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {/* Secondary muscles */}
-          {exercise.muscleGroups.secondary.length > 0 && (
-            <div className="pb-6">
+            {/* Primary muscles */}
+            <div className="pb-4">
               <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
-                SECONDARY MUSCLES
+                PRIMARY MUSCLES
               </span>
               <div className="mt-1 flex flex-wrap gap-1">
-                {exercise.muscleGroups.secondary.map((mg) => (
-                  <Badge key={mg} className="text-[11px]">
+                {exercise.muscleGroups.primary.map((mg) => (
+                  <Badge key={mg} variant="complete" className="text-[11px]">
                     {formatLabel(mg)}
                   </Badge>
                 ))}
               </div>
             </div>
-          )}
 
-          {/* 1RM section */}
-          {exercise.supports1RM && (
-            <div className="pb-6">
-              <div className="flex items-end justify-between pb-4">
-                <div>
-                  <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
-                    CURRENT 1RM
-                  </span>
-                  <p className="text-readout mt-1 text-bone-white">
-                    {currentOneRm
-                      ? `${currentOneRm.weight.value}`
-                      : '--'}
-                  </p>
-                  {currentOneRm && (
-                    <span className="text-xs text-warm-ash">
-                      {currentOneRm.weight.unit.toUpperCase()}
-                      {currentOneRm.estimated ? ' (EST)' : ' (TESTED)'}
-                    </span>
-                  )}
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => setShowOneRmDialog(true)}
-                  className="min-h-10 bg-forge px-4 text-on-forge text-xs font-medium"
-                >
-                  Update 1RM
-                </Button>
-              </div>
-
-              {/* 1RM progression chart */}
-              <div className="pb-2">
+            {/* Secondary muscles */}
+            {exercise.muscleGroups.secondary.length > 0 && (
+              <div className="pb-6">
                 <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
-                  1RM PROGRESSION
+                  SECONDARY MUSCLES
                 </span>
-              </div>
-              <OneRmChart data={oneRmHistory ?? []} />
-            </div>
-          )}
-
-          {/* Personal Records */}
-          {exercise.supports1RM && workoutHistory && workoutHistory.length > 0 && (
-            <div className="mt-6 space-y-3">
-              <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
-                PERSONAL RECORDS
-              </span>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <span className="font-display text-2xl text-bone-white">
-                    {threeRepMax !== null ? `${threeRepMax} ${weightUnit}` : '--'}
-                  </span>
-                  <span className="font-body text-xs uppercase tracking-widest text-warm-ash">
-                    3RM
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="font-display text-2xl text-bone-white">
-                    {fiveRepMax !== null ? `${fiveRepMax} ${weightUnit}` : '--'}
-                  </span>
-                  <span className="font-body text-xs uppercase tracking-widest text-warm-ash">
-                    5RM
-                  </span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {exercise.muscleGroups.secondary.map((mg) => (
+                    <Badge key={mg} className="text-[11px]">
+                      {formatLabel(mg)}
+                    </Badge>
+                  ))}
                 </div>
               </div>
-            </div>
-          )}
-        </TabsContent>
+            )}
 
-        {/* HISTORY TAB */}
-        <TabsContent value="history" className="pt-4">
-          <ExerciseHistoryList history={workoutHistory ?? []} />
-        </TabsContent>
-      </Tabs>
+            {/* 1RM section */}
+            {exercise.supports1RM && (
+              <div className="pb-6">
+                <div className="flex items-end justify-between pb-4">
+                  <div>
+                    <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
+                      CURRENT 1RM
+                    </span>
+                    <p className="text-readout mt-1 text-bone-white">
+                      {currentOneRm ? `${currentOneRm.weight.value}` : '--'}
+                    </p>
+                    {currentOneRm && (
+                      <span className="text-xs text-warm-ash">
+                        {currentOneRm.weight.unit.toUpperCase()}
+                        {currentOneRm.estimated ? ' (EST)' : ' (TESTED)'}
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => setShowOneRmDialog(true)}
+                    className="min-h-10 bg-forge px-4 text-on-forge text-xs font-medium"
+                  >
+                    Update 1RM
+                  </Button>
+                </div>
+
+                {/* 1RM progression chart */}
+                <div className="pb-2">
+                  <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
+                    1RM PROGRESSION
+                  </span>
+                </div>
+                <OneRmChart data={oneRmHistory ?? []} />
+              </div>
+            )}
+
+            {/* Personal Records */}
+            {exercise.supports1RM && workoutHistory && workoutHistory.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <span className="font-body text-xs font-medium uppercase tracking-widest text-warm-ash">
+                  PERSONAL RECORDS
+                </span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <span className="font-display text-2xl text-bone-white">
+                      {threeRepMax !== null ? `${threeRepMax} ${weightUnit}` : '--'}
+                    </span>
+                    <span className="font-body text-xs uppercase tracking-widest text-warm-ash">
+                      3RM
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="font-display text-2xl text-bone-white">
+                      {fiveRepMax !== null ? `${fiveRepMax} ${weightUnit}` : '--'}
+                    </span>
+                    <span className="font-body text-xs uppercase tracking-widest text-warm-ash">
+                      5RM
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* HISTORY TAB */}
+          <TabsContent value="history" className="pt-4">
+            <ExerciseHistoryList history={workoutHistory ?? []} />
+          </TabsContent>
+        </Tabs>
+      </div>
 
       {/* 1RM Update Dialog */}
       <Dialog open={showOneRmDialog} onOpenChange={setShowOneRmDialog}>
         <DialogContent className="bg-surface-iron">
           <DialogHeader>
-            <DialogTitle className="font-display text-sm text-bone-white">
-              Update 1RM
-            </DialogTitle>
+            <DialogTitle className="font-display text-sm text-bone-white">Update 1RM</DialogTitle>
             <DialogDescription className="text-xs text-warm-ash">
               Record a new 1RM for {exercise.name}.
             </DialogDescription>
@@ -425,8 +432,10 @@ function ExerciseDetailPage() {
             >
               {isSubmitting ? 'Saving...' : 'Save 1RM'}
             </Button>
-            {(saveOneRepMax.isError || updateProfile.isError) && (
-              <p className="text-xs text-warning-flare">Failed to save 1RM. Please try again.</p>
+            {(oneRmError || saveOneRepMax.isError || updateProfile.isError) && (
+              <p className="text-xs text-warning-flare">
+                {oneRmError ?? 'Failed to save 1RM. Please try again.'}
+              </p>
             )}
           </form>
         </DialogContent>

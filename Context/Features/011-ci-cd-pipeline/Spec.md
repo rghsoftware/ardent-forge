@@ -57,7 +57,7 @@ Ardent Forge has no CI/CD infrastructure. All builds, tests, and deployments are
 | ID  | Exclusion                               | Rationale                                                              |
 | --- | --------------------------------------- | ---------------------------------------------------------------------- |
 | W1  | iOS build pipeline                      | No iOS target configured yet                                           |
-| W2  | Desktop (Linux/macOS/Windows) builds    | Desktop distribution not prioritized                                   |
+| W2  | Native desktop builds                   | Not applicable -- this is a web + mobile app                           |
 | W3  | Play Store production track deployment  | Start with internal/beta; promote manually until confidence is built   |
 | W4  | Automated rollback on migration failure | Requires more sophisticated migration tooling; manual rollback for now |
 

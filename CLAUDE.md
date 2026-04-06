@@ -2,15 +2,16 @@
 
 ## Project: Ardent Forge
 
-A fitness/workout tracking application with a React/TypeScript frontend (Vite, TanStack Router, Tailwind 4, shadcn, Zustand), a Rust/Tauri desktop shell, and a Supabase backend.
+A fitness/workout tracking application with a React/TypeScript frontend (Vite, TanStack Router, Tailwind 4, shadcn, Zustand), a Rust/Tauri mobile shell, and a Supabase backend.
 
-| Stack | Directory | Purpose |
-|---|---|---|
-| React 19 / TypeScript | `src/` | Frontend UI -- components, routing, state |
-| Rust / Tauri 2 | `src-tauri/` | Desktop app shell, offline SQLite, native APIs |
-| Supabase | `supabase/` | Auth, Postgres, RLS policies, migrations |
+| Stack                 | Directory    | Purpose                                       |
+| --------------------- | ------------ | --------------------------------------------- |
+| React 19 / TypeScript | `src/`       | Frontend UI -- components, routing, state     |
+| Rust / Tauri 2        | `src-tauri/` | Mobile app shell, offline SQLite, native APIs |
+| Supabase              | `supabase/`  | Auth, Postgres, RLS policies, migrations      |
 
 **Key directories:**
+
 - `Context/Features/` -- Feature specs, tech plans, implementation steps
 - `Context/Decisions/` -- Architecture Decision Records (ADRs)
 - `Context/Backlog/` -- Ideas and bugs for future work
@@ -234,6 +235,40 @@ Request → Load Skills → Assess Complexity → Route → Execute → Commit
 
 **Success = Skills → Complexity Assessment → `/team-plan` → Approval → `/build` or `/team-build` → Improvement**
 
+## Design Context
+
+### Users
+
+Serious athletes across all training modalities (barbell, CrossFit, rucking, concurrent training) who use the app across the full training lifecycle: pre-session programming at home, real-time logging mid-workout at the gym, and post-session review/analytics. Context ranges from focused planning on a couch to sweaty, glove-wearing, time-pressured gym floor usage.
+
+### Brand Personality
+
+**Commanding, Engineered, Uncompromising.** The interface should evoke commanding confidence -- "I have total control over my training." It is a precision instrument, not a wellness companion. Think machine-shop readout, not lifestyle app.
+
+### Aesthetic Direction
+
+- **Visual tone:** Industrial Brutalism -- cold machined metal lit by molten heat. Dark-only, data-dense, high-contrast.
+- **Design system:** "Iron & Ember" (fully documented in `DESIGN.md`)
+- **Key rules:** Zero border-radius (hard edges only), no divider lines (tonal layering), no shadows (atmospheric density), horizontal bars only (no radial charts), ALL-CAPS for headers/nav/badges
+- **Anti-references:** Soft, pastel, rounded, playful, wellness-oriented, minimalist-chic apps. No emoji, no casual copy, no decorative elements.
+
+### Design Principles
+
+1. **Density is a feature** -- Athletes need more data per screen, not less. Embrace compact layouts with tight spacing for related data and aggressive spacing between sections.
+2. **Tonal depth, not decoration** -- Communicate hierarchy through surface color shifts (`surface-pit` through `surface-steel`), never through borders, shadows, or ornament.
+3. **Molten sparingly** -- The ember/forge orange accent is volatile and attention-commanding. Reserve it for primary CTAs, active states, and key metrics. Overuse dilutes its power.
+4. **Gym-floor usability** -- Touch targets 48px minimum. Interactions must work with sweaty hands and gloves. Instant feedback (brightness tap, no transitions). Minimum taps to log a set.
+5. **Color-blind safe** -- All status indicators, charts, and data visualizations must be distinguishable without relying solely on color. Use shape, pattern, or label differentiation alongside color.
+
+### Accessibility
+
+- WCAG 2.1 AA baseline
+- Gym-specific: large touch targets (48px+), high contrast, glove-friendly interactions
+- Color-blind safe: status badges, chart data, and progress indicators must not rely on color alone
+- Respect `prefers-reduced-motion` where animation is used
+
+---
+
 ## Setup & Development
 
 ```bash
@@ -245,13 +280,15 @@ bun run test:watch   # Vitest (watch mode)
 bun run lint         # ESLint
 ```
 
-**Tauri desktop:**
+**Tauri mobile:**
+
 ```bash
 bun tauri dev        # Dev mode with hot reload
 bun tauri build      # Production build
 ```
 
 **Supabase local:**
+
 ```bash
 npx supabase start   # Local Supabase stack
 npx supabase db push # Apply migrations

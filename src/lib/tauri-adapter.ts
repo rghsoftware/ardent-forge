@@ -310,6 +310,7 @@ interface TauriScheduledSessionResponse {
   session_type: string
   session_template_id: string
   notes: string | null
+  overrides: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -793,6 +794,7 @@ function toScheduledSessionRowFromTauri(r: TauriScheduledSessionResponse): Sched
     session_type: r.session_type,
     session_template_id: r.session_template_id,
     notes: r.notes,
+    overrides: parseJson(r.overrides, 'overrides'),
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -1615,6 +1617,7 @@ export class TauriAdapter implements DataAdapter {
             session_type: s.sessionType,
             session_template_id: s.sessionTemplateId,
             notes: s.notes ?? null,
+            overrides: s.overrides ? JSON.stringify(s.overrides) : null,
           })),
         })),
       })),
@@ -1672,6 +1675,7 @@ export class TauriAdapter implements DataAdapter {
             session_type: s.sessionType,
             session_template_id: s.sessionTemplateId,
             notes: s.notes ?? null,
+            overrides: s.overrides ? JSON.stringify(s.overrides) : null,
           })),
         })),
       })),

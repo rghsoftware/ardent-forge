@@ -10,9 +10,18 @@
     "deep-link:allow-is-registered",
     "deep-link:allow-register",
     "deep-link:allow-unregister",
-    "opener:allow-open-url",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://*",
+          "app": "inAppBrowser"
+        }
+      ]
+    },
     "opener:allow-default-urls",
     "log:allow-log",
-    "barcode-scanner:default"
+    "barcode-scanner:default",
+    "safe-area-insets-css:default"
   ]
 }

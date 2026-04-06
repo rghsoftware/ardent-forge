@@ -10,7 +10,16 @@ import { ChatRealtimeListener } from '@/components/chat-realtime-listener'
 import { resolveConfig } from '@/lib/config-store'
 import { initSupabaseFromConfig } from '@/lib/supabase'
 import { Toaster } from 'sonner'
+import { isTauri } from '@tauri-apps/api/core'
 import './index.css'
+
+// In Tauri, load the safe-area-insets plugin so it injects
+// --safe-area-inset-top / --safe-area-inset-bottom CSS custom properties.
+if (isTauri()) {
+  import('@saurl/tauri-plugin-safe-area-insets-css-api').catch((err) => {
+    console.error('[safe-area] Failed to initialize safe-area-insets plugin:', err)
+  })
+}
 
 const router = createRouter({
   routeTree,

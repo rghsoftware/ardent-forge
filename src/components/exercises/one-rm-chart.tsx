@@ -1,4 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { EmptyState } from '@/components/shared/empty-state'
 import type { OneRepMaxHistory } from '@/domain/types'
 
 interface OneRmChartProps {
@@ -21,9 +22,12 @@ interface ChartDataPoint {
 export function OneRmChart({ data, unit = 'lb' }: OneRmChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center bg-surface-iron p-8">
-        <p className="font-display text-sm text-warm-ash">No 1RM history</p>
-      </div>
+      <EmptyState
+        icon="show_chart"
+        heading="No 1RM history"
+        subtext="Record a max to start tracking progression."
+        className="bg-surface-iron p-8"
+      />
     )
   }
 

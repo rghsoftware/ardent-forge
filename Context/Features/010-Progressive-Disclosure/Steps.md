@@ -85,7 +85,7 @@ export function useMediaQuery(query: string): boolean
 - Returns `true` when the query matches
 - Handles SSR (default `false`)
 - Cleans up listener on unmount
-- Used by HelpTrigger for the 768px desktop/mobile breakpoint
+- Used by HelpTrigger for the 768px large screen/mobile breakpoint
 
 **Acceptance:**
 
@@ -105,7 +105,7 @@ Build the shared responsive help component per R1:
 
 1. Props: `title` (string), `content` (ReactNode), `placement` (`'inline' | 'section'`)
 2. Uses `useMediaQuery('(min-width: 768px)')` to branch rendering
-3. Desktop (>=768px): Radix `Popover` with `PopoverTrigger` (the icon button) and `PopoverContent` styled per spec
+3. Large screens (>=768px): Radix `Popover` with `PopoverTrigger` (the icon button) and `PopoverContent` styled per spec
 4. Mobile (<768px): `Drawer` with `DrawerTrigger` (the icon button) and `DrawerContent` styled per spec
 5. Trigger: `<Icon name="help_outline" size={20} />` with `text-warm-ash hover:text-ember transition-colors`
 6. Content layout: `title` in `font-heading text-sm font-medium text-bone-white`, `content` body in `font-body text-xs text-warm-ash`
@@ -114,7 +114,7 @@ Build the shared responsive help component per R1:
 
 **Acceptance:**
 
-- [ ] TA-14: Opens popover on desktop (>=768px)
+- [ ] TA-14: Opens popover on large screens (>=768px)
 - [ ] TA-15: Opens drawer on mobile (<768px)
 - [ ] Icon uses correct size, color, and hover state
 - [ ] Dismiss works via tap outside, tap icon again, swipe down (drawer)
@@ -326,14 +326,14 @@ Implement R6: HelpTrigger and one-liner for block types.
 3. Below the block type `ToggleGroup`, add a one-liner:
    - `<p className="text-warm-ash font-body text-xs mt-1">{BLOCK_TYPE_HELP[block.blockType].oneLiner}</p>`
    - Only shown when a block type is selected (always true since default is ACCUMULATION)
-4. Apply to both desktop (`BlockEditor`) and mobile (`MobileBlockEditor`) components
+4. Apply to both large screen (`BlockEditor`) and mobile (`MobileBlockEditor`) components
 5. Extract the duplicated `BLOCK_TYPE_STYLES` into `constants.ts` to reduce duplication (opportunistic cleanup since we're already editing both files)
 
 **Acceptance:**
 
 - [ ] TA-16: Block type HelpTrigger shows correct explanation for Accumulation
 - [ ] TA-17: Selecting Intensification shows one-liner below pills
-- [ ] Both desktop and mobile have identical help behavior
+- [ ] Both large screen and mobile have identical help behavior
 
 ---
 
@@ -430,7 +430,7 @@ Validate the full feature against acceptance criteria:
    - EVENT templates in library unaffected
 
 4. **Responsive check:**
-   - HelpTrigger renders popover on desktop, drawer on mobile
+   - HelpTrigger renders popover on large screens, drawer on mobile
    - All builder screens functional at 390px and 2560px widths
 
 **Acceptance:**

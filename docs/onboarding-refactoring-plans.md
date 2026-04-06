@@ -22,8 +22,8 @@ The setup screen at `/setup` has two underline inputs (Supabase URL, Publishable
 
 Create `src/lib/discovery.ts`. A single async function that takes a server URL string and returns the Supabase URL and publishable key, or an error.
 
-| Function | Signature | Behavior |
-|----------|-----------|----------|
+| Function           | Signature                                         | Behavior                                                                                                                                                                                                                                                                 |
+| ------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `discoverInstance` | `(serverUrl: string) => Promise<DiscoveryResult>` | Normalizes input (prepend `https://` if no protocol, strip trailing slash), fetches `${normalized}/.well-known/ardent-forge.json`, validates response shape (must have `version`, `supabase_url`, `supabase_publishable_key`), returns extracted fields or a typed error |
 
 Error types: `NETWORK_ERROR` (fetch failed), `NOT_FOUND` (404 or non-JSON response), `INVALID_RESPONSE` (JSON present but missing required fields).
@@ -38,14 +38,14 @@ Modify the existing `/setup` route component. The current two-field form becomes
 
 **New layout, top to bottom:**
 
-| Element | Notes |
-|---------|-------|
-| Server URL field | Underline input, placeholder "Server address (e.g. forge.example.com)". Replaces the old Supabase URL field position. |
-| "CONNECT" button | `forge` CTA. Calls `discoverInstance`, then pipes result into existing `validateConnection`. |
-| Status area | Reuses existing inline feedback component. New states added for discovery phase ("Looking up server...", "Could not find server configuration at this address."). |
-| QR scan button | Placeholder for Refactor B — render as disabled or hidden until that plan lands. |
-| "OR" divider | `text-industrial` label with horizontal rules on `surface-charcoal`. |
-| "Manual configuration" toggle | Tappable row with chevron. Expands to reveal the existing two-field form (Supabase URL + Publishable Key + secondary "CONNECT" button). |
+| Element                       | Notes                                                                                                                                                             |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server URL field              | Underline input, placeholder "Server address (e.g. forge.example.com)". Replaces the old Supabase URL field position.                                             |
+| "CONNECT" button              | `forge` CTA. Calls `discoverInstance`, then pipes result into existing `validateConnection`.                                                                      |
+| Status area                   | Reuses existing inline feedback component. New states added for discovery phase ("Looking up server...", "Could not find server configuration at this address."). |
+| QR scan button                | Placeholder for Refactor B — render as disabled or hidden until that plan lands.                                                                                  |
+| "OR" divider                  | `text-industrial` label with horizontal rules on `surface-charcoal`.                                                                                              |
+| "Manual configuration" toggle | Tappable row with chevron. Expands to reveal the existing two-field form (Supabase URL + Publishable Key + secondary "CONNECT" button).                           |
 
 **Server URL input behavior:** Accept bare domains (`forge.example.com`), full URLs (`https://forge.example.com`), and URLs with trailing slashes. All normalization happens in `discoverInstance`, not in the UI component.
 
@@ -63,12 +63,12 @@ Response headers: `Content-Type: application/json`, `Cache-Control: public, max-
 
 **Existing Caddyfile routing to preserve:**
 
-| Path | Target |
-|------|--------|
-| `/.well-known/ardent-forge.json` | **NEW** — Caddy responds directly |
-| `/rest/v1/*`, `/auth/v1/*`, `/realtime/v1/*` | Kong (unchanged) |
-| `/studio/*` | Supabase Studio (unchanged) |
-| `/*` | Web app nginx (unchanged) |
+| Path                                         | Target                            |
+| -------------------------------------------- | --------------------------------- |
+| `/.well-known/ardent-forge.json`             | **NEW** — Caddy responds directly |
+| `/rest/v1/*`, `/auth/v1/*`, `/realtime/v1/*` | Kong (unchanged)                  |
+| `/studio/*`                                  | Supabase Studio (unchanged)       |
+| `/*`                                         | Web app nginx (unchanged)         |
 
 #### Ad. Self-hosting docs update
 
@@ -113,12 +113,12 @@ Add a new section to the existing Settings → Backend area, below the current U
 
 **New elements:**
 
-| Element | Design |
-|---------|--------|
-| Section heading | "SHARE THIS SERVER" in `text-industrial` |
-| QR code | `QRCodeSVG` from `qrcode.react`, rendered on `surface-iron` card, centered. Value is `ardentforge://connect?url=${encodeURIComponent(config.supabaseUrl)}&key=${encodeURIComponent(config.publishableKey)}` read from config store. |
-| Copy button | Secondary button: "COPY INVITE LINK" — copies the same `ardentforge://connect?...` string to clipboard. Show success toast on copy. |
-| Explainer | `body-small` Inter, `text-muted`: "Share this with anyone who wants to connect to this server. They will still need to create an account." |
+| Element         | Design                                                                                                                                                                                                                              |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Section heading | "SHARE THIS SERVER" in `text-industrial`                                                                                                                                                                                            |
+| QR code         | `QRCodeSVG` from `qrcode.react`, rendered on `surface-iron` card, centered. Value is `ardentforge://connect?url=${encodeURIComponent(config.supabaseUrl)}&key=${encodeURIComponent(config.publishableKey)}` read from config store. |
+| Copy button     | Secondary button: "COPY INVITE LINK" — copies the same `ardentforge://connect?...` string to clipboard. Show success toast on copy.                                                                                                 |
+| Explainer       | `body-small` Inter, `text-muted`: "Share this with anyone who wants to connect to this server. They will still need to create an account."                                                                                          |
 
 **Conditional rendering:** The section only renders if `configStore.hasConfig()` is true. On the Settings page this is guaranteed (you can't reach Settings without being configured and authenticated), but the guard makes the contract explicit.
 
@@ -133,14 +133,14 @@ Setup: `bun tauri add barcode-scanner` handles both the Rust crate and JS bindin
 Scanning uses `windowed: true` mode, which makes the WebView transparent and renders the camera feed underneath. The app shows a dark semi-transparent overlay with a viewfinder cutout during scanning. On successful scan, call `cancel()` to dismiss the camera and process the result.
 
 ```typescript
-import { scan, cancel, Format } from '@tauri-apps/plugin-barcode-scanner';
+import { scan, cancel, Format } from '@tauri-apps/plugin-barcode-scanner'
 
-const result = await scan({ windowed: true, formats: [Format.QRCode] });
-await cancel();
+const result = await scan({ windowed: true, formats: [Format.QRCode] })
+await cancel()
 // result.content contains the decoded string
 ```
 
-**Tauri mode (desktop):** The barcode scanner plugin does not support desktop platforms. Hide the QR scan button on desktop builds. Desktop users use the server URL field or manual entry.
+**Tauri mode:** The barcode scanner plugin uses the native camera on mobile. On web builds, hide the QR scan button. Web users use the server URL field or manual entry.
 
 **Browser mode:** Replace the camera-based scan with a text input. The icon button opens a small inline field labeled "Paste invite link" that accepts an `ardentforge://connect?...` string. On paste/enter, parse the URL and extract `url` and `key` query parameters.
 
@@ -164,7 +164,7 @@ await cancel();
 - [ ] "COPY INVITE LINK" copies deep link to clipboard with success toast
 - [ ] Explainer text renders in `body-small` / `text-muted`
 - [ ] Setup screen has QR scan button on mobile (opens native camera via barcode scanner plugin)
-- [ ] QR scan button hidden on desktop builds
+- [ ] QR scan button hidden on web builds
 - [ ] Browser mode shows "paste invite link" field instead of camera scan
 - [ ] Scanning/pasting a valid invite link pre-populates and auto-validates
 - [ ] Invalid QR/link content shows error toast
@@ -189,10 +189,10 @@ The `ardentforge://` custom URL scheme is registered via the Tauri deep-link plu
 
 Modify the existing deep link event listener to check the incoming URL path. The current listener handles auth callbacks. Add a branch: if the URL path is `/connect` (or the URL starts with `ardentforge://connect`), extract `url` and `key` query parameters and dispatch to the onboarding handler instead of the auth handler.
 
-| Incoming URL pattern | Handler |
-|----------------------|---------|
-| `ardentforge://connect?url=...&key=...` | **NEW** — onboarding handler (Ca) |
-| `ardentforge://...` (all other paths) | Existing auth redirect handler (unchanged) |
+| Incoming URL pattern                    | Handler                                    |
+| --------------------------------------- | ------------------------------------------ |
+| `ardentforge://connect?url=...&key=...` | **NEW** — onboarding handler (Ca)          |
+| `ardentforge://...` (all other paths)   | Existing auth redirect handler (unchanged) |
 
 **Onboarding handler logic:**
 
@@ -240,7 +240,7 @@ REFACTOR A: Discovery + Server URL Input        (1 day)
     ├── Adds: src/lib/discovery.ts
     └── No dependencies
 
-REFACTOR B: QR Generation + Scan                (1 day)  
+REFACTOR B: QR Generation + Scan                (1 day)
     ├── Modifies: Settings → Backend, /setup route
     ├── Adds: qrcode.react, @tauri-apps/plugin-barcode-scanner
     └── No strict dependencies (can parallel with A)

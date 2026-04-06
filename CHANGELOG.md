@@ -2,6 +2,68 @@
 
 All notable changes to Ardent Forge are documented in this file.
 
+## [1.0.0-beta.7] - 2026-04-05
+
+### Bug Fixes
+
+- Widened CSP connect-src to allow setup flow to reach arbitrary servers (was restricted to \*.supabase.co)
+- Made invite links shareable via HTTPS URLs (app.ardentforge.app/connect) instead of custom scheme only
+- QR codes still use ardentforge:// deep links for direct mobile scanning
+
+---
+
+## [1.0.0-beta.6] - 2026-04-05
+
+### Features
+
+- **New user onboarding system** -- three-layer onboarding with welcome card, contextual hints, nav discovery dots, and guided first-workout flow (Feature 015)
+- **Shared EmptyState component** -- consistent empty states across all authenticated pages with icons, headings, and CTAs
+
+### Improvements
+
+- Overhauled web responsiveness across all authenticated pages (#76)
+- Normalized page titles, headers, and icons across all pages
+- Added design context section to CLAUDE.md for Iron & Ember design system
+- Reordered sidebar nav into logical groups
+- Narrowed scheme field onChange to variant-specific types
+
+### Bug Fixes
+
+- Fixed infinite render loop caused by uncached getPageSessions selector
+- Fixed safe-area insets, barcode scanner, and auth guard on Tauri mobile
+- Skipped env var auto-validation on Tauri mobile builds
+- Added P10-025 through P10-029 test coverage for session builder
+
+---
+
+## [1.0.0-beta.4] - 2026-04-05
+
+### Improvements
+
+- Changed VERSION_CODE calculation to use timestamp for deterministic builds
+
+---
+
+## [1.0.0-beta.3] - 2026-04-05
+
+### Features
+
+- **Per-instance session editing** -- edit scheduled sessions individually within assigned programs (#74)
+- **Program and template builder redesign** -- overhauled builder UI with improved large screen layout and UX (#75)
+- **Exercises library tab** -- added Exercises tab to the Library page
+
+### Improvements
+
+- Improved large screen layout and UX for the program form
+- Release skill for versioning and Play Store deployment
+
+### Bug Fixes
+
+- Set workout title from template name when starting a programmed workout
+- Offset Android versionCode to prevent Play Store conflicts
+
+---
+
 ## [1.0.0-beta.2] - 2026-04-04
 
 ### Features
@@ -57,7 +119,7 @@ All notable changes to Ardent Forge are documented in this file.
 - **Programmed workout logging** -- log workouts against structured programs (Step 13)
 - **Program structure** -- blocks, weeks, and scheduling (Step 11)
 - **Session templates** -- template system with SetScheme editor (#11)
-- **Tauri desktop shell** -- Rust/SQLite backend with offline support (Step 8)
+- **Tauri mobile shell** -- Rust/SQLite backend with offline support (Step 8)
 - **Workout history** -- history list, detail view, and volume trends (#8)
 - **Active workout logging** -- full workout logging UI (Step 6) (#7)
 - **Exercise library & profile** -- exercise browser, user profile, bottom nav (#6)

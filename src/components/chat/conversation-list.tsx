@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useConversations, useUnreadCounts } from '@/hooks/use-chat'
 import { Icon } from '@/components/icon'
+import { EmptyState } from '@/components/shared/empty-state'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -49,18 +50,17 @@ interface ConversationEmptyStateProps {
 
 export function ConversationEmptyState({ onStartConversation }: ConversationEmptyStateProps) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 py-16 text-center">
-      <Icon name="chat" size={48} className="text-warm-ash/30" />
-      <p className="font-heading text-sm text-warm-ash uppercase tracking-wider">
-        No active channels
-      </p>
-      <p className="text-xs text-warm-ash/50 leading-relaxed">
-        Start a conversation with a connection or group member.
-      </p>
-      <Button variant="default" size="sm" onClick={onStartConversation} className="mt-2">
-        Start conversation
-      </Button>
-    </div>
+    <EmptyState
+      icon="chat"
+      heading="No active channels"
+      subtext="Start a conversation with a connection or group member."
+      action={
+        <Button variant="default" size="sm" onClick={onStartConversation} className="mt-2">
+          Start conversation
+        </Button>
+      }
+      className="flex-1"
+    />
   )
 }
 
@@ -140,43 +140,48 @@ export function ConversationList() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-6 pb-4">
-        <h1 className="font-heading text-sm uppercase tracking-wider text-bone-white">Comms</h1>
-        <Button variant="default" size="sm" onClick={handleNewConversation}>
-          New
-        </Button>
-      </div>
+      <div className="mx-auto w-full max-w-5xl flex-1 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pt-6 pb-4 md:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <Icon name="chat" size={24} className="text-warm-ash" />
+            <h1 className="font-display text-2xl font-medium text-bone-white">Comms</h1>
+          </div>
+          <Button variant="default" size="sm" onClick={handleNewConversation}>
+            New
+          </Button>
+        </div>
 
-      {/* Content */}
-      {isLoading ? (
-        <ConversationListSkeleton />
-      ) : isError ? (
-        <div className="flex flex-col items-center justify-center px-4 py-16">
-          <Icon name="cloud_off" size={36} className="mb-3 text-warm-ash/60" />
-          <p className="font-heading text-sm text-bone-white">Failed to load conversations</p>
-          <p className="mt-2 text-xs text-warm-ash/50">Check your connection and try again.</p>
-        </div>
-      ) : !conversations || conversations.length === 0 ? (
-        <ConversationEmptyState onStartConversation={handleNewConversation} />
-      ) : (
-        <div className="flex-1">
-          {conversations.map((conversation, i) => (
-            <ConversationRow
-              key={conversation.id}
-              conversation={conversation}
-              index={i}
-              unreadCount={unreadCounts?.get(conversation.id) ?? 0}
-              onClick={() =>
-                navigate({
-                  to: '/comms/$conversationId',
-                  params: { conversationId: conversation.id },
-                })
-              }
-            />
-          ))}
-        </div>
-      )}
+        {/* Content */}
+        {isLoading ? (
+          <ConversationListSkeleton />
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center px-4 py-16">
+            <Icon name="cloud_off" size={36} className="mb-3 text-warm-ash/60" />
+            <p className="font-display text-sm text-warning-flare">Failed to load conversations</p>
+            <p className="mt-2 text-xs text-warm-ash/50">Check your connection and try again.</p>
+          </div>
+        ) : !conversations || conversations.length === 0 ? (
+          <ConversationEmptyState onStartConversation={handleNewConversation} />
+        ) : (
+          <div className="flex-1">
+            {conversations.map((conversation, i) => (
+              <ConversationRow
+                key={conversation.id}
+                conversation={conversation}
+                index={i}
+                unreadCount={unreadCounts?.get(conversation.id) ?? 0}
+                onClick={() =>
+                  navigate({
+                    to: '/comms/$conversationId',
+                    params: { conversationId: conversation.id },
+                  })
+                }
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* NewConversationSheet */}
       <NewConversationSheet

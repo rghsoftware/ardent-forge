@@ -3,6 +3,7 @@ import { useVaultSummary } from '@/hooks/use-analytics'
 import { useUserProfile } from '@/hooks/use-user-profile'
 import { VaultMetricCard } from './vault-metric-card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/shared/empty-state'
 
 function formatVolume(volumeLb: number, isMetric: boolean): string {
   if (isMetric) {
@@ -39,7 +40,14 @@ export function VaultOverview() {
   }
 
   if (!summary) {
-    return null
+    return (
+      <EmptyState
+        icon="monitoring"
+        heading="No analytics yet."
+        subtext="Complete your first workout and your metrics will populate here."
+        className="py-12"
+      />
+    )
   }
 
   return (
