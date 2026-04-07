@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useForm, useFieldArray, Controller, type Control } from 'react-hook-form'
+import { useForm, useFieldArray, useFormState, Controller, type Control } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
@@ -21,6 +21,13 @@ import { AddExerciseSheet } from '@/components/workout/add-exercise-sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { groupTypeSchema } from '@/domain/types/session'
 import { setTypeSchema } from '@/domain/types/workout-log'
 import type {
@@ -136,16 +143,23 @@ type FormValues = z.infer<typeof formSchema>
 // Helpers
 // ---------------------------------------------------------------------------
 
-const GROUP_TYPE_OPTIONS: GroupType[] = [
+const GROUP_TYPE_OPTIONS = [
   'STRAIGHT_SETS',
   'SUPERSET',
   'CIRCUIT',
   'EMOM',
   'AMRAP',
   'COUPLET',
-]
+] as const satisfies readonly GroupType[]
 
-const SET_TYPE_OPTIONS: SetType[] = ['WORKING', 'WARMUP', 'DROP', 'AMRAP', 'PEAK', 'BACKOFF']
+const SET_TYPE_OPTIONS = [
+  'WORKING',
+  'WARMUP',
+  'DROP',
+  'AMRAP',
+  'PEAK',
+  'BACKOFF',
+] as const satisfies readonly SetType[]
 
 function isoToLocalInput(iso: string | undefined): string {
   if (!iso) return ''
@@ -162,7 +176,9 @@ function localInputToIso(local: string): string {
 }
 
 function nowLocalInput(): string {
-  return isoToLocalInput(new Date().toISOString())
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function makeTempId(): string {
@@ -270,6 +286,18 @@ function SetRows({ control, groupIndex, activityIndex }: SetRowsProps) {
     control,
     name: `groups.${groupIndex}.activities.${activityIndex}.sets` as const,
   })
+  const { errors } = useFormState({ control })
+  const groupsErrors = errors.groups as
+    | Array<{
+        activities?: Array<{
+          sets?: Array<{
+            completed?: { message?: string }
+            root?: { message?: string }
+          }>
+        }>
+      }>
+    | undefined
+  const setErrors = groupsErrors?.[groupIndex]?.activities?.[activityIndex]?.sets
 
   const addSet = () => {
     append({
@@ -292,113 +320,120 @@ function SetRows({ control, groupIndex, activityIndex }: SetRowsProps) {
         <div className="col-span-2">Done</div>
         <div className="col-span-1" />
       </div>
-      {fields.map((field, setIndex) => (
-        <div
-          key={field.id}
-          className={`grid grid-cols-12 gap-1 items-center px-1 py-1 ${
-            setIndex % 2 === 0 ? 'bg-surface-iron' : 'bg-surface-charcoal'
-          }`}
-        >
-          <Controller
-            control={control}
-            name={`groups.${groupIndex}.activities.${activityIndex}.sets.${setIndex}.setNumber`}
-            render={({ field: f }) => (
-              <span className="col-span-1 text-xs text-warm-ash tabular-nums">{f.value}</span>
-            )}
-          />
-          <Controller
-            control={control}
-            name={`groups.${groupIndex}.activities.${activityIndex}.sets.${setIndex}.setType`}
-            render={({ field: f }) => (
-              <select
-                {...f}
-                className="col-span-2 h-12 bg-surface-pit text-bone-white text-xs px-1"
-              >
-                {SET_TYPE_OPTIONS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            )}
-          />
-          <Controller
-            control={control}
-            name={`groups.${groupIndex}.activities.${activityIndex}.sets.${setIndex}.actualReps`}
-            render={({ field: f }) => (
-              <input
-                type="number"
-                inputMode="numeric"
-                value={f.value ?? ''}
-                onChange={(e) =>
-                  f.onChange(e.target.value === '' ? undefined : Number(e.target.value))
-                }
-                onBlur={f.onBlur}
-                className="col-span-2 h-12 bg-surface-pit text-bone-white text-sm px-2 tabular-nums"
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name={`groups.${groupIndex}.activities.${activityIndex}.sets.${setIndex}.actualWeight`}
-            render={({ field: f }) => (
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.5"
-                value={f.value ?? ''}
-                onChange={(e) =>
-                  f.onChange(e.target.value === '' ? undefined : Number(e.target.value))
-                }
-                onBlur={f.onBlur}
-                className="col-span-2 h-12 bg-surface-pit text-bone-white text-sm px-2 tabular-nums"
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name={`groups.${groupIndex}.activities.${activityIndex}.sets.${setIndex}.rpe`}
-            render={({ field: f }) => (
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.5"
-                min={1}
-                max={10}
-                value={f.value ?? ''}
-                onChange={(e) =>
-                  f.onChange(e.target.value === '' ? undefined : Number(e.target.value))
-                }
-                onBlur={f.onBlur}
-                className="col-span-2 h-12 bg-surface-pit text-bone-white text-sm px-2 tabular-nums"
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name={`groups.${groupIndex}.activities.${activityIndex}.sets.${setIndex}.completed`}
-            render={({ field: f }) => (
-              <label className="col-span-2 flex items-center justify-center h-12">
-                <input
-                  type="checkbox"
-                  checked={f.value}
-                  onChange={(e) => f.onChange(e.target.checked)}
-                  className="h-6 w-6 accent-ember"
-                  aria-label="Set completed"
-                />
-              </label>
-            )}
-          />
-          <button
-            type="button"
-            onClick={() => remove(setIndex)}
-            aria-label="Remove set"
-            className="col-span-1 h-12 w-12 flex items-center justify-center text-warm-ash hover:text-warning-flare"
+      {fields.map((field, setIndex) => {
+        const setError =
+          setErrors?.[setIndex]?.completed?.message ?? setErrors?.[setIndex]?.root?.message
+        return (
+          <div
+            key={field.id}
+            className={`grid grid-cols-12 gap-1 items-center px-1 py-1 ${
+              setIndex % 2 === 0 ? 'bg-surface-iron' : 'bg-surface-charcoal'
+            }`}
           >
-            <span className="material-symbols-outlined text-base">delete</span>
-          </button>
-        </div>
-      ))}
+            <Controller
+              control={control}
+              name={`groups.${groupIndex}.activities.${activityIndex}.sets.${setIndex}.setNumber`}
+              render={({ field: f }) => (
+                <span className="col-span-1 text-xs text-warm-ash tabular-nums">{f.value}</span>
+              )}
+            />
+            <Controller
+              control={control}
+              name={`groups.${groupIndex}.activities.${activityIndex}.sets.${setIndex}.setType`}
+              render={({ field: f }) => (
+                <Select value={f.value} onValueChange={(v) => f.onChange(v as SetType)}>
+                  <SelectTrigger className="col-span-2 h-12 bg-surface-pit text-bone-white text-xs px-1 rounded-none border-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-surface-gunmetal">
+                    {SET_TYPE_OPTIONS.map((t) => (
+                      <SelectItem key={t} value={t} className="text-xs">
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <Controller
+              control={control}
+              name={`groups.${groupIndex}.activities.${activityIndex}.sets.${setIndex}.actualReps`}
+              render={({ field: f }) => (
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={f.value ?? ''}
+                  onChange={(e) =>
+                    f.onChange(e.target.value === '' ? undefined : Number(e.target.value))
+                  }
+                  onBlur={f.onBlur}
+                  className="col-span-2 h-12 bg-surface-pit text-bone-white text-sm px-2 tabular-nums"
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name={`groups.${groupIndex}.activities.${activityIndex}.sets.${setIndex}.actualWeight`}
+              render={({ field: f }) => (
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  value={f.value ?? ''}
+                  onChange={(e) =>
+                    f.onChange(e.target.value === '' ? undefined : Number(e.target.value))
+                  }
+                  onBlur={f.onBlur}
+                  className="col-span-2 h-12 bg-surface-pit text-bone-white text-sm px-2 tabular-nums"
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name={`groups.${groupIndex}.activities.${activityIndex}.sets.${setIndex}.rpe`}
+              render={({ field: f }) => (
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  min={1}
+                  max={10}
+                  value={f.value ?? ''}
+                  onChange={(e) =>
+                    f.onChange(e.target.value === '' ? undefined : Number(e.target.value))
+                  }
+                  onBlur={f.onBlur}
+                  className="col-span-2 h-12 bg-surface-pit text-bone-white text-sm px-2 tabular-nums"
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name={`groups.${groupIndex}.activities.${activityIndex}.sets.${setIndex}.completed`}
+              render={({ field: f }) => (
+                <label className="col-span-2 flex items-center justify-center h-12">
+                  <input
+                    type="checkbox"
+                    checked={f.value}
+                    onChange={(e) => f.onChange(e.target.checked)}
+                    className="h-6 w-6 accent-ember"
+                    aria-label="Set completed"
+                  />
+                </label>
+              )}
+            />
+            <button
+              type="button"
+              onClick={() => remove(setIndex)}
+              aria-label="Remove set"
+              className="col-span-1 h-12 w-12 flex items-center justify-center text-warm-ash hover:text-warning-flare"
+            >
+              <span className="material-symbols-outlined text-base">delete</span>
+            </button>
+            {setError && <p className="col-span-12 text-xs text-warning-flare px-1">{setError}</p>}
+          </div>
+        )
+      })}
       <Button
         type="button"
         variant="outline"
@@ -498,8 +533,8 @@ function ActivityRows({ control, groupIndex, exercises, userId }: ActivityRowsPr
 // ---------------------------------------------------------------------------
 
 export function ManualWorkoutForm({ mode, initialValue, userId, onSaved }: ManualWorkoutFormProps) {
-  const { data: exercises = [] } = useExercises()
-  const { data: profile } = useUserProfile(userId)
+  const { data: exercises = [], isError: exercisesError } = useExercises()
+  const { data: profile, isError: profileError } = useUserProfile(userId)
   const weightUnit: WeightUnit = profile?.preferredUnits === 'METRIC' ? 'kg' : 'lb'
   const distanceUnit: DistanceUnit = profile?.preferredUnits === 'METRIC' ? 'km' : 'mi'
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -627,30 +662,34 @@ export function ManualWorkoutForm({ mode, initialValue, userId, onSaved }: Manua
         const workoutLogId = initialValue.log.id
 
         // 1. Update top-level workout log
-        await updateWorkoutLog.mutateAsync({
+        const updatedLog: WorkoutLog = {
           ...initialValue.log,
           ...buildLogPayload(values, initialValue.log),
           id: workoutLogId,
-        } as WorkoutLog)
+          createdAt: initialValue.log.createdAt,
+          updatedAt: initialValue.log.updatedAt,
+        }
+        await updateWorkoutLog.mutateAsync(updatedLog)
 
         // Index initial entities by id for diff
         const initialGroupIds = new Set(initialValue.groups.map((g) => g.id))
         const initialActivityIds = new Set(initialValue.activities.map((a) => a.id))
         const initialSetIds = new Set(initialValue.sets.map((s) => s.id))
 
-        const formGroupIds = new Set(values.groups.map((g) => g.id).filter(Boolean) as string[])
+        const isString = (id: string | undefined): id is string => Boolean(id)
+        const formGroupIds = new Set(values.groups.map((g) => g.id).filter(isString))
         const formActivityIds = new Set(
           values.groups
             .flatMap((g) => g.activities)
             .map((a) => a.id)
-            .filter(Boolean) as string[],
+            .filter(isString),
         )
         const formSetIds = new Set(
           values.groups
             .flatMap((g) => g.activities)
             .flatMap((a) => a.sets)
             .map((s) => s.id)
-            .filter(Boolean) as string[],
+            .filter(isString),
         )
 
         // 2. Delete removed sets, then activities, then groups (children first)
@@ -777,10 +816,11 @@ export function ManualWorkoutForm({ mode, initialValue, userId, onSaved }: Manua
         onSaved(workoutLogId)
       } catch (err) {
         console.error('[manual-workout-form] Save failed:', err)
+        const baseMsg = err instanceof Error ? err.message : 'Failed to save workout.'
         setSaveError(
-          err instanceof Error
-            ? err.message
-            : 'Failed to save workout. Check your connection and try again.',
+          mode === 'edit'
+            ? `${baseMsg} Some changes may have been partially applied. Reload to see the current state.`
+            : `${baseMsg} Check your connection and try again.`,
         )
       } finally {
         setIsSaving(false)
@@ -808,14 +848,27 @@ export function ManualWorkoutForm({ mode, initialValue, userId, onSaved }: Manua
     ],
   )
 
+  if (exercisesError || profileError) {
+    return (
+      <div role="alert" className="flex flex-col gap-3 bg-surface-iron p-4">
+        <p className="text-sm text-warning-flare">
+          Failed to load {exercisesError ? 'exercises' : 'your profile'}. The form needs both before
+          you can log a workout safely.
+        </p>
+        <Button type="button" variant="outline" onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </div>
+    )
+  }
+
+  const submitLabel = isSaving ? 'Saving...' : mode === 'create' ? 'Save workout' : 'Save changes'
+
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="flex flex-col gap-6 pb-12 motion-safe:transition-none"
-    >
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6 pb-12">
       {/* Session meta */}
       <section className="flex flex-col gap-3">
-        <h2 className="font-heading text-xs uppercase tracking-widest text-warm-ash/60">SESSION</h2>
+        <h2 className="font-heading text-lg text-bone-white">Session</h2>
         <div className="flex flex-col gap-2">
           <Label htmlFor="title">Title</Label>
           <Input id="title" {...register('title')} placeholder="Optional title" className="h-12" />
@@ -897,6 +950,7 @@ export function ManualWorkoutForm({ mode, initialValue, userId, onSaved }: Manua
             id="overallNotes"
             {...register('overallNotes')}
             rows={3}
+            maxLength={2000}
             className="bg-surface-pit text-bone-white px-3 py-2 text-sm"
           />
         </div>
@@ -905,9 +959,7 @@ export function ManualWorkoutForm({ mode, initialValue, userId, onSaved }: Manua
       {/* Blocks */}
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-heading text-xs uppercase tracking-widest text-warm-ash/60">
-            BLOCKS
-          </h2>
+          <h2 className="font-heading text-lg text-bone-white">Blocks</h2>
           <Button
             type="button"
             variant="outline"
@@ -918,8 +970,10 @@ export function ManualWorkoutForm({ mode, initialValue, userId, onSaved }: Manua
             Add block
           </Button>
         </div>
-        {errors.groups?.message && (
-          <p className="text-xs text-warning-flare">{errors.groups.message}</p>
+        {(errors.groups?.root?.message ?? errors.groups?.message) && (
+          <p className="text-xs text-warning-flare">
+            {errors.groups?.root?.message ?? errors.groups?.message}
+          </p>
         )}
         {groupFields.map((group, groupIndex) => (
           <div key={group.id} className="bg-surface-iron p-3 flex flex-col gap-2">
@@ -928,13 +982,18 @@ export function ManualWorkoutForm({ mode, initialValue, userId, onSaved }: Manua
                 control={control}
                 name={`groups.${groupIndex}.groupType`}
                 render={({ field }) => (
-                  <select {...field} className="h-12 bg-surface-pit text-bone-white text-xs px-2">
-                    {GROUP_TYPE_OPTIONS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={field.value} onValueChange={(v) => field.onChange(v as GroupType)}>
+                    <SelectTrigger className="h-12 bg-surface-pit text-bone-white text-xs px-2 rounded-none border-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-surface-gunmetal">
+                      {GROUP_TYPE_OPTIONS.map((t) => (
+                        <SelectItem key={t} value={t} className="text-xs">
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               />
               <button
@@ -964,7 +1023,7 @@ export function ManualWorkoutForm({ mode, initialValue, userId, onSaved }: Manua
 
       <div className="flex items-center gap-3">
         <Button type="submit" variant="molten" disabled={isSaving} className="min-h-[48px] flex-1">
-          {isSaving ? 'Saving...' : mode === 'create' ? 'Save workout' : 'Save changes'}
+          {submitLabel}
         </Button>
       </div>
     </form>

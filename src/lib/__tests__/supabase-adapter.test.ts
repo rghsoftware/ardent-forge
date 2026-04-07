@@ -74,6 +74,7 @@ const workoutLogRow: WorkoutLogRow = {
   perceived_difficulty: 7,
   bodyweight_at_session: { value: 185, unit: 'lb' },
   overall_notes: 'Felt strong today',
+  note_tags: [],
   event_metadata: null,
   paused_at: null,
   total_paused_ms: 0,
@@ -100,6 +101,7 @@ const activityRow: LoggedActivityRow = {
   exercise_id: 'ex-001',
   ordinal: 1,
   notes: 'Focus on depth',
+  note_tags: [],
   created_at: now,
   updated_at: now,
 }
@@ -122,6 +124,7 @@ const setRow: LoggedSetRow = {
   rpe: 8,
   completed: true,
   notes: 'Solid set',
+  note_tags: [],
   created_at: now,
   updated_at: now,
 }

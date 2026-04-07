@@ -133,6 +133,7 @@ const workoutLogRowFull: WorkoutLogRow = {
   perceived_difficulty: 7,
   bodyweight_at_session: { value: 185, unit: 'lb' },
   overall_notes: 'Felt strong today',
+  note_tags: [],
   event_metadata: null,
   paused_at: null,
   total_paused_ms: 0,
@@ -151,6 +152,7 @@ const workoutLogRowNulls: WorkoutLogRow = {
   perceived_difficulty: null,
   bodyweight_at_session: null,
   overall_notes: null,
+  note_tags: [],
   event_metadata: null,
   paused_at: null,
   total_paused_ms: 0,
@@ -197,6 +199,7 @@ const activityRowFull: LoggedActivityRow = {
   exercise_id: 'ex-squat-001',
   ordinal: 1,
   notes: 'Focus on depth',
+  note_tags: [],
   created_at: now,
   updated_at: now,
 }
@@ -208,6 +211,7 @@ const activityRowNulls: LoggedActivityRow = {
   exercise_id: 'ex-pushup-002',
   ordinal: 2,
   notes: null,
+  note_tags: [],
   created_at: now,
   updated_at: now,
 }
@@ -234,6 +238,7 @@ const setRowFull: LoggedSetRow = {
   rpe: 8,
   completed: true,
   notes: 'Solid set',
+  note_tags: [],
   created_at: now,
   updated_at: now,
 }
@@ -256,6 +261,7 @@ const setRowNulls: LoggedSetRow = {
   rpe: null,
   completed: false,
   notes: null,
+  note_tags: [],
   created_at: now,
   updated_at: now,
 }

@@ -16,6 +16,7 @@ function makeSummary(id: string, overrides: Partial<WorkoutLog>): WorkoutLogSumm
       ...overrides,
     } as WorkoutLog,
     exerciseNames: [],
+    exerciseCount: 0,
     setCount: 0,
   }
 }
