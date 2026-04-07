@@ -34,6 +34,7 @@ interface BlockListProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onPreviewSession?: (sessionTemplateId: string) => void
   onCopyWeek?: (sourceWeekClientId: string) => void
   showWeekends: boolean
   fieldErrors?: ValidationError[]
@@ -43,6 +44,7 @@ export function BlockList({
   draft,
   onUpdate,
   onPickSession,
+  onPreviewSession,
   onCopyWeek,
   showWeekends,
   fieldErrors = [],
@@ -102,6 +104,7 @@ export function BlockList({
               draft={draft}
               onUpdate={onUpdate}
               onPickSession={onPickSession}
+              onPreviewSession={onPreviewSession}
               onCopyWeek={onCopyWeek}
               showWeekends={showWeekends}
               isNew={block.clientId === newBlockId}

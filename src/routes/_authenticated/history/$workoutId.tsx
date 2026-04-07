@@ -125,7 +125,18 @@ function WorkoutDetailPage() {
   if (log.eventMetadata) {
     return (
       <div className="min-h-[100dvh] bg-surface-anvil">
-        <div className="mx-auto max-w-5xl md:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl px-4 md:px-6 lg:px-8">
+        <div className="flex justify-end pt-3">
+          <Link
+            to="/log/$workoutId/edit"
+            params={{ workoutId }}
+            className="inline-flex items-center gap-1 min-h-[48px] px-3 text-xs uppercase tracking-wider text-ember hover:text-bone-white"
+            aria-label="Edit workout"
+          >
+            <Icon name="edit" size={16} />
+            Edit
+          </Link>
+        </div>
           <WorkoutDetailHeader
             log={log}
             allSets={sets}
@@ -168,7 +179,18 @@ function WorkoutDetailPage() {
 
   return (
     <div className="min-h-[100dvh] bg-surface-anvil">
-      <div className="mx-auto max-w-5xl md:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl px-4 md:px-6 lg:px-8">
+        <div className="flex justify-end pt-3">
+          <Link
+            to="/log/$workoutId/edit"
+            params={{ workoutId }}
+            className="inline-flex items-center gap-1 min-h-[48px] px-3 text-xs uppercase tracking-wider text-ember hover:text-bone-white"
+            aria-label="Edit workout"
+          >
+            <Icon name="edit" size={16} />
+            Edit
+          </Link>
+        </div>
         <WorkoutDetailHeader
           log={log}
           allSets={sets}

@@ -63,3 +63,9 @@ The `OneRmManagement` component was removed from the profile page during the res
 
 **Added:** 2026-04-05
 **Resolution:** Reordered sidebar nav into logical groups: core tools, reference, social. Commit `1b359d2`.
+
+### Split log.$workoutId route into three components
+**Added:** 2026-04-06
+**Context:** `src/routes/_authenticated/log.$workoutId.tsx` is ~800 lines with three distinct rendering paths (event workout, strength workout, post-workout summary) toggled by conditional branches. Splitting into separate route components would clarify ownership, shrink the file, and isolate state hoisting per path.
+**Related:** `src/routes/_authenticated/log.$workoutId.tsx`
+**Priority:** Medium

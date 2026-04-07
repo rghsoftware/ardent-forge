@@ -460,6 +460,65 @@ export class SupabaseAdapter implements DataAdapter {
     return toLoggedSet(data as LoggedSetRow)
   }
 
+  async deleteLoggedSet(id: string): Promise<void> {
+    try {
+      const { error } = await this.client.from('logged_sets').delete().eq('id', id)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] deleteLoggedSet failed:', { id, err })
+      throw err
+    }
+  }
+
+  async updateLoggedActivity(activity: LoggedActivity, userId: string): Promise<LoggedActivity> {
+    const row = fromLoggedActivity(activity, userId)
+
+    const { data, error } = await this.client
+      .from('logged_activities')
+      .update(row)
+      .eq('id', activity.id)
+      .select()
+      .single()
+    if (error) throw error
+    return toLoggedActivity(data as LoggedActivityRow)
+  }
+
+  async deleteLoggedActivity(id: string): Promise<void> {
+    try {
+      const { error } = await this.client.from('logged_activities').delete().eq('id', id)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] deleteLoggedActivity failed:', { id, err })
+      throw err
+    }
+  }
+
+  async updateLoggedActivityGroup(
+    group: LoggedActivityGroup,
+    userId: string,
+  ): Promise<LoggedActivityGroup> {
+    const row = fromLoggedActivityGroup(group, userId)
+
+    const { data, error } = await this.client
+      .from('logged_activity_groups')
+      .update(row)
+      .eq('id', group.id)
+      .select()
+      .single()
+    if (error) throw error
+    return toLoggedActivityGroup(data as LoggedActivityGroupRow)
+  }
+
+  async deleteLoggedActivityGroup(id: string): Promise<void> {
+    try {
+      const { error } = await this.client.from('logged_activity_groups').delete().eq('id', id)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] deleteLoggedActivityGroup failed:', { id, err })
+      throw err
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // User profile operations
   // ---------------------------------------------------------------------------

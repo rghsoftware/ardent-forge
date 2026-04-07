@@ -28,6 +28,7 @@ describe('WorkoutSummary', () => {
     userId: 'user-1',
     startedAt: '2026-01-15T10:00:00.000Z',
     completedAt: '2026-01-15T11:05:00.000Z',
+    totalPausedMs: 0,
   }
 
   const activityWithSets: LoggedActivityWithSets = {

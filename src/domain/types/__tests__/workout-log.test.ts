@@ -7,6 +7,7 @@ const baseWorkoutLog = {
   updatedAt: '2025-01-15T15:30:00Z',
   userId: 'user-1',
   startedAt: '2025-01-15T14:00:00Z',
+  totalPausedMs: 0,
 }
 
 // Minimal base for a valid LoggedSet (not completed, so no actual measurements required)

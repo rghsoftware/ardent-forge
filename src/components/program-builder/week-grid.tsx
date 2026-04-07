@@ -19,6 +19,7 @@ interface WeekGridProps {
   blockClientId: string
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onPreviewSession?: (sessionTemplateId: string) => void
   onCopyWeek: (sourceWeekClientId: string) => void
   showWeekends: boolean
   isNew?: boolean
@@ -31,6 +32,7 @@ export function WeekGrid({
   blockClientId,
   onUpdate,
   onPickSession,
+  onPreviewSession,
   onCopyWeek,
   showWeekends,
   isNew,
@@ -142,6 +144,7 @@ export function WeekGrid({
             draft={draft}
             onUpdate={onUpdate}
             onPickSession={onPickSession}
+            onPreview={onPreviewSession}
           />
         ))}
       </div>

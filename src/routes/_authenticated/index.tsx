@@ -6,6 +6,8 @@ import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useActiveProgram, useProgramFull } from '@/hooks/use-programs'
 import { CrashRecoveryDialog } from '@/components/workout/crash-recovery-dialog'
 import { ProgramSessionCard } from '@/components/today/program-session-card'
+import { PausedSessionCard } from '@/components/today/paused-session-card'
+import { ActiveSessionCard } from '@/components/today/active-session-card'
 import { TimeTravelSheet } from '@/components/program/time-travel-sheet'
 import { EventCountdownBadge } from '@/components/event-builder/event-countdown-badge'
 import { GhostSessionPreview } from '@/components/shared/ghost-session-preview'
@@ -190,6 +192,15 @@ function TodayPage() {
         {/* Crash recovery check */}
         <CrashRecoveryDialog userId={userId} />
 
+        {/* Active and paused session cards -- top of page so navigated-away
+            sessions stay visible. Both return null when not applicable. */}
+        {userId && (
+          <div className="flex flex-col gap-4 pt-6">
+            <ActiveSessionCard />
+            <PausedSessionCard userId={userId} />
+          </div>
+        )}
+
         {/* Data fetch error banner */}
         {hasDataError && (
           <div
@@ -239,6 +250,7 @@ function TodayPage() {
                   totalWeeks={totalWeeksInBlock}
                   sessionName={todayContext?.session?.dayLabel}
                   sessionType={todayContext?.session?.sessionType}
+                  sessionTemplateId={todayContext?.session?.sessionTemplateId ?? null}
                   onStartSession={handleStartProgrammedSession}
                   onTimeTravel={hasActiveProgram ? () => setTimeTravelOpen(true) : undefined}
                   isLoading={isProgramLoading}
@@ -303,6 +315,13 @@ function TodayPage() {
                 {startError && (
                   <p className="text-xs text-warning-flare text-center">{startError}</p>
                 )}
+                <Button
+                  variant="ghost"
+                  className="w-full h-12 text-xs font-medium"
+                  onClick={() => navigate({ to: '/log/new' })}
+                >
+                  Log past workout
+                </Button>
               </div>
             </div>
           </div>

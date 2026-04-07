@@ -17,6 +17,7 @@ interface SessionSlotProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onPreview?: (sessionTemplateId: string) => void
 }
 
 export function SessionSlot({
@@ -26,6 +27,7 @@ export function SessionSlot({
   draft,
   onUpdate,
   onPickSession,
+  onPreview,
 }: SessionSlotProps) {
   const [animating, setAnimating] = useState(false)
   const [prevSessionId, setPrevSessionId] = useState(session?.clientId)
@@ -66,6 +68,22 @@ export function SessionSlot({
     }
   }, [session, weekClientId, dayOfWeek, onPickSession])
 
+  const handlePreview = useCallback(() => {
+    if (session && onPreview) {
+      onPreview(session.sessionTemplateId)
+    }
+  }, [session, onPreview])
+
+  const handlePreviewKey = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        handlePreview()
+      }
+    },
+    [handlePreview],
+  )
+
   if (!session) {
     return (
       <button
@@ -90,6 +108,10 @@ export function SessionSlot({
 
   return (
     <div
+      role={onPreview ? 'button' : undefined}
+      tabIndex={onPreview ? 0 : undefined}
+      onClick={onPreview ? handlePreview : undefined}
+      onKeyDown={onPreview ? handlePreviewKey : undefined}
       className={`group relative flex min-h-[68px] cursor-pointer flex-col justify-center p-2 transition-colors ${
         SESSION_BORDER[session.sessionType] ?? ''
       } ${

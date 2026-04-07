@@ -7,8 +7,8 @@ use uuid::Uuid;
 
 use crate::error::AppError;
 use crate::models::{
-    BlockRow, BlockWeekRow, ProgramActivationRow, ProgramFull, ProgramRow,
-    ProgramWeekStatusRow, ScheduledSessionRow,
+    BlockRow, BlockWeekRow, ProgramActivationRow, ProgramFull, ProgramRow, ProgramWeekStatusRow,
+    ScheduledSessionRow,
 };
 use crate::utils::now_unix;
 
