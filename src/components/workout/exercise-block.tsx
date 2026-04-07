@@ -1,6 +1,7 @@
 import { SetRow } from '@/components/workout/set-row'
 import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useOnboardingStore } from '@/stores/onboarding-store'
+import { cn } from '@/lib/utils'
 import type { SetType } from '@/domain/types'
 
 interface SetRowData {
@@ -26,6 +27,7 @@ interface ExerciseBlockProps {
   ) => void
   isConfirming?: boolean
   isBodyweight?: boolean
+  isActive?: boolean
 }
 
 export function ExerciseBlock({
@@ -35,15 +37,30 @@ export function ExerciseBlock({
   onConfirmSet,
   isConfirming = false,
   isBodyweight = false,
+  isActive = true,
 }: ExerciseBlockProps) {
   const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
   const hasPrescribed = sets.some((s) => s.prescribedWeight != null || s.prescribedReps != null)
   const noSetsConfirmed = !firstWorkoutCompleted && sets.every((s) => !s.confirmed)
 
   return (
-    <section className="bg-surface-iron" aria-label={`${exerciseName} exercise`}>
+    <section
+      aria-label={`${exerciseName} exercise`}
+      data-active={isActive ? 'true' : 'false'}
+      className={cn(
+        'transition-colors duration-300 ease-out',
+        isActive ? 'bg-surface-iron' : 'bg-surface-pit',
+      )}
+    >
       <div className="px-4 pt-4 pb-2">
-        <h3 className="font-display text-xs font-medium text-ember">{exerciseName}</h3>
+        <h3
+          className={cn(
+            'font-display text-xs font-medium transition-colors duration-300 ease-out',
+            isActive ? 'text-ember' : 'text-ember/40',
+          )}
+        >
+          {exerciseName}
+        </h3>
       </div>
 
       {/* Column headers */}

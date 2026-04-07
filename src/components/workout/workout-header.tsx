@@ -1,25 +1,20 @@
-import { Button } from '@/components/ui/button'
-import { formatDuration } from '@/lib/format-duration'
 import { cn } from '@/lib/utils'
+import { formatDuration } from '@/lib/format-duration'
 
 interface WorkoutHeaderProps {
   elapsedSeconds: number
-  onFinish: () => void
-  isFinishing?: boolean
-  canFinish?: boolean
   isPaused?: boolean
   onPause?: () => void
   onResume?: () => void
+  actions?: React.ReactNode
 }
 
 export function WorkoutHeader({
   elapsedSeconds,
-  onFinish,
-  isFinishing = false,
-  canFinish = false,
   isPaused = false,
   onPause,
   onResume,
+  actions,
 }: WorkoutHeaderProps) {
   const handlePauseToggle = () => {
     if (isPaused) {
@@ -30,7 +25,7 @@ export function WorkoutHeader({
   }
 
   return (
-    <header className="heat-blur sticky top-0 z-50 flex min-h-14 items-center justify-between px-4 py-2">
+    <header className="heat-blur flex min-h-14 items-center justify-between px-4 py-2">
       <div className="flex items-center gap-3">
         <span className="material-symbols-outlined text-ember text-xl">timer</span>
         <span
@@ -48,6 +43,7 @@ export function WorkoutHeader({
         )}
       </div>
       <div className="flex items-center gap-2">
+        {actions}
         {(onPause || onResume) && (
           <button
             type="button"
@@ -60,15 +56,6 @@ export function WorkoutHeader({
             </span>
           </button>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onFinish}
-          disabled={!canFinish || isFinishing}
-          className="min-h-12 text-xs font-medium"
-        >
-          {isFinishing ? 'SAVING...' : 'FINISH'}
-        </Button>
       </div>
     </header>
   )

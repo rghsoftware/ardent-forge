@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 
 interface PushToDisplayButtonProps {
   userId: string
@@ -28,21 +27,21 @@ export function PushToDisplayButton({
     }
   }
 
+  const label = isFocused ? 'Return to board' : 'Push to display'
   return (
-    <Button
-      variant="ghost"
-      size="sm"
+    <button
+      type="button"
       onClick={handleToggle}
-      className="min-h-12 min-w-12 gap-2"
+      aria-label={label}
+      title={label}
+      aria-pressed={isFocused}
+      className="flex h-12 w-12 items-center justify-center text-bone-white active:bg-surface-forge"
     >
       <span
-        className={`material-symbols-outlined text-xl ${isFocused ? 'text-ember' : 'text-warm-ash'}`}
+        className={`material-symbols-outlined text-2xl ${isFocused ? 'text-ember' : 'text-bone-white'}`}
       >
         cast
       </span>
-      <span className="text-xs font-medium">
-        {isFocused ? 'Return to Board' : 'Push to Display'}
-      </span>
-    </Button>
+    </button>
   )
 }
