@@ -20,9 +20,12 @@ export type PreferredUnits = z.infer<typeof preferredUnitsSchema>
 // UserProfile -- user settings and training data
 // ---------------------------------------------------------------------------
 
+// F018 (M10/Tech.md D14): The legacy `displayVisible` global opt-in flag has
+// been removed. The decision is now per-workout via the gym picker (gym vs.
+// Private). The Postgres `user_profiles.display_visible` column was dropped
+// in the F018 migration.
 export const userProfileSchema = syncableEntitySchema.extend({
   displayName: z.string().optional(),
-  displayVisible: z.boolean().optional(),
   // Map from exerciseId to OneRepMax -- PR-1 enforced by oneRepMaxSchema
   exerciseMaxes: z.record(entityId, oneRepMaxSchema),
   bodyweight: weightSchema.optional(),

@@ -33,16 +33,25 @@ interface UseDisplayBroadcastReturn {
 // ---------------------------------------------------------------------------
 
 /**
- * Manages the display broadcast lifecycle for a given user.
+ * Manages the display broadcast lifecycle for a given user and gym.
  *
  * - Initializes the display publisher on mount (no-op when offline/Tauri with
  *   no Supabase client).
- * - Keeps the publisher configured with the user's displayVisible preference.
+ * - Keeps the publisher configured with the gym ID the current workout is
+ *   broadcasting to. Pass `null` for a Private workout -- the publisher will
+ *   no-op on every send call.
  * - Maintains the snapshot context that the active-workout store needs to
  *   build and broadcast DisplaySnapshots on every state change.
  * - Tears down the publisher and clears context on unmount.
+ *
+ * F018: The `gymId` argument replaces the legacy `profile.displayVisible`
+ * per-user flag. Gym selection happens at workout start via the picker; the
+ * chosen value is threaded down to this hook from the route component.
  */
-export function useDisplayBroadcast(userId: string): UseDisplayBroadcastReturn {
+export function useDisplayBroadcast(
+  userId: string,
+  gymId: string | null,
+): UseDisplayBroadcastReturn {
   // -----------------------------------------------------------------------
   // 1. Init publisher on mount, destroy on unmount
   // -----------------------------------------------------------------------
@@ -64,7 +73,7 @@ export function useDisplayBroadcast(userId: string): UseDisplayBroadcastReturn {
   }, [])
 
   // -----------------------------------------------------------------------
-  // 2. Read user profile (cached via TanStack Query)
+  // 2. Read user profile for display name (cached via TanStack Query)
   // -----------------------------------------------------------------------
 
   const { data: profile, error: profileError } = useUserProfile(userId)
@@ -73,15 +82,14 @@ export function useDisplayBroadcast(userId: string): UseDisplayBroadcastReturn {
     console.warn('[display-broadcast] Failed to load user profile, using defaults', profileError)
   }
 
-  const displayVisible = profile?.displayVisible ?? true
-
   // -----------------------------------------------------------------------
-  // 3. Configure publisher when displayVisible changes
+  // 3. Configure publisher when gymId changes
   // -----------------------------------------------------------------------
 
   useEffect(() => {
-    configureDisplayPublisher({ displayVisible })
-  }, [displayVisible])
+    if (!userId) return
+    configureDisplayPublisher({ gymId })
+  }, [userId, gymId])
 
   // -----------------------------------------------------------------------
   // 4. Build exercise name map
@@ -142,7 +150,7 @@ export function useDisplayBroadcast(userId: string): UseDisplayBroadcastReturn {
     publishUnfocusEvent()
   }, [])
 
-  const isBroadcasting = workoutLog !== null && displayVisible && isPublisherReady()
+  const isBroadcasting = workoutLog !== null && isPublisherReady()
 
   return { publishFocus, publishUnfocus, isBroadcasting }
 }

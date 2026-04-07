@@ -133,7 +133,9 @@ BEGIN
   -- =========================================================================
   -- 2. USER PROFILE
   -- =========================================================================
-  INSERT INTO user_profiles (id, display_name, preferred_units, bodyweight, exercise_maxes, max_reps, display_visible)
+  -- Note: `display_visible` was removed by the F018 / gyms migration; the
+  -- per-user visibility flag is superseded by gym membership.
+  INSERT INTO user_profiles (id, display_name, preferred_units, bodyweight, exercise_maxes, max_reps)
   VALUES (
     reviewer_uid,
     'App Reviewer',
@@ -148,8 +150,7 @@ BEGIN
     jsonb_build_object(
       ex_pull_up::text, 15,
       ex_dip::text, 20
-    ),
-    true
+    )
   )
   ON CONFLICT (id) DO UPDATE SET
     display_name = EXCLUDED.display_name,
@@ -157,8 +158,34 @@ BEGIN
     bodyweight = EXCLUDED.bodyweight,
     exercise_maxes = EXCLUDED.exercise_maxes,
     max_reps = EXCLUDED.max_reps,
-    display_visible = EXCLUDED.display_visible,
     updated_at = now();
+
+  -- =========================================================================
+  -- 2b. HOME GYM (F018)
+  -- =========================================================================
+  -- Ensure a default "Home" gym exists and the reviewer is a member. The
+  -- F018 migration `20260407000001_create_gyms.sql` runs a data migration
+  -- that creates a Home gym iff `auth.users` is non-empty when migrations
+  -- apply. For fresh local environments, the seed runs after `db reset`
+  -- and the auth.users insert above is the first user -- so we create the
+  -- gym here too. Both inserts are guarded by `where not exists` to keep
+  -- the seed idempotent and to avoid conflicting with the partial unique
+  -- index `idx_gyms_one_default` (only one row may have is_default = true
+  -- instance-wide). The `trg_auth_user_default_gym` trigger may have
+  -- already enrolled the reviewer if a default gym pre-existed; the
+  -- gym_members insert's guard makes that case a no-op.
+  insert into gyms (name, owner_user_id, is_default)
+  select 'Home', reviewer_uid, true
+  where not exists (select 1 from gyms where is_default = true);
+
+  insert into gym_members (gym_id, user_id)
+  select g.id, reviewer_uid
+  from gyms g
+  where g.is_default = true
+    and not exists (
+      select 1 from gym_members
+      where gym_id = g.id and user_id = reviewer_uid
+    );
 
   -- =========================================================================
   -- 3. SESSION TEMPLATES (6 templates covering all categories)

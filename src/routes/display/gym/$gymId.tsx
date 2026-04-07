@@ -16,18 +16,41 @@ import { BoardView } from '@/components/display/board-view'
 import { ConnectionFooter } from '@/components/display/connection-footer'
 import { FocusedView } from '@/components/display/focused-view'
 
-export const Route = createFileRoute('/display')({
+// ---------------------------------------------------------------------------
+// Route
+// ---------------------------------------------------------------------------
+
+export const Route = createFileRoute('/display/gym/$gymId')({
   validateSearch: z.object({
     clock: z.enum(['12h', '24h']).optional().default('24h'),
   }),
-  component: DisplayPage,
+  component: DisplayGymPage,
 })
 
 // ---------------------------------------------------------------------------
-// DisplayPage -- full-viewport wrapper with portrait detection
+// DisplayGymPage -- full-viewport wrapper with portrait detection
 // ---------------------------------------------------------------------------
 
-function DisplayPage() {
+function DisplayGymPage() {
+  const { gymId } = Route.useParams()
+
+  // Validate the path param is a UUID. We do this here rather than in
+  // validateSearch because $gymId is a path param, not a search param.
+  const isUuid = z.string().uuid().safeParse(gymId).success
+
+  if (!isUuid) {
+    return (
+      <div className="flex h-dvh w-full items-center justify-center bg-surface-anvil">
+        <div className="max-w-xl px-6 text-center">
+          <p className="font-display text-2xl tracking-widest text-ember">INVALID GYM ID</p>
+          <p className="mt-4 text-sm uppercase tracking-wider text-warm-ash">
+            The URL is missing or malformed. Ask the gym owner for the correct display URL.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-dvh w-full overflow-hidden bg-surface-anvil">
       {/* Portrait orientation overlay */}
@@ -43,7 +66,7 @@ function DisplayPage() {
       </div>
 
       {/* Landscape content */}
-      <DisplayShell />
+      <DisplayShell gymId={gymId} />
     </div>
   )
 }
@@ -52,7 +75,7 @@ function DisplayPage() {
 // DisplayShell -- lifecycle management and mode-based rendering
 // ---------------------------------------------------------------------------
 
-function DisplayShell() {
+function DisplayShell({ gymId }: { gymId: string }) {
   const { clock } = Route.useSearch()
   const [configMissing, setConfigMissing] = useState(false)
   const clientRef = useRef<SupabaseClient | null>(null)
@@ -87,7 +110,26 @@ function DisplayShell() {
           onStatusChange: (status) => useDisplayStore.getState().setConnectionStatus(status),
         }
 
-        subscribeToDisplay(handlers)
+        subscribeToDisplay({ gymId, handlers })
+
+        // Optional S5: fetch gym name for operator reassurance. The anon
+        // publishable key has column-level SELECT on (id, name) via M21.
+        // This is best-effort -- we log but never fail the boot on error.
+        client
+          .from('gyms')
+          .select('id, name')
+          .eq('id', gymId)
+          .single()
+          .then(({ data, error }) => {
+            if (cancelled) return
+            if (error) {
+              console.warn('[display] Failed to resolve gym name:', error.message)
+              return
+            }
+            if (data?.name) {
+              console.info(`[display] Subscribed to gym "${data.name}" (${data.id})`)
+            }
+          })
 
         // Prune stale sessions every 60s (30-minute staleness threshold)
         pruneRef.current = setInterval(
@@ -116,7 +158,7 @@ function DisplayShell() {
       useDisplayStore.getState().clearAllSessions()
       clientRef.current = null
     }
-  }, [])
+  }, [gymId])
 
   if (configMissing) {
     return (

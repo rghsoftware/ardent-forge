@@ -124,7 +124,6 @@ const tauriLoggedSetResponse = {
 const tauriUserProfileResponse = {
   id: 'user-001',
   display_name: 'Coach Hamilton',
-  display_visible: 1,
   preferred_units: 'IMPERIAL',
   bodyweight: JSON.stringify({ value: 200, unit: 'lb' }),
   training_age: JSON.stringify({ seconds: 157680000 }),
@@ -1165,8 +1164,6 @@ describe('User profile operations', () => {
       expect(result!.preferredUnits).toBe('IMPERIAL')
       // Verifies JSON parsing of bodyweight
       expect(result!.bodyweight).toEqual({ value: 200, unit: 'lb' })
-      // Verifies intToBool on display_visible
-      expect(result!.displayVisible).toBe(true)
     })
 
     it('returns null when not found', async () => {

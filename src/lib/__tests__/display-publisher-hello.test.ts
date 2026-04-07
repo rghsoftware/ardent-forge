@@ -44,6 +44,9 @@ function createMockClient(channel: ReturnType<typeof createMockChannel>['channel
   } as unknown as SupabaseClient
 }
 
+// Test gym ID (F018 -- publisher is now gym-scoped)
+const GYM_A = 'gym-a-0000-0000-000000000000'
+
 // Minimal valid snapshot to trigger channel creation
 const SNAPSHOT: DisplaySnapshot = {
   user_id: 'user-1',
@@ -80,7 +83,7 @@ describe('setHelloResponder', () => {
     const { channel, fireHello } = createMockChannel()
     const client = createMockClient(channel)
     initDisplayPublisher(client)
-    configureDisplayPublisher({ displayVisible: true })
+    configureDisplayPublisher({ gymId: GYM_A })
 
     // Force channel creation by publishing
     publishDisplaySnapshot(SNAPSHOT)
@@ -101,7 +104,7 @@ describe('display_hello event on channel', () => {
     const { channel, fireHello } = createMockChannel()
     const client = createMockClient(channel)
     initDisplayPublisher(client)
-    configureDisplayPublisher({ displayVisible: true })
+    configureDisplayPublisher({ gymId: GYM_A })
 
     const responder = vi.fn()
     setHelloResponder(responder)
@@ -118,7 +121,7 @@ describe('display_hello event on channel', () => {
     const { channel, fireHello } = createMockChannel()
     const client = createMockClient(channel)
     initDisplayPublisher(client)
-    configureDisplayPublisher({ displayVisible: true })
+    configureDisplayPublisher({ gymId: GYM_A })
 
     setHelloResponder(null)
 
@@ -145,7 +148,7 @@ describe('destroyDisplayPublisher', () => {
     const { channel, fireHello } = createMockChannel()
     const client = createMockClient(channel)
     initDisplayPublisher(client)
-    configureDisplayPublisher({ displayVisible: true })
+    configureDisplayPublisher({ gymId: GYM_A })
 
     publishDisplaySnapshot(SNAPSHOT)
     fireHello()

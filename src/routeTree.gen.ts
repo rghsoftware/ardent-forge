@@ -13,9 +13,9 @@ import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as DisplayRouteImport } from './routes/display'
 import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as DisplayIndexRouteImport } from './routes/display/index'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as STokenRouteImport } from './routes/s/$token'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
@@ -28,6 +28,7 @@ import { Route as AuthenticatedCommsRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedBuilderRouteImport } from './routes/_authenticated/builder'
 import { Route as AuthenticatedHistoryIndexRouteImport } from './routes/_authenticated/history/index'
 import { Route as AuthenticatedExercisesIndexRouteImport } from './routes/_authenticated/exercises/index'
+import { Route as DisplayGymGymIdRouteImport } from './routes/display/gym/$gymId'
 import { Route as AuthenticatedLogWorkoutIdRouteImport } from './routes/_authenticated/log.$workoutId'
 import { Route as AuthenticatedHistoryWorkoutIdRouteImport } from './routes/_authenticated/history/$workoutId'
 import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authenticated/groups.$groupId'
@@ -55,11 +56,6 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DisplayRoute = DisplayRouteImport.update({
-  id: '/display',
-  path: '/display',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ConnectRoute = ConnectRouteImport.update({
   id: '/connect',
   path: '/connect',
@@ -67,6 +63,11 @@ const ConnectRoute = ConnectRouteImport.update({
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DisplayIndexRoute = DisplayIndexRouteImport.update({
+  id: '/display/',
+  path: '/display/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -132,6 +133,11 @@ const AuthenticatedExercisesIndexRoute =
     path: '/exercises/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const DisplayGymGymIdRoute = DisplayGymGymIdRouteImport.update({
+  id: '/display/gym/$gymId',
+  path: '/display/gym/$gymId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedLogWorkoutIdRoute =
   AuthenticatedLogWorkoutIdRouteImport.update({
     id: '/log/$workoutId',
@@ -172,7 +178,6 @@ const AuthenticatedCommsConversationIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/connect': typeof ConnectRoute
-  '/display': typeof DisplayRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
@@ -186,18 +191,19 @@ export interface FileRoutesByFullPath {
   '/vault': typeof AuthenticatedVaultRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/s/$token': typeof STokenRoute
+  '/display/': typeof DisplayIndexRoute
   '/comms/$conversationId': typeof AuthenticatedCommsConversationIdRoute
   '/events/$templateId': typeof AuthenticatedEventsTemplateIdRoute
   '/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
   '/log/$workoutId': typeof AuthenticatedLogWorkoutIdRoute
+  '/display/gym/$gymId': typeof DisplayGymGymIdRoute
   '/exercises/': typeof AuthenticatedExercisesIndexRoute
   '/history/': typeof AuthenticatedHistoryIndexRoute
 }
 export interface FileRoutesByTo {
   '/connect': typeof ConnectRoute
-  '/display': typeof DisplayRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
@@ -212,12 +218,14 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/s/$token': typeof STokenRoute
   '/': typeof AuthenticatedIndexRoute
+  '/display': typeof DisplayIndexRoute
   '/comms/$conversationId': typeof AuthenticatedCommsConversationIdRoute
   '/events/$templateId': typeof AuthenticatedEventsTemplateIdRoute
   '/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
   '/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
   '/log/$workoutId': typeof AuthenticatedLogWorkoutIdRoute
+  '/display/gym/$gymId': typeof DisplayGymGymIdRoute
   '/exercises': typeof AuthenticatedExercisesIndexRoute
   '/history': typeof AuthenticatedHistoryIndexRoute
 }
@@ -225,7 +233,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/connect': typeof ConnectRoute
-  '/display': typeof DisplayRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/setup': typeof SetupRoute
   '/sign-in': typeof SignInRoute
@@ -240,12 +247,14 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/s/$token': typeof STokenRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/display/': typeof DisplayIndexRoute
   '/_authenticated/comms/$conversationId': typeof AuthenticatedCommsConversationIdRoute
   '/_authenticated/events/$templateId': typeof AuthenticatedEventsTemplateIdRoute
   '/_authenticated/exercises/$exerciseId': typeof AuthenticatedExercisesExerciseIdRoute
   '/_authenticated/groups/$groupId': typeof AuthenticatedGroupsGroupIdRoute
   '/_authenticated/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
   '/_authenticated/log/$workoutId': typeof AuthenticatedLogWorkoutIdRoute
+  '/display/gym/$gymId': typeof DisplayGymGymIdRoute
   '/_authenticated/exercises/': typeof AuthenticatedExercisesIndexRoute
   '/_authenticated/history/': typeof AuthenticatedHistoryIndexRoute
 }
@@ -254,7 +263,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/connect'
-    | '/display'
     | '/forgot-password'
     | '/setup'
     | '/sign-in'
@@ -268,18 +276,19 @@ export interface FileRouteTypes {
     | '/vault'
     | '/auth/callback'
     | '/s/$token'
+    | '/display/'
     | '/comms/$conversationId'
     | '/events/$templateId'
     | '/exercises/$exerciseId'
     | '/groups/$groupId'
     | '/history/$workoutId'
     | '/log/$workoutId'
+    | '/display/gym/$gymId'
     | '/exercises/'
     | '/history/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/connect'
-    | '/display'
     | '/forgot-password'
     | '/setup'
     | '/sign-in'
@@ -294,19 +303,20 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/s/$token'
     | '/'
+    | '/display'
     | '/comms/$conversationId'
     | '/events/$templateId'
     | '/exercises/$exerciseId'
     | '/groups/$groupId'
     | '/history/$workoutId'
     | '/log/$workoutId'
+    | '/display/gym/$gymId'
     | '/exercises'
     | '/history'
   id:
     | '__root__'
     | '/_authenticated'
     | '/connect'
-    | '/display'
     | '/forgot-password'
     | '/setup'
     | '/sign-in'
@@ -321,12 +331,14 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/s/$token'
     | '/_authenticated/'
+    | '/display/'
     | '/_authenticated/comms/$conversationId'
     | '/_authenticated/events/$templateId'
     | '/_authenticated/exercises/$exerciseId'
     | '/_authenticated/groups/$groupId'
     | '/_authenticated/history/$workoutId'
     | '/_authenticated/log/$workoutId'
+    | '/display/gym/$gymId'
     | '/_authenticated/exercises/'
     | '/_authenticated/history/'
   fileRoutesById: FileRoutesById
@@ -334,13 +346,14 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   ConnectRoute: typeof ConnectRoute
-  DisplayRoute: typeof DisplayRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   SetupRoute: typeof SetupRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   STokenRoute: typeof STokenRoute
+  DisplayIndexRoute: typeof DisplayIndexRoute
+  DisplayGymGymIdRoute: typeof DisplayGymGymIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -373,13 +386,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/display': {
-      id: '/display'
-      path: '/display'
-      fullPath: '/display'
-      preLoaderRoute: typeof DisplayRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/connect': {
       id: '/connect'
       path: '/connect'
@@ -392,6 +398,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/display/': {
+      id: '/display/'
+      path: '/display'
+      fullPath: '/display/'
+      preLoaderRoute: typeof DisplayIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -477,6 +490,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/exercises/'
       preLoaderRoute: typeof AuthenticatedExercisesIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/display/gym/$gymId': {
+      id: '/display/gym/$gymId'
+      path: '/display/gym/$gymId'
+      fullPath: '/display/gym/$gymId'
+      preLoaderRoute: typeof DisplayGymGymIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/log/$workoutId': {
       id: '/_authenticated/log/$workoutId'
@@ -586,13 +606,14 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   ConnectRoute: ConnectRoute,
-  DisplayRoute: DisplayRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   SetupRoute: SetupRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   STokenRoute: STokenRoute,
+  DisplayIndexRoute: DisplayIndexRoute,
+  DisplayGymGymIdRoute: DisplayGymGymIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

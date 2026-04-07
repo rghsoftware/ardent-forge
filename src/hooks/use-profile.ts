@@ -3,8 +3,10 @@ import { getSupabaseClient } from '@/lib/supabase'
 
 /**
  * Fetches a user's display name for author attribution on public content.
- * Requires the `user_profiles_public_display_name` RLS policy so that
- * authenticated users can read display_name for profiles with display_visible = true.
+ * Reads through the `user_profiles_public_display_name` RLS policy, which
+ * permits any authenticated user to read display_name from any profile.
+ * (F018 dropped the prior `display_visible = true` filter when gym
+ * membership replaced the per-user opt-in flag.)
  */
 export function useProfile(userId: string | undefined) {
   return useQuery({
@@ -23,7 +25,7 @@ export function useProfile(userId: string | undefined) {
         .single()
 
       if (error) {
-        // PGRST116 = row not found -- user may not have display_visible enabled
+        // PGRST116 = row not found
         if (error.code === 'PGRST116') return null
         console.error('[use-profile] Failed to fetch display name:', error)
         throw error

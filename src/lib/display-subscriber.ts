@@ -8,6 +8,7 @@ import {
   type IdleSnapshot,
 } from '@/domain/types/display-snapshot'
 import { z } from 'zod'
+import { getGymChannelName } from '@/lib/gym-channel'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,6 +21,11 @@ export interface DisplayEventHandlers {
   onUnfocus: () => void
   onIdleSnapshot: (snapshot: IdleSnapshot) => void
   onStatusChange: (status: DisplayConnectionStatus) => void
+}
+
+export interface SubscribeToDisplayArgs {
+  gymId: string
+  handlers: DisplayEventHandlers
 }
 
 // ---------------------------------------------------------------------------
@@ -55,10 +61,15 @@ export function initDisplaySubscriber(client: SupabaseClient): void {
 }
 
 /**
- * Create the broadcast channel, register listeners for each event type,
- * and subscribe. Validates all incoming payloads with Zod before dispatching.
+ * Create the broadcast channel for the given gym, register listeners for each
+ * event type, and subscribe. Validates all incoming payloads with Zod before
+ * dispatching.
+ *
+ * On reconnect (after a terminal channel status), the subscriber automatically
+ * re-subscribes to the same gym. The `gymId` is captured in the closure so
+ * retries do not leak to a different gym.
  */
-export function subscribeToDisplay(handlers: DisplayEventHandlers): void {
+export function subscribeToDisplay({ gymId, handlers }: SubscribeToDisplayArgs): void {
   if (!_client) {
     console.warn('[display-subscriber] Cannot subscribe: client not initialized')
     handlers.onStatusChange('disconnected')
@@ -71,7 +82,8 @@ export function subscribeToDisplay(handlers: DisplayEventHandlers): void {
     _channel = null
   }
 
-  _channel = _client.channel('display', {
+  const channelName = getGymChannelName(gymId)
+  _channel = _client.channel(channelName, {
     config: { broadcast: { ack: false, self: false } },
   })
 
@@ -139,7 +151,9 @@ export function subscribeToDisplay(handlers: DisplayEventHandlers): void {
         console.info(`[display-subscriber] Reconnecting in ${delay}ms (attempt ${_retryAttempt})`)
         _retryTimer = setTimeout(() => {
           _retryTimer = null
-          if (_client) subscribeToDisplay(handlers)
+          // Re-subscribe using the same gymId captured in this closure so the
+          // retry cannot leak to a different gym channel.
+          if (_client) subscribeToDisplay({ gymId, handlers })
         }, delay)
       }
     })

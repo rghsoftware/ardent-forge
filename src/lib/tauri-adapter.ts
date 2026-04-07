@@ -46,6 +46,8 @@ import type {
   Message,
   MessageType,
   MediaAttachment,
+  Gym,
+  GymMember,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -195,7 +197,9 @@ interface TauriLoggedSetResponse {
 interface TauriUserProfileResponse {
   id: string
   display_name: string | null
-  display_visible: number | null
+  // F018 (M10): `display_visible` removed -- was the legacy global publish
+  // opt-in. The Wave 3b SQLite migration drops the column on the Tauri side
+  // in lockstep with the Postgres drop in Wave 2.
   preferred_units: string | null
   bodyweight: string | null
   training_age: string | null
@@ -684,7 +688,6 @@ function toUserProfileRow(r: TauriUserProfileResponse): UserProfileRow {
   return {
     id: r.id,
     display_name: r.display_name,
-    display_visible: r.display_visible != null ? intToBool(r.display_visible) : null,
     preferred_units: r.preferred_units ?? 'IMPERIAL',
     bodyweight: parseJson(r.bodyweight, 'bodyweight'),
     training_age: parseJson(r.training_age, 'training_age'),
@@ -1251,10 +1254,12 @@ export class TauriAdapter implements DataAdapter {
 
   async updateUserProfile(profile: Partial<UserProfile> & { id: string }): Promise<UserProfile> {
     const partial = fromUserProfile(profile)
+    // F018 (M10): `display_visible` was removed from the schema; the Rust
+    // command and the SQLite migration on the Tauri side drop it in lockstep
+    // (Wave 3b). We do not pass it here.
     const input = {
       id: partial.id!,
       display_name: partial.display_name ?? null,
-      display_visible: partial.display_visible ?? null,
       preferred_units: partial.preferred_units ?? null,
       bodyweight: partial.bodyweight != null ? JSON.stringify(partial.bodyweight) : null,
       training_age: partial.training_age != null ? JSON.stringify(partial.training_age) : null,
@@ -1930,6 +1935,56 @@ export class TauriAdapter implements DataAdapter {
 
   async deleteShareLink(_id: string): Promise<void> {
     throw new Error('Share links are not supported in offline mode')
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gym operations (F018 -- online-only per Tech.md D14)
+  //
+  // Gyms are an online concept: the publisher only matters when there is a
+  // live Supabase Realtime channel to broadcast on. Reads return empty
+  // collections so offline UI renders gracefully (the picker shows only the
+  // Private option). Writes throw a clear "online required" error so the
+  // user knows why their action did not take effect.
+  // ---------------------------------------------------------------------------
+
+  async listUserGyms(_userId: string): Promise<Gym[]> {
+    return []
+  }
+
+  async listAllGyms(): Promise<Gym[]> {
+    return []
+  }
+
+  async getGym(_gymId: string): Promise<Gym | null> {
+    return null
+  }
+
+  async createGym(_input: { name: string }): Promise<Gym> {
+    throw new Error('Gyms require an online connection')
+  }
+
+  async updateGym(_input: Partial<Gym> & { id: string }): Promise<Gym> {
+    throw new Error('Gyms require an online connection')
+  }
+
+  async deleteGym(_gymId: string): Promise<void> {
+    throw new Error('Gyms require an online connection')
+  }
+
+  async joinGym(_gymId: string): Promise<void> {
+    throw new Error('Gyms require an online connection')
+  }
+
+  async leaveGym(_gymId: string): Promise<void> {
+    throw new Error('Gyms require an online connection')
+  }
+
+  async kickGymMember(_gymId: string, _userId: string): Promise<void> {
+    throw new Error('Gyms require an online connection')
+  }
+
+  async listGymMembers(_gymId: string): Promise<GymMember[]> {
+    return []
   }
 
   // ---------------------------------------------------------------------------
