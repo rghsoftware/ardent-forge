@@ -51,7 +51,7 @@ export function RestPanel({
   const textColor = `color-mix(in oklch, var(--color-ember) ${Math.round(progress * 75)}%, var(--color-bone-white))`
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative flex flex-1 flex-col overflow-hidden">
       {/* Ember glow -- brightness-pulses while fading with heat */}
       <div
         className="pointer-events-none absolute inset-0 bg-forge"
@@ -61,23 +61,23 @@ export function RestPanel({
         }}
       />
 
-      <div className="relative z-10 flex flex-col items-center gap-4 px-4 pt-8 pb-10">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-4 py-10">
         {topBadge}
-        <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">Rest</span>
+        <span className="text-sm font-bold uppercase tracking-widest text-warm-ash/70">Rest</span>
         <span
-          className="font-display text-[5.5rem] leading-none tabular-nums tracking-tight"
+          className="font-display text-[7rem] leading-none tabular-nums tracking-tight"
           style={{ color: textColor }}
         >
           {formatCountdown(remaining)}
         </span>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {onAdjust && (
             <Button
               variant="outline"
               size="lg"
               onClick={() => onAdjust(-30)}
-              className="min-h-12 min-w-16 text-xs font-bold uppercase tracking-widest"
+              className="min-h-14 min-w-20 text-sm font-bold uppercase tracking-widest"
             >
               -30s
             </Button>
@@ -86,7 +86,7 @@ export function RestPanel({
             variant="molten"
             size="lg"
             onClick={onSkip}
-            className="min-h-12 px-6 text-sm font-bold uppercase tracking-widest"
+            className="min-h-16 min-w-32 px-8 text-lg font-bold uppercase tracking-widest"
           >
             Skip
           </Button>
@@ -95,7 +95,7 @@ export function RestPanel({
               variant="outline"
               size="lg"
               onClick={() => onAdjust(30)}
-              className="min-h-12 min-w-16 text-xs font-bold uppercase tracking-widest"
+              className="min-h-14 min-w-20 text-sm font-bold uppercase tracking-widest"
             >
               +30s
             </Button>
@@ -103,17 +103,17 @@ export function RestPanel({
         </div>
 
         {nextPrimary && (
-          <div className="mt-2 flex flex-col items-center gap-1">
+          <div className="mt-2 flex flex-col items-center gap-2">
             {nextLabel && (
-              <span className="text-[10px] font-bold uppercase tracking-widest text-warm-ash/60">
+              <span className="text-xs font-bold uppercase tracking-widest text-warm-ash/70">
                 {nextLabel}
               </span>
             )}
-            <div className="font-display text-2xl tracking-tight text-bone-white">
+            <div className="font-display text-3xl tracking-tight text-bone-white">
               {nextPrimary}
             </div>
             {nextSecondary && (
-              <div className="text-lg tabular-nums text-ember">{nextSecondary}</div>
+              <div className="text-xl tabular-nums text-ember">{nextSecondary}</div>
             )}
           </div>
         )}

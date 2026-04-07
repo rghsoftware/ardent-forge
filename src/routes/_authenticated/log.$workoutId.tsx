@@ -534,7 +534,7 @@ function ActiveWorkoutPage() {
             // Hard focus: only render the active block in SET mode.
             if (group.id !== activeFocusId) return null
             return (
-              <div key={group.id}>
+              <div key={group.id} className="flex flex-1 flex-col">
               <CircuitPanel
                 exercises={circuitExercises}
                 rounds={3}

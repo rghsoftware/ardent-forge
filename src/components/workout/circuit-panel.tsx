@@ -144,7 +144,7 @@ export function CircuitPanel({
   const currentExercise = exercises[currentExerciseIndex]
 
   return (
-    <section className="bg-surface-iron" aria-label="SE circuit">
+    <section className="flex flex-1 flex-col bg-surface-iron" aria-label="SE circuit">
       {/* Header */}
       <div className="px-4 pt-4 pb-2">
         <h3 className="font-display text-xs font-medium uppercase tracking-widest text-ember">
@@ -192,23 +192,27 @@ export function CircuitPanel({
 
       {/* Exercise phase */}
       {phase === 'exercise' && currentExercise && (
-        <div className="flex flex-col items-center gap-4 px-4 py-8">
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-8">
           {/* Round indicator */}
-          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">
+          <span className="text-sm font-bold uppercase tracking-widest text-warm-ash/70">
             ROUND {currentRound} / {rounds}
           </span>
 
           {/* Exercise name */}
-          <span className="font-display text-2xl text-bone-white">{currentExercise.name}</span>
+          <span className="text-center font-display text-5xl leading-tight text-bone-white">
+            {currentExercise.name}
+          </span>
 
           {/* Target reps (read-only reference) */}
-          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">
+          <span className="text-sm font-bold uppercase tracking-widest text-warm-ash/70">
             TARGET {currentExercise.targetReps}
           </span>
 
           {/* Actual reps input -- pre-filled with target, user edits before tapping Done */}
-          <label className="flex flex-col items-center gap-1">
-            <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">ACTUAL</span>
+          <label className="flex flex-col items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-widest text-warm-ash/60">
+              ACTUAL
+            </span>
             <input
               type="text"
               inputMode="numeric"
@@ -219,24 +223,26 @@ export function CircuitPanel({
                   value: e.target.value.replace(/[^0-9]/g, ''),
                 })
               }
-              className="w-32 border-b-2 border-ember/60 bg-transparent py-1 text-center font-display text-5xl tabular-nums text-ember placeholder:text-warm-ash/30 focus:border-ember focus:outline-none"
+              className="w-48 border-b-2 border-ember/60 bg-transparent py-2 text-center font-display text-8xl tabular-nums leading-none text-ember placeholder:text-warm-ash/30 focus:border-ember focus:outline-none"
               aria-label={`Actual reps for ${currentExercise.name}`}
             />
+            <span className="text-xs font-bold uppercase tracking-widest text-warm-ash/60">
+              REPS
+            </span>
           </label>
-          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">REPS</span>
 
           {/* Done button */}
           <Button
             variant="default"
             size="lg"
             onClick={handleExerciseDone}
-            className="mt-4 min-h-12 min-w-32"
+            className="mt-4 min-h-16 min-w-48 text-lg font-bold uppercase tracking-widest"
           >
             Done
           </Button>
 
           {/* Progress */}
-          <span className="text-xs tabular-nums text-warm-ash/60">
+          <span className="text-sm font-bold tabular-nums uppercase tracking-widest text-warm-ash/60">
             {currentExerciseIndex + 1} / {exercises.length}
           </span>
         </div>
@@ -271,7 +277,7 @@ export function CircuitPanel({
 
       {/* Done phase -- reports actual completedRounds, not the rounds prop */}
       {phase === 'done' && (
-        <div className="flex flex-col items-center gap-4 px-4 py-8">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-8">
           <Badge variant="complete">CIRCUIT COMPLETE</Badge>
           <div className="flex items-baseline gap-2">
             <span className="font-display text-4xl tabular-nums text-bone-white">
