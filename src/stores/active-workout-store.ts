@@ -9,7 +9,9 @@ import type {
   LoggedSet,
   Exercise,
   GroupType,
+  NoteContent,
 } from '@/domain/types'
+import { noteContentSchema } from '@/domain/types'
 import { UNDO_WINDOW_MS } from '@/lib/workout-utils'
 import type { SnapshotContext } from '@/lib/display-snapshot'
 import { buildDisplaySnapshot } from '@/lib/display-snapshot'
@@ -150,6 +152,11 @@ interface ActiveWorkoutActions {
 
   // Elapsed timer setter (owned by the workout log page, see Tech.md D-1)
   setElapsedSeconds(seconds: number): void
+
+  // Notes (F020) -- validate at boundary, store on workoutLog / activity / set
+  setSessionNote(content: NoteContent): void
+  setActivityNote(activityId: string, content: NoteContent): void
+  setSetNote(setId: string, content: NoteContent): void
 
   // Timer ticks (called by intervals internally)
   tickRest(): void
@@ -499,6 +506,96 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
 
     setElapsedSeconds(seconds: number) {
       set({ elapsedSeconds: seconds })
+    },
+
+    // ------------------------------------------------------------------
+    // Notes (F020)
+    // ------------------------------------------------------------------
+
+    setSessionNote(content: NoteContent) {
+      const parsed = noteContentSchema.safeParse(content)
+      if (!parsed.success) {
+        console.warn(
+          '[active-workout] setSessionNote rejected invalid content:',
+          parsed.error.issues,
+        )
+        return
+      }
+      const state = get()
+      if (!state.workoutLog) {
+        console.warn('[active-workout] setSessionNote called with no active workoutLog')
+        return
+      }
+      set({
+        workoutLog: {
+          ...state.workoutLog,
+          overallNotes: parsed.data.text,
+          noteTags: parsed.data.tags,
+        },
+      })
+      _publishCurrentState()
+    },
+
+    setActivityNote(activityId: string, content: NoteContent) {
+      const parsed = noteContentSchema.safeParse(content)
+      if (!parsed.success) {
+        console.warn(
+          '[active-workout] setActivityNote rejected invalid content:',
+          parsed.error.issues,
+        )
+        return
+      }
+      let found = false
+      set((state) => ({
+        loggedGroups: state.loggedGroups.map((group) => ({
+          ...group,
+          activities: group.activities.map((activity) => {
+            if (activity.id !== activityId) return activity
+            found = true
+            return {
+              ...activity,
+              notes: parsed.data.text,
+              noteTags: parsed.data.tags,
+            }
+          }),
+        })),
+      }))
+      if (!found) {
+        console.warn('[active-workout] setActivityNote: activity not found', activityId)
+        return
+      }
+      _publishCurrentState()
+    },
+
+    setSetNote(setId: string, content: NoteContent) {
+      const parsed = noteContentSchema.safeParse(content)
+      if (!parsed.success) {
+        console.warn('[active-workout] setSetNote rejected invalid content:', parsed.error.issues)
+        return
+      }
+      let found = false
+      set((state) => ({
+        loggedGroups: state.loggedGroups.map((group) => ({
+          ...group,
+          activities: group.activities.map((activity) => ({
+            ...activity,
+            sets: activity.sets.map((s) => {
+              if (s.id !== setId) return s
+              found = true
+              return {
+                ...s,
+                notes: parsed.data.text,
+                noteTags: parsed.data.tags,
+              }
+            }),
+          })),
+        })),
+      }))
+      if (!found) {
+        console.warn('[active-workout] setSetNote: set not found', setId)
+        return
+      }
+      _publishCurrentState()
     },
 
     tickRest() {

@@ -141,6 +141,7 @@ interface TauriWorkoutLogResponse {
   session_template_id: string | null
   program_context: string | null
   overall_notes: string | null
+  note_tags: string
   perceived_difficulty: number | null
   bodyweight_at_session: string | null
   created_at: string | null
@@ -166,6 +167,7 @@ interface TauriLoggedActivityResponse {
   exercise_id: string
   ordinal: number
   notes: string | null
+  note_tags: string
   created_at: string | null
   updated_at: string | null
 }
@@ -188,6 +190,7 @@ interface TauriLoggedSetResponse {
   rpe: number | null
   completed: number | null
   notes: string | null
+  note_tags: string
   created_at: string | null
   updated_at: string | null
 }
@@ -566,6 +569,22 @@ function parseJson(value: string | null, column: string): unknown {
   }
 }
 
+/** Parse a note_tags JSON string into string[], falling back to [] on any error. */
+function parseNoteTags(value: string | null | undefined, column: string): string[] {
+  if (value == null || value === '') return []
+  try {
+    const parsed = JSON.parse(value)
+    if (Array.isArray(parsed) && parsed.every((t) => typeof t === 'string')) {
+      return parsed as string[]
+    }
+    console.warn(`[tauri-adapter] ${column}: expected string[], using fallback []`)
+    return []
+  } catch (err) {
+    console.warn(`[tauri-adapter] ${column}: JSON parse failed, using fallback []:`, err)
+    return []
+  }
+}
+
 /** Require a non-null string value, throwing with the field name on null. */
 function requireString(value: string | null | undefined, field: string): string {
   if (value == null) {
@@ -623,6 +642,7 @@ function toWorkoutLogRow(r: TauriWorkoutLogResponse): WorkoutLogRow {
     perceived_difficulty: r.perceived_difficulty,
     bodyweight_at_session: parseJson(r.bodyweight_at_session, 'bodyweight_at_session'),
     overall_notes: r.overall_notes,
+    note_tags: parseNoteTags(r.note_tags, 'workout_logs.note_tags'),
     event_metadata: null, // Event features deferred for Tauri offline mode (W-8)
     paused_at: null, // Pause state deferred for Tauri offline mode (F018)
     total_paused_ms: 0,
@@ -653,6 +673,7 @@ function toLoggedActivityRow(r: TauriLoggedActivityResponse): LoggedActivityRow 
     exercise_id: r.exercise_id,
     ordinal: r.ordinal,
     notes: r.notes,
+    note_tags: parseNoteTags(r.note_tags, 'logged_activities.note_tags'),
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -677,6 +698,7 @@ function toLoggedSetRow(r: TauriLoggedSetResponse): LoggedSetRow {
     rpe: r.rpe,
     completed: intToBool(r.completed),
     notes: r.notes,
+    note_tags: parseNoteTags(r.note_tags, 'logged_sets.note_tags'),
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -1098,6 +1120,7 @@ export class TauriAdapter implements DataAdapter {
       program_context:
         partial.program_context != null ? JSON.stringify(partial.program_context) : null,
       overall_notes: partial.overall_notes ?? null,
+      note_tags: JSON.stringify(partial.note_tags ?? []),
       perceived_difficulty: partial.perceived_difficulty ?? null,
       bodyweight_at_session:
         partial.bodyweight_at_session != null
@@ -1115,6 +1138,7 @@ export class TauriAdapter implements DataAdapter {
       title: log.title ?? null,
       completed_at: log.completedAt ? isoToUnixSeconds(log.completedAt) : null,
       overall_notes: log.overallNotes ?? null,
+      note_tags: JSON.stringify(log.noteTags ?? []),
       perceived_difficulty: log.perceivedDifficulty ?? null,
     })
     return toWorkoutLog(toWorkoutLogRow(row))
@@ -1152,6 +1176,35 @@ export class TauriAdapter implements DataAdapter {
     return toLoggedActivityGroup(toLoggedActivityGroupRow(row))
   }
 
+  async updateLoggedActivityGroup(
+    group: LoggedActivityGroup,
+    userId: string,
+  ): Promise<LoggedActivityGroup> {
+    const partial = fromLoggedActivityGroup(group, userId)
+    const input = {
+      id: group.id,
+      workout_log_id: partial.workout_log_id!,
+      group_type: partial.group_type!,
+      ordinal: partial.ordinal!,
+      actual_rounds_completed: partial.actual_rounds_completed ?? null,
+      completion_time:
+        partial.completion_time != null ? JSON.stringify(partial.completion_time) : null,
+    }
+
+    const row = await invokeCommand<TauriLoggedActivityGroupResponse>(
+      'update_logged_activity_group',
+      {
+        group: input,
+        user_id: userId,
+      },
+    )
+    return toLoggedActivityGroup(toLoggedActivityGroupRow(row))
+  }
+
+  async deleteLoggedActivityGroup(id: string): Promise<void> {
+    await invokeCommand<void>('delete_logged_activity_group', { id })
+  }
+
   // ---------------------------------------------------------------------------
   // LoggedActivity
   // ---------------------------------------------------------------------------
@@ -1166,6 +1219,7 @@ export class TauriAdapter implements DataAdapter {
       exercise_id: partial.exercise_id!,
       ordinal: partial.ordinal!,
       notes: partial.notes ?? null,
+      note_tags: JSON.stringify(partial.note_tags ?? []),
     }
 
     const row = await invokeCommand<TauriLoggedActivityResponse>('create_logged_activity', {
@@ -1173,6 +1227,28 @@ export class TauriAdapter implements DataAdapter {
       user_id: userId,
     })
     return toLoggedActivity(toLoggedActivityRow(row))
+  }
+
+  async updateLoggedActivity(activity: LoggedActivity, userId: string): Promise<LoggedActivity> {
+    const partial = fromLoggedActivity(activity, userId)
+    const input = {
+      id: activity.id,
+      logged_group_id: partial.logged_group_id!,
+      exercise_id: partial.exercise_id!,
+      ordinal: partial.ordinal!,
+      notes: partial.notes ?? null,
+      note_tags: JSON.stringify(partial.note_tags ?? []),
+    }
+
+    const row = await invokeCommand<TauriLoggedActivityResponse>('update_logged_activity', {
+      activity: input,
+      user_id: userId,
+    })
+    return toLoggedActivity(toLoggedActivityRow(row))
+  }
+
+  async deleteLoggedActivity(id: string): Promise<void> {
+    await invokeCommand<void>('delete_logged_activity', { id })
   }
 
   // ---------------------------------------------------------------------------
@@ -1200,6 +1276,7 @@ export class TauriAdapter implements DataAdapter {
       rpe: partial.rpe ?? null,
       completed: partial.completed ?? null,
       notes: partial.notes ?? null,
+      note_tags: JSON.stringify(partial.note_tags ?? []),
     }
 
     const row = await invokeCommand<TauriLoggedSetResponse>('create_logged_set', {
@@ -1231,6 +1308,7 @@ export class TauriAdapter implements DataAdapter {
       rpe: partial.rpe ?? null,
       completed: partial.completed ?? null,
       notes: partial.notes ?? null,
+      note_tags: JSON.stringify(partial.note_tags ?? []),
     }
 
     const row = await invokeCommand<TauriLoggedSetResponse>('update_logged_set', {
@@ -1238,6 +1316,10 @@ export class TauriAdapter implements DataAdapter {
       user_id: userId,
     })
     return toLoggedSet(toLoggedSetRow(row))
+  }
+
+  async deleteLoggedSet(id: string): Promise<void> {
+    await invokeCommand<void>('delete_logged_set', { id })
   }
 
   // ---------------------------------------------------------------------------
@@ -1350,6 +1432,7 @@ export class TauriAdapter implements DataAdapter {
         session_template_id: log.sessionTemplateId ?? null,
         program_context: log.programContext ? JSON.stringify(log.programContext) : null,
         overall_notes: log.overallNotes ?? null,
+        note_tags: JSON.stringify(log.noteTags ?? []),
         perceived_difficulty: log.perceivedDifficulty ?? null,
         bodyweight_at_session: log.bodyweightAtSession
           ? JSON.stringify(log.bodyweightAtSession)
@@ -1369,6 +1452,7 @@ export class TauriAdapter implements DataAdapter {
             exercise_id: a.activity.exerciseId,
             ordinal: a.activity.ordinal,
             notes: a.activity.notes ?? null,
+            note_tags: JSON.stringify(a.activity.noteTags ?? []),
           },
           sets: a.sets.map((s) => ({
             logged_activity_id: '', // will be set server-side
@@ -1386,6 +1470,7 @@ export class TauriAdapter implements DataAdapter {
             rpe: s.rpe ?? null,
             completed: s.completed ?? null,
             notes: s.notes ?? null,
+            note_tags: JSON.stringify(s.noteTags ?? []),
           })),
         })),
       })),

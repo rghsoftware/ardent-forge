@@ -30,6 +30,11 @@ export function createMockAdapter(
     createLoggedActivity: vi.fn().mockResolvedValue({}),
     createLoggedSet: vi.fn().mockResolvedValue({}),
     updateLoggedSet: vi.fn().mockResolvedValue({}),
+    deleteLoggedSet: vi.fn().mockResolvedValue(undefined),
+    updateLoggedActivity: vi.fn().mockResolvedValue({}),
+    deleteLoggedActivity: vi.fn().mockResolvedValue(undefined),
+    updateLoggedActivityGroup: vi.fn().mockResolvedValue({}),
+    deleteLoggedActivityGroup: vi.fn().mockResolvedValue(undefined),
 
     // Exercise history operations
     getOneRepMaxHistory: vi.fn().mockResolvedValue([]),

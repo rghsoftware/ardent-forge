@@ -30,6 +30,11 @@ import {
   useCreateLoggedActivity,
   useCreateLoggedSet,
   useUpdateLoggedSet,
+  useDeleteLoggedSet,
+  useUpdateLoggedActivity,
+  useDeleteLoggedActivity,
+  useUpdateLoggedActivityGroup,
+  useDeleteLoggedActivityGroup,
 } from '../use-workout-logs'
 
 beforeEach(() => {
@@ -256,5 +261,52 @@ describe('useUpdateLoggedSet', () => {
     })
 
     expect(mockAdapter.updateLoggedSet).toHaveBeenCalled()
+  })
+})
+
+describe('useDeleteLoggedSet', () => {
+  it('calls adapter.deleteLoggedSet', async () => {
+    vi.mocked(mockAdapter.deleteLoggedSet).mockResolvedValue(undefined)
+    const { result } = renderHook(() => useDeleteLoggedSet(), { wrapper: TestWrapper })
+    await result.current.mutateAsync({ id: 'ls-1', workoutLogId: 'wl-1' })
+    expect(mockAdapter.deleteLoggedSet).toHaveBeenCalledWith('ls-1')
+  })
+})
+
+describe('useUpdateLoggedActivity', () => {
+  it('calls adapter.updateLoggedActivity', async () => {
+    const updated = buildLoggedActivity({ id: 'la-1' })
+    vi.mocked(mockAdapter.updateLoggedActivity).mockResolvedValue(updated)
+    const { result } = renderHook(() => useUpdateLoggedActivity(), { wrapper: TestWrapper })
+    await result.current.mutateAsync({ activity: updated, userId: 'user-1', workoutLogId: 'wl-1' })
+    expect(mockAdapter.updateLoggedActivity).toHaveBeenCalledWith(updated, 'user-1')
+  })
+})
+
+describe('useDeleteLoggedActivity', () => {
+  it('calls adapter.deleteLoggedActivity', async () => {
+    vi.mocked(mockAdapter.deleteLoggedActivity).mockResolvedValue(undefined)
+    const { result } = renderHook(() => useDeleteLoggedActivity(), { wrapper: TestWrapper })
+    await result.current.mutateAsync({ id: 'la-1', workoutLogId: 'wl-1' })
+    expect(mockAdapter.deleteLoggedActivity).toHaveBeenCalledWith('la-1')
+  })
+})
+
+describe('useUpdateLoggedActivityGroup', () => {
+  it('calls adapter.updateLoggedActivityGroup', async () => {
+    const updated = buildLoggedActivityGroup({ id: 'lag-1' })
+    vi.mocked(mockAdapter.updateLoggedActivityGroup).mockResolvedValue(updated)
+    const { result } = renderHook(() => useUpdateLoggedActivityGroup(), { wrapper: TestWrapper })
+    await result.current.mutateAsync({ group: updated, userId: 'user-1', workoutLogId: 'wl-1' })
+    expect(mockAdapter.updateLoggedActivityGroup).toHaveBeenCalledWith(updated, 'user-1')
+  })
+})
+
+describe('useDeleteLoggedActivityGroup', () => {
+  it('calls adapter.deleteLoggedActivityGroup', async () => {
+    vi.mocked(mockAdapter.deleteLoggedActivityGroup).mockResolvedValue(undefined)
+    const { result } = renderHook(() => useDeleteLoggedActivityGroup(), { wrapper: TestWrapper })
+    await result.current.mutateAsync({ id: 'lag-1', workoutLogId: 'wl-1' })
+    expect(mockAdapter.deleteLoggedActivityGroup).toHaveBeenCalledWith('lag-1')
   })
 })

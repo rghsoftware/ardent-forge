@@ -4,6 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { WorkoutHistoryCard } from '@/components/history/workout-history-card'
 import type { WorkoutLogSummary } from '@/lib/data-adapter'
 
+// Mock @tanstack/react-router so useNavigate works without a router context
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => () => {},
+}))
+
 // Mock format-duration to return predictable values
 vi.mock('@/lib/format-duration', () => ({
   formatDateLabel: (date: Date) => {
@@ -54,7 +59,7 @@ describe('WorkoutHistoryCard', () => {
     render(<WorkoutHistoryCard {...defaultProps} />)
     // formatDateLabel returns a formatted date string
     // The card shows log.title ?? dateLabel
-    const card = screen.getByRole('button')
+    const card = screen.getByRole('button', { name: /view workout/i })
     expect(card).toBeInTheDocument()
   })
 
@@ -101,13 +106,13 @@ describe('WorkoutHistoryCard', () => {
   it('click triggers onClick callback', async () => {
     const user = userEvent.setup()
     render(<WorkoutHistoryCard {...defaultProps} />)
-    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByRole('button', { name: /view workout/i }))
     expect(onClick).toHaveBeenCalledOnce()
   })
 
   it('has an accessible label including the date', () => {
     render(<WorkoutHistoryCard {...defaultProps} />)
-    const button = screen.getByRole('button')
+    const button = screen.getByRole('button', { name: /view workout/i })
     expect(button.getAttribute('aria-label')).toContain('View workout from')
   })
 

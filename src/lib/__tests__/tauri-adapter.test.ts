@@ -960,6 +960,7 @@ describe('Workout log operations', () => {
         completed_at: expect.any(Number),
         overall_notes: null,
         perceived_difficulty: null,
+        note_tags: '[]',
       })
       expect(result.id).toBe('wl-001')
     })
@@ -1151,6 +1152,78 @@ describe('Logged entity operations', () => {
         user_id: 'user-001',
       })
       expect(result.id).toBe('ls-001')
+    })
+  })
+
+  describe('deleteLoggedSet', () => {
+    it('invokes delete_logged_set with id', async () => {
+      mockInvoke.mockResolvedValue(undefined)
+      await expect(adapter.deleteLoggedSet('ls-001')).resolves.toBeUndefined()
+      expect(mockInvoke).toHaveBeenCalledWith('delete_logged_set', { id: 'ls-001' })
+    })
+  })
+
+  describe('updateLoggedActivity', () => {
+    it('updates and returns mapped activity', async () => {
+      mockInvoke.mockResolvedValue(tauriLoggedActivityResponse)
+      const result = await adapter.updateLoggedActivity(
+        {
+          id: 'la-001',
+          loggedGroupId: 'lag-001',
+          exerciseId: 'ex-001',
+          ordinal: 1,
+        },
+        'user-001',
+      )
+      expect(mockInvoke).toHaveBeenCalledWith('update_logged_activity', {
+        activity: expect.objectContaining({
+          id: 'la-001',
+          logged_group_id: 'lag-001',
+          exercise_id: 'ex-001',
+        }),
+        user_id: 'user-001',
+      })
+      expect(result.id).toBe('la-001')
+    })
+  })
+
+  describe('deleteLoggedActivity', () => {
+    it('invokes delete_logged_activity with id', async () => {
+      mockInvoke.mockResolvedValue(undefined)
+      await expect(adapter.deleteLoggedActivity('la-001')).resolves.toBeUndefined()
+      expect(mockInvoke).toHaveBeenCalledWith('delete_logged_activity', { id: 'la-001' })
+    })
+  })
+
+  describe('updateLoggedActivityGroup', () => {
+    it('updates and returns mapped group', async () => {
+      mockInvoke.mockResolvedValue(tauriLoggedActivityGroupResponse)
+      const result = await adapter.updateLoggedActivityGroup(
+        {
+          id: 'lag-001',
+          workoutLogId: 'wl-001',
+          groupType: 'STRAIGHT_SETS',
+          ordinal: 1,
+        },
+        'user-001',
+      )
+      expect(mockInvoke).toHaveBeenCalledWith('update_logged_activity_group', {
+        group: expect.objectContaining({
+          id: 'lag-001',
+          workout_log_id: 'wl-001',
+          group_type: 'STRAIGHT_SETS',
+        }),
+        user_id: 'user-001',
+      })
+      expect(result.id).toBe('lag-001')
+    })
+  })
+
+  describe('deleteLoggedActivityGroup', () => {
+    it('invokes delete_logged_activity_group with id', async () => {
+      mockInvoke.mockResolvedValue(undefined)
+      await expect(adapter.deleteLoggedActivityGroup('lag-001')).resolves.toBeUndefined()
+      expect(mockInvoke).toHaveBeenCalledWith('delete_logged_activity_group', { id: 'lag-001' })
     })
   })
 })

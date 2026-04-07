@@ -4,6 +4,7 @@ import { formatDateLabel, formatDuration } from '@/lib/format-duration'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
+import { NoteDisplay } from '@/components/workout/notes/note-display'
 import type { WorkoutLog, LoggedSet } from '@/domain/types'
 
 interface WorkoutDetailHeaderProps {
@@ -86,15 +87,11 @@ export function WorkoutDetailHeader({
         )}
       </div>
 
-      {/* Notes block */}
-      {log.overallNotes && (
-        <div className="px-4 pb-4">
-          <span className="block text-[11px] uppercase tracking-widest text-warm-ash/60 mb-1">
-            NOTES
-          </span>
-          <p className="text-sm text-bone-white bg-surface-iron px-3 py-2">{log.overallNotes}</p>
-        </div>
-      )}
+      {/* Notes block (Spec assertion 9: renders nothing when both empty) */}
+      <NoteDisplay
+        value={{ text: log.overallNotes ?? '', tags: log.noteTags ?? [] }}
+        className="px-4 pb-4"
+      />
 
       {/* Program context */}
       {log.programContext && (

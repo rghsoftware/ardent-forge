@@ -1,8 +1,10 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Icon } from '@/components/icon'
 import { computeVariance } from '@/lib/set-variance'
-import type { SetType } from '@/domain/types'
+import type { SetType, NoteContent } from '@/domain/types'
+import { NoteAffordance } from '@/components/workout/notes/note-affordance'
+import { useActiveWorkoutStore } from '@/stores/active-workout-store'
 
 const SET_TYPES: SetType[] = ['WORKING', 'WARMUP', 'DROP', 'AMRAP', 'PEAK', 'BACKOFF']
 
@@ -16,6 +18,12 @@ interface SetRowProps {
   prescribedWeight?: { value: number; unit: string }
   prescribedReps?: number
   isBodyweight?: boolean
+  /**
+   * Logged-set id. When provided, a note affordance is rendered and
+   * tap-to-edit wires directly to the active workout store's setSetNote
+   * action. Omitted for unsaved scaffolds.
+   */
+  loggedSetId?: string
 }
 
 export function SetRow({
@@ -28,7 +36,24 @@ export function SetRow({
   prescribedWeight,
   prescribedReps,
   isBodyweight = false,
+  loggedSetId,
 }: SetRowProps) {
+  const setSetNote = useActiveWorkoutStore((s) => s.setSetNote)
+  const storedSet = useActiveWorkoutStore((s) => {
+    if (!loggedSetId) return undefined
+    for (const g of s.loggedGroups) {
+      for (const a of g.activities) {
+        const match = a.sets.find((x) => x.id === loggedSetId)
+        if (match) return match
+      }
+    }
+    return undefined
+  })
+  const noteValue = useMemo<NoteContent>(
+    () => ({ text: storedSet?.notes ?? '', tags: storedSet?.noteTags ?? [] }),
+    [storedSet?.notes, storedSet?.noteTags],
+  )
+  const hasNote = noteValue.text.trim().length > 0 || noteValue.tags.length > 0
   const hasPrescription = prescribedWeight != null || prescribedReps != null
 
   const [weight, setWeight] = useState(initialWeight)
@@ -199,6 +224,20 @@ export function SetRow({
             />
           </div>
         </>
+      )}
+
+      {/* Note affordance -- one tap opens the editor (Spec assertion 1) */}
+      {loggedSetId && (
+        <div className="flex shrink-0 items-center">
+          <NoteAffordance
+            value={noteValue}
+            onChange={(next) => setSetNote(loggedSetId, next)}
+            level="set"
+            variant="inline"
+            className="px-2"
+          />
+          <span className="sr-only">{hasNote ? 'Note attached' : 'No note'}</span>
+        </div>
       )}
 
       {/* Confirm / Status */}

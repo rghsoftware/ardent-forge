@@ -460,6 +460,50 @@ export class SupabaseAdapter implements DataAdapter {
     return toLoggedSet(data as LoggedSetRow)
   }
 
+  async deleteLoggedSet(id: string): Promise<void> {
+    const { error } = await this.client.from('logged_sets').delete().eq('id', id)
+    if (error) throw error
+  }
+
+  async updateLoggedActivity(activity: LoggedActivity, userId: string): Promise<LoggedActivity> {
+    const row = fromLoggedActivity(activity, userId)
+
+    const { data, error } = await this.client
+      .from('logged_activities')
+      .update(row)
+      .eq('id', activity.id)
+      .select()
+      .single()
+    if (error) throw error
+    return toLoggedActivity(data as LoggedActivityRow)
+  }
+
+  async deleteLoggedActivity(id: string): Promise<void> {
+    const { error } = await this.client.from('logged_activities').delete().eq('id', id)
+    if (error) throw error
+  }
+
+  async updateLoggedActivityGroup(
+    group: LoggedActivityGroup,
+    userId: string,
+  ): Promise<LoggedActivityGroup> {
+    const row = fromLoggedActivityGroup(group, userId)
+
+    const { data, error } = await this.client
+      .from('logged_activity_groups')
+      .update(row)
+      .eq('id', group.id)
+      .select()
+      .single()
+    if (error) throw error
+    return toLoggedActivityGroup(data as LoggedActivityGroupRow)
+  }
+
+  async deleteLoggedActivityGroup(id: string): Promise<void> {
+    const { error } = await this.client.from('logged_activity_groups').delete().eq('id', id)
+    if (error) throw error
+  }
+
   // ---------------------------------------------------------------------------
   // User profile operations
   // ---------------------------------------------------------------------------

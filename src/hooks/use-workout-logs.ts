@@ -135,6 +135,77 @@ export function useCreateLoggedSet() {
   })
 }
 
+export function useDeleteLoggedSet() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string; workoutLogId: string }) => getAdapter().deleteLoggedSet(id),
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
+    },
+  })
+}
+
+export function useUpdateLoggedActivity() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      activity,
+      userId,
+    }: {
+      activity: LoggedActivity
+      userId: string
+      workoutLogId: string
+    }) => getAdapter().updateLoggedActivity(activity, userId),
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
+    },
+  })
+}
+
+export function useDeleteLoggedActivity() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string; workoutLogId: string }) =>
+      getAdapter().deleteLoggedActivity(id),
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
+    },
+  })
+}
+
+export function useUpdateLoggedActivityGroup() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      group,
+      userId,
+    }: {
+      group: LoggedActivityGroup
+      userId: string
+      workoutLogId: string
+    }) => getAdapter().updateLoggedActivityGroup(group, userId),
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
+    },
+  })
+}
+
+export function useDeleteLoggedActivityGroup() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string; workoutLogId: string }) =>
+      getAdapter().deleteLoggedActivityGroup(id),
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
+    },
+  })
+}
+
 export function useUpdateLoggedSet() {
   const queryClient = useQueryClient()
 

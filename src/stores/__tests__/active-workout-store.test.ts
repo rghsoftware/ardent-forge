@@ -472,3 +472,187 @@ describe('cleanup', () => {
     expect(() => getState().cleanup()).not.toThrow()
   })
 })
+
+// ===========================================================================
+// Notes (F020) -- session / activity / set note setters
+// ===========================================================================
+
+describe('notes (F020)', () => {
+  it('setSessionNote updates overallNotes and noteTags on the active workoutLog', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+
+    getState().setSessionNote({ text: 'low sleep, scaled down', tags: ['LOW ENERGY'] })
+
+    const log = getState().workoutLog
+    expect(log?.overallNotes).toBe('low sleep, scaled down')
+    expect(log?.noteTags).toEqual(['LOW ENERGY'])
+  })
+
+  it('setSessionNote normalizes tags via noteTagSchema transform', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+
+    getState().setSessionNote({ text: '', tags: ['  felt  heavy  ', 'pr attempt'] })
+
+    expect(getState().workoutLog?.noteTags).toEqual(['FELT HEAVY', 'PR ATTEMPT'])
+  })
+
+  it('setSessionNote is a no-op without an active workoutLog', () => {
+    getState().setSessionNote({ text: 'anything', tags: [] })
+    expect(getState().workoutLog).toBeNull()
+  })
+
+  it('setSessionNote rejects invalid content at the boundary (silently warns)', () => {
+    const wl = makeWorkoutLog({ overallNotes: 'pre-existing' })
+    getState().startWorkout('user-1', wl)
+
+    // Tag exceeds 32-char max -- noteContentSchema should reject
+    const over = 'A'.repeat(33)
+    getState().setSessionNote({ text: 'x', tags: [over] })
+
+    // State unchanged
+    expect(getState().workoutLog?.overallNotes).toBe('pre-existing')
+  })
+
+  it('setActivityNote updates notes and noteTags on the matching activity', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+    useActiveWorkoutStore.setState({
+      loggedGroups: [makeGroupWithActivities()],
+    })
+
+    getState().setActivityNote('la-1', {
+      text: 'switched to safety bar',
+      tags: ['SUBSTITUTION'],
+    })
+
+    const activity = getState().loggedGroups[0].activities[0]
+    expect(activity.notes).toBe('switched to safety bar')
+    expect(activity.noteTags).toEqual(['SUBSTITUTION'])
+  })
+
+  it('setActivityNote does nothing when activityId is not found', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+    useActiveWorkoutStore.setState({
+      loggedGroups: [makeGroupWithActivities()],
+    })
+
+    getState().setActivityNote('nope', { text: 'x', tags: [] })
+
+    const activity = getState().loggedGroups[0].activities[0]
+    expect(activity.notes).toBeUndefined()
+    expect(activity.noteTags).toBeUndefined()
+  })
+
+  it('setSetNote updates notes and noteTags on the matching set deep in the tree', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+    useActiveWorkoutStore.setState({
+      loggedGroups: [
+        {
+          ...makeLoggedActivityGroup(),
+          activities: [
+            {
+              ...makeLoggedActivity(),
+              sets: [makeLoggedSet()],
+            },
+          ],
+        },
+      ],
+    })
+
+    getState().setSetNote('ls-1', { text: 'grindy', tags: ['GRINDY'] })
+
+    const updatedSet = getState().loggedGroups[0].activities[0].sets[0]
+    expect(updatedSet.notes).toBe('grindy')
+    expect(updatedSet.noteTags).toEqual(['GRINDY'])
+  })
+
+  it('setSetNote is a no-op for an unknown setId', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+    useActiveWorkoutStore.setState({
+      loggedGroups: [
+        {
+          ...makeLoggedActivityGroup(),
+          activities: [
+            {
+              ...makeLoggedActivity(),
+              sets: [makeLoggedSet()],
+            },
+          ],
+        },
+      ],
+    })
+
+    getState().setSetNote('missing', { text: 'x', tags: [] })
+
+    const s = getState().loggedGroups[0].activities[0].sets[0]
+    expect(s.notes).toBeUndefined()
+  })
+
+  it('setSetNote rejects over-limit tag array at the boundary', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+    useActiveWorkoutStore.setState({
+      loggedGroups: [
+        {
+          ...makeLoggedActivityGroup(),
+          activities: [
+            {
+              ...makeLoggedActivity(),
+              sets: [{ ...makeLoggedSet(), notes: 'untouched' } as LoggedSet],
+            },
+          ],
+        },
+      ],
+    })
+
+    const tooMany = Array.from({ length: 17 }, (_, i) => `TAG${i}`)
+    getState().setSetNote('ls-1', { text: 'x', tags: tooMany })
+
+    // Unchanged
+    expect(getState().loggedGroups[0].activities[0].sets[0].notes).toBe('untouched')
+  })
+
+  it('note state survives a crash-recovery snapshot round-trip (JSON serialize/deserialize)', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+    useActiveWorkoutStore.setState({
+      loggedGroups: [
+        {
+          ...makeLoggedActivityGroup(),
+          activities: [
+            {
+              ...makeLoggedActivity(),
+              sets: [makeLoggedSet()],
+            },
+          ],
+        },
+      ],
+    })
+    getState().setSessionNote({ text: 'session level', tags: ['FAST'] })
+    getState().setActivityNote('la-1', { text: 'activity level', tags: ['SCALED'] })
+    getState().setSetNote('ls-1', { text: 'set level', tags: ['GRINDY', 'PAUSED'] })
+
+    // Capture the snapshot shape crash-recovery would serialize
+    const snapshot = {
+      workoutLog: getState().workoutLog,
+      loggedGroups: getState().loggedGroups,
+      elapsedSeconds: getState().elapsedSeconds,
+    }
+    const roundTripped = JSON.parse(JSON.stringify(snapshot)) as typeof snapshot
+
+    expect(roundTripped.workoutLog?.overallNotes).toBe('session level')
+    expect(roundTripped.workoutLog?.noteTags).toEqual(['FAST'])
+    expect(roundTripped.loggedGroups[0].activities[0].notes).toBe('activity level')
+    expect(roundTripped.loggedGroups[0].activities[0].noteTags).toEqual(['SCALED'])
+    expect(roundTripped.loggedGroups[0].activities[0].sets[0].notes).toBe('set level')
+    expect(roundTripped.loggedGroups[0].activities[0].sets[0].noteTags).toEqual([
+      'GRINDY',
+      'PAUSED',
+    ])
+  })
+})

@@ -1,8 +1,11 @@
+import { useMemo } from 'react'
 import { SetRow } from '@/components/workout/set-row'
 import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useOnboardingStore } from '@/stores/onboarding-store'
+import { useActiveWorkoutStore } from '@/stores/active-workout-store'
+import { NoteAffordance } from '@/components/workout/notes/note-affordance'
 import { cn } from '@/lib/utils'
-import type { SetType } from '@/domain/types'
+import type { SetType, NoteContent } from '@/domain/types'
 
 interface SetRowData {
   id: string
@@ -43,6 +46,19 @@ export function ExerciseBlock({
   const hasPrescribed = sets.some((s) => s.prescribedWeight != null || s.prescribedReps != null)
   const noSetsConfirmed = !firstWorkoutCompleted && sets.every((s) => !s.confirmed)
 
+  const setActivityNote = useActiveWorkoutStore((s) => s.setActivityNote)
+  const storedActivity = useActiveWorkoutStore((s) => {
+    for (const g of s.loggedGroups) {
+      const match = g.activities.find((a) => a.id === loggedActivityId)
+      if (match) return match
+    }
+    return undefined
+  })
+  const activityNote = useMemo<NoteContent>(
+    () => ({ text: storedActivity?.notes ?? '', tags: storedActivity?.noteTags ?? [] }),
+    [storedActivity?.notes, storedActivity?.noteTags],
+  )
+
   return (
     <section
       aria-label={`${exerciseName} exercise`}
@@ -52,7 +68,7 @@ export function ExerciseBlock({
         isActive ? 'bg-surface-iron' : 'bg-surface-pit',
       )}
     >
-      <div className="px-4 pt-4 pb-2">
+      <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-2">
         <h3
           className={cn(
             'font-display text-xs font-medium transition-colors duration-300 ease-out',
@@ -61,6 +77,12 @@ export function ExerciseBlock({
         >
           {exerciseName}
         </h3>
+        <NoteAffordance
+          value={activityNote}
+          onChange={(next) => setActivityNote(loggedActivityId, next)}
+          level="exercise"
+          variant="inline"
+        />
       </div>
 
       {/* Column headers */}
@@ -115,6 +137,7 @@ export function ExerciseBlock({
             prescribedWeight={set.prescribedWeight}
             prescribedReps={set.prescribedReps}
             isBodyweight={isBodyweight}
+            loggedSetId={set.id}
             onConfirm={(weight, reps, setType) =>
               onConfirmSet(loggedActivityId, set.setNumber, weight, reps, setType)
             }

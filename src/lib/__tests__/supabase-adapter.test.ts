@@ -741,6 +741,64 @@ describe('Logged entity operations', () => {
       expect(result.id).toBe('ls-001')
     })
   })
+
+  describe('deleteLoggedSet', () => {
+    it('deletes set without error', async () => {
+      mockClient.mockResponse('logged_sets', 'delete', [])
+      await expect(adapter.deleteLoggedSet('ls-001')).resolves.toBeUndefined()
+      expect(mockClient.from).toHaveBeenCalledWith('logged_sets')
+    })
+  })
+
+  describe('updateLoggedActivity', () => {
+    it('updates and returns mapped activity', async () => {
+      mockClient.mockResponse('logged_activities', 'update', [activityRow])
+      const result = await adapter.updateLoggedActivity(
+        {
+          id: 'la-001',
+          loggedGroupId: 'lag-001',
+          exerciseId: 'ex-001',
+          ordinal: 1,
+        },
+        'user-001',
+      )
+      expect(mockClient.from).toHaveBeenCalledWith('logged_activities')
+      expect(result.id).toBe('la-001')
+    })
+  })
+
+  describe('deleteLoggedActivity', () => {
+    it('deletes activity without error', async () => {
+      mockClient.mockResponse('logged_activities', 'delete', [])
+      await expect(adapter.deleteLoggedActivity('la-001')).resolves.toBeUndefined()
+      expect(mockClient.from).toHaveBeenCalledWith('logged_activities')
+    })
+  })
+
+  describe('updateLoggedActivityGroup', () => {
+    it('updates and returns mapped group', async () => {
+      mockClient.mockResponse('logged_activity_groups', 'update', [groupRow])
+      const result = await adapter.updateLoggedActivityGroup(
+        {
+          id: 'lag-001',
+          workoutLogId: 'wl-001',
+          groupType: 'STRAIGHT_SETS',
+          ordinal: 1,
+        },
+        'user-001',
+      )
+      expect(mockClient.from).toHaveBeenCalledWith('logged_activity_groups')
+      expect(result.id).toBe('lag-001')
+    })
+  })
+
+  describe('deleteLoggedActivityGroup', () => {
+    it('deletes group without error', async () => {
+      mockClient.mockResponse('logged_activity_groups', 'delete', [])
+      await expect(adapter.deleteLoggedActivityGroup('lag-001')).resolves.toBeUndefined()
+      expect(mockClient.from).toHaveBeenCalledWith('logged_activity_groups')
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------

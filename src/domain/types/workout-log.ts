@@ -12,6 +12,7 @@ import {
 import { groupTypeSchema } from './session'
 import { loadSpecSchema } from './set-scheme'
 import { eventMetadataSchema } from './event'
+import { noteTagSchema } from './workout-note'
 
 // ---------------------------------------------------------------------------
 // SetType -- classification of an individual logged set
@@ -63,6 +64,7 @@ export const workoutLogSchema = syncableEntitySchema
     sessionTemplateId: entityId.optional(),
     programContext: programContextSchema.optional(),
     overallNotes: z.string().optional(),
+    noteTags: z.array(noteTagSchema).max(16).optional(),
     perceivedDifficulty: z.number().int().min(1).max(10).optional(), // L-6
     bodyweightAtSession: weightSchema.optional(),
     eventMetadata: eventMetadataSchema.optional(),
@@ -102,6 +104,7 @@ export const loggedActivitySchema = z.object({
   exerciseId: entityId,
   ordinal: z.number().int().positive(),
   notes: z.string().optional(),
+  noteTags: z.array(noteTagSchema).max(16).optional(),
 })
 export type LoggedActivity = z.infer<typeof loggedActivitySchema>
 
@@ -129,6 +132,7 @@ export const loggedSetSchema = z
     rpe: z.number().min(1).max(10).multipleOf(0.5).optional(),
     completed: z.boolean(),
     notes: z.string().optional(),
+    noteTags: z.array(noteTagSchema).max(16).optional(),
     ruckLoad: weightSchema.optional(),
     elevationGain: distanceSchema.optional(),
   })

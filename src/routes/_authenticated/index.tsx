@@ -315,6 +315,13 @@ function TodayPage() {
                 {startError && (
                   <p className="text-xs text-warning-flare text-center">{startError}</p>
                 )}
+                <Button
+                  variant="ghost"
+                  className="w-full h-12 text-xs font-medium"
+                  onClick={() => navigate({ to: '/log/new' })}
+                >
+                  Log past workout
+                </Button>
               </div>
             </div>
           </div>

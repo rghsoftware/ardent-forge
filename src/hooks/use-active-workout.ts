@@ -302,16 +302,29 @@ export function useActiveWorkout() {
           userId,
         })
 
-        // TODO: No deleteLoggedActivityGroup on adapter yet -- orphaned group will be cleaned up by next full workout delete
         const activityData: Omit<LoggedActivity, 'id'> = {
           loggedGroupId: savedGroup.id,
           exerciseId: exercise.id,
           ordinal: 1,
         }
-        const savedActivity = await createLoggedActivityMutation.mutateAsync({
-          activity: activityData,
-          userId,
-        })
+        let savedActivity: LoggedActivity
+        try {
+          savedActivity = await createLoggedActivityMutation.mutateAsync({
+            activity: activityData,
+            userId,
+          })
+        } catch (activityErr) {
+          // Roll back the orphaned group so we don't accumulate empty groups
+          try {
+            await getAdapter().deleteLoggedActivityGroup(savedGroup.id)
+          } catch (rollbackErr) {
+            console.error('[workout] Failed to roll back orphaned group:', {
+              groupId: savedGroup.id,
+              err: rollbackErr,
+            })
+          }
+          throw activityErr
+        }
 
         // Update store with DB-assigned IDs
         storeAddExercise(exercise, groupType, savedGroup, savedActivity)
