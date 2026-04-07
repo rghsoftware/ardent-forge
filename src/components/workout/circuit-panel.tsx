@@ -15,6 +15,13 @@ interface CircuitPanelProps {
   rounds: number
   interExerciseRestSeconds?: number
   interRoundRestSeconds?: number
+  /**
+   * Fires immediately when the user taps "Done" on an exercise. The parent
+   * should record a confirmed set with the supplied actual reps. exerciseIndex
+   * matches the index in the exercises prop. round is 1-based.
+   */
+  onExerciseDone?: (exerciseIndex: number, round: number, actualReps: number) => void
+  /** Fires once after the last exercise of the last round. */
   onComplete: (completedRounds: number) => void
 }
 
@@ -23,6 +30,7 @@ export function CircuitPanel({
   rounds,
   interExerciseRestSeconds = 90,
   interRoundRestSeconds = 180,
+  onExerciseDone,
   onComplete,
 }: CircuitPanelProps) {
   const [phase, setPhase] = useState<CircuitPhase>('overview')
@@ -30,6 +38,10 @@ export function CircuitPanel({
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0)
   const [restSeconds, setRestSeconds] = useState(0)
   const [completedRounds, setCompletedRounds] = useState(0)
+  // Track only the user's edit, keyed to (exerciseIndex, round). When the key
+  // doesn't match the current position, we fall back to the target reps. This
+  // avoids a setState-in-effect violation while still letting the user edit.
+  const [repsOverride, setRepsOverride] = useState<{ key: string; value: string } | null>(null)
   const restIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Rest countdown effect
@@ -69,7 +81,24 @@ export function CircuitPanel({
     setCompletedRounds(0)
   }, [])
 
+  const currentRepsKey = `${currentExerciseIndex}-${currentRound}`
+  const currentTargetReps = exercises[currentExerciseIndex]?.targetReps
+  const actualRepsInput =
+    repsOverride?.key === currentRepsKey
+      ? repsOverride.value
+      : currentTargetReps != null
+        ? String(currentTargetReps)
+        : ''
+
   const handleExerciseDone = useCallback(() => {
+    // Record the actual reps the user entered (or fall back to target).
+    const parsed = parseInt(actualRepsInput, 10)
+    const actualReps =
+      Number.isFinite(parsed) && parsed >= 0
+        ? parsed
+        : (exercises[currentExerciseIndex]?.targetReps ?? 0)
+    onExerciseDone?.(currentExerciseIndex, currentRound, actualReps)
+
     const isLastExercise = currentExerciseIndex >= exercises.length - 1
     const isLastRound = currentRound >= rounds
 
@@ -91,12 +120,14 @@ export function CircuitPanel({
       setPhase('interExerciseRest')
     }
   }, [
+    actualRepsInput,
     currentExerciseIndex,
     currentRound,
-    exercises.length,
+    exercises,
     rounds,
     interExerciseRestSeconds,
     interRoundRestSeconds,
+    onExerciseDone,
   ])
 
   const handleSkipRest = useCallback(() => {
@@ -170,10 +201,28 @@ export function CircuitPanel({
           {/* Exercise name */}
           <span className="font-display text-2xl text-bone-white">{currentExercise.name}</span>
 
-          {/* Target reps */}
-          <span className="font-display text-5xl tabular-nums text-ember">
-            {currentExercise.targetReps}
+          {/* Target reps (read-only reference) */}
+          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">
+            TARGET {currentExercise.targetReps}
           </span>
+
+          {/* Actual reps input -- pre-filled with target, user edits before tapping Done */}
+          <label className="flex flex-col items-center gap-1">
+            <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">ACTUAL</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={actualRepsInput}
+              onChange={(e) =>
+                setRepsOverride({
+                  key: currentRepsKey,
+                  value: e.target.value.replace(/[^0-9]/g, ''),
+                })
+              }
+              className="w-32 border-b-2 border-ember/60 bg-transparent py-1 text-center font-display text-5xl tabular-nums text-ember placeholder:text-warm-ash/30 focus:border-ember focus:outline-none"
+              aria-label={`Actual reps for ${currentExercise.name}`}
+            />
+          </label>
           <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">REPS</span>
 
           {/* Done button */}

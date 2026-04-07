@@ -519,22 +519,24 @@ function ActiveWorkoutPage() {
                 key={group.id}
                 exercises={circuitExercises}
                 rounds={3}
-                onComplete={async (completedRounds) => {
-                  // Log a single set per activity summarizing the circuit
-                  const results = await Promise.allSettled(
-                    group.activities.map((a) =>
-                      confirmSet(a.id, {
-                        loggedActivityId: a.id,
-                        setNumber: 1,
-                        setType: 'WORKING',
-                        completed: true,
-                        actualReps: completedRounds * DEFAULT_CIRCUIT_REPS,
-                      }),
-                    ),
-                  )
-                  if (results.some((r) => r.status === 'rejected')) {
-                    setPageError('Some circuit sets could not be saved.')
+                onExerciseDone={async (exerciseIndex, round, actualReps) => {
+                  const activity = group.activities[exerciseIndex]
+                  if (!activity) return
+                  try {
+                    await confirmSet(activity.id, {
+                      loggedActivityId: activity.id,
+                      setNumber: round,
+                      setType: 'WORKING',
+                      completed: true,
+                      actualReps,
+                    })
+                  } catch (err) {
+                    console.error('[workout-log] Failed to log circuit set:', err)
+                    setPageError('Failed to save circuit set.')
                   }
+                }}
+                onComplete={() => {
+                  // Per-set logging happens in onExerciseDone; nothing to do here.
                 }}
               />
             )
