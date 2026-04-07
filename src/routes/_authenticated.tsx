@@ -62,10 +62,12 @@ function AuthenticatedLayout() {
 
   return (
     <div className="flex h-screen bg-background pt-[var(--sai-top)]">
-      {/* Large screen sidebar */}
-      <div className="hidden lg:flex">
-        <SidebarNav />
-      </div>
+      {/* Large screen sidebar -- hidden on active workout routes for full-screen focus */}
+      {!isWorkoutRoute && (
+        <div className="hidden lg:flex">
+          <SidebarNav />
+        </div>
+      )}
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 relative">

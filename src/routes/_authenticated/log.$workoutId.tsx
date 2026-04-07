@@ -381,7 +381,7 @@ function ActiveWorkoutPage() {
 
   if (workoutLog.eventMetadata) {
     return (
-      <div className="flex min-h-screen flex-col bg-surface-anvil pb-20">
+      <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
         {/* Dismissible error banner */}
         {pageError && (
           <div
@@ -422,17 +422,20 @@ function ActiveWorkoutPage() {
           interactive={true}
         />
 
-        {/* Discard button */}
-        <div className="px-4 pb-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowDiscardDialog(true)}
-            className="w-full text-xs text-warning-flare"
-          >
-            Discard workout
-          </Button>
-        </div>
+        {/* Discard button -- only available when paused, so it's never one
+            stray tap away during an active session. */}
+        {isPaused && (
+          <div className="px-4 pb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowDiscardDialog(true)}
+              className="w-full text-xs text-warning-flare"
+            >
+              Discard workout
+            </Button>
+          </div>
+        )}
 
         {/* Discard confirmation dialog */}
         <Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
@@ -460,7 +463,7 @@ function ActiveWorkoutPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-anvil pb-20">
+    <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
       {/* Dismissible error banner */}
       {pageError && (
         <div
@@ -505,8 +508,8 @@ function ActiveWorkoutPage() {
         />
       )}
 
-      {/* Exercise blocks */}
-      <div className="flex flex-col gap-[1.75rem] px-0 pt-2">
+      {/* Exercise blocks -- flex-1 so the workout content fills the viewport */}
+      <div className="flex flex-1 flex-col gap-[1.75rem] px-0 pt-2">
         {loggedGroups.map((group) => {
           // Group-level rendering: circuits render once per group
           if (group.groupType === 'CIRCUIT') {
