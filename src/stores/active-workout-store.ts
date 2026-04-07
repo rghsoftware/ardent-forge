@@ -63,6 +63,11 @@ interface ActiveWorkoutState {
 
   // Undo mechanism
   undoAction: UndoAction | null
+
+  // Surfaced pause-timing error so the bridge/UI layer can react when the
+  // store's unpauseWorkout action hits the invalid-pausedAt branch (the
+  // store cannot render UI itself). Cleared on successful pause/unpause.
+  pauseTimingError: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +180,7 @@ const initialState: ActiveWorkoutState = {
   elapsedSeconds: 0,
   restTimer: null,
   undoAction: null,
+  pauseTimingError: null,
 }
 
 export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutActions>()(
@@ -256,6 +262,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       if (!state.workoutLog || state.workoutLog.pausedAt) return
       set({
         workoutLog: { ...state.workoutLog, pausedAt: new Date().toISOString() },
+        pauseTimingError: null,
       })
       _publishCurrentState()
     },
@@ -271,6 +278,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         )
         set({
           workoutLog: { ...state.workoutLog, pausedAt: undefined },
+          pauseTimingError: 'Pause timing data was invalid; resumed without crediting paused time.',
         })
         _publishCurrentState()
         return
@@ -281,6 +289,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
           pausedAt: undefined,
           totalPausedMs: state.workoutLog.totalPausedMs + pauseDurationMs,
         },
+        pauseTimingError: null,
       })
       _publishCurrentState()
     },

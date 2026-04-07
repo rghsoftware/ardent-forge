@@ -322,6 +322,10 @@ export function useActiveWorkout() {
               groupId: savedGroup.id,
               err: rollbackErr,
             })
+            throw new Error(
+              'Could not add exercise; an orphaned group may remain. Please refresh.',
+              { cause: activityErr },
+            )
           }
           throw activityErr
         }
@@ -546,11 +550,11 @@ export function useActiveWorkout() {
         }
       })
 
-      // Calculate elapsed seconds from startedAt
-      const startedAt = new Date(fullWorkout.log.startedAt).getTime()
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000)
-
-      storeResumeWorkout(fullWorkout.log, nestedGroups, elapsed)
+      // Initial elapsedSeconds is 0 here; the active workout route's
+      // computeElapsed (in log.$workoutId.tsx) is the single source of truth
+      // for elapsed time and accounts for totalPausedMs and any in-flight
+      // pausedAt. It will overwrite this value on mount.
+      storeResumeWorkout(fullWorkout.log, nestedGroups, 0)
     },
     [storeResumeWorkout],
   )
@@ -560,10 +564,20 @@ export function useActiveWorkout() {
    */
   const pauseWorkout = useCallback(async () => {
     const current = useActiveWorkoutStore.getState().workoutLog
-    if (!current || current.pausedAt) return
+    if (!current) {
+      console.warn('[active-workout] pauseWorkout ignored: no active workout')
+      return
+    }
+    if (current.pausedAt) {
+      console.warn('[active-workout] pauseWorkout ignored: already paused')
+      return
+    }
     storePauseWorkout()
     const updated = useActiveWorkoutStore.getState().workoutLog
-    if (!updated) return
+    if (!updated) {
+      console.warn('[active-workout] pauseWorkout ignored: workout cleared after store update')
+      return
+    }
     try {
       await updateWorkoutLogMutation.mutateAsync(updated)
     } catch (err) {
@@ -578,10 +592,20 @@ export function useActiveWorkout() {
    */
   const unpauseWorkout = useCallback(async () => {
     const current = useActiveWorkoutStore.getState().workoutLog
-    if (!current || !current.pausedAt) return
+    if (!current) {
+      console.warn('[active-workout] unpauseWorkout ignored: no active workout')
+      return
+    }
+    if (!current.pausedAt) {
+      console.warn('[active-workout] unpauseWorkout ignored: not currently paused')
+      return
+    }
     storeUnpauseWorkout()
     const updated = useActiveWorkoutStore.getState().workoutLog
-    if (!updated) return
+    if (!updated) {
+      console.warn('[active-workout] unpauseWorkout ignored: workout cleared after store update')
+      return
+    }
     try {
       await updateWorkoutLogMutation.mutateAsync(updated)
     } catch (err) {

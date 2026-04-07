@@ -172,6 +172,10 @@ function isoToLocalInput(iso: string | undefined): string {
 function localInputToIso(local: string): string {
   if (!local) return ''
   const d = new Date(local)
+  if (Number.isNaN(d.getTime())) {
+    console.error('[manual-workout-form] localInputToIso: invalid date input', { value: local })
+    throw new Error('Invalid date')
+  }
   return d.toISOString()
 }
 
@@ -491,24 +495,30 @@ function ActivityRows({ control, groupIndex, exercises, userId }: ActivityRowsPr
 
   return (
     <div className="flex flex-col gap-3 mt-3">
-      {fields.map((field, activityIndex) => (
-        <div key={field.id} className="bg-surface-pit/50 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-heading text-sm text-bone-white">
-              {field.exerciseName ?? exerciseNameById.get(field.exerciseId) ?? 'Exercise'}
-            </span>
-            <button
-              type="button"
-              onClick={() => remove(activityIndex)}
-              aria-label="Remove exercise"
-              className="h-12 w-12 flex items-center justify-center text-warm-ash hover:text-warning-flare"
-            >
-              <span className="material-symbols-outlined text-base">delete</span>
-            </button>
+      {fields.map((field, activityIndex) => {
+        const resolvedName = field.exerciseName ?? exerciseNameById.get(field.exerciseId)
+        if (!resolvedName) {
+          console.warn('[manual-workout-form] Unknown exerciseId in log:', field.exerciseId)
+        }
+        return (
+          <div key={field.id} className="bg-surface-pit/50 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-heading text-sm text-bone-white">
+                {resolvedName ?? '⚠ Unknown exercise'}
+              </span>
+              <button
+                type="button"
+                onClick={() => remove(activityIndex)}
+                aria-label="Remove exercise"
+                className="h-12 w-12 flex items-center justify-center text-warm-ash hover:text-warning-flare"
+              >
+                <span className="material-symbols-outlined text-base">delete</span>
+              </button>
+            </div>
+            <SetRows control={control} groupIndex={groupIndex} activityIndex={activityIndex} />
           </div>
-          <SetRows control={control} groupIndex={groupIndex} activityIndex={activityIndex} />
-        </div>
-      ))}
+        )
+      })}
       <Button
         type="button"
         variant="outline"

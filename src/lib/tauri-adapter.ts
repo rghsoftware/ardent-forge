@@ -577,10 +577,15 @@ function parseNoteTags(value: string | null | undefined, column: string): string
     if (Array.isArray(parsed) && parsed.every((t) => typeof t === 'string')) {
       return parsed as string[]
     }
-    console.warn(`[tauri-adapter] ${column}: expected string[], using fallback []`)
+    console.warn(
+      `[tauri-adapter] ${column}: expected string[], using fallback [] -- raw: ${String(value).slice(0, 120)}`,
+    )
     return []
   } catch (err) {
-    console.warn(`[tauri-adapter] ${column}: JSON parse failed, using fallback []:`, err)
+    console.warn(
+      `[tauri-adapter] ${column}: JSON parse failed, using fallback [] -- raw: ${String(value).slice(0, 120)}:`,
+      err,
+    )
     return []
   }
 }
@@ -601,6 +606,7 @@ function requireString(value: string | null | undefined, field: string): string 
  * parameter is a safety net for fields where null genuinely means "unset"
  * (e.g. is_bilateral, supports_1rm, is_custom).
  */
+// TODO(P14-021): pass field name and log on fallback
 function intToBool(value: number | null | undefined, fallback = false): boolean {
   if (value == null) return fallback
   return value !== 0
@@ -628,6 +634,18 @@ function toExerciseRow(r: TauriExerciseResponse): ExerciseRow {
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
+}
+
+// One-shot warning when pause state is dropped on the Tauri adapter.
+// Per ADR-013, pause-state persistence to local SQLite is deferred (F018).
+// The interim behavior is to silently coerce paused_at/total_paused_ms to
+// defaults and surface a single console.warn so callers attempting to
+// persist pause data through this adapter notice.
+let _pauseFieldsDropWarned = false
+function _warnPauseFieldsDroppedOnce(): void {
+  if (_pauseFieldsDropWarned) return
+  _pauseFieldsDropWarned = true
+  console.warn('[tauri-adapter] Pause state not persisted on mobile (F018/ADR-013 deferred)')
 }
 
 function toWorkoutLogRow(r: TauriWorkoutLogResponse): WorkoutLogRow {
@@ -1110,6 +1128,9 @@ export class TauriAdapter implements DataAdapter {
   async createWorkoutLog(
     log: Omit<WorkoutLog, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<WorkoutLog> {
+    if (log.pausedAt != null || (log.totalPausedMs ?? 0) > 0) {
+      _warnPauseFieldsDroppedOnce()
+    }
     const partial = fromWorkoutLog(log)
     const input = {
       user_id: partial.user_id!,
@@ -1133,6 +1154,9 @@ export class TauriAdapter implements DataAdapter {
   }
 
   async updateWorkoutLog(log: WorkoutLog): Promise<WorkoutLog> {
+    if (log.pausedAt != null || (log.totalPausedMs ?? 0) > 0) {
+      _warnPauseFieldsDroppedOnce()
+    }
     const row = await invokeCommand<TauriWorkoutLogResponse>('update_workout_log', {
       id: log.id,
       title: log.title ?? null,

@@ -461,8 +461,13 @@ export class SupabaseAdapter implements DataAdapter {
   }
 
   async deleteLoggedSet(id: string): Promise<void> {
-    const { error } = await this.client.from('logged_sets').delete().eq('id', id)
-    if (error) throw error
+    try {
+      const { error } = await this.client.from('logged_sets').delete().eq('id', id)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] deleteLoggedSet failed:', { id, err })
+      throw err
+    }
   }
 
   async updateLoggedActivity(activity: LoggedActivity, userId: string): Promise<LoggedActivity> {
@@ -479,8 +484,13 @@ export class SupabaseAdapter implements DataAdapter {
   }
 
   async deleteLoggedActivity(id: string): Promise<void> {
-    const { error } = await this.client.from('logged_activities').delete().eq('id', id)
-    if (error) throw error
+    try {
+      const { error } = await this.client.from('logged_activities').delete().eq('id', id)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] deleteLoggedActivity failed:', { id, err })
+      throw err
+    }
   }
 
   async updateLoggedActivityGroup(
@@ -500,8 +510,13 @@ export class SupabaseAdapter implements DataAdapter {
   }
 
   async deleteLoggedActivityGroup(id: string): Promise<void> {
-    const { error } = await this.client.from('logged_activity_groups').delete().eq('id', id)
-    if (error) throw error
+    try {
+      const { error } = await this.client.from('logged_activity_groups').delete().eq('id', id)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] deleteLoggedActivityGroup failed:', { id, err })
+      throw err
+    }
   }
 
   // ---------------------------------------------------------------------------

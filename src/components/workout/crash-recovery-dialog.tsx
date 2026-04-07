@@ -76,7 +76,10 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
   }
 
   const handleResume = () => {
-    if (!fullWorkout || !incompleteWorkout) return
+    if (!fullWorkout || !incompleteWorkout) {
+      console.warn('[crash-recovery] Resume ignored: workout not loaded yet')
+      return
+    }
     setIsResuming(true)
     setDismissed(true)
     resumeWorkout(fullWorkout)

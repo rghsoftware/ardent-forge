@@ -119,7 +119,7 @@ export function useCreateLoggedSet() {
       ])
       queryClient.setQueryData<WorkoutLogFull>(['workout-full', newSet.workoutLogId], (old) => {
         if (!old) return old
-        return { ...old, sets: [...old.sets, { ...newSet, id: 'temp-' + Date.now() }] }
+        return { ...old, sets: [...old.sets, { ...newSet, id: 'temp-' + crypto.randomUUID() }] }
       })
       return { previous }
     },

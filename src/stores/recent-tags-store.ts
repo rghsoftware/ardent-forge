@@ -33,11 +33,21 @@ function loadRecent(): string[] {
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed)) {
       console.warn('[recent-tags] Stored value is not an array, resetting')
+      try {
+        localStorage.removeItem(STORAGE_KEY)
+      } catch (removeErr) {
+        console.error('[recent-tags] Failed to remove corrupt value:', removeErr)
+      }
       return []
     }
     return parsed.filter((v): v is string => typeof v === 'string').slice(0, MAX_RECENT)
   } catch (err) {
     console.error('[recent-tags] Failed to load recent tags:', err)
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch (removeErr) {
+      console.error('[recent-tags] Failed to remove corrupt value:', removeErr)
+    }
     return []
   }
 }

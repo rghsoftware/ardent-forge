@@ -351,6 +351,46 @@ project CHANGELOG if present
 
 ---
 
+## Wave 6 — PR #92 Review Follow-ups
+
+Follow-up tasks captured from PR #92 review (`Context/Reviews/0014-pr92-workout-template-ux-review.md`).
+
+### S019 — Test coverage: adapter note sync edge cases (P14-014, Medium)
+
+**Owner:** quality-engineer
+**Files:** `src/lib/__tests__/supabase-adapter.test.ts`, `src/lib/__tests__/tauri-adapter.test.ts`
+**Outcome:** Add cases: `null` vs `[]` normalization for `noteTags`; round-trip preserves tag order without dedup loss; offline queue write-then-sync (Tauri); conflict resolution when server has a newer note.
+**Depends on:** none
+**Review finding:** P14-014
+
+### S020 — filter-history.test.ts boundary cases (P14-028, Low)
+
+**Owner:** quality-engineer
+**Files:** `src/routes/_authenticated/history/__tests__/filter-history.test.ts`
+**Outcome:** Add: empty input, all-filtered-out, case-insensitive tag matching, unicode/emoji-in-tag cases.
+**Depends on:** none
+**Review finding:** P14-028
+
+### S021 — ADR-014 implementation: note_tags DB CHECK constraints
+
+**Owner:** backend-engineer + tauri-specialist
+**Files:**
+
+- `supabase/migrations/YYYYMMDDHHMMSS_add_note_tags_check_constraints.sql`
+- `src-tauri/migrations/` (next sequential file)
+- `Context/Features/020-Workout-Notes/Tech.md`
+
+**Outcome:** Per ADR-014, add defense-in-depth DB constraints:
+
+- New Supabase migration adding `CHECK (cardinality(note_tags) <= 16 AND NOT EXISTS (SELECT 1 FROM unnest(note_tags) t WHERE length(t) = 0 OR length(t) > 32))` to `workout_logs`
+- New Tauri SQLite migration adding `CHECK (length(tag) > 0 AND length(tag) <= 32)` on `workout_note_tags.tag` plus a trigger enforcing the 16-tag-per-note cap
+- Update `Context/Features/020-Workout-Notes/Tech.md` documenting the duplicated Zod/DB constraint pattern
+
+**Depends on:** none
+**Review finding:** ADR-014
+
+---
+
 ## Execution notes
 
 - **Recommended command:** `/team-impl 020` — this feature spans 3

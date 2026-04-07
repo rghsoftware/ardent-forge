@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
+import { isTauri } from '@tauri-apps/api/core'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useActiveWorkoutStore } from '@/stores/active-workout-store'
 import { useExercises } from '@/hooks/use-exercises'
@@ -123,18 +124,26 @@ function ActiveWorkoutPage() {
   const [showSummary, setShowSummary] = useState(false)
   const [pageError, setPageError] = useState<string | null>(null)
 
-  // Pause/resume derived state and handlers
+  // Pause/resume derived state and handlers.
+  // Pause UI is hidden on the Tauri (mobile) adapter because pause-state
+  // persistence to local SQLite is deferred (ADR-013, F018). Showing the
+  // controls would silently lose state across app restarts.
+  const isPauseSupported = !isTauri()
   const isPaused = !!workoutLog?.pausedAt
   const handlePause = useCallback(() => {
     pauseWorkout().catch((err) => {
       console.error('[workout-log] Pause failed:', err)
-      setPageError('Failed to pause workout. Please try again.')
+      // Revert the optimistic local store update so the UI matches reality.
+      useActiveWorkoutStore.getState().unpauseWorkout()
+      setPageError('Pause failed -- workout is still running. Check your connection.')
     })
   }, [pauseWorkout])
   const handleResume = useCallback(() => {
     unpauseWorkout().catch((err) => {
       console.error('[workout-log] Resume failed:', err)
-      setPageError('Failed to resume workout. Please try again.')
+      // Revert the optimistic local store update so the UI matches reality.
+      useActiveWorkoutStore.getState().pauseWorkout()
+      setPageError('Resume failed -- workout is still paused. Check your connection.')
     })
   }, [unpauseWorkout])
   // Detected personal records (computed at workout finish time)
@@ -179,6 +188,7 @@ function ActiveWorkoutPage() {
         const startedMs = new Date(startedAt).getTime()
         if (!Number.isFinite(startedMs)) {
           console.error('[workout-log] Invalid startedAt:', startedAt)
+          setPageError('Workout timer data is corrupt. Please discard or reload.')
           return 0
         }
         const now = Date.now()
@@ -189,6 +199,7 @@ function ActiveWorkoutPage() {
             elapsedMs -= now - pausedAtMs
           } else {
             console.error('[workout-log] Invalid pausedAt:', pausedAt)
+            setPageError('Workout timer data is corrupt. Please discard or reload.')
           }
         }
         return Math.max(0, Math.round(elapsedMs / 1000))
@@ -417,9 +428,9 @@ function ActiveWorkoutPage() {
         <div className="sticky top-0 z-50">
           <WorkoutHeader
             elapsedSeconds={elapsedSeconds}
-            isPaused={isPaused}
-            onPause={handlePause}
-            onResume={handleResume}
+            isPaused={isPauseSupported && isPaused}
+            onPause={isPauseSupported ? handlePause : undefined}
+            onResume={isPauseSupported ? handleResume : undefined}
             actions={
               <WorkoutHeaderMenu
                 isBroadcasting={isBroadcasting}
@@ -429,7 +440,7 @@ function ActiveWorkoutPage() {
             }
           />
           <WorkoutPausedBar
-            isPaused={isPaused}
+            isPaused={isPauseSupported && isPaused}
             onResume={handleResume}
             onFinish={handleFinish}
             isFinishing={isFinishing}
@@ -476,9 +487,9 @@ function ActiveWorkoutPage() {
       <div className="sticky top-0 z-50">
         <WorkoutHeader
           elapsedSeconds={elapsedSeconds}
-          isPaused={isPaused}
-          onPause={handlePause}
-          onResume={handleResume}
+          isPaused={isPauseSupported && isPaused}
+          onPause={isPauseSupported ? handlePause : undefined}
+          onResume={isPauseSupported ? handleResume : undefined}
           actions={
             <WorkoutHeaderMenu
               isBroadcasting={isBroadcasting}
@@ -488,7 +499,7 @@ function ActiveWorkoutPage() {
           }
         />
         <WorkoutPausedBar
-          isPaused={isPaused}
+          isPaused={isPauseSupported && isPaused}
           onResume={handleResume}
           onFinish={handleFinish}
           isFinishing={isFinishing}

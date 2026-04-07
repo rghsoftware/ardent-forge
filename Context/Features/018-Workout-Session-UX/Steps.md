@@ -291,8 +291,122 @@ Remove the `if (modality === 'circuit')` branch from inside the activity loop.
 
 `/team-impl 018` -- this feature has cross-domain coordination (database → backend → frontend) with shared schema contracts at the M1 boundary. Tasks within waves can parallelize but the wave dependencies require team-level coordination.
 
+## Wave 6: PR #92 Review Follow-ups
+
+Follow-up tasks captured from PR #92 review (`Context/Reviews/0014-pr92-workout-template-ux-review.md`).
+
+### S041 -- Mutation hook onError handlers (P14-007, High)
+
+**Owner:** `frontend-specialist`
+**Files:** `src/hooks/use-workout-logs.ts:37-73, 138-207`
+**Deliverable:** Add `onError` handlers to all 8 new mutation hooks: `useCreateWorkoutLog`, `useUpdateWorkoutLog`, `useDeleteWorkoutLog`, `useUpdateLoggedActivity`, `useDeleteLoggedActivity`, `useUpdateLoggedActivityGroup`, `useDeleteLoggedActivityGroup`, `useDeleteLoggedSet`. Each should match the existing `useCreateLoggedSet` pattern: prefixed `[workout-logs]` log with operation name and entity id, plus cache rollback where applicable.
+**Acceptance:** All 8 mutations log on failure with `[workout-logs]` prefix; rollback on optimistic updates verified by test.
+**Review finding:** P14-007
+
+### S042 -- Wire pauseTimingError to UI (P14-009-followup, High)
+
+**Owner:** `frontend-specialist`
+**Files:** `src/hooks/use-active-workout.ts`, `src/routes/_authenticated/log.$workoutId.tsx`
+**Deliverable:** The `active-workout-store` will expose a new `pauseTimingError: string | null` field (added in this PR's fixes). Subscribe to it in the route and surface a banner when set, allowing user to dismiss. Cleared automatically on next successful pause/unpause cycle.
+**Acceptance:** Banner appears on pause-timing error, dismissible, auto-clears on next successful cycle.
+**Review finding:** P14-009-followup
+
+### S043 -- Test coverage: pause/unpause store actions (P14-010, High)
+
+**Owner:** `quality-engineer`
+**Files:** `src/stores/__tests__/active-workout-store.test.ts` (create if missing), covering `src/stores/active-workout-store.ts:254-286`
+**Deliverable:** Add a `describe('pause')` block with cases: idempotent double-pause; multi-cycle accumulation of `totalPausedMs` using `vi.useFakeTimers()`; unpause-when-not-paused no-op; invalid-`pausedAt` reset without NaN propagation. Target <50 LOC. Direct data-integrity coverage.
+**Acceptance:** Tests pass; covers all four cases.
+**Review finding:** P14-010
+
+### S044 -- Test coverage: compound diff edit-mode save (P14-011, High)
+
+**Owner:** `quality-engineer`
+**Files:** `src/components/workout/__tests__/manual-workout-form.test.tsx`
+**Deliverable:** Add tests for: simultaneous delete + update + add within one activity (compound diff); `tempId` vs `id` disambiguation across multi-add-then-delete; mid-save mutation rejection leaving form recoverable; ordinal/reorder persistence. At minimum one combined-diff test and one mid-save-rejection test.
+**Acceptance:** New tests pass; compound diff and mid-save-rejection paths covered.
+**Review finding:** P14-011
+
+### S045 -- Test coverage: crash-recovery dialog (P14-012, High)
+
+**Owner:** `quality-engineer`
+**Files:** `src/components/workout/__tests__/crash-recovery-dialog.test.tsx` (create)
+**Deliverable:** Cover: snapshot restore when `pausedAt` was set at crash time; `totalPausedMs` preservation across `resumeWorkout`; stale-snapshot detection (snapshot older than server `updatedAt`); discard path fully resets store including rest timer listeners.
+**Acceptance:** All four scenarios covered; tests pass.
+**Review finding:** P14-012
+
+### S046 -- Test coverage: rest-panel/rest-view (P14-013, High)
+
+**Owner:** `quality-engineer`
+**Files:** `src/components/workout/__tests__/rest-panel.test.tsx`, `src/components/workout/__tests__/rest-view.test.tsx` (both new)
+**Deliverable:** Tests for `rest-panel.tsx` (123 LOC) and `rest-view.tsx` (142 LOC). Cover: tick, skip, adjust, auto-complete behaviors. Replaces the deleted `rest-timer-overlay.test.tsx` (90 LOC).
+**Acceptance:** Both test files exist; tick/skip/adjust/auto-complete covered for both components.
+**Review finding:** P14-013
+
+### S047 -- Verify ManualWorkoutForm query hooks render error/loading state (P14-015, Medium)
+
+**Owner:** `frontend-specialist`
+**Files:** `src/components/workout/manual-workout-form.tsx:536-545, 857-869`
+**Deliverable:** Audit: `useExercises` defaults to `[]` causing empty picker during load; `useUserProfile` lacks loading skeleton. Verify `exercisesError`/`profileError` are wired to a visible error state per project query-hook error-state rule. Add loading skeletons and error banners as needed.
+**Acceptance:** Loading skeletons render during fetch; error banners render on `isError`; matches `.claude/rules/error-handling.md` query-hook rule.
+**Review finding:** P14-015
+
+### S048 -- Route smoke tests for log.new and log.$workoutId.edit (P14-027, Low)
+
+**Owner:** `quality-engineer`
+**Files:** `src/routes/_authenticated/__tests__/log.new.test.tsx`, `src/routes/_authenticated/__tests__/log.$workoutId.edit.test.tsx` (both new)
+**Deliverable:** Smoke tests verifying not-found and unauthenticated states render. Security-relevant if userId guard is bypassed.
+**Acceptance:** Both test files exist; not-found and unauthenticated states asserted.
+**Review finding:** P14-027
+
+### S049 -- ADR-012 implementation: Transactional updateWorkoutLogFull adapter
+
+**Owner:** `backend-engineer` + `tauri-specialist` + `frontend-specialist`
+**Files:**
+
+- `supabase/migrations/YYYYMMDDHHMMSS_add_update_workout_log_full_rpc.sql`
+- `src-tauri/migrations/` (next sequential file) and Rust command module
+- `src/domain/types/workout-log-diff.ts` (new)
+- `src/lib/supabase-adapter.ts`, `src/lib/tauri-adapter.ts`
+- `src/components/workout/manual-workout-form.tsx`
+
+**Deliverable:** Per ADR-012, implement a transactional `updateWorkoutLogFull(diff)` adapter method:
+
+- New Supabase migration adding `update_workout_log_full(payload jsonb)` RPC with RLS guards
+- New Rust command + SQLite migration parity for the same operation
+- New `WorkoutLogDiff` Zod schema in the domain layer (deletes/updates/inserts grouped by entity type)
+- Refactor `manual-workout-form.tsx` to use the new transactional mutation in place of sequential mutations
+- Round-trip tests on both adapters
+
+**Acceptance:** Single transactional call replaces the sequential mutation chain; round-trip tests pass on both Supabase and Tauri adapters; no partial-write states observable on failure.
+**Review finding:** ADR-012
+
+### S050 -- ADR-013 implementation: Pause state persistence on Tauri
+
+**Owner:** `tauri-specialist` + `frontend-specialist`
+**Files:**
+
+- `src-tauri/migrations/` (next sequential file)
+- Rust command modules: `create_workout_log`, `update_workout_log`, `get_workout_log`
+- `src/lib/tauri-adapter.ts` (`toWorkoutLogRow` and row→domain conversion)
+- `src/lib/__tests__/tauri-adapter.test.ts`
+
+**Deliverable:** Per ADR-013, ship pause-state persistence parity:
+
+- New SQLite migration adding `paused_at INTEGER` and `total_paused_ms INTEGER NOT NULL DEFAULT 0` columns to `workout_logs`
+- Update Rust commands `create_workout_log`, `update_workout_log`, `get_workout_log` to accept/persist/return pause fields
+- Update `src/lib/tauri-adapter.ts` `toWorkoutLogRow` and row→domain conversion to round-trip pause fields with warn-on-fallback
+- Round-trip tests in `src/lib/__tests__/tauri-adapter.test.ts`
+- Remove the interim Tauri pause-UI gate added in this PR (P14-001 fix)
+
+**Acceptance:** Pause/resume works on Tauri with full persistence parity; interim UI gate removed; round-trip tests pass.
+**Review finding:** ADR-013
+
+---
+
 ## Revision History
 
-| Date       | Change        | ADR |
-| ---------- | ------------- | --- |
-| 2026-04-06 | Initial draft | --  |
+| Date       | Change                                          | ADR              |
+| ---------- | ----------------------------------------------- | ---------------- |
+| 2026-04-06 | Initial draft                                   | --               |
+| 2026-04-07 | Add Wave 6 PR #92 review follow-ups (S041-S050) | ADR-012, ADR-013 |
