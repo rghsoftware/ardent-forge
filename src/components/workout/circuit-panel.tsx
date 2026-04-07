@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { formatCountdown } from '@/lib/format-duration'
+import { RestPanel } from '@/components/workout/rest-panel'
 
 type CircuitPhase = 'overview' | 'exercise' | 'interExerciseRest' | 'interRoundRest' | 'done'
 
@@ -242,45 +242,31 @@ export function CircuitPanel({
         </div>
       )}
 
-      {/* Inter-exercise rest */}
+      {/* Inter-exercise rest -- shared cooling-rest primitive */}
       {phase === 'interExerciseRest' && (
-        <div className="flex flex-col items-center gap-3 px-4 py-8">
-          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">REST</span>
-          <span className="font-display text-5xl tabular-nums tracking-tight text-bone-white">
-            {formatCountdown(restSeconds)}
-          </span>
-
-          {/* Next exercise preview */}
-          {exercises[currentExerciseIndex + 1] && (
-            <div className="mt-2 flex flex-col items-center gap-1">
-              <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">NEXT</span>
-              <span className="text-sm text-bone-white">
-                {exercises[currentExerciseIndex + 1].name}
-              </span>
-            </div>
-          )}
-
-          <Button variant="ghost" size="sm" onClick={handleSkipRest} className="mt-2 text-xs">
-            Skip rest
-          </Button>
-        </div>
+        <RestPanel
+          remaining={restSeconds}
+          total={interExerciseRestSeconds}
+          onSkip={handleSkipRest}
+          nextLabel={exercises[currentExerciseIndex + 1] ? 'Next' : undefined}
+          nextPrimary={exercises[currentExerciseIndex + 1]?.name}
+        />
       )}
 
-      {/* Inter-round rest */}
+      {/* Inter-round rest -- shared cooling-rest primitive */}
       {phase === 'interRoundRest' && (
-        <div className="flex flex-col items-center gap-3 px-4 py-8">
-          <Badge variant="pending">
-            ROUND {currentRound} / {rounds} COMPLETE
-          </Badge>
-          <span className="mt-2 text-[11px] uppercase tracking-widest text-warm-ash/60">REST</span>
-          <span className="font-display text-5xl tabular-nums tracking-tight text-bone-white">
-            {formatCountdown(restSeconds)}
-          </span>
-
-          <Button variant="ghost" size="sm" onClick={handleSkipRest} className="mt-2 text-xs">
-            Skip rest
-          </Button>
-        </div>
+        <RestPanel
+          remaining={restSeconds}
+          total={interRoundRestSeconds}
+          onSkip={handleSkipRest}
+          topBadge={
+            <Badge variant="pending">
+              ROUND {currentRound} / {rounds} COMPLETE
+            </Badge>
+          }
+          nextLabel="Next round"
+          nextPrimary={exercises[0]?.name}
+        />
       )}
 
       {/* Done phase -- reports actual completedRounds, not the rounds prop */}

@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useActiveWorkoutStore } from '@/stores/active-workout-store'
 import { useExercises } from '@/hooks/use-exercises'
@@ -15,10 +14,10 @@ import { useDisplayBroadcast } from '@/hooks/use-display-broadcast'
 import { WorkoutHeader } from '@/components/workout/workout-header'
 import { WorkoutPausedBar } from '@/components/workout/workout-paused-bar'
 import { ErrorBanner } from '@/components/workout/error-banner'
-import { PushToDisplayButton } from '@/components/workout/push-to-display-button'
+import { WorkoutHeaderMenu } from '@/components/workout/workout-header-menu'
 import { ExerciseBlock, type SetRowData } from '@/components/workout/exercise-block'
 import { ProgramContextBanner } from '@/components/workout/program-context-banner'
-import { RestTimerOverlay } from '@/components/workout/rest-timer-overlay'
+import { RestView } from '@/components/workout/rest-view'
 import { UndoBanner } from '@/components/workout/undo-banner'
 import { AddExerciseSheet } from '@/components/workout/add-exercise-sheet'
 import { CardioPanel } from '@/components/workout/cardio-panel'
@@ -253,25 +252,6 @@ function ActiveWorkoutPage() {
     return lastId
   }, [loggedGroups])
 
-  // Refs for each renderable activity/group block, used to scroll the
-  // active block into view when focus advances.
-  const blockRefs = useRef<Map<string, HTMLDivElement>>(new Map())
-  const registerBlockRef = useCallback(
-    (id: string) => (el: HTMLDivElement | null) => {
-      if (el) blockRefs.current.set(id, el)
-      else blockRefs.current.delete(id)
-    },
-    [],
-  )
-
-  useEffect(() => {
-    if (!activeFocusId) return
-    const el = blockRefs.current.get(activeFocusId)
-    if (!el) return
-    // Browser honors prefers-reduced-motion automatically for smooth scroll.
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [activeFocusId])
-
   // -----------------------------------------------------------------------
   // Handlers
   // -----------------------------------------------------------------------
@@ -441,11 +421,10 @@ function ActiveWorkoutPage() {
             onPause={handlePause}
             onResume={handleResume}
             actions={
-              <PushToDisplayButton
-                userId={workoutLog.userId}
+              <WorkoutHeaderMenu
+                isBroadcasting={isBroadcasting}
                 publishFocus={publishFocus}
                 publishUnfocus={publishUnfocus}
-                isBroadcasting={isBroadcasting}
               />
             }
           />
@@ -501,11 +480,10 @@ function ActiveWorkoutPage() {
           onPause={handlePause}
           onResume={handleResume}
           actions={
-            <PushToDisplayButton
-              userId={workoutLog.userId}
+            <WorkoutHeaderMenu
+              isBroadcasting={isBroadcasting}
               publishFocus={publishFocus}
               publishUnfocus={publishUnfocus}
-              isBroadcasting={isBroadcasting}
             />
           }
         />
@@ -520,9 +498,9 @@ function ActiveWorkoutPage() {
         />
       </div>
 
-      {/* Program context banner -- collapses after the first confirmed set
-          to reclaim vertical space once the user is oriented. */}
-      {programBannerProps && confirmedSetCount === 0 && (
+      {/* Program context banner -- only visible in SET mode, and only
+          until the first confirmed set orients the user. */}
+      {!restTimer && programBannerProps && confirmedSetCount === 0 && (
         <ProgramContextBanner
           programName={programBannerProps.programName}
           blockName={programBannerProps.blockName}
@@ -531,7 +509,20 @@ function ActiveWorkoutPage() {
         />
       )}
 
-      {/* Exercise blocks -- flex-1 so the workout content fills the viewport */}
+      {/* REST mode: full-page rest view owns the screen between sets. */}
+      {restTimer && (
+        <RestView
+          restTimer={restTimer}
+          loggedGroups={loggedGroups}
+          exerciseNames={exerciseNames}
+          onSkip={skipRest}
+          onAdjust={adjustRest}
+        />
+      )}
+
+      {/* SET mode: only the active exercise block renders (hard focus). */}
+      {!restTimer && (
+      <>
       <div className="flex flex-1 flex-col gap-7 px-0 pt-2">
         {loggedGroups.map((group) => {
           // Group-level rendering: circuits render once per group
@@ -540,16 +531,10 @@ function ActiveWorkoutPage() {
               name: exerciseNames[a.exerciseId] ?? 'Unknown',
               targetReps: DEFAULT_CIRCUIT_REPS,
             }))
-            const isActive = group.id === activeFocusId
+            // Hard focus: only render the active block in SET mode.
+            if (group.id !== activeFocusId) return null
             return (
-              <div
-                key={group.id}
-                ref={registerBlockRef(group.id)}
-                className={cn(
-                  'transition-opacity duration-300 ease-out',
-                  isActive ? 'opacity-100' : 'opacity-50',
-                )}
-              >
+              <div key={group.id}>
               <CircuitPanel
                 exercises={circuitExercises}
                 rounds={3}
@@ -584,18 +569,15 @@ function ActiveWorkoutPage() {
           }
 
           return group.activities.map((activity) => {
+            // Hard focus: only render the active activity in SET mode.
+            if (activity.id !== activeFocusId) return null
             const exercise = exerciseMap[activity.exerciseId]
             const modality = getExerciseModality(exercise, group.groupType)
-            const isActive = activity.id === activeFocusId
-            const dimWrapperClass = cn(
-              'transition-opacity duration-300 ease-out',
-              isActive ? 'opacity-100' : 'opacity-50',
-            )
 
             // Cardio panel
             if (modality === 'cardio' && exercise) {
               return (
-                <div key={activity.id} ref={registerBlockRef(activity.id)} className={dimWrapperClass}>
+                <div key={activity.id}>
                 <CardioPanel
                   exercise={exercise}
                   onComplete={async (data) => {
@@ -624,7 +606,7 @@ function ActiveWorkoutPage() {
             // Ruck panel
             if (modality === 'ruck') {
               return (
-                <div key={activity.id} ref={registerBlockRef(activity.id)} className={dimWrapperClass}>
+                <div key={activity.id}>
                 <RuckPanel
                   onComplete={async (data) => {
                     try {
@@ -699,7 +681,7 @@ function ActiveWorkoutPage() {
             })
 
             return (
-              <div key={activity.id} ref={registerBlockRef(activity.id)} className={dimWrapperClass}>
+              <div key={activity.id}>
                 <ExerciseBlock
                   exerciseName={exercise?.name ?? 'Unknown Exercise'}
                   sets={setRows}
@@ -707,7 +689,7 @@ function ActiveWorkoutPage() {
                   onConfirmSet={handleConfirmSet}
                   isConfirming={isConfirmingSet}
                   isBodyweight={exercise?.category === 'BODYWEIGHT'}
-                  isActive={isActive}
+                  isActive={true}
                 />
               </div>
             )
@@ -715,28 +697,28 @@ function ActiveWorkoutPage() {
         })}
       </div>
 
-      {/* Add exercise button (hidden for programmed workouts) */}
+      {/* Sticky footer -- single forward action for free-form workouts.
+          Programmed workouts render no footer (the flow is predetermined). */}
       {!isProgrammedWorkout && (
-        <div className="px-4 pt-6 pb-4">
+        <div className="sticky bottom-0 z-40 bg-surface-anvil px-4 pt-3 pb-4">
           {loggedGroups.length === 0 && !firstWorkoutCompleted && (
             <OnboardingHint hintKey="workout-add-exercise">
               Tap below to add your first exercise.
             </OnboardingHint>
           )}
           <Button
-            variant="secondary"
+            variant="molten"
             size="lg"
             onClick={() => setShowAddExercise(true)}
-            className="min-h-12 w-full"
+            className="min-h-14 w-full text-sm font-bold uppercase tracking-widest"
           >
             <Plus className="h-4 w-4" />
             Add exercise
           </Button>
         </div>
       )}
-
-      {/* Rest timer overlay */}
-      <RestTimerOverlay restTimer={restTimer} onSkip={skipRest} onAdjust={adjustRest} />
+      </>
+      )}
 
       {/* Undo banner (shown when rest timer is NOT active) */}
       {!restTimer && <UndoBanner undoAction={undoAction} onUndo={handleUndoSet} />}
