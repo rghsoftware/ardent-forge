@@ -7,7 +7,7 @@ import { useActiveProgram, useProgramFull } from '@/hooks/use-programs'
 import { CrashRecoveryDialog } from '@/components/workout/crash-recovery-dialog'
 import { ProgramSessionCard } from '@/components/today/program-session-card'
 import { PausedSessionCard } from '@/components/today/paused-session-card'
-import { WorkoutPreviewSheet } from '@/components/workout/workout-preview-sheet'
+import { ActiveSessionCard } from '@/components/today/active-session-card'
 import { TimeTravelSheet } from '@/components/program/time-travel-sheet'
 import { EventCountdownBadge } from '@/components/event-builder/event-countdown-badge'
 import { GhostSessionPreview } from '@/components/shared/ghost-session-preview'
@@ -88,7 +88,6 @@ function TodayPage() {
   const { data: recentWorkouts = [], isError: isWorkoutsError } = useWorkoutLogs(userId, 5)
   const [startError, setStartError] = useState<string | null>(null)
   const [timeTravelOpen, setTimeTravelOpen] = useState(false)
-  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null)
 
   useEffect(() => {
     markRouteVisited('/')
@@ -193,9 +192,11 @@ function TodayPage() {
         {/* Crash recovery check */}
         <CrashRecoveryDialog userId={userId} />
 
-        {/* Paused session card -- top of page when a session is paused */}
+        {/* Active and paused session cards -- top of page so navigated-away
+            sessions stay visible. Both return null when not applicable. */}
         {userId && (
-          <div className="pt-6">
+          <div className="flex flex-col gap-4 pt-6">
+            <ActiveSessionCard />
             <PausedSessionCard userId={userId} />
           </div>
         )}
@@ -249,12 +250,8 @@ function TodayPage() {
                   totalWeeks={totalWeeksInBlock}
                   sessionName={todayContext?.session?.dayLabel}
                   sessionType={todayContext?.session?.sessionType}
+                  sessionTemplateId={todayContext?.session?.sessionTemplateId ?? null}
                   onStartSession={handleStartProgrammedSession}
-                  onPreview={
-                    todayContext?.session?.sessionTemplateId
-                      ? () => setPreviewTemplateId(todayContext.session!.sessionTemplateId)
-                      : undefined
-                  }
                   onTimeTravel={hasActiveProgram ? () => setTimeTravelOpen(true) : undefined}
                   isLoading={isProgramLoading}
                   isRestDay={hasActiveProgram && !todayContext?.session && !todayContext?.error}
@@ -339,19 +336,6 @@ function TodayPage() {
           )}
         </div>
       </div>
-
-      {/* Workout Preview Sheet */}
-      <WorkoutPreviewSheet
-        open={previewTemplateId !== null}
-        onOpenChange={(open) => {
-          if (!open) setPreviewTemplateId(null)
-        }}
-        sessionTemplateId={previewTemplateId}
-        onStart={() => {
-          setPreviewTemplateId(null)
-          handleStartProgrammedSession()
-        }}
-      />
 
       {/* Time Travel Sheet */}
       {activation && programFull && (
