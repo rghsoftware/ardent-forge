@@ -104,13 +104,21 @@ describe('useDisplayBroadcast', () => {
   it('configures the publisher with the supplied gym ID', () => {
     renderHook(() => useDisplayBroadcast(USER_ID, GYM_A), { wrapper: TestWrapper })
 
-    expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({ gymId: GYM_A })
+    expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({
+      gymId: GYM_A,
+      intent: 'broadcasting',
+    })
   })
 
-  it('configures the publisher with null when gymId is null (Private workout)', () => {
+  it('does NOT configure the publisher when gymId is null (P14-001/P14-002)', () => {
+    // After F018 P14-001/P14-002, the hook intentionally does NOT call
+    // configureDisplayPublisher when gymId is null. The start-workout
+    // handler at index.tsx is responsible for setting Private intent before
+    // navigating; on a tab refresh, the publisher stays 'unconfigured' so
+    // silent drops trigger one-shot warnings.
     renderHook(() => useDisplayBroadcast(USER_ID, null), { wrapper: TestWrapper })
 
-    expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({ gymId: null })
+    expect(mockConfigureDisplayPublisher).not.toHaveBeenCalled()
   })
 
   it('re-configures the publisher when gymId changes between renders', () => {
@@ -122,14 +130,20 @@ describe('useDisplayBroadcast', () => {
       },
     )
 
-    expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({ gymId: GYM_A })
+    expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({
+      gymId: GYM_A,
+      intent: 'broadcasting',
+    })
 
     mockConfigureDisplayPublisher.mockClear()
 
     // Switch to a different gym
     rerender({ gymId: GYM_B })
 
-    expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({ gymId: GYM_B })
+    expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({
+      gymId: GYM_B,
+      intent: 'broadcasting',
+    })
   })
 
   it('does not read displayVisible from the user profile', () => {
@@ -142,9 +156,9 @@ describe('useDisplayBroadcast', () => {
 
     renderHook(() => useDisplayBroadcast(USER_ID, GYM_A), { wrapper: TestWrapper })
 
-    // configureDisplayPublisher is called with gymId, never with displayVisible
+    // configureDisplayPublisher is called with gymId + intent, never with displayVisible
     const callArgs = mockConfigureDisplayPublisher.mock.calls[0]?.[0]
-    expect(callArgs).toEqual({ gymId: GYM_A })
+    expect(callArgs).toEqual({ gymId: GYM_A, intent: 'broadcasting' })
     expect('displayVisible' in (callArgs ?? {})).toBe(false)
   })
 

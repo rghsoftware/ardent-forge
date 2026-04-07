@@ -224,7 +224,10 @@ describe('TodayPage start-workout flow (F018)', () => {
     })
 
     expect(mockConfigureDisplayPublisher).toHaveBeenCalledTimes(1)
-    expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({ gymId: 'gym-a' })
+    expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({
+      gymId: 'gym-a',
+      intent: 'broadcasting',
+    })
 
     expect(mockWriteLastGymChoice).toHaveBeenCalledTimes(1)
     expect(mockWriteLastGymChoice).toHaveBeenCalledWith('gym-a')
@@ -239,7 +242,7 @@ describe('TodayPage start-workout flow (F018)', () => {
   // (b) User picks Private
   // -------------------------------------------------------------------------
 
-  it('picks Private: configures publisher with gymId null and persists "private"', async () => {
+  it('picks Private: configures publisher with intent=private and persists "private"', async () => {
     mockOpenGymPicker.mockResolvedValue('private')
     const user = userEvent.setup()
 
@@ -252,7 +255,10 @@ describe('TodayPage start-workout flow (F018)', () => {
     })
 
     expect(mockConfigureDisplayPublisher).toHaveBeenCalledTimes(1)
-    expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({ gymId: null })
+    expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({
+      gymId: null,
+      intent: 'private',
+    })
 
     expect(mockWriteLastGymChoice).toHaveBeenCalledTimes(1)
     expect(mockWriteLastGymChoice).toHaveBeenCalledWith('private')

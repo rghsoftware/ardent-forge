@@ -83,7 +83,7 @@ describe('setHelloResponder', () => {
     const { channel, fireHello } = createMockChannel()
     const client = createMockClient(channel)
     initDisplayPublisher(client)
-    configureDisplayPublisher({ gymId: GYM_A })
+    configureDisplayPublisher({ gymId: GYM_A, intent: 'broadcasting' })
 
     // Force channel creation by publishing
     publishDisplaySnapshot(SNAPSHOT)
@@ -104,7 +104,7 @@ describe('display_hello event on channel', () => {
     const { channel, fireHello } = createMockChannel()
     const client = createMockClient(channel)
     initDisplayPublisher(client)
-    configureDisplayPublisher({ gymId: GYM_A })
+    configureDisplayPublisher({ gymId: GYM_A, intent: 'broadcasting' })
 
     const responder = vi.fn()
     setHelloResponder(responder)
@@ -121,7 +121,7 @@ describe('display_hello event on channel', () => {
     const { channel, fireHello } = createMockChannel()
     const client = createMockClient(channel)
     initDisplayPublisher(client)
-    configureDisplayPublisher({ gymId: GYM_A })
+    configureDisplayPublisher({ gymId: GYM_A, intent: 'broadcasting' })
 
     setHelloResponder(null)
 
@@ -148,7 +148,7 @@ describe('destroyDisplayPublisher', () => {
     const { channel, fireHello } = createMockChannel()
     const client = createMockClient(channel)
     initDisplayPublisher(client)
-    configureDisplayPublisher({ gymId: GYM_A })
+    configureDisplayPublisher({ gymId: GYM_A, intent: 'broadcasting' })
 
     publishDisplaySnapshot(SNAPSHOT)
     fireHello()

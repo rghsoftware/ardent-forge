@@ -154,24 +154,14 @@ function DisplayShell({ gymId }: { gymId: string }) {
         return
       }
 
-      // Phase 4 (best-effort): fetch gym name for operator reassurance. The
-      // anon publishable key has column-level SELECT on (id, name) via M21.
-      // Failure here NEVER blocks the subscriber that already started above.
-      client
-        .from('gyms')
-        .select('id, name')
-        .eq('id', gymId)
-        .single()
-        .then(({ data, error }) => {
-          if (cancelled) return
-          if (error) {
-            console.warn('[display] Failed to resolve gym name:', error.message)
-            return
-          }
-          if (data?.name) {
-            console.info(`[display] Subscribed to gym "${data.name}" (${data.id})`)
-          }
-        })
+      // P14-012: removed the best-effort gym-name fetch. The success branch
+      // only logged to console and the failure branch was indistinguishable
+      // from a real RLS/network problem. Without a UI surface for the gym
+      // name, the fetch was net-zero value but added an extra failure mode
+      // (rotated publishable key, tightened RLS policy on the anon role).
+      // When we add a visible gym-name header to the display chrome, the
+      // fetch should come back -- but the data should drive a render, not
+      // just a log line. Tracked as part of S5 (operator reassurance UX).
 
       // Phase 5: prune stale sessions every 60s (30-minute staleness threshold)
       pruneRef.current = setInterval(

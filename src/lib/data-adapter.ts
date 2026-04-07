@@ -215,9 +215,11 @@ export interface DataAdapter {
   getGym(gymId: string): Promise<Gym | null>
 
   /**
-   * Creates a new gym owned by the current authenticated user.
-   * The owner is automatically inserted as a `gym_members` row by the
-   * Supabase RLS policies / trigger machinery.
+   * Creates a new gym owned by the current authenticated user. The owner is
+   * automatically inserted as a `gym_members` row by the Postgres trigger
+   * `trg_gym_owner_enroll` (see migration `20260407000004_enroll_gym_creator.sql`).
+   * Note: RLS policies are gates, not actions -- they cannot insert rows; the
+   * trigger is the only thing that performs the enrollment.
    */
   createGym(input: { name: string }): Promise<Gym>
 

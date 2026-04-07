@@ -6,6 +6,12 @@ import { createFileRoute } from '@tanstack/react-router'
 // This route is intentionally minimal. It does NOT create a Supabase client,
 // does NOT open a channel, and does NOT depend on any runtime config. The
 // gym-scoped display now lives at /display/gym/$gymId.
+//
+// P14-037: TanStack Router's default `trailingSlash` behavior is "never",
+// meaning both `/display` and `/display/` resolve to this same route via
+// the index file's `/display/` route id. No explicit redirect is needed --
+// existing operator bookmarks pointed at `/display` (no trailing slash)
+// land here unchanged.
 // ---------------------------------------------------------------------------
 
 export const Route = createFileRoute('/display/')({

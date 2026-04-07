@@ -4,10 +4,9 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/render-helpers'
 import type { Gym } from '@/domain/types'
-// Vite's `?raw` query returns the file contents as a string at build time.
-// We use it to assert the pagination TODO comment exists in the source
-// without needing node:fs (which isn't in the frontend tsconfig).
-import gymManagementSectionSource from '../gym-management-section.tsx?raw'
+// P14-048: removed `?raw` source-text import. The pagination TODO is
+// tracked in Context/Backlog/gym-management-pagination.md, not asserted in
+// this test file.
 
 // ---------------------------------------------------------------------------
 // Mocks -- drive every data hook and every mutation from the test.
@@ -348,12 +347,13 @@ describe('GymManagementSection', () => {
   })
 
   // -------------------------------------------------------------------------
-  // (j) Pagination TODO marker exists in the source file
+  // (j) Pagination TODO marker -- removed per P14-048
+  //
+  // The previous test imported the source file via Vite's `?raw` query and
+  // grep-asserted a comment string. That coupled the test to the exact
+  // wording of a comment, which broke on cosmetic edits and caught no
+  // behavioral regression. Pagination is tracked in
+  // Context/Backlog/gym-management-pagination.md instead -- the source
+  // file's TODO comment is descriptive scaffolding, not a test fixture.
   // -------------------------------------------------------------------------
-  it('contains a pagination TODO comment in the source file', () => {
-    // Per Spec.md S8: `// TODO: paginate when gyms.length > ~50`
-    expect(gymManagementSectionSource).toMatch(
-      /\/\/\s*TODO:\s*paginate when gyms\.length\s*>\s*~?50/i,
-    )
-  })
 })

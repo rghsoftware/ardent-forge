@@ -396,6 +396,79 @@ Wire the picker into the start-workout flow and the new section into the profile
 
 ---
 
+### Phase 11: PR review remediation (post-merge)
+
+Tasks captured during the PR #91 review (`Context/Reviews/0014-pr91-gym-scoped-displays-review.md`).
+The high-leverage fixes landed inline; this phase tracks the test gaps,
+behavior gaps, and follow-ups that warrant their own tasks rather than
+inline patches.
+
+- [ ] S032: Add `onTerminalFailure` callback to `display-subscriber` and surface terminal subscriber failures into `BootError`. The route's outer try/catch only sees synchronous throws; `TIMED_OUT`/`CHANNEL_ERROR` fire asynchronously inside `.subscribe()` and never reach the route. Add `onTerminalFailure?: (err: unknown, attempt: number) => void` to `DisplayEventHandlers`. After N retries (e.g. 5) the subscriber stops scheduling and invokes the callback. The route maps it to `BootError { kind: 'subscribe-failed', err }` so the existing Retry button path lights up.
+  - **Assigned:** fe-broadcast
+  - **Relates to:** P14-019, TA8
+
+- [ ] S033: Add `parseGymIdFromChannel` drift test or shared module. The Edge Function at `supabase/functions/display-idle-snapshot/index.ts` duplicates the channel-prefix constant from `src/lib/gym-channel.ts`. No test enforces sync. Cheap option: drift test that reads the Edge Function file as text and asserts the prefix string matches. Better option: shared file at `supabase/functions/_shared/gym-channel.ts` that both sides import via path alias.
+  - **Assigned:** fe-broadcast
+  - **Relates to:** P14-021
+
+- [ ] S034: Add idle snapshot dispatch tests to `display-subscriber.test.ts`. The deleted `use-idle-snapshot.test.ts` previously verified valid/invalid `idle_snapshot` payloads. The new `display-subscriber.test.ts` registers `onIdleSnapshot` as a `vi.fn()` but never fires the listener. Add three tests mirroring the `workout_snapshot` pattern: valid payload calls handler with parsed data; invalid payload is dropped with `console.error` (idle uses error severity, others use warn); idle event arrives on the gym-scoped channel.
+  - **Assigned:** fe-broadcast
+  - **Relates to:** P14-022, TA10
+
+- [ ] S035: Pin `eq('user_id', ...)` assertions in `kickGymMember` and `leaveGym` tests. Both currently only test `expect(mockClient.from).toHaveBeenCalledWith('gym_members')` -- neither asserts the `eq('user_id', ...)` value. A bug that swapped user IDs (kick targeting `auth.uid()` instead of the kick target) would not fail any test. Capture the chain builder from `mockClient.from()` and assert `expect(builder.eq).toHaveBeenCalledWith('gym_id', 'gym-001')` and `expect(builder.eq).toHaveBeenCalledWith('user_id', 'user-007')`.
+  - **Assigned:** fe-ui
+  - **Relates to:** P14-023, TA2
+
+- [ ] S036: Add SQL trigger on-conflict idempotency test for `enroll_new_user_in_default_gym`. The trigger uses `on conflict do nothing` to be retry-safe but the test never fires it twice for the same user. If the on-conflict clause were ever removed, the trigger would raise a unique-violation and fail the auth.users insert itself, silently breaking signups in production. Add Section 3 to `supabase/tests/018_trigger.sql` that pre-inserts a `gym_members` row using superuser bypass, then inserts the user, and asserts exactly one membership row exists.
+  - **Assigned:** db-supabase
+  - **Relates to:** P14-024, TA20
+
+- [ ] S037: Add publisher↔subscriber wire-format Zod safeParse guard. The publisher tests use a `const SNAPSHOT_FIXTURE: DisplaySnapshot` cast -- TypeScript catches shape changes but not Zod-only refinements (length bounds, format checks). Add `expect(displaySnapshotSchema.safeParse(SNAPSHOT_FIXTURE).success).toBe(true)` to the publisher test files. Cheap insurance against fixture rot.
+  - **Assigned:** fe-broadcast
+  - **Relates to:** P14-025, Context/Backlog/e2e-display-broadcast-roundtrip.md
+
+- [ ] S038: Mirror subscriber's reconnect-with-backoff in publisher. The subscriber has full reconnect with exponential backoff at `display-subscriber.ts:138-159`. The publisher just nulls the channel on terminal status and waits for the next lazy `ensureChannel()` call. After a network blip, the next set creates a fresh channel and synchronously fires the broadcast send before the new channel is `SUBSCRIBED` -- Supabase Realtime queues or drops pre-subscribe sends depending on version. This is a regression in delivery reliability vs. the legacy single-channel design.
+  - **Assigned:** fe-broadcast
+  - **Relates to:** P14-026
+
+- [ ] S039: Add `useDisplayBroadcast` unmount cleanup test. The hook's effect at `src/hooks/use-display-broadcast.ts:59-73` registers a `setHelloResponder`, calls `initDisplayPublisher`, and cleanup calls `setHelloResponder(null)`, `setSnapshotContext(null)`, and `destroyDisplayPublisher()`. The current test asserts the init path but never unmounts the hook. Add a cleanup test using `renderHook` + `unmount()` and assert all three functions were called.
+  - **Assigned:** fe-broadcast
+  - **Relates to:** P14-027
+
+- [ ] S040: Add `useGymPicker` unmount-mid-pick cleanup test. The hook at `src/hooks/use-gym-picker.tsx:84-95` resolves any in-flight promise with `null` on unmount. The "double-open" test exercises the replace path but never unmounts the harness mid-pick. Add a test that opens the picker, unmounts, and asserts the in-flight promise resolves with `null`.
+  - **Assigned:** fe-ui
+  - **Relates to:** P14-028
+
+- [ ] S041: Add tests for the three `BootError` kinds in `gym-route.test.tsx`. The route component defines `config-load`, `client-create`, `subscribe-failed` -- each with a different recovery story (only `subscribe-failed` has a Retry button). The test exercises the success path and the invalid-UUID path but none of the three error paths. Add at least one test per BootError kind asserting visible error copy and Retry button presence/absence.
+  - **Assigned:** fe-broadcast
+  - **Relates to:** P14-029
+
+- [ ] S042: Add Edge Function "all gyms failing" test. The current "broadcast POST fails for one gym" test asserts `summary.published === false` when ONE gym fails. There's no test that exercises all gyms failing at broadcast level. A regression that short-circuits on the first failure (`if (!result.ok) break`) would miss the second gym entirely. Add a test that fails both gyms and asserts `spy.calls.length === 2` and HTTP 502 (or 200 if both share a permanent error code per P14-040).
+  - **Assigned:** db-supabase
+  - **Relates to:** P14-030
+
+- [ ] S043: Add negative-space "no UPDATE policy on gym_members" SQL assertion. The migration installs no UPDATE policy on `gym_members` (correct: nothing to update on a join row). A future migration that accidentally adds `create policy gym_members_update_self ... using (true)` would pass the test suite. Add `select count(*) from pg_policies where schemaname = 'public' and tablename = 'gym_members' and cmd = 'UPDATE'` and assert it equals zero.
+  - **Assigned:** db-supabase
+  - **Relates to:** P14-031
+
+- [ ] S044: Add SQL RPC overlapping membership test (user in two gyms). `supabase/tests/018_idle_rpc.sql` creates two users in two disjoint gyms but does not cover the overlapping case. A bug that filtered by `distinct user_id` instead of `(user_id, gym_id)` would silently break the multi-gym case. Enroll a third user in both gyms with a scheduled session for today, assert the user appears in `get_display_idle_sessions(gym_a_id)` AND `get_display_idle_sessions(gym_b_id)`.
+  - **Assigned:** db-supabase
+  - **Relates to:** P14-032
+
+- [ ] S045: Add per-test error-log assertions to mutation hooks. The "surfaces isError when the adapter throws" tests for `useCreateGym`, `useUpdateGym`, `useDeleteGym`, `useJoinGym`, `useLeaveGym`, `useKickGymMember` mock `console.error` but never assert that the `[gyms]` / `[gym-members]` prefixed error was logged. A refactor that removed the prefixes would not fail any test. Add `expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('[gyms]'), expect.any(Error))` to each.
+  - **Assigned:** fe-ui
+  - **Relates to:** P14-033
+
+- [ ] S046: Project-wide migration of `entityId` from `z.string().min(1)` to `z.string().uuid()`. The current `entityId` helper is laxer than reality -- Postgres enforces UUID format on every entity ID column, so `'foo'` parses successfully through Zod even though the DB rejects it. Add `entityIdUuid = z.string().uuid()` and migrate consumers. Out of scope for this PR (touches every domain type).
+  - **Assigned:** fe-ui
+  - **Relates to:** P14-044
+
+> **Deferred until ADR-013:** P14-020 (Centralize `'private' → null` conversion). The branded GymId / discriminated `GymPickerChoice` work in ADR-013 will force every consumer through one entry point, making this fix part of the larger type-safety overhaul. Re-evaluate after ADR-013 lands.
+
+🏁 **MILESTONE M11:** Review remediation tasks complete -- silent-failure surface area, test gaps, and behavior gaps closed.
+
+---
+
 ## Acceptance Criteria
 
 - [ ] All 21 testable assertions from Spec.md verified

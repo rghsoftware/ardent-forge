@@ -139,12 +139,14 @@ describe('subscribeToDisplay', () => {
     })
   })
 
-  it('is a no-op if client is not initialized', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })
-
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Cannot subscribe'))
-    warnSpy.mockRestore()
+  it('throws if client is not initialized (P14-004)', () => {
+    // Per F018 P14-004: subscribeToDisplay must throw rather than warn-and-
+    // return when the client is not initialized, so the route's outer
+    // try/catch can map this into a `subscribe-failed` BootError with a
+    // visible Retry button.
+    expect(() => subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })).toThrow(
+      /client not initialized/i,
+    )
   })
 })
 
@@ -294,8 +296,12 @@ describe('reconnect retains gym ID', () => {
     const cb = getSubscribeCallback()!
     cb('CHANNEL_ERROR')
 
-    // Fast-forward through the retry delay
-    vi.runOnlyPendingTimers()
+    // Fast-forward through the retry delay using an explicit time budget
+    // (P14-046). `vi.runOnlyPendingTimers` was sensitive to timer-ordering
+    // changes (e.g., a defensive setTimeout(0) added in the subscribe
+    // path). Using a generous budget keeps the test deterministic against
+    // future production-code timer additions.
+    vi.advanceTimersByTime(5_000)
 
     // The reconnect must have opened a channel for the same gym, not a
     // different one.
@@ -355,10 +361,11 @@ describe('destroyDisplaySubscriber', () => {
 
     expect(client.removeChannel).toHaveBeenCalled()
 
-    // Subsequent subscribe should warn (no client)
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Cannot subscribe'))
-    warnSpy.mockRestore()
+    // Subsequent subscribe should throw (no client). Per F018 P14-004,
+    // subscribeToDisplay throws on uninit so the route's outer try/catch
+    // can map this into a `subscribe-failed` BootError.
+    expect(() => subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })).toThrow(
+      /client not initialized/i,
+    )
   })
 })

@@ -50,7 +50,7 @@ interface GymPickerSheetProps {
  * row, preselecting whichever the user picked last time.
  */
 export function GymPickerSheet({ open, userId, onResolve, onCancel }: GymPickerSheetProps) {
-  const { data: gyms, isLoading, isError } = useGyms(userId)
+  const { data: gyms, isLoading, isError, refetch } = useGyms(userId)
 
   // Read the stored choice once at mount via useState initializer so we
   // avoid render-phase localStorage hits and have a stable reference for
@@ -60,10 +60,16 @@ export function GymPickerSheet({ open, userId, onResolve, onCancel }: GymPickerS
   // Compute the sticky default, validating any stored UUID against the
   // current membership list. If the user has left the gym referenced by the
   // stored choice, fall back to 'private' (Tech.md D8, TA6).
-  const preselected = useMemo<GymPickerChoice>(() => {
+  //
+  // P14-007: returns null while gyms is loading or errored so we never
+  // confuse "the user is not a member of the stored gym" with "we don't
+  // have membership data yet." The rows are only rendered in the success
+  // branch below, so a null preselection is never observed.
+  const preselected = useMemo<GymPickerChoice | null>(() => {
+    if (gyms === undefined) return null
     if (!stored) return 'private'
     if (stored === 'private') return 'private'
-    const stillMember = gyms?.some((g) => g.id === stored) ?? false
+    const stillMember = gyms.some((g) => g.id === stored)
     return stillMember ? stored : 'private'
   }, [gyms, stored])
 
@@ -105,7 +111,7 @@ export function GymPickerSheet({ open, userId, onResolve, onCancel }: GymPickerS
           {isLoading ? (
             <GymPickerSkeleton />
           ) : isError ? (
-            <GymPickerError />
+            <GymPickerError onRetry={() => refetch()} onPrivate={() => onResolve('private')} />
           ) : (
             <GymPickerRows gyms={gyms ?? []} preselected={preselected} onResolve={onResolve} />
           )}
@@ -121,7 +127,10 @@ export function GymPickerSheet({ open, userId, onResolve, onCancel }: GymPickerS
 
 interface GymPickerRowsProps {
   gyms: Gym[]
-  preselected: GymPickerChoice
+  // null = membership data not available yet (loading or errored). Rows
+  // render with no row marked as selected so the user must make an
+  // explicit pick rather than tapping a wrong default. Per P14-007.
+  preselected: GymPickerChoice | null
   onResolve: (choice: GymPickerChoice) => void
 }
 
@@ -267,11 +276,16 @@ function GymPickerSkeleton() {
   )
 }
 
-function GymPickerError() {
+interface GymPickerErrorProps {
+  onRetry: () => void
+  onPrivate: () => void
+}
+
+function GymPickerError({ onRetry, onPrivate }: GymPickerErrorProps) {
   return (
     <div
       data-testid="gym-picker-error"
-      className="flex flex-col items-center gap-2 px-4 py-8 text-center"
+      className="flex flex-col items-center gap-3 px-4 py-8 text-center"
       role="alert"
     >
       <span className="material-symbols-outlined text-3xl text-warning-flare" aria-hidden="true">
@@ -279,6 +293,26 @@ function GymPickerError() {
       </span>
       <p className="font-sans text-sm text-warning-flare">Failed to load gyms</p>
       <p className="font-sans text-xs text-warm-ash/60">Check your connection and try again.</p>
+      {/* P14-038: explicit retry + Private fallback so the user is not
+          forced to abort the workout when the gym list fails to load. */}
+      <div className="flex flex-col items-stretch gap-2 pt-2">
+        <button
+          type="button"
+          data-testid="gym-picker-retry"
+          onClick={onRetry}
+          className="min-h-12 bg-surface-charcoal px-4 font-sans text-xs uppercase tracking-widest text-bone-white hover:bg-surface-gunmetal"
+        >
+          Retry
+        </button>
+        <button
+          type="button"
+          data-testid="gym-picker-private-fallback"
+          onClick={onPrivate}
+          className="min-h-12 px-4 font-sans text-xs uppercase tracking-widest text-warm-ash hover:text-bone-white"
+        >
+          Continue private
+        </button>
+      </div>
     </div>
   )
 }

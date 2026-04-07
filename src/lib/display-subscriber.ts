@@ -71,9 +71,14 @@ export function initDisplaySubscriber(client: SupabaseClient): void {
  */
 export function subscribeToDisplay({ gymId, handlers }: SubscribeToDisplayArgs): void {
   if (!_client) {
-    console.warn('[display-subscriber] Cannot subscribe: client not initialized')
-    handlers.onStatusChange('disconnected')
-    return
+    // P14-004: throw instead of warn-and-return so the route's outer
+    // try/catch can map this into a `subscribe-failed` BootError with a
+    // visible Retry button. Returning silently here puts the route into a
+    // "stuck reconnecting" state with no recovery affordance for the user.
+    throw new Error(
+      '[display-subscriber] Cannot subscribe: client not initialized. ' +
+        'Call initDisplaySubscriber(client) before subscribeToDisplay().',
+    )
   }
 
   // Tear down any existing channel before creating a new one

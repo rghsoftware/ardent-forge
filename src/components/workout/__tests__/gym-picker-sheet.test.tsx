@@ -11,6 +11,11 @@ import type { Gym } from '@/domain/types'
 // sticky default is controllable without reaching into localStorage.
 // ---------------------------------------------------------------------------
 
+// P14-047: this test stubs the entire useGyms return shape. Acceptable for
+// isolating the picker from network state, but a silent contract drift
+// (e.g., useGyms growing a new field the picker depends on) would not be
+// caught here. Revisit if useGyms grows; consider switching to a thin
+// wrapper test that exercises the real hook against a mocked adapter.
 const mockUseGyms = vi.fn()
 vi.mock('@/hooks/use-gyms', () => ({
   useGyms: (...args: unknown[]) => mockUseGyms(...args),

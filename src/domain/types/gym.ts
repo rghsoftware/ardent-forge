@@ -39,6 +39,14 @@ export type Gym = z.infer<typeof gymSchema>
 // this entity does NOT extend syncableEntitySchema.
 // ---------------------------------------------------------------------------
 
+/**
+ * Gym membership join row. NOTE: there is intentionally no `role` field on
+ * this schema. F018 v1 has only two roles -- owner and member -- and
+ * ownership is computed from `gym.ownerUserId === user.id` rather than
+ * stored on the join row. Future readers (or AI agents) should not expect
+ * an enum here; if v2 introduces additional roles (coach, admin, guest),
+ * THIS is the schema to extend (P14-043).
+ */
 export const gymMemberSchema = z.object({
   gymId: entityId,
   userId: entityId,

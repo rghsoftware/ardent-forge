@@ -95,16 +95,23 @@ describe('gym-picker-storage', () => {
     warnSpy.mockRestore()
   })
 
-  // 5. tolerates a thrown error from localStorage.setItem
-  it('writeLastGymChoice() tolerates a thrown error from localStorage.setItem and does not throw', () => {
+  // 5. tolerates a thrown error from localStorage.setItem and returns false
+  it('writeLastGymChoice() returns false on quota error and does not throw (P14-014)', () => {
     const quotaErr = new DOMException('QuotaExceededError', 'QuotaExceededError')
     vi.mocked(localStorageMock.setItem).mockImplementationOnce(() => {
       throw quotaErr
     })
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    expect(() => writeLastGymChoice('x')).not.toThrow()
+    // Use a valid UUID -- P14-006 boundary validation now rejects garbage
+    // strings before localStorage is touched.
+    const validUuid = '11111111-2222-4333-8444-555555555555'
+    let result: boolean | undefined
+    expect(() => {
+      result = writeLastGymChoice(validUuid)
+    }).not.toThrow()
 
+    expect(result).toBe(false)
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('[gym-picker]'),
       expect.any(DOMException),

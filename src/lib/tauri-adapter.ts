@@ -531,6 +531,27 @@ export class AdapterError extends Error {
   }
 }
 
+/**
+ * Distinct error variant for operations that require an online Supabase
+ * connection in the Tauri (offline-first) build. Mutation hooks can
+ * `instanceof OnlineRequiredError` to surface a contextual "Offline mode"
+ * banner instead of a generic failure message.
+ *
+ * Per .claude/rules/error-handling.md: error types at system boundaries
+ * must distinguish input validation failures from network/transport
+ * failures. This is the network/transport variant for the gym domain.
+ */
+export class OnlineRequiredError extends Error {
+  readonly code = 'ONLINE_REQUIRED' as const
+  readonly operation: string
+
+  constructor(operation: string) {
+    super(`${operation} requires an online connection`)
+    this.name = 'OnlineRequiredError'
+    this.operation = operation
+  }
+}
+
 /** Invoke a Tauri command and translate AppError responses into AdapterError. */
 async function invokeCommand<T>(cmd: string, args: Record<string, unknown>): Promise<T> {
   try {
@@ -1943,47 +1964,61 @@ export class TauriAdapter implements DataAdapter {
   // Gyms are an online concept: the publisher only matters when there is a
   // live Supabase Realtime channel to broadcast on. Reads return empty
   // collections so offline UI renders gracefully (the picker shows only the
-  // Private option). Writes throw a clear "online required" error so the
-  // user knows why their action did not take effect.
+  // Private option) but log a one-line warn so the empty result is not
+  // mistaken for "no gyms exist on this instance." Writes throw a distinct
+  // `OnlineRequiredError` (P14-003) so mutation hooks can surface an
+  // "Offline mode" banner instead of a generic failure message.
   // ---------------------------------------------------------------------------
 
   async listUserGyms(_userId: string): Promise<Gym[]> {
+    console.warn(
+      '[tauri-adapter] listUserGyms called in offline mode; returning empty (gyms require online)',
+    )
     return []
   }
 
   async listAllGyms(): Promise<Gym[]> {
+    console.warn(
+      '[tauri-adapter] listAllGyms called in offline mode; returning empty (gyms require online)',
+    )
     return []
   }
 
   async getGym(_gymId: string): Promise<Gym | null> {
+    console.warn(
+      '[tauri-adapter] getGym called in offline mode; returning null (gyms require online)',
+    )
     return null
   }
 
   async createGym(_input: { name: string }): Promise<Gym> {
-    throw new Error('Gyms require an online connection')
+    throw new OnlineRequiredError('createGym')
   }
 
   async updateGym(_input: Partial<Gym> & { id: string }): Promise<Gym> {
-    throw new Error('Gyms require an online connection')
+    throw new OnlineRequiredError('updateGym')
   }
 
   async deleteGym(_gymId: string): Promise<void> {
-    throw new Error('Gyms require an online connection')
+    throw new OnlineRequiredError('deleteGym')
   }
 
   async joinGym(_gymId: string): Promise<void> {
-    throw new Error('Gyms require an online connection')
+    throw new OnlineRequiredError('joinGym')
   }
 
   async leaveGym(_gymId: string): Promise<void> {
-    throw new Error('Gyms require an online connection')
+    throw new OnlineRequiredError('leaveGym')
   }
 
   async kickGymMember(_gymId: string, _userId: string): Promise<void> {
-    throw new Error('Gyms require an online connection')
+    throw new OnlineRequiredError('kickGymMember')
   }
 
   async listGymMembers(_gymId: string): Promise<GymMember[]> {
+    console.warn(
+      '[tauri-adapter] listGymMembers called in offline mode; returning empty (gyms require online)',
+    )
     return []
   }
 

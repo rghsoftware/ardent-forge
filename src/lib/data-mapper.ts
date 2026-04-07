@@ -67,6 +67,8 @@ import {
   mediaProviderSchema,
   mediaTypeSchema,
   mediaStatusSchema,
+  gymSchema,
+  gymMemberSchema,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -341,13 +343,29 @@ export function fromUserProfile(
 // ---------------------------------------------------------------------------
 
 export function toGym(row: GymRow): Gym {
-  return {
-    id: row.id,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    name: row.name,
-    ownerUserId: row.owner_user_id,
-    isDefault: row.is_default,
+  // P14-039: defense in depth -- the row types declare these as non-null,
+  // but a future migration that introduces a nullable column would silently
+  // produce malformed Gym objects. Warn at the adapter boundary so the
+  // failure is observable.
+  if (row.id == null || row.name == null || row.owner_user_id == null) {
+    console.warn('[data-mapper] toGym: missing required fields', row)
+  }
+  // P14-005: parse through the schema so a future Postgres migration that
+  // loosens column constraints (or returns over-long names from a stale
+  // view) cannot silently ship malformed Gym objects through the app. The
+  // try/catch matches the convention used by toConversation/toMessage.
+  try {
+    return gymSchema.parse({
+      id: row.id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      name: row.name,
+      ownerUserId: row.owner_user_id,
+      isDefault: row.is_default,
+    })
+  } catch (err) {
+    console.error('[data-mapper] Failed to map gym row:', err, row)
+    throw new Error(`Failed to map gym row (id=${row.id}): ${(err as Error).message}`)
   }
 }
 
@@ -370,10 +388,23 @@ export function fromGym(gym: Partial<Gym>): Partial<GymRow> {
 // ---------------------------------------------------------------------------
 
 export function toGymMember(row: GymMemberRow): GymMember {
-  return {
-    gymId: row.gym_id,
-    userId: row.user_id,
-    joinedAt: row.joined_at,
+  if (row.gym_id == null || row.user_id == null) {
+    console.warn('[data-mapper] toGymMember: missing required fields', row)
+  }
+  // P14-005: parse through the schema for the same reason as toGym -- a
+  // schema-drift event must surface as a loud failure rather than a silently
+  // malformed object propagating through the app.
+  try {
+    return gymMemberSchema.parse({
+      gymId: row.gym_id,
+      userId: row.user_id,
+      joinedAt: row.joined_at,
+    })
+  } catch (err) {
+    console.error('[data-mapper] Failed to map gym_member row:', err, row)
+    throw new Error(
+      `Failed to map gym_member row (gym=${row.gym_id}, user=${row.user_id}): ${(err as Error).message}`,
+    )
   }
 }
 

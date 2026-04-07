@@ -163,7 +163,11 @@ function TodayPage() {
 
     try {
       const workoutLog = await startWorkout(userId)
-      configureDisplayPublisher({ gymId: choice === 'private' ? null : choice })
+      if (choice === 'private') {
+        configureDisplayPublisher({ gymId: null, intent: 'private' })
+      } else {
+        configureDisplayPublisher({ gymId: choice, intent: 'broadcasting' })
+      }
       writeLastGymChoice(choice)
       navigate({ to: '/log/$workoutId', params: { workoutId: workoutLog.id } })
     } catch (err) {
@@ -207,7 +211,11 @@ function TodayPage() {
         },
         todayContext.session.overrides,
       )
-      configureDisplayPublisher({ gymId: choice === 'private' ? null : choice })
+      if (choice === 'private') {
+        configureDisplayPublisher({ gymId: null, intent: 'private' })
+      } else {
+        configureDisplayPublisher({ gymId: choice, intent: 'broadcasting' })
+      }
       writeLastGymChoice(choice)
       navigate({ to: '/log/$workoutId', params: { workoutId: workoutLog.id } })
     } catch (err) {

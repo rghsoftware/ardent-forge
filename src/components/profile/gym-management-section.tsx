@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import { Button } from '@/components/ui/button'
 import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
 import {
@@ -16,6 +16,36 @@ import { useJoinGym, useLeaveGym } from '@/hooks/use-gym-members'
 import { gymSchema } from '@/domain/types/gym'
 import { cn } from '@/lib/utils'
 import type { Gym } from '@/domain/types'
+
+// ---------------------------------------------------------------------------
+// Postgres error code → user-facing message helper (P14-041)
+//
+// Branches on Supabase/PostgREST error codes so the user gets actionable
+// guidance instead of "Please try again." for failures that retry won't fix
+// (RLS denial, name conflict, etc.). Falls back to a generic network message
+// when no code is present (e.g., the request never reached the server).
+// ---------------------------------------------------------------------------
+function isPgError(err: unknown): err is { code?: string; message?: string } {
+  return typeof err === 'object' && err !== null && ('code' in err || 'message' in err)
+}
+
+function gymErrorMessage(err: unknown, action: 'create' | 'join' | 'leave' | 'delete'): string {
+  if (!isPgError(err)) {
+    return `Failed to ${action} gym. Check your connection and try again.`
+  }
+  switch (err.code) {
+    case '23505': // unique_violation
+      return action === 'create'
+        ? 'A gym with this name already exists. Choose a different name.'
+        : `Failed to ${action} gym -- duplicate constraint. Refresh and try again.`
+    case '42501': // insufficient_privilege (RLS denied)
+      return `You don't have permission to ${action} this gym.`
+    case 'PGRST116': // PostgREST: no rows
+      return `Failed to ${action} gym -- it may have been deleted. Refresh the list.`
+    default:
+      return `Failed to ${action} gym. Check your connection and try again.`
+  }
+}
 
 // ---------------------------------------------------------------------------
 // GymManagementSection -- profile / settings gym management (F018, Tech.md D13)
@@ -141,8 +171,8 @@ function MyGymsList({ userId }: MyGymsListProps): ReactElement {
 
       {leaveGym.isError && (
         <p className="text-xs text-warning-flare" role="alert">
-          Failed to leave {gyms?.find((g) => g.id === leaveGym.variables)?.name ?? 'gym'}. Please
-          try again.
+          {gymErrorMessage(leaveGym.error, 'leave')} (
+          {gyms?.find((g) => g.id === leaveGym.variables)?.name ?? 'gym'})
         </p>
       )}
 
@@ -173,7 +203,7 @@ function MyGymsList({ userId }: MyGymsListProps): ReactElement {
               className="px-1 text-xs text-warning-flare"
               role="alert"
             >
-              Failed to delete {pendingDelete?.name ?? 'gym'}. Please try again.
+              {gymErrorMessage(deleteGym.error, 'delete')} ({pendingDelete?.name ?? 'gym'})
             </p>
           )}
           <AlertDialogFooter>
@@ -263,18 +293,51 @@ function BrowseAllGymsList({ userId }: BrowseAllGymsListProps): ReactElement {
   // TODO: paginate when gyms.length > ~50 (Spec.md S8, RD-19). The underlying
   // query is index-friendly and shape-compatible with LIMIT/OFFSET per M22
   // and M24, so adding pagination later is a half-day change.
-  const { data: allGyms, isLoading: allGymsLoading, isError: allGymsError } = useAllGyms()
+  const {
+    data: allGyms,
+    isLoading: allGymsLoading,
+    isError: allGymsError,
+    error: allGymsErrorObj,
+    refetch: refetchAllGyms,
+  } = useAllGyms()
   // Surface myGyms error too -- if we don't, joinedSet silently becomes empty
   // and every gym in the browse list appears un-joined, leading the user to
   // tap Join on a gym they already belong to (RLS will block, but the UX
   // affordance was wrong from the start). Treat both queries as required.
-  const { data: myGyms, isLoading: myGymsLoading, isError: myGymsError } = useGyms(userId)
+  const {
+    data: myGyms,
+    isLoading: myGymsLoading,
+    isError: myGymsError,
+    error: myGymsErrorObj,
+    refetch: refetchMyGyms,
+  } = useGyms(userId)
   const joinGym = useJoinGym()
+
+  // P14-011: log which query failed so production debugging can distinguish
+  // RLS/auth failures from network failures. The aggregated banner is fine
+  // for users (they don't care which query failed) but operators need to
+  // know which one to investigate. Logged via effect so the warning fires
+  // on the error transition, not on every re-render.
+  useEffect(() => {
+    if (allGymsError) {
+      console.error('[gym-mgmt] BrowseAllGymsList: useAllGyms failed', allGymsErrorObj)
+    }
+  }, [allGymsError, allGymsErrorObj])
+  useEffect(() => {
+    if (myGymsError) {
+      console.error('[gym-mgmt] BrowseAllGymsList: useGyms failed', { userId }, myGymsErrorObj)
+    }
+  }, [myGymsError, myGymsErrorObj, userId])
 
   const joinedSet = useMemo(() => new Set((myGyms ?? []).map((g) => g.id)), [myGyms])
 
   const handleJoin = (gymId: string) => {
     joinGym.mutate(gymId)
+  }
+
+  const handleRetry = () => {
+    if (allGymsError) refetchAllGyms()
+    if (myGymsError) refetchMyGyms()
   }
 
   const isLoading = allGymsLoading || myGymsLoading
@@ -291,9 +354,21 @@ function BrowseAllGymsList({ userId }: BrowseAllGymsListProps): ReactElement {
       )}
 
       {isError && (
-        <p data-testid="browse-gyms-error" className="text-xs text-warning-flare" role="alert">
-          Failed to load gyms. Check your connection and try again.
-        </p>
+        <div className="flex items-center gap-2">
+          <p data-testid="browse-gyms-error" className="text-xs text-warning-flare" role="alert">
+            Failed to load gyms. Check your connection and try again.
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            data-testid="browse-gyms-retry"
+            onClick={handleRetry}
+            className="min-h-[48px] text-xs text-warm-ash hover:text-bone-white"
+          >
+            Retry
+          </Button>
+        </div>
       )}
 
       {!isLoading && !isError && (allGyms?.length ?? 0) === 0 && (
@@ -318,8 +393,8 @@ function BrowseAllGymsList({ userId }: BrowseAllGymsListProps): ReactElement {
 
       {joinGym.isError && (
         <p className="text-xs text-warning-flare" role="alert">
-          Failed to join {allGyms?.find((g) => g.id === joinGym.variables)?.name ?? 'gym'}. Please
-          try again.
+          {gymErrorMessage(joinGym.error, 'join')} (
+          {allGyms?.find((g) => g.id === joinGym.variables)?.name ?? 'gym'})
         </p>
       )}
     </div>
@@ -458,7 +533,7 @@ function CreateGymForm(): ReactElement {
       )}
       {createGym.isError && (
         <p className="text-xs text-warning-flare" role="alert">
-          Failed to create gym. Please try again.
+          {gymErrorMessage(createGym.error, 'create')}
         </p>
       )}
     </div>

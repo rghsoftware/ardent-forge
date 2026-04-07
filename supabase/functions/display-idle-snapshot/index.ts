@@ -47,11 +47,41 @@ interface BroadcastResult {
   session_count: number
   status?: number
   body?: string
+  // Postgres SQLSTATE or PostgREST error code, if available. Used by the
+  // outer handler to classify failures as permanent vs transient (P14-040).
+  error_code?: string
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Permanent error codes that the cron should NOT retry. Returning 200 for
+ * these stops the cron from spamming logs every minute on a misconfigured
+ * RLS policy or schema drift. Transient codes (5xx, network) are NOT in this
+ * list and trigger a 502 retry.
+ *
+ * P14-040: this is a hand-curated allowlist; new permanent codes can be
+ * added as they're observed in production.
+ */
+const PERMANENT_ERROR_CODES = new Set<string>([
+  '42501', // insufficient_privilege (RLS denied)
+  '42P01', // undefined_table (schema drift)
+  '42703', // undefined_column
+  '42883', // undefined_function
+  'PGRST116', // PostgREST: no rows when one expected
+  'PGRST301', // PostgREST: RLS-rejected
+])
+
+function isPermanentErrorCode(code: string | undefined): boolean {
+  if (!code) return false
+  if (PERMANENT_ERROR_CODES.has(code)) return true
+  // HTTP 4xx broadcast failures (encoded as HTTP_4xx) are permanent --
+  // 401/403/404 will not recover on retry.
+  if (code.startsWith('HTTP_4')) return true
+  return false
+}
 
 function isValidScheduledSession(r: unknown): r is ScheduledSession {
   if (typeof r !== 'object' || r === null) return false
@@ -161,21 +191,38 @@ export async function handler(req: Request): Promise<Response> {
     const totalSessions = results.reduce((sum, r) => sum + r.session_count, 0)
 
     if (!allOk) {
-      // Some gyms failed. Return 502 so the cron retries, but include the
-      // per-gym status so logs are diagnostic.
+      // Some gyms failed. P14-040: classify failures so the cron can decide
+      // whether to retry. Permanent failures (RLS, schema) get 200 so the
+      // cron stops retrying and the logs show one error per cycle instead
+      // of an unbounded spam loop. Transient failures (5xx, network) get
+      // 502 so the cron retries on the next tick.
+      const failures = results.filter((r) => !r.ok)
+      const allPermanent = failures.every((f) => isPermanentErrorCode(f.error_code))
       console.error(
-        '[display-idle-snapshot] Partial broadcast failure:',
-        JSON.stringify(results.filter((r) => !r.ok)),
+        `[display-idle-snapshot] Partial broadcast failure (allPermanent=${allPermanent}):`,
+        JSON.stringify(failures),
       )
+
+      // If every failing gym shares the same error code, surface it as a
+      // pattern alert so operators notice systemic issues (e.g., a tightened
+      // RLS policy that bricked every gym at once).
+      const codes = new Set(failures.map((f) => f.error_code).filter((c) => c !== undefined))
+      if (codes.size === 1) {
+        console.error(
+          `[display-idle-snapshot] All ${failures.length} failures share code: ${[...codes][0]}`,
+        )
+      }
+
       return new Response(
         JSON.stringify({
           published: false,
           gym_count: gyms.length,
           total_sessions: totalSessions,
-          failures: results.filter((r) => !r.ok),
+          failures,
+          permanent: allPermanent,
         }),
         {
-          status: 502,
+          status: allPermanent ? 200 : 502,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         },
       )
@@ -233,7 +280,7 @@ async function broadcastForGym(args: BroadcastForGymArgs): Promise<BroadcastResu
       queryError.message,
       queryError.code,
     )
-    return { gym_id: gymId, ok: false, session_count: 0 }
+    return { gym_id: gymId, ok: false, session_count: 0, error_code: queryError.code }
   }
 
   const rows: unknown[] = sessionRows ?? []
@@ -277,12 +324,15 @@ async function broadcastForGym(args: BroadcastForGymArgs): Promise<BroadcastResu
       broadcastResponse.status,
       body,
     )
+    // Encode the HTTP status as the error_code so the outer handler can
+    // classify 4xx (permanent: bad config, auth) vs 5xx (transient).
     return {
       gym_id: gymId,
       ok: false,
       session_count: sessions.length,
       status: broadcastResponse.status,
       body,
+      error_code: `HTTP_${broadcastResponse.status}`,
     }
   }
 
