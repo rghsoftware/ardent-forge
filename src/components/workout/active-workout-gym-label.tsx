@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useEffect, type ReactElement } from 'react'
 import { useGyms } from '@/hooks/use-gyms'
 import { getActiveGymId } from '@/lib/display-publisher'
 
@@ -30,7 +30,17 @@ interface ActiveWorkoutGymLabelProps {
 }
 
 export function ActiveWorkoutGymLabel({ userId }: ActiveWorkoutGymLabelProps): ReactElement | null {
-  const { data: gyms } = useGyms(userId)
+  const { data: gyms, isError, error } = useGyms(userId)
+
+  // Surface fetch failures to logs so the silent label-hide is traceable when
+  // debugging "why did the gym name disappear?" reports. The component still
+  // returns null on isError because there is no useful fallback to render --
+  // an error state in a tertiary header label is more noise than signal.
+  useEffect(() => {
+    if (isError) {
+      console.warn('[active-workout-gym-label] Failed to load gyms; label hidden:', error)
+    }
+  }, [isError, error])
 
   // Single-gym hide: the label disambiguates; nothing to disambiguate.
   if (!gyms || gyms.length < 2) return null

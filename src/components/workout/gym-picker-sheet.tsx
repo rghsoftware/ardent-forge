@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Sheet,
   SheetContent,
@@ -52,16 +52,32 @@ interface GymPickerSheetProps {
 export function GymPickerSheet({ open, userId, onResolve, onCancel }: GymPickerSheetProps) {
   const { data: gyms, isLoading, isError } = useGyms(userId)
 
+  // Read the stored choice once at mount via useState initializer so we
+  // avoid render-phase localStorage hits and have a stable reference for
+  // both the preselected memo and the stale-fallback effect below.
+  const [stored] = useState<GymPickerChoice | null>(() => readLastGymChoice())
+
   // Compute the sticky default, validating any stored UUID against the
   // current membership list. If the user has left the gym referenced by the
   // stored choice, fall back to 'private' (Tech.md D8, TA6).
   const preselected = useMemo<GymPickerChoice>(() => {
-    const stored = readLastGymChoice()
     if (!stored) return 'private'
     if (stored === 'private') return 'private'
     const stillMember = gyms?.some((g) => g.id === stored) ?? false
     return stillMember ? stored : 'private'
-  }, [gyms])
+  }, [gyms, stored])
+
+  // Log when the stored choice falls back to private because the user has
+  // left the gym they previously trained at -- per .claude/rules/error-handling
+  // adapter-boundary fallbacks must warn rather than silently coerce.
+  useEffect(() => {
+    if (!gyms || !stored || stored === 'private') return
+    if (!gyms.some((g) => g.id === stored)) {
+      console.warn(
+        `[gym-picker] Stored gym ${stored} is no longer in user's memberships; defaulting to Private`,
+      )
+    }
+  }, [gyms, stored])
 
   // Radix Dialog uses onOpenChange(false) for outside-click + Escape key.
   // We translate that to a cancel because the picker is not self-dismissing.

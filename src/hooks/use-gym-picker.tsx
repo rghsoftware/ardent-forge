@@ -77,6 +77,23 @@ export function useGymPicker(): UseGymPickerResult {
     stateRef.current = state
   }, [state])
 
+  // Unmount cleanup: if the picker is still open when this hook unmounts
+  // (auth session expires, route navigates away, hot-reload, etc.), resolve
+  // any in-flight promise with `null` so the awaited start-workout flow does
+  // not hang forever waiting for a picker that no longer exists.
+  useEffect(() => {
+    return () => {
+      const pending = stateRef.current
+      if (pending) {
+        console.warn(
+          '[gym-picker] Hook unmounted with picker open; resolving in-flight promise as cancelled',
+        )
+        pending.resolver(null)
+        stateRef.current = null
+      }
+    }
+  }, [])
+
   const openGymPicker = useCallback((args: OpenGymPickerArgs): Promise<GymPickerChoice | null> => {
     // If a picker is already open, cancel the previous promise before
     // opening the new one. This keeps double-tap / race scenarios from
@@ -93,14 +110,20 @@ export function useGymPicker(): UseGymPickerResult {
 
   const handleResolve = useCallback((choice: GymPickerChoice) => {
     const current = stateRef.current
-    if (!current) return
+    if (!current) {
+      console.warn('[gym-picker] handleResolve called with no active picker state; ignoring')
+      return
+    }
     current.resolver(choice)
     setState(null)
   }, [])
 
   const handleCancel = useCallback(() => {
     const current = stateRef.current
-    if (!current) return
+    if (!current) {
+      console.warn('[gym-picker] handleCancel called with no active picker state; ignoring')
+      return
+    }
     current.resolver(null)
     setState(null)
   }, [])

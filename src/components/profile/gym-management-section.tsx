@@ -85,11 +85,20 @@ function MyGymsList({ userId }: MyGymsListProps): ReactElement {
 
   const handleDeleteConfirm = () => {
     if (!pendingDelete) return
-    deleteGym.mutate(pendingDelete.id)
-    setPendingDelete(null)
+    // Defer dialog close to onSuccess so the user sees the error inside the
+    // dialog (not in a banner they may have scrolled away from), and so a
+    // failed delete cannot be silently masked by an optimistic close.
+    deleteGym.mutate(pendingDelete.id, {
+      onSuccess: () => {
+        setPendingDelete(null)
+      },
+    })
   }
 
   const handleDeleteCancel = () => {
+    // Don't allow cancelling while a delete is in flight -- the dialog would
+    // disappear and the user would have no idea whether the action succeeded.
+    if (deleteGym.isPending) return
     setPendingDelete(null)
   }
 
@@ -132,12 +141,8 @@ function MyGymsList({ userId }: MyGymsListProps): ReactElement {
 
       {leaveGym.isError && (
         <p className="text-xs text-warning-flare" role="alert">
-          Failed to leave gym. Please try again.
-        </p>
-      )}
-      {deleteGym.isError && (
-        <p className="text-xs text-warning-flare" role="alert">
-          Failed to delete gym. Please try again.
+          Failed to leave {gyms?.find((g) => g.id === leaveGym.variables)?.name ?? 'gym'}. Please
+          try again.
         </p>
       )}
 
@@ -159,9 +164,22 @@ function MyGymsList({ userId }: MyGymsListProps): ReactElement {
               This will end any active TV at this gym.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {/* Error banner lives INSIDE the dialog so the user sees it without
+              scrolling. The dialog stays open on failure (handleDeleteConfirm
+              only closes on onSuccess) so a failed delete cannot be masked. */}
+          {deleteGym.isError && (
+            <p
+              data-testid="delete-gym-error"
+              className="px-1 text-xs text-warning-flare"
+              role="alert"
+            >
+              Failed to delete {pendingDelete?.name ?? 'gym'}. Please try again.
+            </p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel
               data-testid="delete-gym-cancel"
+              disabled={deleteGym.isPending}
               className="min-h-[48px] rounded-none border-surface-steel text-warm-ash hover:bg-surface-gunmetal"
             >
               Cancel
@@ -169,9 +187,12 @@ function MyGymsList({ userId }: MyGymsListProps): ReactElement {
             <AlertDialogAction
               data-testid="delete-gym-confirm"
               onClick={handleDeleteConfirm}
+              disabled={deleteGym.isPending && deleteGym.variables === pendingDelete?.id}
               className="min-h-[48px] rounded-none bg-warning-flare text-on-forge hover:bg-warning-flare/80"
             >
-              Delete
+              {deleteGym.isPending && deleteGym.variables === pendingDelete?.id
+                ? 'Deleting...'
+                : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -242,8 +263,12 @@ function BrowseAllGymsList({ userId }: BrowseAllGymsListProps): ReactElement {
   // TODO: paginate when gyms.length > ~50 (Spec.md S8, RD-19). The underlying
   // query is index-friendly and shape-compatible with LIMIT/OFFSET per M22
   // and M24, so adding pagination later is a half-day change.
-  const { data: allGyms, isLoading, isError } = useAllGyms()
-  const { data: myGyms } = useGyms(userId)
+  const { data: allGyms, isLoading: allGymsLoading, isError: allGymsError } = useAllGyms()
+  // Surface myGyms error too -- if we don't, joinedSet silently becomes empty
+  // and every gym in the browse list appears un-joined, leading the user to
+  // tap Join on a gym they already belong to (RLS will block, but the UX
+  // affordance was wrong from the start). Treat both queries as required.
+  const { data: myGyms, isLoading: myGymsLoading, isError: myGymsError } = useGyms(userId)
   const joinGym = useJoinGym()
 
   const joinedSet = useMemo(() => new Set((myGyms ?? []).map((g) => g.id)), [myGyms])
@@ -251,6 +276,9 @@ function BrowseAllGymsList({ userId }: BrowseAllGymsListProps): ReactElement {
   const handleJoin = (gymId: string) => {
     joinGym.mutate(gymId)
   }
+
+  const isLoading = allGymsLoading || myGymsLoading
+  const isError = allGymsError || myGymsError
 
   return (
     <div className="space-y-3">
@@ -290,7 +318,8 @@ function BrowseAllGymsList({ userId }: BrowseAllGymsListProps): ReactElement {
 
       {joinGym.isError && (
         <p className="text-xs text-warning-flare" role="alert">
-          Failed to join gym. Please try again.
+          Failed to join {allGyms?.find((g) => g.id === joinGym.variables)?.name ?? 'gym'}. Please
+          try again.
         </p>
       )}
     </div>

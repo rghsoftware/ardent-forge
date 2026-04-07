@@ -51,13 +51,28 @@ function ensureChannel(): RealtimeChannel | null {
   _channelGymId = _activeGymId
 
   _channel.on('broadcast', { event: 'display_hello' }, () => {
-    _helloResponder?.()
+    // Wrap responder invocation in try/catch -- the responder may call
+    // republishCurrentState() which can throw, and Supabase Realtime swallows
+    // exceptions inside `on` callbacks in some versions. Logging here ensures
+    // the failure is traceable instead of silently lost.
+    try {
+      _helloResponder?.()
+    } catch (err) {
+      console.error('[display-publisher] Hello responder threw:', err)
+    }
   })
 
   _channel.subscribe((status, err) => {
-    if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
+    if (status === 'CLOSED') {
+      // CLOSED is a normal teardown path -- log at info level so we have a
+      // breadcrumb but do not paint it as an error.
+      console.info('[display-publisher] Channel closed (normal teardown)')
+      _channel = null
+      _channelGymId = null
+    } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
+      // TIMED_OUT and CHANNEL_ERROR are unexpected terminal states; log them
+      // at warn level with the err payload so retries surface in the console.
       console.warn(`[display-publisher] Channel terminal status: ${status}`, err)
-      // Clear the dead channel so the next publish attempt recreates it
       _channel = null
       _channelGymId = null
     }
@@ -87,6 +102,13 @@ export function initDisplayPublisher(client: SupabaseClient): void {
  */
 export function configureDisplayPublisher({ gymId }: { gymId: string | null }): void {
   if (_activeGymId === gymId) return
+
+  // Breadcrumb so production debugging "why did this workout publish to the
+  // wrong gym?" has a traceable entry point. The actual broadcast path is
+  // fire-and-forget so this is the best place to record intent.
+  console.info(
+    `[display-publisher] Active gym change: ${_activeGymId ?? 'none'} -> ${gymId ?? 'none (private)'}`,
+  )
 
   _activeGymId = gymId
 

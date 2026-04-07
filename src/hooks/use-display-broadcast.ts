@@ -78,9 +78,13 @@ export function useDisplayBroadcast(
 
   const { data: profile, error: profileError } = useUserProfile(userId)
 
-  if (profileError) {
-    console.warn('[display-broadcast] Failed to load user profile, using defaults', profileError)
-  }
+  // Log fetch errors via effect (not render-phase) so the warn fires once per
+  // error change rather than on every re-render while the error persists.
+  useEffect(() => {
+    if (profileError) {
+      console.warn('[display-broadcast] Failed to load user profile, using defaults', profileError)
+    }
+  }, [profileError])
 
   // -----------------------------------------------------------------------
   // 3. Configure publisher when gymId changes
@@ -97,12 +101,16 @@ export function useDisplayBroadcast(
 
   const { data: exercises, error: exercisesError } = useExercises()
 
-  if (exercisesError) {
-    console.warn(
-      '[display-broadcast] Failed to load exercises, exercise names will be unavailable',
-      exercisesError,
-    )
-  }
+  // Log fetch errors via effect (not render-phase) so the warn fires once per
+  // error change rather than on every re-render while the error persists.
+  useEffect(() => {
+    if (exercisesError) {
+      console.warn(
+        '[display-broadcast] Failed to load exercises, exercise names will be unavailable',
+        exercisesError,
+      )
+    }
+  }, [exercisesError])
 
   const exerciseNameMap = useMemo<Record<string, string>>(() => {
     if (!exercises) return {}

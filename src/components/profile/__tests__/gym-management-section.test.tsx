@@ -212,7 +212,13 @@ describe('GymManagementSection', () => {
     await user.click(screen.getByTestId('delete-gym-confirm'))
 
     expect(deleteGymStub.mutate).toHaveBeenCalledTimes(1)
-    expect(deleteGymStub.mutate).toHaveBeenCalledWith('gym-owned')
+    // Component now passes an onSuccess callback so the dialog only closes
+    // after the mutation succeeds (and stays open with an error banner if it
+    // fails). Match the (gymId, optionsObject) shape rather than just gymId.
+    expect(deleteGymStub.mutate).toHaveBeenCalledWith(
+      'gym-owned',
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    )
   })
 
   // -------------------------------------------------------------------------
