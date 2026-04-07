@@ -372,7 +372,11 @@ export function useActiveWorkout() {
           storeConfirmSet(loggedActivityId, savedSet)
         }
 
-        storeStartRestTimer(restSeconds)
+        // Skip the global rest timer for zero/negative values. CircuitPanel
+        // and similar self-managed timer UIs pass 0 to suppress the duplicate.
+        if (restSeconds > 0) {
+          storeStartRestTimer(restSeconds)
+        }
 
         return savedSet
       } catch (err) {
