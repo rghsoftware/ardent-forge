@@ -134,7 +134,7 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
           <div className="flex flex-1 flex-col gap-1">
             <Button
               variant="ghost"
-              className="w-full text-warm-ash hover:text-warning-flare"
+              className="h-12 w-full text-warm-ash hover:text-warning-flare"
               onClick={handleDiscard}
               disabled={isDiscarding || isResuming}
             >
@@ -146,7 +146,7 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
           </div>
           <Button
             variant="molten"
-            className="flex-1 h-12"
+            className="h-12 flex-1"
             onClick={handleResume}
             disabled={isResuming || isDiscarding || !fullWorkout}
           >

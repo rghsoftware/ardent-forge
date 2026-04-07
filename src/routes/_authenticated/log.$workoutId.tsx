@@ -523,13 +523,19 @@ function ActiveWorkoutPage() {
                   const activity = group.activities[exerciseIndex]
                   if (!activity) return
                   try {
-                    await confirmSet(activity.id, {
-                      loggedActivityId: activity.id,
-                      setNumber: round,
-                      setType: 'WORKING',
-                      completed: true,
-                      actualReps,
-                    })
+                    // Pass restSeconds: 0 -- CircuitPanel runs its own inter-exercise
+                    // and inter-round rest, so the global rest timer must not fire.
+                    await confirmSet(
+                      activity.id,
+                      {
+                        loggedActivityId: activity.id,
+                        setNumber: round,
+                        setType: 'WORKING',
+                        completed: true,
+                        actualReps,
+                      },
+                      0,
+                    )
                   } catch (err) {
                     console.error('[workout-log] Failed to log circuit set:', err)
                     setPageError('Failed to save circuit set.')
