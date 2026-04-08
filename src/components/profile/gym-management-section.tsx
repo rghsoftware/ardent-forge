@@ -15,37 +15,9 @@ import { useGyms, useAllGyms, useCreateGym, useDeleteGym } from '@/hooks/use-gym
 import { useGymMembers, useJoinGym, useLeaveGym } from '@/hooks/use-gym-members'
 import { gymSchema } from '@/domain/types/gym'
 import { cn } from '@/lib/utils'
+import { gymErrorMessage } from '@/lib/gym-error-messages'
+import { ShowDisplayPanel } from './show-display-panel'
 import type { Gym } from '@/domain/types'
-
-// ---------------------------------------------------------------------------
-// Postgres error code → user-facing message helper (P14-041)
-//
-// Branches on Supabase/PostgREST error codes so the user gets actionable
-// guidance instead of "Please try again." for failures that retry won't fix
-// (RLS denial, name conflict, etc.). Falls back to a generic network message
-// when no code is present (e.g., the request never reached the server).
-// ---------------------------------------------------------------------------
-function isPgError(err: unknown): err is { code?: string; message?: string } {
-  return typeof err === 'object' && err !== null && ('code' in err || 'message' in err)
-}
-
-function gymErrorMessage(err: unknown, action: 'create' | 'join' | 'leave' | 'delete'): string {
-  if (!isPgError(err)) {
-    return `Failed to ${action} gym. Check your connection and try again.`
-  }
-  switch (err.code) {
-    case '23505': // unique_violation
-      return action === 'create'
-        ? 'A gym with this name already exists. Choose a different name.'
-        : `Failed to ${action} gym -- duplicate constraint. Refresh and try again.`
-    case '42501': // insufficient_privilege (RLS denied)
-      return `You don't have permission to ${action} this gym.`
-    case 'PGRST116': // PostgREST: no rows
-      return `Failed to ${action} gym -- it may have been deleted. Refresh the list.`
-    default:
-      return `Failed to ${action} gym. Check your connection and try again.`
-  }
-}
 
 // ---------------------------------------------------------------------------
 // GymManagementSection -- profile / settings gym management (F018, Tech.md D13)
@@ -114,6 +86,10 @@ function MyGymsList({ userId }: MyGymsListProps): ReactElement {
   const deleteGym = useDeleteGym()
 
   const [pendingDelete, setPendingDelete] = useState<Gym | null>(null)
+  // F019 D13: single-row-open invariant for the inline ShowDisplayPanel.
+  // Only one row's display panel is open at a time; tapping Show display
+  // on a second row closes the first.
+  const [openDisplayRowId, setOpenDisplayRowId] = useState<string | null>(null)
 
   const handleLeave = (gym: Gym) => {
     leaveGym.mutate(gym.id)
@@ -174,6 +150,10 @@ function MyGymsList({ userId }: MyGymsListProps): ReactElement {
               onLeave={() => handleLeave(gym)}
               onDelete={() => handleDeleteRequest(gym)}
               leavePending={leaveGym.isPending && leaveGym.variables === gym.id}
+              isDisplayOpen={openDisplayRowId === gym.id}
+              onToggleDisplay={() =>
+                setOpenDisplayRowId((prev) => (prev === gym.id ? null : gym.id))
+              }
             />
           ))}
         </ul>
@@ -247,9 +227,21 @@ interface MyGymRowProps {
   onLeave: () => void
   onDelete: () => void
   leavePending: boolean
+  /** F019: whether the inline ShowDisplayPanel for this row is open */
+  isDisplayOpen: boolean
+  /** F019: single-row-open toggle callback */
+  onToggleDisplay: () => void
 }
 
-function MyGymRow({ gym, isOwner, onLeave, onDelete, leavePending }: MyGymRowProps): ReactElement {
+function MyGymRow({
+  gym,
+  isOwner,
+  onLeave,
+  onDelete,
+  leavePending,
+  isDisplayOpen,
+  onToggleDisplay,
+}: MyGymRowProps): ReactElement {
   // Live member count per row. This is N+1 across the My gyms list, but
   // typical users belong to 1-5 gyms so the cost is bounded; revisit with a
   // single aggregated query if member-count UX expands to admin-style views.
@@ -259,39 +251,53 @@ function MyGymRow({ gym, isOwner, onLeave, onDelete, leavePending }: MyGymRowPro
   return (
     <li
       data-testid={`my-gym-row-${gym.id}`}
-      className="flex min-h-12 items-center justify-between gap-3 bg-surface-charcoal/40 px-3 py-2"
+      className="flex flex-col bg-surface-charcoal/40 px-3 py-2"
     >
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate font-sans text-sm font-medium uppercase tracking-wider text-bone-white">
-          {gym.name}
-        </span>
-        <span className="font-sans text-[11px] text-warm-ash/60">
-          <span data-testid={`my-gym-row-${gym.id}-member-count`}>{memberCountLabel}</span> members
-        </span>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          data-testid={`my-gym-row-${gym.id}-leave`}
-          className="min-h-[48px] text-xs text-warm-ash hover:text-bone-white"
-          onClick={onLeave}
-          disabled={leavePending}
-        >
-          {leavePending ? 'Leaving...' : 'Leave'}
-        </Button>
-        {isOwner && (
+      <div className="flex min-h-12 items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate font-sans text-sm font-medium uppercase tracking-wider text-bone-white">
+            {gym.name}
+          </span>
+          <span className="font-sans text-[11px] text-warm-ash/60">
+            <span data-testid={`my-gym-row-${gym.id}-member-count`}>{memberCountLabel}</span>{' '}
+            members
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
-            data-testid={`my-gym-row-${gym.id}-delete`}
-            className="min-h-[48px] text-xs text-warning-flare hover:bg-warning-flare/10 hover:text-warning-flare"
-            onClick={onDelete}
+            data-testid={`my-gym-row-${gym.id}-show-display`}
+            aria-expanded={isDisplayOpen}
+            className="min-h-[48px] text-xs text-warm-ash hover:text-bone-white"
+            onClick={onToggleDisplay}
           >
-            Delete gym
+            {isDisplayOpen ? 'Hide display' : 'Show display'}
           </Button>
-        )}
+          <Button
+            variant="ghost"
+            size="sm"
+            data-testid={`my-gym-row-${gym.id}-leave`}
+            className="min-h-[48px] text-xs text-warm-ash hover:text-bone-white"
+            onClick={onLeave}
+            disabled={leavePending}
+          >
+            {leavePending ? 'Leaving...' : 'Leave'}
+          </Button>
+          {isOwner && (
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid={`my-gym-row-${gym.id}-delete`}
+              className="min-h-[48px] text-xs text-warning-flare hover:bg-warning-flare/10 hover:text-warning-flare"
+              onClick={onDelete}
+            >
+              Delete gym
+            </Button>
+          )}
+        </div>
       </div>
+      <ShowDisplayPanel gym={gym} isOpen={isDisplayOpen} onToggle={onToggleDisplay} />
     </li>
   )
 }

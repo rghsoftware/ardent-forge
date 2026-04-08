@@ -38,7 +38,47 @@ describe('discoverInstance', () => {
       ok: true,
       supabaseUrl: 'https://abc.supabase.co',
       supabaseKey: 'ey-test-key',
+      appUrl: undefined,
     })
+  })
+
+  it('passes through app_url when present in the discovery response (F019)', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ ...VALID_DISCOVERY, app_url: 'https://forge.example.com' }),
+    )
+
+    const result = await discoverInstance('https://forge.example.com')
+
+    expect(result).toEqual({
+      ok: true,
+      supabaseUrl: 'https://abc.supabase.co',
+      supabaseKey: 'ey-test-key',
+      appUrl: 'https://forge.example.com',
+    })
+  })
+
+  it('logs a warn when the server omits app_url (pre-F019 server)', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(VALID_DISCOVERY))
+
+    const result = await discoverInstance('https://forge.example.com')
+
+    expect(result.ok).toBe(true)
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[discovery] Server did not return app_url'),
+    )
+    warnSpy.mockRestore()
+  })
+
+  it('rejects an invalid app_url shape', async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({ ...VALID_DISCOVERY, app_url: 'not-a-url' }))
+
+    const result = await discoverInstance('https://forge.example.com')
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error).toBe('INVALID_RESPONSE')
+    }
   })
 
   // -------------------------------------------------------------------------

@@ -132,6 +132,22 @@ vi.mock('@/components/display/connection-footer', () => ({
   ConnectionFooter: () => <div data-testid="connection-footer" />,
 }))
 
+// F019: the /display index route now renders <DisplayDispatcher />, which
+// reads useAuth() and useGyms(). Mock both so the legacy-page tests below
+// can simulate the unauthenticated branch (which preserves the F018 copy).
+vi.mock('@/lib/auth', () => ({
+  useAuth: () => ({ user: null, session: null, loading: false, isGuest: false }),
+}))
+
+vi.mock('@/hooks/use-gyms', () => ({
+  useGyms: () => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+}))
+
 // Import after mocks are registered -- this triggers createFileRoute
 import '../gym/$gymId'
 import '../index'

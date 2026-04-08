@@ -470,4 +470,85 @@ describe('GymManagementSection', () => {
   // Context/Backlog/gym-management-pagination.md instead -- the source
   // file's TODO comment is descriptive scaffolding, not a test fixture.
   // -------------------------------------------------------------------------
+
+  // -------------------------------------------------------------------------
+  // (l) F019 Show display integration -- button visible to all members,
+  //     single-row-open invariant, toggle behavior
+  // -------------------------------------------------------------------------
+
+  it('renders Show display button on every row (owner and non-owner)', () => {
+    stubUseGyms({
+      data: [
+        makeGym({ id: 'gym-owned', name: 'My Garage', ownerUserId: ME }),
+        makeGym({ id: 'gym-joined', name: "Friend's Box", ownerUserId: OTHER_USER }),
+      ],
+    })
+
+    renderWithProviders(<GymManagementSection userId={ME} />)
+
+    expect(screen.getByTestId('my-gym-row-gym-owned-show-display')).toBeInTheDocument()
+    expect(screen.getByTestId('my-gym-row-gym-joined-show-display')).toBeInTheDocument()
+  })
+
+  it('tapping Show display opens the inline panel for that row', async () => {
+    const user = userEvent.setup()
+    stubUseGyms({
+      data: [makeGym({ id: 'gym-a', name: 'Gym A', ownerUserId: ME })],
+    })
+
+    renderWithProviders(<GymManagementSection userId={ME} />)
+
+    // Initially closed -- no URL element
+    expect(screen.queryByTestId('show-display-url-gym-a')).not.toBeInTheDocument()
+
+    await user.click(screen.getByTestId('my-gym-row-gym-a-show-display'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('show-display-url-gym-a')).toBeInTheDocument()
+    })
+  })
+
+  it('tapping Show display on a second row closes the first (single-row-open)', async () => {
+    const user = userEvent.setup()
+    stubUseGyms({
+      data: [
+        makeGym({ id: 'gym-a', name: 'Gym A', ownerUserId: ME }),
+        makeGym({ id: 'gym-b', name: 'Gym B', ownerUserId: ME }),
+      ],
+    })
+
+    renderWithProviders(<GymManagementSection userId={ME} />)
+
+    // Open row A
+    await user.click(screen.getByTestId('my-gym-row-gym-a-show-display'))
+    await waitFor(() => {
+      expect(screen.getByTestId('show-display-url-gym-a')).toBeInTheDocument()
+    })
+
+    // Open row B -- row A should close
+    await user.click(screen.getByTestId('my-gym-row-gym-b-show-display'))
+    await waitFor(() => {
+      expect(screen.getByTestId('show-display-url-gym-b')).toBeInTheDocument()
+    })
+    expect(screen.queryByTestId('show-display-url-gym-a')).not.toBeInTheDocument()
+  })
+
+  it('tapping Show display again on the same row collapses it (toggle)', async () => {
+    const user = userEvent.setup()
+    stubUseGyms({
+      data: [makeGym({ id: 'gym-a', name: 'Gym A', ownerUserId: ME })],
+    })
+
+    renderWithProviders(<GymManagementSection userId={ME} />)
+
+    await user.click(screen.getByTestId('my-gym-row-gym-a-show-display'))
+    await waitFor(() => {
+      expect(screen.getByTestId('show-display-url-gym-a')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByTestId('my-gym-row-gym-a-show-display'))
+    await waitFor(() => {
+      expect(screen.queryByTestId('show-display-url-gym-a')).not.toBeInTheDocument()
+    })
+  })
 })

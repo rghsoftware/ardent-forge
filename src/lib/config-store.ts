@@ -7,8 +7,13 @@ import { validateConnection } from './connection-validator'
 // ---------------------------------------------------------------------------
 
 export const backendConfigSchema = z.object({
-  supabaseUrl: z.string().url(),
+  supabaseUrl: z.url(),
   supabaseKey: z.string().min(1),
+  // Public app URL, persisted at setup time from the discovery endpoint
+  // response (F019 D6/D21). Optional so pre-F019 persisted configs remain
+  // valid under Zod parsing; the D22 backfill form repairs missing values
+  // on the first Show-display tap.
+  appUrl: z.url().optional(),
 })
 
 export type BackendConfig = z.infer<typeof backendConfigSchema>
