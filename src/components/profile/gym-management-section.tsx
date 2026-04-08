@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useGyms, useAllGyms, useCreateGym, useDeleteGym } from '@/hooks/use-gyms'
-import { useJoinGym, useLeaveGym } from '@/hooks/use-gym-members'
+import { useGymMembers, useJoinGym, useLeaveGym } from '@/hooks/use-gym-members'
 import { gymSchema } from '@/domain/types/gym'
 import { cn } from '@/lib/utils'
 import type { Gym } from '@/domain/types'
@@ -73,6 +73,16 @@ interface GymManagementSectionProps {
 }
 
 export function GymManagementSection({ userId }: GymManagementSectionProps): ReactElement {
+  // Hide "Browse all gyms" when there's exactly one gym on the instance and
+  // the user is already a member -- in that case the Browse list would just
+  // duplicate the My gyms list above. We still render Browse during loading
+  // and error states so the user gets feedback (BrowseAllGymsList renders
+  // its own loading/error UI). These query calls reuse the TanStack Query
+  // cache shared with the children, so they do not trigger extra fetches.
+  const { data: myGyms } = useGyms(userId)
+  const { data: allGyms } = useAllGyms()
+  const hideBrowseAll = allGyms?.length === 1 && (myGyms?.length ?? 0) >= 1
+
   return (
     <section className="pb-8">
       <div className="border-t border-surface-steel pb-2 pt-4">
@@ -83,7 +93,7 @@ export function GymManagementSection({ userId }: GymManagementSectionProps): Rea
 
       <div className="mt-4 space-y-8">
         <MyGymsList userId={userId} />
-        <BrowseAllGymsList userId={userId} />
+        {!hideBrowseAll && <BrowseAllGymsList userId={userId} />}
         <CreateGymForm />
       </div>
     </section>
@@ -240,6 +250,12 @@ interface MyGymRowProps {
 }
 
 function MyGymRow({ gym, isOwner, onLeave, onDelete, leavePending }: MyGymRowProps): ReactElement {
+  // Live member count per row. This is N+1 across the My gyms list, but
+  // typical users belong to 1-5 gyms so the cost is bounded; revisit with a
+  // single aggregated query if member-count UX expands to admin-style views.
+  const { data: members, isLoading: membersLoading, isError: membersError } = useGymMembers(gym.id)
+  const memberCountLabel = membersLoading ? '--' : membersError ? '?' : (members?.length ?? 0)
+
   return (
     <li
       data-testid={`my-gym-row-${gym.id}`}
@@ -250,8 +266,7 @@ function MyGymRow({ gym, isOwner, onLeave, onDelete, leavePending }: MyGymRowPro
           {gym.name}
         </span>
         <span className="font-sans text-[11px] text-warm-ash/60">
-          {/* TODO: live member counts -- requires per-row useGymMembers query */}
-          <span data-testid={`my-gym-row-${gym.id}-member-count`}>--</span> members
+          <span data-testid={`my-gym-row-${gym.id}-member-count`}>{memberCountLabel}</span> members
         </span>
       </div>
       <div className="flex shrink-0 items-center gap-2">

@@ -177,8 +177,16 @@ describe('entityId', () => {
 })
 
 describe('isoDateTime', () => {
-  it('accepts a valid ISO 8601 datetime', () => {
+  it('accepts a valid ISO 8601 datetime with Z suffix', () => {
     expect(isoDateTime.safeParse('2025-01-15T14:00:00Z').success).toBe(true)
+  })
+  it('accepts Postgres timestamptz format with +00:00 offset and microseconds', () => {
+    // Regression: Postgres `timestamptz` returns this exact shape via PostgREST,
+    // and Zod's default `datetime()` rejects it because it only allows `Z`.
+    expect(isoDateTime.safeParse('2026-04-08T00:38:29.568618+00:00').success).toBe(true)
+  })
+  it('accepts a positive non-UTC offset', () => {
+    expect(isoDateTime.safeParse('2025-01-15T14:00:00+05:30').success).toBe(true)
   })
   it('rejects a plain date without time', () => {
     expect(isoDateTime.safeParse('2025-01-15').success).toBe(false)

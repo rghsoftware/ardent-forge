@@ -14,6 +14,7 @@ import type { Gym } from '@/domain/types'
 
 const mockUseGyms = vi.fn()
 const mockUseAllGyms = vi.fn()
+const mockUseGymMembers = vi.fn()
 const mockUseCreateGym = vi.fn()
 const mockUseDeleteGym = vi.fn()
 const mockUseJoinGym = vi.fn()
@@ -27,6 +28,7 @@ vi.mock('@/hooks/use-gyms', () => ({
 }))
 
 vi.mock('@/hooks/use-gym-members', () => ({
+  useGymMembers: (...args: unknown[]) => mockUseGymMembers(...args),
   useJoinGym: () => mockUseJoinGym(),
   useLeaveGym: () => mockUseLeaveGym(),
 }))
@@ -75,6 +77,23 @@ function stubUseAllGyms(state: QueryState<Gym[]>) {
   })
 }
 
+// Stubs the per-row useGymMembers query. By default returns the same shape
+// for every gym id; pass an `idMap` to vary by gym (e.g., to assert different
+// counts on different rows).
+function stubUseGymMembers(
+  defaults: QueryState<{ id: string }[]>,
+  idMap: Record<string, QueryState<{ id: string }[]>> = {},
+) {
+  mockUseGymMembers.mockImplementation((gymId: string) => {
+    const state = idMap[gymId] ?? defaults
+    return {
+      data: state.data,
+      isLoading: state.isLoading ?? false,
+      isError: state.isError ?? false,
+    }
+  })
+}
+
 interface MutationStub {
   mutate: ReturnType<typeof vi.fn>
   isPending?: boolean
@@ -119,6 +138,7 @@ describe('GymManagementSection', () => {
     // Sensible query defaults -- individual tests override.
     stubUseGyms({ data: [] })
     stubUseAllGyms({ data: [] })
+    stubUseGymMembers({ data: [] })
   })
 
   afterEach(() => {
@@ -135,6 +155,15 @@ describe('GymManagementSection', () => {
         makeGym({ id: 'gym-joined', name: "Friend's Box", ownerUserId: OTHER_USER }),
       ],
     })
+    // Different counts per row so the assertion verifies the per-row query
+    // is wired up, not just that some number renders.
+    stubUseGymMembers(
+      { data: [] },
+      {
+        'gym-owned': { data: [{ id: 'm1' }, { id: 'm2' }, { id: 'm3' }] },
+        'gym-joined': { data: [{ id: 'm1' }, { id: 'm2' }] },
+      },
+    )
 
     renderWithProviders(<GymManagementSection userId={ME} />)
 
@@ -149,8 +178,31 @@ describe('GymManagementSection', () => {
     expect(screen.getByTestId('my-gym-row-gym-owned-delete')).toBeInTheDocument()
     expect(screen.queryByTestId('my-gym-row-gym-joined-delete')).not.toBeInTheDocument()
 
-    // Member count placeholder is the '--' dash per v1 strategy
+    // Live member counts from useGymMembers per row
+    expect(screen.getByTestId('my-gym-row-gym-owned-member-count')).toHaveTextContent('3')
+    expect(screen.getByTestId('my-gym-row-gym-joined-member-count')).toHaveTextContent('2')
+  })
+
+  it('renders -- in the member count while the per-row members query is loading', () => {
+    stubUseGyms({
+      data: [makeGym({ id: 'gym-owned', name: 'My Garage', ownerUserId: ME })],
+    })
+    stubUseGymMembers({ isLoading: true })
+
+    renderWithProviders(<GymManagementSection userId={ME} />)
+
     expect(screen.getByTestId('my-gym-row-gym-owned-member-count')).toHaveTextContent('--')
+  })
+
+  it('renders ? in the member count when the per-row members query errors', () => {
+    stubUseGyms({
+      data: [makeGym({ id: 'gym-owned', name: 'My Garage', ownerUserId: ME })],
+    })
+    stubUseGymMembers({ isError: true })
+
+    renderWithProviders(<GymManagementSection userId={ME} />)
+
+    expect(screen.getByTestId('my-gym-row-gym-owned-member-count')).toHaveTextContent('?')
   })
 
   it('shows an empty state when the user has no gym memberships', () => {
@@ -347,7 +399,69 @@ describe('GymManagementSection', () => {
   })
 
   // -------------------------------------------------------------------------
-  // (j) Pagination TODO marker -- removed per P14-048
+  // (j) Browse all gyms is hidden when it would only duplicate My gyms
+  // -------------------------------------------------------------------------
+  describe('Browse all gyms visibility', () => {
+    it('hides Browse all gyms when there is exactly one gym and the user is a member', () => {
+      const onlyGym = makeGym({ id: 'gym-only', name: 'The Forge', ownerUserId: ME })
+      stubUseGyms({ data: [onlyGym] })
+      stubUseAllGyms({ data: [onlyGym] })
+
+      renderWithProviders(<GymManagementSection userId={ME} />)
+
+      // The Browse heading and any browse-* test ids must not appear -- the
+      // single gym is already in My gyms above.
+      expect(screen.queryByText(/Browse all gyms/i)).not.toBeInTheDocument()
+      expect(screen.queryByTestId('browse-gym-row-gym-only')).not.toBeInTheDocument()
+    })
+
+    it('shows Browse all gyms when the only gym exists but the user is not a member', () => {
+      // User has joined nothing yet -- they need Browse to discover the gym.
+      stubUseGyms({ data: [] })
+      stubUseAllGyms({
+        data: [makeGym({ id: 'gym-only', name: 'The Forge', ownerUserId: OTHER_USER })],
+      })
+
+      renderWithProviders(<GymManagementSection userId={ME} />)
+
+      expect(screen.getByText(/Browse all gyms/i)).toBeInTheDocument()
+      expect(screen.getByTestId('browse-gym-row-gym-only-join')).toBeInTheDocument()
+    })
+
+    it('shows Browse all gyms when more than one gym exists', () => {
+      // Even if the user is a member of one gym, the second gym is only
+      // discoverable through Browse, so it must remain visible.
+      stubUseGyms({
+        data: [makeGym({ id: 'gym-a', name: 'Alpha', ownerUserId: ME })],
+      })
+      stubUseAllGyms({
+        data: [
+          makeGym({ id: 'gym-a', name: 'Alpha', ownerUserId: ME }),
+          makeGym({ id: 'gym-b', name: 'Bravo', ownerUserId: OTHER_USER }),
+        ],
+      })
+
+      renderWithProviders(<GymManagementSection userId={ME} />)
+
+      expect(screen.getByText(/Browse all gyms/i)).toBeInTheDocument()
+      expect(screen.getByTestId('browse-gym-row-gym-b')).toBeInTheDocument()
+    })
+
+    it('shows Browse all gyms while data is still loading', () => {
+      // Don't pop the section in/out -- render Browse so its own loading
+      // indicator is shown until the queries resolve.
+      stubUseGyms({ isLoading: true })
+      stubUseAllGyms({ isLoading: true })
+
+      renderWithProviders(<GymManagementSection userId={ME} />)
+
+      expect(screen.getByText(/Browse all gyms/i)).toBeInTheDocument()
+      expect(screen.getByTestId('browse-gyms-loading')).toBeInTheDocument()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // (k) Pagination TODO marker -- removed per P14-048
   //
   // The previous test imported the source file via Vite's `?raw` query and
   // grep-asserted a comment string. That coupled the test to the exact
