@@ -36,7 +36,8 @@ pub struct WorkoutLogRow {
     pub session_template_id: Option<String>,
     pub program_context: Option<String>, // JSON
     pub overall_notes: Option<String>,
-    pub perceived_difficulty: Option<i32>,     // 1-10
+    pub note_tags: String, // JSON-encoded array, NOT NULL DEFAULT '[]'
+    pub perceived_difficulty: Option<i32>, // 1-10
     pub bodyweight_at_session: Option<String>, // JSON Weight
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
@@ -67,6 +68,7 @@ pub struct LoggedActivityRow {
     pub exercise_id: String,
     pub ordinal: i32,
     pub notes: Option<String>,
+    pub note_tags: String, // JSON-encoded array, NOT NULL DEFAULT '[]'
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
@@ -92,6 +94,7 @@ pub struct LoggedSetRow {
     pub rpe: Option<i32>,               // 1-10
     pub completed: Option<i32>,         // boolean 0/1
     pub notes: Option<String>,
+    pub note_tags: String, // JSON-encoded array, NOT NULL DEFAULT '[]'
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
@@ -107,7 +110,6 @@ pub struct UserProfileRow {
     pub training_age: Option<String>,    // JSON Duration
     pub exercise_maxes: Option<String>,  // JSON map
     pub max_reps: Option<String>,        // JSON map
-    pub display_visible: Option<i32>,    // boolean 0/1, default 1
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]
     pub created_at: Option<i64>,
     #[serde(serialize_with = "crate::utils::serde_unix::serialize_optional")]

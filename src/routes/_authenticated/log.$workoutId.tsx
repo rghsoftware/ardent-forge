@@ -1,6 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Plus } from 'lucide-react'
+import { isTauri } from '@tauri-apps/api/core'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
+import { useActiveWorkoutStore } from '@/stores/active-workout-store'
 import { useExercises } from '@/hooks/use-exercises'
 import { useUserProfile } from '@/hooks/use-user-profile'
 import { useOnboarding } from '@/hooks/use-onboarding'
@@ -9,11 +12,14 @@ import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useProgramFull } from '@/hooks/use-programs'
 import { detectPersonalRecords } from '@/lib/pr-detection'
 import { useDisplayBroadcast } from '@/hooks/use-display-broadcast'
+import { getActiveGymId } from '@/lib/display-publisher'
 import { WorkoutHeader } from '@/components/workout/workout-header'
-import { PushToDisplayButton } from '@/components/workout/push-to-display-button'
+import { WorkoutPausedBar } from '@/components/workout/workout-paused-bar'
+import { ErrorBanner } from '@/components/workout/error-banner'
+import { WorkoutHeaderMenu } from '@/components/workout/workout-header-menu'
 import { ExerciseBlock, type SetRowData } from '@/components/workout/exercise-block'
 import { ProgramContextBanner } from '@/components/workout/program-context-banner'
-import { RestTimerOverlay } from '@/components/workout/rest-timer-overlay'
+import { RestView } from '@/components/workout/rest-view'
 import { UndoBanner } from '@/components/workout/undo-banner'
 import { AddExerciseSheet } from '@/components/workout/add-exercise-sheet'
 import { CardioPanel } from '@/components/workout/cardio-panel'
@@ -57,6 +63,8 @@ function ActiveWorkoutPage() {
     undoSet,
     finishWorkout,
     discardWorkout,
+    pauseWorkout,
+    unpauseWorkout,
     addExercise,
     skipRest,
     adjustRest,
@@ -88,9 +96,15 @@ function ActiveWorkoutPage() {
     }
   }, [workoutLog?.programContext, programFull])
 
-  // Display broadcast (called unconditionally -- hook manages its own cleanup)
+  // Display broadcast (called unconditionally -- hook manages its own cleanup).
+  // The gym ID was set by `configureDisplayPublisher` in the start-workout
+  // handler before navigation; we read it back from publisher module state
+  // here so the broadcast keeps targeting the picked gym for the lifetime of
+  // the workout. Direct page-load (e.g., refresh) before any pick reads as
+  // null, which puts the publisher in safe Private no-op mode.
   const { publishFocus, publishUnfocus, isBroadcasting } = useDisplayBroadcast(
     workoutLog?.userId ?? '',
+    getActiveGymId(),
   )
 
   // Exercise ID -> Exercise lookup
@@ -116,6 +130,29 @@ function ActiveWorkoutPage() {
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [showSummary, setShowSummary] = useState(false)
   const [pageError, setPageError] = useState<string | null>(null)
+
+  // Pause/resume derived state and handlers.
+  // Pause UI is hidden on the Tauri (mobile) adapter because pause-state
+  // persistence to local SQLite is deferred (ADR-013, F018). Showing the
+  // controls would silently lose state across app restarts.
+  const isPauseSupported = !isTauri()
+  const isPaused = !!workoutLog?.pausedAt
+  const handlePause = useCallback(() => {
+    pauseWorkout().catch((err) => {
+      console.error('[workout-log] Pause failed:', err)
+      // Revert the optimistic local store update so the UI matches reality.
+      useActiveWorkoutStore.getState().unpauseWorkout()
+      setPageError('Pause failed -- workout is still running. Check your connection.')
+    })
+  }, [pauseWorkout])
+  const handleResume = useCallback(() => {
+    unpauseWorkout().catch((err) => {
+      console.error('[workout-log] Resume failed:', err)
+      // Revert the optimistic local store update so the UI matches reality.
+      useActiveWorkoutStore.getState().pauseWorkout()
+      setPageError('Resume failed -- workout is still paused. Check your connection.')
+    })
+  }, [unpauseWorkout])
   // Detected personal records (computed at workout finish time)
   const [detectedPrs, setDetectedPrs] = useState<PersonalRecord[]>([])
   // Store snapshot for summary display (captured at finish time)
@@ -133,6 +170,67 @@ function ActiveWorkoutPage() {
     }
   }, [isActive, showSummary, navigate])
 
+  // ---------------------------------------------------------------------------
+  // Elapsed timer ownership (Tech.md D-1)
+  //
+  // The elapsed timer interval lives here, not in the Zustand store, so that
+  // navigating from the Forge page to this log page does not tear down the
+  // tick. On mount / workoutLog change / pausedAt change, we:
+  //   1. Recompute elapsed from startedAt - totalPausedMs - (now - pausedAt?)
+  //   2. Push it into the store via setElapsedSeconds
+  //   3. If not paused, start a 1s interval that increments elapsed
+  //   4. Cleanup the interval on unmount / dep change
+  // ---------------------------------------------------------------------------
+  const workoutLogId = workoutLog?.id
+  const startedAt = workoutLog?.startedAt
+  const totalPausedMs = workoutLog?.totalPausedMs ?? 0
+  const pausedAt = workoutLog?.pausedAt
+  useEffect(() => {
+    if (!workoutLogId || !startedAt) return
+
+    const setElapsedSeconds = useActiveWorkoutStore.getState().setElapsedSeconds
+
+    const computeElapsed = (): number => {
+      try {
+        const startedMs = new Date(startedAt).getTime()
+        if (!Number.isFinite(startedMs)) {
+          console.error('[workout-log] Invalid startedAt:', startedAt)
+          setPageError('Workout timer data is corrupt. Please discard or reload.')
+          return 0
+        }
+        const now = Date.now()
+        let elapsedMs = now - startedMs - totalPausedMs
+        if (pausedAt) {
+          const pausedAtMs = new Date(pausedAt).getTime()
+          if (Number.isFinite(pausedAtMs)) {
+            elapsedMs -= now - pausedAtMs
+          } else {
+            console.error('[workout-log] Invalid pausedAt:', pausedAt)
+            setPageError('Workout timer data is corrupt. Please discard or reload.')
+          }
+        }
+        return Math.max(0, Math.round(elapsedMs / 1000))
+      } catch (err) {
+        console.error('[workout-log] Failed to compute elapsed:', err)
+        return 0
+      }
+    }
+
+    setElapsedSeconds(computeElapsed())
+
+    // When paused, the timer is frozen -- don't tick.
+    if (pausedAt) return
+
+    const intervalId = setInterval(() => {
+      const prev = useActiveWorkoutStore.getState().elapsedSeconds
+      useActiveWorkoutStore.getState().setElapsedSeconds(prev + 1)
+    }, 1000)
+
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [workoutLogId, startedAt, totalPausedMs, pausedAt])
+
   // Count confirmed sets to determine if FINISH should be enabled
   const confirmedSetCount = useMemo(() => {
     let count = 0
@@ -144,6 +242,32 @@ function ActiveWorkoutPage() {
       }
     }
     return count
+  }, [loggedGroups])
+
+  // Determine which activity (or circuit group) the user should focus on
+  // right now: the first one with any incomplete set, falling back to the
+  // last item once everything is logged.
+  const activeFocusId = useMemo<string | null>(() => {
+    let lastId: string | null = null
+    for (const group of loggedGroups) {
+      if (group.groupType === 'CIRCUIT') {
+        lastId = group.id
+        const incomplete =
+          group.activities.length === 0 ||
+          group.activities.some(
+            (a) => a.sets.length === 0 || a.sets.some((s) => !s.completed),
+          )
+        if (incomplete) return group.id
+      } else {
+        for (const activity of group.activities) {
+          lastId = activity.id
+          if (activity.sets.length === 0 || activity.sets.some((s) => !s.completed)) {
+            return activity.id
+          }
+        }
+      }
+    }
+    return lastId
   }, [loggedGroups])
 
   // -----------------------------------------------------------------------
@@ -304,35 +428,32 @@ function ActiveWorkoutPage() {
 
   if (workoutLog.eventMetadata) {
     return (
-      <div className="flex min-h-screen flex-col bg-surface-anvil pb-20">
-        {/* Dismissible error banner */}
-        {pageError && (
-          <div
-            role="alert"
-            className="fixed top-0 inset-x-0 z-50 bg-red-600 px-4 py-2 text-sm text-white flex justify-between items-center"
-          >
-            <span>{pageError}</span>
-            <button onClick={() => setPageError(null)} className="text-white font-bold ml-4">
-              ✕
-            </button>
-          </div>
-        )}
+      <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
+        {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
 
-        {/* Sticky header with timer and FINISH */}
-        <WorkoutHeader
-          elapsedSeconds={elapsedSeconds}
-          onFinish={handleFinish}
-          isFinishing={isFinishing}
-          canFinish={true}
-        />
-
-        {/* Push to remote display */}
-        <div className="flex justify-end px-4">
-          <PushToDisplayButton
-            userId={workoutLog.userId}
-            publishFocus={publishFocus}
-            publishUnfocus={publishUnfocus}
-            isBroadcasting={isBroadcasting}
+        {/* Sticky header with timer + paused-state action bar */}
+        <div className="sticky top-0 z-50">
+          <WorkoutHeader
+            elapsedSeconds={elapsedSeconds}
+            isPaused={isPauseSupported && isPaused}
+            onPause={isPauseSupported ? handlePause : undefined}
+            onResume={isPauseSupported ? handleResume : undefined}
+            actions={
+              <WorkoutHeaderMenu
+                isBroadcasting={isBroadcasting}
+                publishFocus={publishFocus}
+                publishUnfocus={publishUnfocus}
+              />
+            }
+          />
+          <WorkoutPausedBar
+            isPaused={isPauseSupported && isPaused}
+            onResume={handleResume}
+            onFinish={handleFinish}
+            isFinishing={isFinishing}
+            canFinish={true}
+            onDiscard={() => setShowDiscardDialog(true)}
+            showFinishHelper={false}
           />
         </div>
 
@@ -342,25 +463,11 @@ function ActiveWorkoutPage() {
           interactive={true}
         />
 
-        {/* Discard button */}
-        <div className="px-4 pb-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowDiscardDialog(true)}
-            className="w-full text-xs text-warning-flare"
-          >
-            Discard workout
-          </Button>
-        </div>
-
         {/* Discard confirmation dialog */}
         <Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
           <DialogContent showCloseButton={false}>
             <DialogHeader>
-              <DialogTitle className="text-xs text-warning-flare">
-                Discard Workout
-              </DialogTitle>
+              <DialogTitle>Discard workout</DialogTitle>
               <DialogDescription>
                 All logged sets will be permanently deleted. This cannot be undone.
               </DialogDescription>
@@ -380,40 +487,38 @@ function ActiveWorkoutPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-anvil pb-20">
-      {/* Dismissible error banner */}
-      {pageError && (
-        <div
-          role="alert"
-          className="fixed top-0 inset-x-0 z-50 bg-red-600 px-4 py-2 text-sm text-white flex justify-between items-center"
-        >
-          <span>{pageError}</span>
-          <button onClick={() => setPageError(null)} className="text-white font-bold ml-4">
-            ✕
-          </button>
-        </div>
-      )}
+    <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
+      {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
 
-      {/* Sticky header with timer and FINISH */}
-      <WorkoutHeader
-        elapsedSeconds={elapsedSeconds}
-        onFinish={handleFinish}
-        isFinishing={isFinishing}
-        canFinish={confirmedSetCount > 0}
-      />
-
-      {/* Push to remote display */}
-      <div className="flex justify-end px-4">
-        <PushToDisplayButton
-          userId={workoutLog.userId}
-          publishFocus={publishFocus}
-          publishUnfocus={publishUnfocus}
-          isBroadcasting={isBroadcasting}
+      {/* Sticky header with timer + paused-state action bar */}
+      <div className="sticky top-0 z-50">
+        <WorkoutHeader
+          elapsedSeconds={elapsedSeconds}
+          isPaused={isPauseSupported && isPaused}
+          onPause={isPauseSupported ? handlePause : undefined}
+          onResume={isPauseSupported ? handleResume : undefined}
+          actions={
+            <WorkoutHeaderMenu
+              isBroadcasting={isBroadcasting}
+              publishFocus={publishFocus}
+              publishUnfocus={publishUnfocus}
+            />
+          }
+        />
+        <WorkoutPausedBar
+          isPaused={isPauseSupported && isPaused}
+          onResume={handleResume}
+          onFinish={handleFinish}
+          isFinishing={isFinishing}
+          canFinish={confirmedSetCount > 0}
+          onDiscard={() => setShowDiscardDialog(true)}
+          showFinishHelper={confirmedSetCount === 0}
         />
       </div>
 
-      {/* Program context banner for programmed workouts */}
-      {programBannerProps && (
+      {/* Program context banner -- only visible in SET mode, and only
+          until the first confirmed set orients the user. */}
+      {!restTimer && programBannerProps && confirmedSetCount === 0 && (
         <ProgramContextBanner
           programName={programBannerProps.programName}
           blockName={programBannerProps.blockName}
@@ -422,18 +527,76 @@ function ActiveWorkoutPage() {
         />
       )}
 
-      {/* Exercise blocks */}
-      <div className="flex flex-col gap-[1.75rem] px-0 pt-2">
-        {loggedGroups.map((group) =>
-          group.activities.map((activity) => {
+      {/* REST mode: full-page rest view owns the screen between sets. */}
+      {restTimer && (
+        <RestView
+          restTimer={restTimer}
+          loggedGroups={loggedGroups}
+          exerciseNames={exerciseNames}
+          onSkip={skipRest}
+          onAdjust={adjustRest}
+        />
+      )}
+
+      {/* SET mode: only the active exercise block renders (hard focus). */}
+      {!restTimer && (
+      <>
+      <div className="flex flex-1 flex-col gap-7 px-0 pt-2">
+        {loggedGroups.map((group) => {
+          // Group-level rendering: circuits render once per group
+          if (group.groupType === 'CIRCUIT') {
+            const circuitExercises = group.activities.map((a) => ({
+              name: exerciseNames[a.exerciseId] ?? 'Unknown',
+              targetReps: DEFAULT_CIRCUIT_REPS,
+            }))
+            // Hard focus: only render the active block in SET mode.
+            if (group.id !== activeFocusId) return null
+            return (
+              <div key={group.id} className="flex flex-1 flex-col">
+              <CircuitPanel
+                exercises={circuitExercises}
+                rounds={3}
+                onExerciseDone={async (exerciseIndex, round, actualReps) => {
+                  const activity = group.activities[exerciseIndex]
+                  if (!activity) return
+                  try {
+                    // Pass restSeconds: 0 -- CircuitPanel runs its own inter-exercise
+                    // and inter-round rest, so the global rest timer must not fire.
+                    await confirmSet(
+                      activity.id,
+                      {
+                        loggedActivityId: activity.id,
+                        setNumber: round,
+                        setType: 'WORKING',
+                        completed: true,
+                        actualReps,
+                      },
+                      0,
+                    )
+                  } catch (err) {
+                    console.error('[workout-log] Failed to log circuit set:', err)
+                    setPageError('Failed to save circuit set.')
+                  }
+                }}
+                onComplete={() => {
+                  // Per-set logging happens in onExerciseDone; nothing to do here.
+                }}
+              />
+              </div>
+            )
+          }
+
+          return group.activities.map((activity) => {
+            // Hard focus: only render the active activity in SET mode.
+            if (activity.id !== activeFocusId) return null
             const exercise = exerciseMap[activity.exerciseId]
             const modality = getExerciseModality(exercise, group.groupType)
 
             // Cardio panel
             if (modality === 'cardio' && exercise) {
               return (
+                <div key={activity.id}>
                 <CardioPanel
-                  key={activity.id}
                   exercise={exercise}
                   onComplete={async (data) => {
                     try {
@@ -454,14 +617,15 @@ function ActiveWorkoutPage() {
                     }
                   }}
                 />
+                </div>
               )
             }
 
             // Ruck panel
             if (modality === 'ruck') {
               return (
+                <div key={activity.id}>
                 <RuckPanel
-                  key={activity.id}
                   onComplete={async (data) => {
                     try {
                       await confirmSet(activity.id, {
@@ -486,38 +650,7 @@ function ActiveWorkoutPage() {
                     }
                   }}
                 />
-              )
-            }
-
-            // Circuit panel (rendered at group level)
-            if (modality === 'circuit') {
-              const circuitExercises = group.activities.map((a) => ({
-                name: exerciseNames[a.exerciseId] ?? 'Unknown',
-                targetReps: DEFAULT_CIRCUIT_REPS,
-              }))
-              return (
-                <CircuitPanel
-                  key={group.id}
-                  exercises={circuitExercises}
-                  rounds={3}
-                  onComplete={async (completedRounds) => {
-                    // Log a single set per activity summarizing the circuit
-                    const results = await Promise.allSettled(
-                      group.activities.map((a) =>
-                        confirmSet(a.id, {
-                          loggedActivityId: a.id,
-                          setNumber: 1,
-                          setType: 'WORKING',
-                          completed: true,
-                          actualReps: completedRounds * DEFAULT_CIRCUIT_REPS,
-                        }),
-                      ),
-                    )
-                    if (results.some((r) => r.status === 'rejected')) {
-                      setPageError('Some circuit sets could not be saved.')
-                    }
-                  }}
-                />
+                </div>
               )
             }
 
@@ -566,52 +699,44 @@ function ActiveWorkoutPage() {
             })
 
             return (
-              <ExerciseBlock
-                key={activity.id}
-                exerciseName={exercise?.name ?? 'Unknown Exercise'}
-                sets={setRows}
-                loggedActivityId={activity.id}
-                onConfirmSet={handleConfirmSet}
-                isConfirming={isConfirmingSet}
-              />
+              <div key={activity.id}>
+                <ExerciseBlock
+                  exerciseName={exercise?.name ?? 'Unknown Exercise'}
+                  sets={setRows}
+                  loggedActivityId={activity.id}
+                  onConfirmSet={handleConfirmSet}
+                  isConfirming={isConfirmingSet}
+                  isBodyweight={exercise?.category === 'BODYWEIGHT'}
+                  isActive={true}
+                />
+              </div>
             )
-          }),
-        )}
+          })
+        })}
       </div>
 
-      {/* Add exercise button (hidden for programmed workouts) */}
+      {/* Sticky footer -- single forward action for free-form workouts.
+          Programmed workouts render no footer (the flow is predetermined). */}
       {!isProgrammedWorkout && (
-        <div className="px-4 pt-6 pb-4">
+        <div className="sticky bottom-0 z-40 bg-surface-anvil px-4 pt-3 pb-4">
           {loggedGroups.length === 0 && !firstWorkoutCompleted && (
             <OnboardingHint hintKey="workout-add-exercise">
               Tap below to add your first exercise.
             </OnboardingHint>
           )}
           <Button
-            variant="secondary"
+            variant="molten"
             size="lg"
             onClick={() => setShowAddExercise(true)}
-            className="min-h-12 w-full"
+            className="min-h-14 w-full text-sm font-bold uppercase tracking-widest"
           >
-            + Add exercise
+            <Plus className="h-4 w-4" />
+            Add exercise
           </Button>
         </div>
       )}
-
-      {/* Discard button */}
-      <div className="px-4 pb-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowDiscardDialog(true)}
-          className="w-full text-xs text-warning-flare"
-        >
-          Discard workout
-        </Button>
-      </div>
-
-      {/* Rest timer overlay */}
-      <RestTimerOverlay restTimer={restTimer} onSkip={skipRest} onAdjust={adjustRest} />
+      </>
+      )}
 
       {/* Undo banner (shown when rest timer is NOT active) */}
       {!restTimer && <UndoBanner undoAction={undoAction} onUndo={handleUndoSet} />}
@@ -628,9 +753,7 @@ function ActiveWorkoutPage() {
       <Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle className="text-xs text-warning-flare">
-              Discard Workout
-            </DialogTitle>
+            <DialogTitle>Discard workout</DialogTitle>
             <DialogDescription>
               All logged sets will be permanently deleted. This cannot be undone.
             </DialogDescription>

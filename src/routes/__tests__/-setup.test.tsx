@@ -50,8 +50,10 @@ vi.mock('@/lib/supabase', () => ({
   initSupabaseFromConfig: vi.fn(),
 }))
 
+const mockDiscoverInstance = vi.hoisted(() => vi.fn())
+
 vi.mock('@/lib/discovery', () => ({
-  discoverInstance: vi.fn(),
+  discoverInstance: mockDiscoverInstance,
 }))
 
 vi.mock('sonner', () => ({
@@ -157,5 +159,80 @@ describe('SetupPage - processInviteLink', () => {
     await waitFor(() => {
       expect(mockValidateConnection).toHaveBeenCalledWith('https://abc.supabase.co', 'test-key-123')
     })
+  })
+})
+
+// ===========================================================================
+// F019 S008 -- persist app_url from discovery response
+// ===========================================================================
+
+describe('SetupPage - handleDiscoverAndConnect persists appUrl', () => {
+  let Component: React.ComponentType
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Reset default implementations because vi.clearAllMocks() wipes
+    // mockResolvedValueOnce queues; set them per-test below.
+    mockValidateConnection.mockResolvedValue({ status: 'ok' })
+    mockSetConfig.mockResolvedValue(undefined)
+    const Comp = capturedComponent.current
+    if (!Comp) throw new Error('Could not extract SetupPage from setup module')
+    Component = Comp
+  })
+
+  it('persists appUrl when discovery returns it', async () => {
+    const user = userEvent.setup()
+    mockDiscoverInstance.mockResolvedValue({
+      ok: true,
+      supabaseUrl: 'https://abc.supabase.co',
+      supabaseKey: 'ey-test-key',
+      appUrl: 'https://forge.example.com',
+    })
+
+    renderWithProviders(<Component />)
+
+    const serverInput = screen.getByLabelText('Server address')
+    await user.type(serverInput, 'forge.example.com')
+
+    // The first "Connect" button belongs to the discovery flow (manual
+    // config is collapsed initially).
+    const connectButton = screen.getAllByRole('button', { name: /connect/i })[0]!
+    await user.click(connectButton)
+
+    await waitFor(() => {
+      expect(mockSetConfig).toHaveBeenCalledWith({
+        supabaseUrl: 'https://abc.supabase.co',
+        supabaseKey: 'ey-test-key',
+        appUrl: 'https://forge.example.com',
+      })
+    })
+  })
+
+  it('persists without appUrl when discovery omits it (pre-F019 server)', async () => {
+    const user = userEvent.setup()
+    mockDiscoverInstance.mockResolvedValue({
+      ok: true,
+      supabaseUrl: 'https://abc.supabase.co',
+      supabaseKey: 'ey-test-key',
+      appUrl: undefined,
+    })
+
+    renderWithProviders(<Component />)
+
+    const serverInput = screen.getByLabelText('Server address')
+    await user.type(serverInput, 'old-forge.example.com')
+
+    const connectButton = screen.getAllByRole('button', { name: /connect/i })[0]!
+    await user.click(connectButton)
+
+    await waitFor(() => {
+      expect(mockSetConfig).toHaveBeenCalledWith({
+        supabaseUrl: 'https://abc.supabase.co',
+        supabaseKey: 'ey-test-key',
+      })
+    })
+    // Ensure appUrl is not present in the persisted config.
+    const persisted = mockSetConfig.mock.calls[0]![0] as Record<string, unknown>
+    expect(persisted).not.toHaveProperty('appUrl')
   })
 })

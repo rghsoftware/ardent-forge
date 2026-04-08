@@ -45,6 +45,8 @@ import type {
   Message,
   MessageType,
   MediaAttachment,
+  Gym,
+  GymMember,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -69,6 +71,8 @@ import type {
   ConversationParticipantRow,
   MessageRow,
   MediaAttachmentRow,
+  GymRow,
+  GymMemberRow,
 } from './database.types'
 import {
   toExercise,
@@ -83,6 +87,9 @@ import {
   fromLoggedSet,
   toUserProfile,
   fromUserProfile,
+  toGym,
+  fromGym,
+  toGymMember,
   toOneRepMaxHistory,
   fromOneRepMaxHistory,
   toSessionTemplate,
@@ -460,6 +467,65 @@ export class SupabaseAdapter implements DataAdapter {
     return toLoggedSet(data as LoggedSetRow)
   }
 
+  async deleteLoggedSet(id: string): Promise<void> {
+    try {
+      const { error } = await this.client.from('logged_sets').delete().eq('id', id)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] deleteLoggedSet failed:', { id, err })
+      throw err
+    }
+  }
+
+  async updateLoggedActivity(activity: LoggedActivity, userId: string): Promise<LoggedActivity> {
+    const row = fromLoggedActivity(activity, userId)
+
+    const { data, error } = await this.client
+      .from('logged_activities')
+      .update(row)
+      .eq('id', activity.id)
+      .select()
+      .single()
+    if (error) throw error
+    return toLoggedActivity(data as LoggedActivityRow)
+  }
+
+  async deleteLoggedActivity(id: string): Promise<void> {
+    try {
+      const { error } = await this.client.from('logged_activities').delete().eq('id', id)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] deleteLoggedActivity failed:', { id, err })
+      throw err
+    }
+  }
+
+  async updateLoggedActivityGroup(
+    group: LoggedActivityGroup,
+    userId: string,
+  ): Promise<LoggedActivityGroup> {
+    const row = fromLoggedActivityGroup(group, userId)
+
+    const { data, error } = await this.client
+      .from('logged_activity_groups')
+      .update(row)
+      .eq('id', group.id)
+      .select()
+      .single()
+    if (error) throw error
+    return toLoggedActivityGroup(data as LoggedActivityGroupRow)
+  }
+
+  async deleteLoggedActivityGroup(id: string): Promise<void> {
+    try {
+      const { error } = await this.client.from('logged_activity_groups').delete().eq('id', id)
+      if (error) throw error
+    } catch (err) {
+      console.error('[supabase-adapter] deleteLoggedActivityGroup failed:', { id, err })
+      throw err
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // User profile operations
   // ---------------------------------------------------------------------------
@@ -498,6 +564,136 @@ export class SupabaseAdapter implements DataAdapter {
       .single()
     if (error) throw error
     return toOneRepMaxHistory(data as OneRepMaxHistoryRow)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gym operations (F018 -- Gym-Scoped Displays)
+  //
+  // Backed by the `gyms` and `gym_members` tables created in F018 Wave 2.
+  // RLS policies enforce ownership and membership; this layer just maps
+  // results through toGym / toGymMember and surfaces errors verbatim.
+  // ---------------------------------------------------------------------------
+
+  async listUserGyms(userId: string): Promise<Gym[]> {
+    // Join shape: pull rows from gym_members for the given user, embedding
+    // the related gyms row via PostgREST resource embedding. With a foreign
+    // key on gym_members.gym_id -> gyms.id, PostgREST returns the embed as a
+    // single object (not an array). We flat-map and filter any null embeds
+    // defensively (RLS shouldn't allow a member row whose parent gym is
+    // unreadable, but defense in depth).
+    //
+    // Cast through `unknown` because PostgREST's generic infers the embed as
+    // an array shape by default; the actual runtime payload for a to-one FK
+    // is a single object.
+    const { data, error } = await this.client
+      .from('gym_members')
+      .select('gyms(*)')
+      .eq('user_id', userId)
+
+    if (error) throw error
+
+    const rows = (data ?? []) as unknown as Array<{ gyms: GymRow | null }>
+    return rows.flatMap((r) => (r.gyms ? [toGym(r.gyms)] : []))
+  }
+
+  async listAllGyms(): Promise<Gym[]> {
+    const { data, error } = await this.client
+      .from('gyms')
+      .select('*')
+      .order('name', { ascending: true })
+
+    if (error) throw error
+    return (data ?? []).map((row) => toGym(row as GymRow))
+  }
+
+  async getGym(gymId: string): Promise<Gym | null> {
+    const { data, error } = await this.client.from('gyms').select('*').eq('id', gymId).maybeSingle()
+
+    if (error) throw error
+    return data ? toGym(data as GymRow) : null
+  }
+
+  async createGym(input: { name: string }): Promise<Gym> {
+    const userId = await this.getCurrentUserId()
+
+    // The RLS insert policy enforces owner_user_id = auth.uid(); we set it
+    // explicitly here as defense in depth and to match the existing
+    // createGroup convention.
+    const row = fromGym({
+      name: input.name,
+      ownerUserId: userId,
+      isDefault: false,
+    })
+
+    const { data, error } = await this.client.from('gyms').insert(row).select().single()
+    if (error) throw error
+    return toGym(data as GymRow)
+  }
+
+  async updateGym(input: Partial<Gym> & { id: string }): Promise<Gym> {
+    // Strip id from the update payload (Postgres enforces primary key) but
+    // use it for the WHERE clause. Owner-only enforcement is RLS-side.
+    const { id, ...rest } = input
+    const patch = fromGym(rest)
+
+    const { data, error } = await this.client
+      .from('gyms')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+    return toGym(data as GymRow)
+  }
+
+  async deleteGym(gymId: string): Promise<void> {
+    const { error } = await this.client.from('gyms').delete().eq('id', gymId)
+    if (error) throw error
+  }
+
+  async joinGym(gymId: string): Promise<void> {
+    const userId = await this.getCurrentUserId()
+
+    const { error } = await this.client
+      .from('gym_members')
+      .insert({ gym_id: gymId, user_id: userId })
+
+    if (error) throw error
+  }
+
+  async leaveGym(gymId: string): Promise<void> {
+    const userId = await this.getCurrentUserId()
+
+    const { error } = await this.client
+      .from('gym_members')
+      .delete()
+      .eq('gym_id', gymId)
+      .eq('user_id', userId)
+
+    if (error) throw error
+  }
+
+  async kickGymMember(gymId: string, userId: string): Promise<void> {
+    // RLS enforces that only the gym owner can delete a non-self membership.
+    const { error } = await this.client
+      .from('gym_members')
+      .delete()
+      .eq('gym_id', gymId)
+      .eq('user_id', userId)
+
+    if (error) throw error
+  }
+
+  async listGymMembers(gymId: string): Promise<GymMember[]> {
+    const { data, error } = await this.client
+      .from('gym_members')
+      .select('*')
+      .eq('gym_id', gymId)
+      .order('joined_at', { ascending: true })
+
+    if (error) throw error
+    return (data ?? []).map((row) => toGymMember(row as GymMemberRow))
   }
 
   // ---------------------------------------------------------------------------

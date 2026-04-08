@@ -63,6 +63,8 @@ export function useActiveWorkout() {
   const storeStartRestTimer = useActiveWorkoutStore((s) => s.startRestTimer)
   const storeSkipRest = useActiveWorkoutStore((s) => s.skipRest)
   const storeAdjustRest = useActiveWorkoutStore((s) => s.adjustRest)
+  const storePauseWorkout = useActiveWorkoutStore((s) => s.pauseWorkout)
+  const storeUnpauseWorkout = useActiveWorkoutStore((s) => s.unpauseWorkout)
 
   // ---------------------------------------------------------------------------
   // TanStack Query client (for manual invalidation after program advancement)
@@ -111,13 +113,12 @@ export function useActiveWorkout() {
   }, [undoAction, storeClearUndo])
 
   // ---------------------------------------------------------------------------
-  // Cleanup intervals on unmount
+  // Note: elapsed timer interval is owned by the workout log page (Tech.md D-1).
+  // Rest timer cleanup is handled by finishWorkout/discardWorkout in the store.
+  // We intentionally do NOT run store.cleanup() on unmount here: this hook is
+  // consumed by multiple pages (Forge, log page) and Forge→log navigation
+  // unmounts Forge mid-workout, which previously killed timers.
   // ---------------------------------------------------------------------------
-  useEffect(() => {
-    return () => {
-      useActiveWorkoutStore.getState().cleanup()
-    }
-  }, [])
 
   // ---------------------------------------------------------------------------
   // Bridge actions: DB mutation + store update
@@ -134,6 +135,7 @@ export function useActiveWorkout() {
         const log = await createWorkoutLogMutation.mutateAsync({
           userId,
           startedAt: now,
+          totalPausedMs: 0,
         })
         storeStartWorkout(userId, log)
         return log
@@ -197,6 +199,7 @@ export function useActiveWorkout() {
           startedAt: now,
           sessionTemplateId,
           programContext,
+          totalPausedMs: 0,
         })
 
         // 4. Persist all groups, activities, and sets to DB and build
@@ -299,16 +302,33 @@ export function useActiveWorkout() {
           userId,
         })
 
-        // TODO: No deleteLoggedActivityGroup on adapter yet -- orphaned group will be cleaned up by next full workout delete
         const activityData: Omit<LoggedActivity, 'id'> = {
           loggedGroupId: savedGroup.id,
           exerciseId: exercise.id,
           ordinal: 1,
         }
-        const savedActivity = await createLoggedActivityMutation.mutateAsync({
-          activity: activityData,
-          userId,
-        })
+        let savedActivity: LoggedActivity
+        try {
+          savedActivity = await createLoggedActivityMutation.mutateAsync({
+            activity: activityData,
+            userId,
+          })
+        } catch (activityErr) {
+          // Roll back the orphaned group so we don't accumulate empty groups
+          try {
+            await getAdapter().deleteLoggedActivityGroup(savedGroup.id)
+          } catch (rollbackErr) {
+            console.error('[workout] Failed to roll back orphaned group:', {
+              groupId: savedGroup.id,
+              err: rollbackErr,
+            })
+            throw new Error(
+              'Could not add exercise; an orphaned group may remain. Please refresh.',
+              { cause: activityErr },
+            )
+          }
+          throw activityErr
+        }
 
         // Update store with DB-assigned IDs
         storeAddExercise(exercise, groupType, savedGroup, savedActivity)
@@ -369,7 +389,11 @@ export function useActiveWorkout() {
           storeConfirmSet(loggedActivityId, savedSet)
         }
 
-        storeStartRestTimer(restSeconds)
+        // Skip the global rest timer for zero/negative values. CircuitPanel
+        // and similar self-managed timer UIs pass 0 to suppress the duplicate.
+        if (restSeconds > 0) {
+          storeStartRestTimer(restSeconds)
+        }
 
         return savedSet
       } catch (err) {
@@ -526,14 +550,69 @@ export function useActiveWorkout() {
         }
       })
 
-      // Calculate elapsed seconds from startedAt
-      const startedAt = new Date(fullWorkout.log.startedAt).getTime()
-      const elapsed = Math.floor((Date.now() - startedAt) / 1000)
-
-      storeResumeWorkout(fullWorkout.log, nestedGroups, elapsed)
+      // Initial elapsedSeconds is 0 here; the active workout route's
+      // computeElapsed (in log.$workoutId.tsx) is the single source of truth
+      // for elapsed time and accounts for totalPausedMs and any in-flight
+      // pausedAt. It will overwrite this value on mount.
+      storeResumeWorkout(fullWorkout.log, nestedGroups, 0)
     },
     [storeResumeWorkout],
   )
+
+  /**
+   * Pause the active workout. Sets pausedAt locally, then persists to DB.
+   */
+  const pauseWorkout = useCallback(async () => {
+    const current = useActiveWorkoutStore.getState().workoutLog
+    if (!current) {
+      console.warn('[active-workout] pauseWorkout ignored: no active workout')
+      return
+    }
+    if (current.pausedAt) {
+      console.warn('[active-workout] pauseWorkout ignored: already paused')
+      return
+    }
+    storePauseWorkout()
+    const updated = useActiveWorkoutStore.getState().workoutLog
+    if (!updated) {
+      console.warn('[active-workout] pauseWorkout ignored: workout cleared after store update')
+      return
+    }
+    try {
+      await updateWorkoutLogMutation.mutateAsync(updated)
+    } catch (err) {
+      console.error('[active-workout] Failed to persist pause:', err)
+      throw err
+    }
+  }, [storePauseWorkout, updateWorkoutLogMutation])
+
+  /**
+   * Unpause (resume) the active workout. Clears pausedAt locally, accumulates
+   * totalPausedMs, then persists to DB.
+   */
+  const unpauseWorkout = useCallback(async () => {
+    const current = useActiveWorkoutStore.getState().workoutLog
+    if (!current) {
+      console.warn('[active-workout] unpauseWorkout ignored: no active workout')
+      return
+    }
+    if (!current.pausedAt) {
+      console.warn('[active-workout] unpauseWorkout ignored: not currently paused')
+      return
+    }
+    storeUnpauseWorkout()
+    const updated = useActiveWorkoutStore.getState().workoutLog
+    if (!updated) {
+      console.warn('[active-workout] unpauseWorkout ignored: workout cleared after store update')
+      return
+    }
+    try {
+      await updateWorkoutLogMutation.mutateAsync(updated)
+    } catch (err) {
+      console.error('[active-workout] Failed to persist resume:', err)
+      throw err
+    }
+  }, [storeUnpauseWorkout, updateWorkoutLogMutation])
 
   /**
    * Discard the active workout. Deletes the WorkoutLog from DB, clears store.
@@ -581,6 +660,8 @@ export function useActiveWorkout() {
     finishWorkout,
     resumeWorkout,
     discardWorkout,
+    pauseWorkout,
+    unpauseWorkout,
 
     // Store-only actions (no DB side-effects)
     skipRest: storeSkipRest,

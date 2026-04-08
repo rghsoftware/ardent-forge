@@ -1,4 +1,3 @@
-import { vi } from 'vitest'
 import { useActiveWorkoutStore } from '@/stores/active-workout-store'
 import type {
   WorkoutLog,
@@ -127,25 +126,20 @@ afterEach(() => {
 // ===========================================================================
 
 describe('lifecycle', () => {
-  it('startWorkout sets workoutLog and starts elapsed timer', () => {
-    vi.useFakeTimers()
-    try {
-      const wl = makeWorkoutLog()
-      getState().startWorkout('user-1', wl)
+  it('startWorkout sets workoutLog and leaves elapsed timer to the log page (D-1)', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
 
-      const state = getState()
-      expect(state.workoutLog).toEqual(wl)
-      expect(state.loggedGroups).toEqual([])
-      expect(state.elapsedSeconds).toBe(0)
-      expect(state.restTimer).toBeNull()
-      expect(state.undoAction).toBeNull()
+    const state = getState()
+    expect(state.workoutLog).toEqual(wl)
+    expect(state.loggedGroups).toEqual([])
+    expect(state.elapsedSeconds).toBe(0)
+    expect(state.restTimer).toBeNull()
+    expect(state.undoAction).toBeNull()
 
-      // Advance 3 seconds -- elapsed timer should tick
-      vi.advanceTimersByTime(3000)
-      expect(getState().elapsedSeconds).toBe(3)
-    } finally {
-      vi.useRealTimers()
-    }
+    // Elapsed is now driven by setElapsedSeconds from the log page, not the store.
+    getState().setElapsedSeconds(3)
+    expect(getState().elapsedSeconds).toBe(3)
   })
 
   it('startWorkout throws if already active (L-8)', () => {
@@ -158,74 +152,47 @@ describe('lifecycle', () => {
   })
 
   it('finishWorkout clears all state back to initial', () => {
-    vi.useFakeTimers()
-    try {
-      getState().startWorkout('user-1', makeWorkoutLog())
-      vi.advanceTimersByTime(5000)
-      expect(getState().elapsedSeconds).toBe(5)
+    getState().startWorkout('user-1', makeWorkoutLog())
+    getState().setElapsedSeconds(5)
+    expect(getState().elapsedSeconds).toBe(5)
 
-      getState().finishWorkout()
+    getState().finishWorkout()
 
-      const state = getState()
-      expect(state.workoutLog).toBeNull()
-      expect(state.loggedGroups).toEqual([])
-      expect(state.elapsedSeconds).toBe(0)
-      expect(state.restTimer).toBeNull()
-      expect(state.undoAction).toBeNull()
-
-      // Timer should no longer tick
-      vi.advanceTimersByTime(3000)
-      expect(getState().elapsedSeconds).toBe(0)
-    } finally {
-      vi.useRealTimers()
-    }
+    const state = getState()
+    expect(state.workoutLog).toBeNull()
+    expect(state.loggedGroups).toEqual([])
+    expect(state.elapsedSeconds).toBe(0)
+    expect(state.restTimer).toBeNull()
+    expect(state.undoAction).toBeNull()
   })
 
   it('discardWorkout clears all state back to initial', () => {
-    vi.useFakeTimers()
-    try {
-      getState().startWorkout('user-1', makeWorkoutLog())
-      vi.advanceTimersByTime(2000)
+    getState().startWorkout('user-1', makeWorkoutLog())
+    getState().setElapsedSeconds(2)
 
-      getState().discardWorkout()
+    getState().discardWorkout()
 
-      const state = getState()
-      expect(state.workoutLog).toBeNull()
-      expect(state.loggedGroups).toEqual([])
-      expect(state.elapsedSeconds).toBe(0)
-      expect(state.restTimer).toBeNull()
-      expect(state.undoAction).toBeNull()
-
-      // Timer should no longer tick
-      vi.advanceTimersByTime(3000)
-      expect(getState().elapsedSeconds).toBe(0)
-    } finally {
-      vi.useRealTimers()
-    }
+    const state = getState()
+    expect(state.workoutLog).toBeNull()
+    expect(state.loggedGroups).toEqual([])
+    expect(state.elapsedSeconds).toBe(0)
+    expect(state.restTimer).toBeNull()
+    expect(state.undoAction).toBeNull()
   })
 
   it('resumeWorkout restores workoutLog, groups, and elapsedSeconds', () => {
-    vi.useFakeTimers()
-    try {
-      const wl = makeWorkoutLog()
-      const groups: LoggedActivityGroupWithActivities[] = [makeGroupWithActivities()]
-      const elapsed = 120
+    const wl = makeWorkoutLog()
+    const groups: LoggedActivityGroupWithActivities[] = [makeGroupWithActivities()]
+    const elapsed = 120
 
-      getState().resumeWorkout(wl, groups, elapsed)
+    getState().resumeWorkout(wl, groups, elapsed)
 
-      const state = getState()
-      expect(state.workoutLog).toEqual(wl)
-      expect(state.loggedGroups).toEqual(groups)
-      expect(state.elapsedSeconds).toBe(120)
-      expect(state.restTimer).toBeNull()
-      expect(state.undoAction).toBeNull()
-
-      // Elapsed timer should resume ticking
-      vi.advanceTimersByTime(2000)
-      expect(getState().elapsedSeconds).toBe(122)
-    } finally {
-      vi.useRealTimers()
-    }
+    const state = getState()
+    expect(state.workoutLog).toEqual(wl)
+    expect(state.loggedGroups).toEqual(groups)
+    expect(state.elapsedSeconds).toBe(120)
+    expect(state.restTimer).toBeNull()
+    expect(state.undoAction).toBeNull()
   })
 })
 
@@ -469,34 +436,29 @@ describe('startProgrammedWorkout', () => {
   })
 
   it('sets workoutLog and pre-filled groups when valid', () => {
-    vi.useFakeTimers()
-    try {
-      const programmedWl = makeWorkoutLog({
-        id: 'wl-prog',
-        programContext: {
-          programId: 'prog-1',
-          blockId: 'block-1',
-          weekNumber: 2,
-          dayLabel: 'Day A',
-        },
-      })
-      const groups: LoggedActivityGroupWithActivities[] = [makeGroupWithActivities()]
+    const programmedWl = makeWorkoutLog({
+      id: 'wl-prog',
+      programContext: {
+        programId: 'prog-1',
+        blockId: 'block-1',
+        weekNumber: 2,
+        dayLabel: 'Day A',
+      },
+    })
+    const groups: LoggedActivityGroupWithActivities[] = [makeGroupWithActivities()]
 
-      getState().startProgrammedWorkout(programmedWl, groups)
+    getState().startProgrammedWorkout(programmedWl, groups)
 
-      const state = getState()
-      expect(state.workoutLog).toEqual(programmedWl)
-      expect(state.loggedGroups).toEqual(groups)
-      expect(state.elapsedSeconds).toBe(0)
-      expect(state.restTimer).toBeNull()
-      expect(state.undoAction).toBeNull()
+    const state = getState()
+    expect(state.workoutLog).toEqual(programmedWl)
+    expect(state.loggedGroups).toEqual(groups)
+    expect(state.elapsedSeconds).toBe(0)
+    expect(state.restTimer).toBeNull()
+    expect(state.undoAction).toBeNull()
 
-      // Elapsed timer should tick
-      vi.advanceTimersByTime(2000)
-      expect(getState().elapsedSeconds).toBe(2)
-    } finally {
-      vi.useRealTimers()
-    }
+    // Elapsed ticking is now owned by the log page (D-1); use setElapsedSeconds.
+    getState().setElapsedSeconds(2)
+    expect(getState().elapsedSeconds).toBe(2)
   })
 })
 
@@ -508,5 +470,189 @@ describe('cleanup', () => {
   it('cleanup() can be called without throwing even when no intervals are active', () => {
     // No workout started, no intervals active
     expect(() => getState().cleanup()).not.toThrow()
+  })
+})
+
+// ===========================================================================
+// Notes (F020) -- session / activity / set note setters
+// ===========================================================================
+
+describe('notes (F020)', () => {
+  it('setSessionNote updates overallNotes and noteTags on the active workoutLog', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+
+    getState().setSessionNote({ text: 'low sleep, scaled down', tags: ['LOW ENERGY'] })
+
+    const log = getState().workoutLog
+    expect(log?.overallNotes).toBe('low sleep, scaled down')
+    expect(log?.noteTags).toEqual(['LOW ENERGY'])
+  })
+
+  it('setSessionNote normalizes tags via noteTagSchema transform', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+
+    getState().setSessionNote({ text: '', tags: ['  felt  heavy  ', 'pr attempt'] })
+
+    expect(getState().workoutLog?.noteTags).toEqual(['FELT HEAVY', 'PR ATTEMPT'])
+  })
+
+  it('setSessionNote is a no-op without an active workoutLog', () => {
+    getState().setSessionNote({ text: 'anything', tags: [] })
+    expect(getState().workoutLog).toBeNull()
+  })
+
+  it('setSessionNote rejects invalid content at the boundary (silently warns)', () => {
+    const wl = makeWorkoutLog({ overallNotes: 'pre-existing' })
+    getState().startWorkout('user-1', wl)
+
+    // Tag exceeds 32-char max -- noteContentSchema should reject
+    const over = 'A'.repeat(33)
+    getState().setSessionNote({ text: 'x', tags: [over] })
+
+    // State unchanged
+    expect(getState().workoutLog?.overallNotes).toBe('pre-existing')
+  })
+
+  it('setActivityNote updates notes and noteTags on the matching activity', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+    useActiveWorkoutStore.setState({
+      loggedGroups: [makeGroupWithActivities()],
+    })
+
+    getState().setActivityNote('la-1', {
+      text: 'switched to safety bar',
+      tags: ['SUBSTITUTION'],
+    })
+
+    const activity = getState().loggedGroups[0].activities[0]
+    expect(activity.notes).toBe('switched to safety bar')
+    expect(activity.noteTags).toEqual(['SUBSTITUTION'])
+  })
+
+  it('setActivityNote does nothing when activityId is not found', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+    useActiveWorkoutStore.setState({
+      loggedGroups: [makeGroupWithActivities()],
+    })
+
+    getState().setActivityNote('nope', { text: 'x', tags: [] })
+
+    const activity = getState().loggedGroups[0].activities[0]
+    expect(activity.notes).toBeUndefined()
+    expect(activity.noteTags).toBeUndefined()
+  })
+
+  it('setSetNote updates notes and noteTags on the matching set deep in the tree', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+    useActiveWorkoutStore.setState({
+      loggedGroups: [
+        {
+          ...makeLoggedActivityGroup(),
+          activities: [
+            {
+              ...makeLoggedActivity(),
+              sets: [makeLoggedSet()],
+            },
+          ],
+        },
+      ],
+    })
+
+    getState().setSetNote('ls-1', { text: 'grindy', tags: ['GRINDY'] })
+
+    const updatedSet = getState().loggedGroups[0].activities[0].sets[0]
+    expect(updatedSet.notes).toBe('grindy')
+    expect(updatedSet.noteTags).toEqual(['GRINDY'])
+  })
+
+  it('setSetNote is a no-op for an unknown setId', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+    useActiveWorkoutStore.setState({
+      loggedGroups: [
+        {
+          ...makeLoggedActivityGroup(),
+          activities: [
+            {
+              ...makeLoggedActivity(),
+              sets: [makeLoggedSet()],
+            },
+          ],
+        },
+      ],
+    })
+
+    getState().setSetNote('missing', { text: 'x', tags: [] })
+
+    const s = getState().loggedGroups[0].activities[0].sets[0]
+    expect(s.notes).toBeUndefined()
+  })
+
+  it('setSetNote rejects over-limit tag array at the boundary', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+    useActiveWorkoutStore.setState({
+      loggedGroups: [
+        {
+          ...makeLoggedActivityGroup(),
+          activities: [
+            {
+              ...makeLoggedActivity(),
+              sets: [{ ...makeLoggedSet(), notes: 'untouched' } as LoggedSet],
+            },
+          ],
+        },
+      ],
+    })
+
+    const tooMany = Array.from({ length: 17 }, (_, i) => `TAG${i}`)
+    getState().setSetNote('ls-1', { text: 'x', tags: tooMany })
+
+    // Unchanged
+    expect(getState().loggedGroups[0].activities[0].sets[0].notes).toBe('untouched')
+  })
+
+  it('note state survives a crash-recovery snapshot round-trip (JSON serialize/deserialize)', () => {
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+    useActiveWorkoutStore.setState({
+      loggedGroups: [
+        {
+          ...makeLoggedActivityGroup(),
+          activities: [
+            {
+              ...makeLoggedActivity(),
+              sets: [makeLoggedSet()],
+            },
+          ],
+        },
+      ],
+    })
+    getState().setSessionNote({ text: 'session level', tags: ['FAST'] })
+    getState().setActivityNote('la-1', { text: 'activity level', tags: ['SCALED'] })
+    getState().setSetNote('ls-1', { text: 'set level', tags: ['GRINDY', 'PAUSED'] })
+
+    // Capture the snapshot shape crash-recovery would serialize
+    const snapshot = {
+      workoutLog: getState().workoutLog,
+      loggedGroups: getState().loggedGroups,
+      elapsedSeconds: getState().elapsedSeconds,
+    }
+    const roundTripped = JSON.parse(JSON.stringify(snapshot)) as typeof snapshot
+
+    expect(roundTripped.workoutLog?.overallNotes).toBe('session level')
+    expect(roundTripped.workoutLog?.noteTags).toEqual(['FAST'])
+    expect(roundTripped.loggedGroups[0].activities[0].notes).toBe('activity level')
+    expect(roundTripped.loggedGroups[0].activities[0].noteTags).toEqual(['SCALED'])
+    expect(roundTripped.loggedGroups[0].activities[0].sets[0].notes).toBe('set level')
+    expect(roundTripped.loggedGroups[0].activities[0].sets[0].noteTags).toEqual([
+      'GRINDY',
+      'PAUSED',
+    ])
   })
 })

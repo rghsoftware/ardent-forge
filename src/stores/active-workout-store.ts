@@ -9,7 +9,9 @@ import type {
   LoggedSet,
   Exercise,
   GroupType,
+  NoteContent,
 } from '@/domain/types'
+import { noteContentSchema } from '@/domain/types'
 import { UNDO_WINDOW_MS } from '@/lib/workout-utils'
 import type { SnapshotContext } from '@/lib/display-snapshot'
 import { buildDisplaySnapshot } from '@/lib/display-snapshot'
@@ -61,13 +63,20 @@ interface ActiveWorkoutState {
 
   // Undo mechanism
   undoAction: UndoAction | null
+
+  // Surfaced pause-timing error so the bridge/UI layer can react when the
+  // store's unpauseWorkout action hits the invalid-pausedAt branch (the
+  // store cannot render UI itself). Cleared on successful pause/unpause.
+  pauseTimingError: string | null
 }
 
 // ---------------------------------------------------------------------------
 // Module-scope interval handles (kept outside Zustand to avoid re-renders)
 // ---------------------------------------------------------------------------
 
-let _elapsedInterval: ReturnType<typeof setInterval> | null = null
+// Note: the elapsed timer interval is owned by the workout log page (see
+// src/routes/_authenticated/log.$workoutId.tsx) per Tech.md D-1. The store
+// only holds the current elapsedSeconds value via setElapsedSeconds.
 let _restInterval: ReturnType<typeof setInterval> | null = null
 
 // Tauri event unlisten handles for the Rust rest timer path.
@@ -124,6 +133,8 @@ interface ActiveWorkoutActions {
   ): void
   finishWorkout(): void
   discardWorkout(): void
+  pauseWorkout(): void
+  unpauseWorkout(): void
 
   // Exercise management
   addExerciseToWorkout(
@@ -144,8 +155,15 @@ interface ActiveWorkoutActions {
   skipRest(): void
   adjustRest(delta: number): void
 
+  // Elapsed timer setter (owned by the workout log page, see Tech.md D-1)
+  setElapsedSeconds(seconds: number): void
+
+  // Notes (F020) -- validate at boundary, store on workoutLog / activity / set
+  setSessionNote(content: NoteContent): void
+  setActivityNote(activityId: string, content: NoteContent): void
+  setSetNote(setId: string, content: NoteContent): void
+
   // Timer ticks (called by intervals internally)
-  tickElapsed(): void
   tickRest(): void
 
   // Cleanup
@@ -162,6 +180,7 @@ const initialState: ActiveWorkoutState = {
   elapsedSeconds: 0,
   restTimer: null,
   undoAction: null,
+  pauseTimingError: null,
 }
 
 export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutActions>()(
@@ -178,12 +197,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         // Invariant L-8: only one active workout at a time
         throw new Error('Cannot start a new workout while one is already active')
       }
-
-      // Start the elapsed timer
-      if (_elapsedInterval) clearInterval(_elapsedInterval)
-      _elapsedInterval = setInterval(() => {
-        get().tickElapsed()
-      }, 1000)
 
       set({
         workoutLog,
@@ -206,12 +219,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         throw new Error('Cannot start a new workout while one is already active')
       }
 
-      // Start the elapsed timer
-      if (_elapsedInterval) clearInterval(_elapsedInterval)
-      _elapsedInterval = setInterval(() => {
-        get().tickElapsed()
-      }, 1000)
-
       set({
         workoutLog,
         loggedGroups: groups,
@@ -227,14 +234,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       groups: LoggedActivityGroupWithActivities[],
       elapsedSeconds: number,
     ) {
-      // Clear any existing intervals
-      if (_elapsedInterval) clearInterval(_elapsedInterval)
+      // Clear any existing rest interval; the log page owns the elapsed interval.
       if (_restInterval) clearInterval(_restInterval)
       _restInterval = null
-
-      _elapsedInterval = setInterval(() => {
-        get().tickElapsed()
-      }, 1000)
 
       set({
         workoutLog,
@@ -246,10 +248,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     },
 
     finishWorkout() {
-      if (_elapsedInterval) {
-        clearInterval(_elapsedInterval)
-        _elapsedInterval = null
-      }
       if (_restInterval) {
         clearInterval(_restInterval)
         _restInterval = null
@@ -259,11 +257,44 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       set({ ...initialState })
     },
 
-    discardWorkout() {
-      if (_elapsedInterval) {
-        clearInterval(_elapsedInterval)
-        _elapsedInterval = null
+    pauseWorkout() {
+      const state = get()
+      if (!state.workoutLog || state.workoutLog.pausedAt) return
+      set({
+        workoutLog: { ...state.workoutLog, pausedAt: new Date().toISOString() },
+        pauseTimingError: null,
+      })
+      _publishCurrentState()
+    },
+
+    unpauseWorkout() {
+      const state = get()
+      if (!state.workoutLog || !state.workoutLog.pausedAt) return
+      const pauseDurationMs = Date.now() - new Date(state.workoutLog.pausedAt).getTime()
+      if (!Number.isFinite(pauseDurationMs) || pauseDurationMs < 0) {
+        console.error(
+          '[active-workout] Invalid pausedAt when unpausing:',
+          state.workoutLog.pausedAt,
+        )
+        set({
+          workoutLog: { ...state.workoutLog, pausedAt: undefined },
+          pauseTimingError: 'Pause timing data was invalid; resumed without crediting paused time.',
+        })
+        _publishCurrentState()
+        return
       }
+      set({
+        workoutLog: {
+          ...state.workoutLog,
+          pausedAt: undefined,
+          totalPausedMs: state.workoutLog.totalPausedMs + pauseDurationMs,
+        },
+        pauseTimingError: null,
+      })
+      _publishCurrentState()
+    },
+
+    discardWorkout() {
       if (_restInterval) {
         clearInterval(_restInterval)
         _restInterval = null
@@ -482,8 +513,98 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     // Timer ticks
     // ------------------------------------------------------------------
 
-    tickElapsed() {
-      set((state) => ({ elapsedSeconds: state.elapsedSeconds + 1 }))
+    setElapsedSeconds(seconds: number) {
+      set({ elapsedSeconds: seconds })
+    },
+
+    // ------------------------------------------------------------------
+    // Notes (F020)
+    // ------------------------------------------------------------------
+
+    setSessionNote(content: NoteContent) {
+      const parsed = noteContentSchema.safeParse(content)
+      if (!parsed.success) {
+        console.warn(
+          '[active-workout] setSessionNote rejected invalid content:',
+          parsed.error.issues,
+        )
+        return
+      }
+      const state = get()
+      if (!state.workoutLog) {
+        console.warn('[active-workout] setSessionNote called with no active workoutLog')
+        return
+      }
+      set({
+        workoutLog: {
+          ...state.workoutLog,
+          overallNotes: parsed.data.text,
+          noteTags: parsed.data.tags,
+        },
+      })
+      _publishCurrentState()
+    },
+
+    setActivityNote(activityId: string, content: NoteContent) {
+      const parsed = noteContentSchema.safeParse(content)
+      if (!parsed.success) {
+        console.warn(
+          '[active-workout] setActivityNote rejected invalid content:',
+          parsed.error.issues,
+        )
+        return
+      }
+      let found = false
+      set((state) => ({
+        loggedGroups: state.loggedGroups.map((group) => ({
+          ...group,
+          activities: group.activities.map((activity) => {
+            if (activity.id !== activityId) return activity
+            found = true
+            return {
+              ...activity,
+              notes: parsed.data.text,
+              noteTags: parsed.data.tags,
+            }
+          }),
+        })),
+      }))
+      if (!found) {
+        console.warn('[active-workout] setActivityNote: activity not found', activityId)
+        return
+      }
+      _publishCurrentState()
+    },
+
+    setSetNote(setId: string, content: NoteContent) {
+      const parsed = noteContentSchema.safeParse(content)
+      if (!parsed.success) {
+        console.warn('[active-workout] setSetNote rejected invalid content:', parsed.error.issues)
+        return
+      }
+      let found = false
+      set((state) => ({
+        loggedGroups: state.loggedGroups.map((group) => ({
+          ...group,
+          activities: group.activities.map((activity) => ({
+            ...activity,
+            sets: activity.sets.map((s) => {
+              if (s.id !== setId) return s
+              found = true
+              return {
+                ...s,
+                notes: parsed.data.text,
+                noteTags: parsed.data.tags,
+              }
+            }),
+          })),
+        })),
+      }))
+      if (!found) {
+        console.warn('[active-workout] setSetNote: set not found', setId)
+        return
+      }
+      _publishCurrentState()
     },
 
     tickRest() {
@@ -513,10 +634,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     // ------------------------------------------------------------------
 
     cleanup() {
-      if (_elapsedInterval) {
-        clearInterval(_elapsedInterval)
-        _elapsedInterval = null
-      }
       if (_restInterval) {
         clearInterval(_restInterval)
         _restInterval = null

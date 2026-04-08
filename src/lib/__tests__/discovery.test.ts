@@ -38,7 +38,47 @@ describe('discoverInstance', () => {
       ok: true,
       supabaseUrl: 'https://abc.supabase.co',
       supabaseKey: 'ey-test-key',
+      appUrl: undefined,
     })
+  })
+
+  it('passes through app_url when present in the discovery response (F019)', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ ...VALID_DISCOVERY, app_url: 'https://forge.example.com' }),
+    )
+
+    const result = await discoverInstance('https://forge.example.com')
+
+    expect(result).toEqual({
+      ok: true,
+      supabaseUrl: 'https://abc.supabase.co',
+      supabaseKey: 'ey-test-key',
+      appUrl: 'https://forge.example.com',
+    })
+  })
+
+  it('logs a warn when the server omits app_url (pre-F019 server)', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(VALID_DISCOVERY))
+
+    const result = await discoverInstance('https://forge.example.com')
+
+    expect(result.ok).toBe(true)
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[discovery] Server did not return app_url'),
+    )
+    warnSpy.mockRestore()
+  })
+
+  it('rejects an invalid app_url shape', async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({ ...VALID_DISCOVERY, app_url: 'not-a-url' }))
+
+    const result = await discoverInstance('https://forge.example.com')
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error).toBe('INVALID_RESPONSE')
+    }
   })
 
   // -------------------------------------------------------------------------
@@ -98,6 +138,29 @@ describe('discoverInstance', () => {
       message: 'Only http:// and https:// URLs are supported.',
     })
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('returns INVALID_INPUT for a javascript: URL', async () => {
+    // P15-050: defense-in-depth for the setup discovery flow. The URL
+    // parser at display-url.ts already rejects `javascript:` tokens for
+    // the TV-open path, but setup discovery is a separate code path and
+    // must independently refuse to fetch the well-known discovery JSON
+    // from an executable scheme. In discovery.ts the normalization step
+    // prepends `https://` (because `javascript:alert(1)` has no `://`),
+    // producing `https://javascript:alert(1)` which the URL constructor
+    // rejects as malformed -- the guard fires on the parse-error branch
+    // rather than the protocol-check branch, but the net effect is the
+    // same: INVALID_INPUT and no fetch.
+    const warnSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const result = await discoverInstance('javascript:alert(1)')
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'INVALID_INPUT',
+      message: 'Invalid URL. Please enter a valid server address.',
+    })
+    expect(fetch).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
   })
 
   it('returns INVALID_INPUT for an empty string', async () => {

@@ -119,7 +119,7 @@ export function useCreateLoggedSet() {
       ])
       queryClient.setQueryData<WorkoutLogFull>(['workout-full', newSet.workoutLogId], (old) => {
         if (!old) return old
-        return { ...old, sets: [...old.sets, { ...newSet, id: 'temp-' + Date.now() }] }
+        return { ...old, sets: [...old.sets, { ...newSet, id: 'temp-' + crypto.randomUUID() }] }
       })
       return { previous }
     },
@@ -131,6 +131,77 @@ export function useCreateLoggedSet() {
     },
     onSettled: (_data, _err, newSet) => {
       queryClient.invalidateQueries({ queryKey: ['workout-full', newSet.workoutLogId] })
+    },
+  })
+}
+
+export function useDeleteLoggedSet() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string; workoutLogId: string }) => getAdapter().deleteLoggedSet(id),
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
+    },
+  })
+}
+
+export function useUpdateLoggedActivity() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      activity,
+      userId,
+    }: {
+      activity: LoggedActivity
+      userId: string
+      workoutLogId: string
+    }) => getAdapter().updateLoggedActivity(activity, userId),
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
+    },
+  })
+}
+
+export function useDeleteLoggedActivity() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string; workoutLogId: string }) =>
+      getAdapter().deleteLoggedActivity(id),
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
+    },
+  })
+}
+
+export function useUpdateLoggedActivityGroup() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      group,
+      userId,
+    }: {
+      group: LoggedActivityGroup
+      userId: string
+      workoutLogId: string
+    }) => getAdapter().updateLoggedActivityGroup(group, userId),
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
+    },
+  })
+}
+
+export function useDeleteLoggedActivityGroup() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string; workoutLogId: string }) =>
+      getAdapter().deleteLoggedActivityGroup(id),
+    onSettled: (_data, _err, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
     },
   })
 }

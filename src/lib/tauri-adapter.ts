@@ -46,6 +46,8 @@ import type {
   Message,
   MessageType,
   MediaAttachment,
+  Gym,
+  GymMember,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -141,6 +143,7 @@ interface TauriWorkoutLogResponse {
   session_template_id: string | null
   program_context: string | null
   overall_notes: string | null
+  note_tags: string
   perceived_difficulty: number | null
   bodyweight_at_session: string | null
   created_at: string | null
@@ -166,6 +169,7 @@ interface TauriLoggedActivityResponse {
   exercise_id: string
   ordinal: number
   notes: string | null
+  note_tags: string
   created_at: string | null
   updated_at: string | null
 }
@@ -188,6 +192,7 @@ interface TauriLoggedSetResponse {
   rpe: number | null
   completed: number | null
   notes: string | null
+  note_tags: string
   created_at: string | null
   updated_at: string | null
 }
@@ -195,7 +200,9 @@ interface TauriLoggedSetResponse {
 interface TauriUserProfileResponse {
   id: string
   display_name: string | null
-  display_visible: number | null
+  // F018 (M10): `display_visible` removed -- was the legacy global publish
+  // opt-in. The Wave 3b SQLite migration drops the column on the Tauri side
+  // in lockstep with the Postgres drop in Wave 2.
   preferred_units: string | null
   bodyweight: string | null
   training_age: string | null
@@ -527,6 +534,27 @@ export class AdapterError extends Error {
   }
 }
 
+/**
+ * Distinct error variant for operations that require an online Supabase
+ * connection in the Tauri (offline-first) build. Mutation hooks can
+ * `instanceof OnlineRequiredError` to surface a contextual "Offline mode"
+ * banner instead of a generic failure message.
+ *
+ * Per .claude/rules/error-handling.md: error types at system boundaries
+ * must distinguish input validation failures from network/transport
+ * failures. This is the network/transport variant for the gym domain.
+ */
+export class OnlineRequiredError extends Error {
+  readonly code = 'ONLINE_REQUIRED' as const
+  readonly operation: string
+
+  constructor(operation: string) {
+    super(`${operation} requires an online connection`)
+    this.name = 'OnlineRequiredError'
+    this.operation = operation
+  }
+}
+
 /** Invoke a Tauri command and translate AppError responses into AdapterError. */
 async function invokeCommand<T>(cmd: string, args: Record<string, unknown>): Promise<T> {
   try {
@@ -566,6 +594,27 @@ function parseJson(value: string | null, column: string): unknown {
   }
 }
 
+/** Parse a note_tags JSON string into string[], falling back to [] on any error. */
+function parseNoteTags(value: string | null | undefined, column: string): string[] {
+  if (value == null || value === '') return []
+  try {
+    const parsed = JSON.parse(value)
+    if (Array.isArray(parsed) && parsed.every((t) => typeof t === 'string')) {
+      return parsed as string[]
+    }
+    console.warn(
+      `[tauri-adapter] ${column}: expected string[], using fallback [] -- raw: ${String(value).slice(0, 120)}`,
+    )
+    return []
+  } catch (err) {
+    console.warn(
+      `[tauri-adapter] ${column}: JSON parse failed, using fallback [] -- raw: ${String(value).slice(0, 120)}:`,
+      err,
+    )
+    return []
+  }
+}
+
 /** Require a non-null string value, throwing with the field name on null. */
 function requireString(value: string | null | undefined, field: string): string {
   if (value == null) {
@@ -582,6 +631,7 @@ function requireString(value: string | null | undefined, field: string): string 
  * parameter is a safety net for fields where null genuinely means "unset"
  * (e.g. is_bilateral, supports_1rm, is_custom).
  */
+// TODO(P14-021): pass field name and log on fallback
 function intToBool(value: number | null | undefined, fallback = false): boolean {
   if (value == null) return fallback
   return value !== 0
@@ -611,6 +661,18 @@ function toExerciseRow(r: TauriExerciseResponse): ExerciseRow {
   }
 }
 
+// One-shot warning when pause state is dropped on the Tauri adapter.
+// Per ADR-013, pause-state persistence to local SQLite is deferred (F018).
+// The interim behavior is to silently coerce paused_at/total_paused_ms to
+// defaults and surface a single console.warn so callers attempting to
+// persist pause data through this adapter notice.
+let _pauseFieldsDropWarned = false
+function _warnPauseFieldsDroppedOnce(): void {
+  if (_pauseFieldsDropWarned) return
+  _pauseFieldsDropWarned = true
+  console.warn('[tauri-adapter] Pause state not persisted on mobile (F018/ADR-013 deferred)')
+}
+
 function toWorkoutLogRow(r: TauriWorkoutLogResponse): WorkoutLogRow {
   return {
     id: r.id,
@@ -623,7 +685,10 @@ function toWorkoutLogRow(r: TauriWorkoutLogResponse): WorkoutLogRow {
     perceived_difficulty: r.perceived_difficulty,
     bodyweight_at_session: parseJson(r.bodyweight_at_session, 'bodyweight_at_session'),
     overall_notes: r.overall_notes,
+    note_tags: parseNoteTags(r.note_tags, 'workout_logs.note_tags'),
     event_metadata: null, // Event features deferred for Tauri offline mode (W-8)
+    paused_at: null, // Pause state deferred for Tauri offline mode (F018)
+    total_paused_ms: 0,
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -651,6 +716,7 @@ function toLoggedActivityRow(r: TauriLoggedActivityResponse): LoggedActivityRow 
     exercise_id: r.exercise_id,
     ordinal: r.ordinal,
     notes: r.notes,
+    note_tags: parseNoteTags(r.note_tags, 'logged_activities.note_tags'),
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -675,6 +741,7 @@ function toLoggedSetRow(r: TauriLoggedSetResponse): LoggedSetRow {
     rpe: r.rpe,
     completed: intToBool(r.completed),
     notes: r.notes,
+    note_tags: parseNoteTags(r.note_tags, 'logged_sets.note_tags'),
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -684,7 +751,6 @@ function toUserProfileRow(r: TauriUserProfileResponse): UserProfileRow {
   return {
     id: r.id,
     display_name: r.display_name,
-    display_visible: r.display_visible != null ? intToBool(r.display_visible) : null,
     preferred_units: r.preferred_units ?? 'IMPERIAL',
     bodyweight: parseJson(r.bodyweight, 'bodyweight'),
     training_age: parseJson(r.training_age, 'training_age'),
@@ -1086,6 +1152,9 @@ export class TauriAdapter implements DataAdapter {
   async createWorkoutLog(
     log: Omit<WorkoutLog, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<WorkoutLog> {
+    if (log.pausedAt != null || (log.totalPausedMs ?? 0) > 0) {
+      _warnPauseFieldsDroppedOnce()
+    }
     const partial = fromWorkoutLog(log)
     const input = {
       user_id: partial.user_id!,
@@ -1096,6 +1165,7 @@ export class TauriAdapter implements DataAdapter {
       program_context:
         partial.program_context != null ? JSON.stringify(partial.program_context) : null,
       overall_notes: partial.overall_notes ?? null,
+      note_tags: JSON.stringify(partial.note_tags ?? []),
       perceived_difficulty: partial.perceived_difficulty ?? null,
       bodyweight_at_session:
         partial.bodyweight_at_session != null
@@ -1108,11 +1178,15 @@ export class TauriAdapter implements DataAdapter {
   }
 
   async updateWorkoutLog(log: WorkoutLog): Promise<WorkoutLog> {
+    if (log.pausedAt != null || (log.totalPausedMs ?? 0) > 0) {
+      _warnPauseFieldsDroppedOnce()
+    }
     const row = await invokeCommand<TauriWorkoutLogResponse>('update_workout_log', {
       id: log.id,
       title: log.title ?? null,
       completed_at: log.completedAt ? isoToUnixSeconds(log.completedAt) : null,
       overall_notes: log.overallNotes ?? null,
+      note_tags: JSON.stringify(log.noteTags ?? []),
       perceived_difficulty: log.perceivedDifficulty ?? null,
     })
     return toWorkoutLog(toWorkoutLogRow(row))
@@ -1150,6 +1224,35 @@ export class TauriAdapter implements DataAdapter {
     return toLoggedActivityGroup(toLoggedActivityGroupRow(row))
   }
 
+  async updateLoggedActivityGroup(
+    group: LoggedActivityGroup,
+    userId: string,
+  ): Promise<LoggedActivityGroup> {
+    const partial = fromLoggedActivityGroup(group, userId)
+    const input = {
+      id: group.id,
+      workout_log_id: partial.workout_log_id!,
+      group_type: partial.group_type!,
+      ordinal: partial.ordinal!,
+      actual_rounds_completed: partial.actual_rounds_completed ?? null,
+      completion_time:
+        partial.completion_time != null ? JSON.stringify(partial.completion_time) : null,
+    }
+
+    const row = await invokeCommand<TauriLoggedActivityGroupResponse>(
+      'update_logged_activity_group',
+      {
+        group: input,
+        user_id: userId,
+      },
+    )
+    return toLoggedActivityGroup(toLoggedActivityGroupRow(row))
+  }
+
+  async deleteLoggedActivityGroup(id: string): Promise<void> {
+    await invokeCommand<void>('delete_logged_activity_group', { id })
+  }
+
   // ---------------------------------------------------------------------------
   // LoggedActivity
   // ---------------------------------------------------------------------------
@@ -1164,6 +1267,7 @@ export class TauriAdapter implements DataAdapter {
       exercise_id: partial.exercise_id!,
       ordinal: partial.ordinal!,
       notes: partial.notes ?? null,
+      note_tags: JSON.stringify(partial.note_tags ?? []),
     }
 
     const row = await invokeCommand<TauriLoggedActivityResponse>('create_logged_activity', {
@@ -1171,6 +1275,28 @@ export class TauriAdapter implements DataAdapter {
       user_id: userId,
     })
     return toLoggedActivity(toLoggedActivityRow(row))
+  }
+
+  async updateLoggedActivity(activity: LoggedActivity, userId: string): Promise<LoggedActivity> {
+    const partial = fromLoggedActivity(activity, userId)
+    const input = {
+      id: activity.id,
+      logged_group_id: partial.logged_group_id!,
+      exercise_id: partial.exercise_id!,
+      ordinal: partial.ordinal!,
+      notes: partial.notes ?? null,
+      note_tags: JSON.stringify(partial.note_tags ?? []),
+    }
+
+    const row = await invokeCommand<TauriLoggedActivityResponse>('update_logged_activity', {
+      activity: input,
+      user_id: userId,
+    })
+    return toLoggedActivity(toLoggedActivityRow(row))
+  }
+
+  async deleteLoggedActivity(id: string): Promise<void> {
+    await invokeCommand<void>('delete_logged_activity', { id })
   }
 
   // ---------------------------------------------------------------------------
@@ -1198,6 +1324,7 @@ export class TauriAdapter implements DataAdapter {
       rpe: partial.rpe ?? null,
       completed: partial.completed ?? null,
       notes: partial.notes ?? null,
+      note_tags: JSON.stringify(partial.note_tags ?? []),
     }
 
     const row = await invokeCommand<TauriLoggedSetResponse>('create_logged_set', {
@@ -1229,6 +1356,7 @@ export class TauriAdapter implements DataAdapter {
       rpe: partial.rpe ?? null,
       completed: partial.completed ?? null,
       notes: partial.notes ?? null,
+      note_tags: JSON.stringify(partial.note_tags ?? []),
     }
 
     const row = await invokeCommand<TauriLoggedSetResponse>('update_logged_set', {
@@ -1236,6 +1364,10 @@ export class TauriAdapter implements DataAdapter {
       user_id: userId,
     })
     return toLoggedSet(toLoggedSetRow(row))
+  }
+
+  async deleteLoggedSet(id: string): Promise<void> {
+    await invokeCommand<void>('delete_logged_set', { id })
   }
 
   // ---------------------------------------------------------------------------
@@ -1251,10 +1383,12 @@ export class TauriAdapter implements DataAdapter {
 
   async updateUserProfile(profile: Partial<UserProfile> & { id: string }): Promise<UserProfile> {
     const partial = fromUserProfile(profile)
+    // F018 (M10): `display_visible` was removed from the schema; the Rust
+    // command and the SQLite migration on the Tauri side drop it in lockstep
+    // (Wave 3b). We do not pass it here.
     const input = {
       id: partial.id!,
       display_name: partial.display_name ?? null,
-      display_visible: partial.display_visible ?? null,
       preferred_units: partial.preferred_units ?? null,
       bodyweight: partial.bodyweight != null ? JSON.stringify(partial.bodyweight) : null,
       training_age: partial.training_age != null ? JSON.stringify(partial.training_age) : null,
@@ -1348,6 +1482,7 @@ export class TauriAdapter implements DataAdapter {
         session_template_id: log.sessionTemplateId ?? null,
         program_context: log.programContext ? JSON.stringify(log.programContext) : null,
         overall_notes: log.overallNotes ?? null,
+        note_tags: JSON.stringify(log.noteTags ?? []),
         perceived_difficulty: log.perceivedDifficulty ?? null,
         bodyweight_at_session: log.bodyweightAtSession
           ? JSON.stringify(log.bodyweightAtSession)
@@ -1367,6 +1502,7 @@ export class TauriAdapter implements DataAdapter {
             exercise_id: a.activity.exerciseId,
             ordinal: a.activity.ordinal,
             notes: a.activity.notes ?? null,
+            note_tags: JSON.stringify(a.activity.noteTags ?? []),
           },
           sets: a.sets.map((s) => ({
             logged_activity_id: '', // will be set server-side
@@ -1384,6 +1520,7 @@ export class TauriAdapter implements DataAdapter {
             rpe: s.rpe ?? null,
             completed: s.completed ?? null,
             notes: s.notes ?? null,
+            note_tags: JSON.stringify(s.noteTags ?? []),
           })),
         })),
       })),
@@ -1930,6 +2067,70 @@ export class TauriAdapter implements DataAdapter {
 
   async deleteShareLink(_id: string): Promise<void> {
     throw new Error('Share links are not supported in offline mode')
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gym operations (F018 -- online-only per Tech.md D14)
+  //
+  // Gyms are an online concept: the publisher only matters when there is a
+  // live Supabase Realtime channel to broadcast on. Reads return empty
+  // collections so offline UI renders gracefully (the picker shows only the
+  // Private option) but log a one-line warn so the empty result is not
+  // mistaken for "no gyms exist on this instance." Writes throw a distinct
+  // `OnlineRequiredError` (P14-003) so mutation hooks can surface an
+  // "Offline mode" banner instead of a generic failure message.
+  // ---------------------------------------------------------------------------
+
+  async listUserGyms(_userId: string): Promise<Gym[]> {
+    console.warn(
+      '[tauri-adapter] listUserGyms called in offline mode; returning empty (gyms require online)',
+    )
+    return []
+  }
+
+  async listAllGyms(): Promise<Gym[]> {
+    console.warn(
+      '[tauri-adapter] listAllGyms called in offline mode; returning empty (gyms require online)',
+    )
+    return []
+  }
+
+  async getGym(_gymId: string): Promise<Gym | null> {
+    console.warn(
+      '[tauri-adapter] getGym called in offline mode; returning null (gyms require online)',
+    )
+    return null
+  }
+
+  async createGym(_input: { name: string }): Promise<Gym> {
+    throw new OnlineRequiredError('createGym')
+  }
+
+  async updateGym(_input: Partial<Gym> & { id: string }): Promise<Gym> {
+    throw new OnlineRequiredError('updateGym')
+  }
+
+  async deleteGym(_gymId: string): Promise<void> {
+    throw new OnlineRequiredError('deleteGym')
+  }
+
+  async joinGym(_gymId: string): Promise<void> {
+    throw new OnlineRequiredError('joinGym')
+  }
+
+  async leaveGym(_gymId: string): Promise<void> {
+    throw new OnlineRequiredError('leaveGym')
+  }
+
+  async kickGymMember(_gymId: string, _userId: string): Promise<void> {
+    throw new OnlineRequiredError('kickGymMember')
+  }
+
+  async listGymMembers(_gymId: string): Promise<GymMember[]> {
+    console.warn(
+      '[tauri-adapter] listGymMembers called in offline mode; returning empty (gyms require online)',
+    )
+    return []
   }
 
   // ---------------------------------------------------------------------------

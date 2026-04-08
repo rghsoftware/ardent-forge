@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SessionTemplatePreview } from '@/components/workout/session-template-preview'
 
 interface ProgramSessionCardProps {
   programName: string
@@ -9,6 +10,8 @@ interface ProgramSessionCardProps {
   totalWeeks: number
   sessionName?: string
   sessionType?: string
+  /** Template id for the inline preview. When omitted, no preview renders. */
+  sessionTemplateId?: string | null
   onStartSession: () => void
   onTimeTravel?: () => void
   isLoading?: boolean
@@ -83,6 +86,7 @@ export function ProgramSessionCard({
   totalWeeks,
   sessionName,
   sessionType,
+  sessionTemplateId,
   onStartSession,
   onTimeTravel,
   isLoading = false,
@@ -99,7 +103,7 @@ export function ProgramSessionCard({
 
   return (
     <div
-      className={`flex flex-col gap-4 p-5 milled-edge ${
+      className={`milled-edge flex flex-col gap-4 p-5 ${
         isEvent ? 'border-l-2 border-ember bg-surface-iron' : 'bg-surface-iron'
       }`}
     >
@@ -153,6 +157,14 @@ export function ProgramSessionCard({
               )}
             </div>
           </div>
+
+          {/* Inline preview -- exercises, sets, prescribed loads. Always visible
+              so the athlete can review the day's work before tapping start. */}
+          {sessionTemplateId && (
+            <div className="-mx-5 border-y border-warm-ash/10">
+              <SessionTemplatePreview sessionTemplateId={sessionTemplateId} />
+            </div>
+          )}
 
           {/* CTA -- full-width start button */}
           <Button

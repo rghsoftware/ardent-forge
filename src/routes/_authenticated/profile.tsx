@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button'
 import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Switch } from '@/components/ui/switch'
 import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { BackendSettings } from '@/components/profile/backend-settings'
 import { NotificationSettings } from '@/components/profile/notification-settings'
+import { GymManagementSection } from '@/components/profile/gym-management-section'
 import type { PreferredUnits } from '@/domain/types'
 import { Icon } from '@/components/icon'
 
@@ -29,7 +29,6 @@ function ProfilePage() {
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [bodyweight, setBodyweight] = useState<string | null>(null)
   const [preferredUnits, setPreferredUnits] = useState<PreferredUnits | null>(null)
-  const [displayVisible, setDisplayVisible] = useState<boolean | null>(null)
   const [signOutError, setSignOutError] = useState<string | null>(null)
 
   // Derive effective values: local state overrides profile data
@@ -37,7 +36,6 @@ function ProfilePage() {
   const effectiveBodyweight = bodyweight ?? String(profile?.bodyweight?.value ?? '')
   const effectiveUnits = preferredUnits ?? profile?.preferredUnits ?? 'IMPERIAL'
   const bodyweightUnit = effectiveUnits === 'IMPERIAL' ? 'lb' : 'kg'
-  const effectiveDisplayVisible = displayVisible ?? profile?.displayVisible ?? true
 
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -58,10 +56,6 @@ function ProfilePage() {
       updates.bodyweight = { value: bodyweightValue, unit: bodyweightUnit }
     }
 
-    if (displayVisible !== null) {
-      updates.displayVisible = displayVisible
-    }
-
     try {
       await updateProfile.mutateAsync(updates)
 
@@ -69,7 +63,6 @@ function ProfilePage() {
       setDisplayName(null)
       setBodyweight(null)
       setPreferredUnits(null)
-      setDisplayVisible(null)
     } catch (err) {
       console.error('[profile] Failed to save settings:', err)
       setSaveError('Failed to save settings. Please try again.')
@@ -269,25 +262,12 @@ function ProfilePage() {
               <BackendSettings />
             </section>
 
-            {/* REMOTE DISPLAY section */}
+            {/* GYMS section -- F018: per-gym broadcast partitioning replaces the
+                legacy single display-visibility toggle. Users now pick which gym
+                (or Private) at workout start; this section manages their
+                memberships. */}
             <section className="pb-8">
-              <div className="border-t border-surface-steel pb-2 pt-4">
-                <h2 className="font-sans text-xs font-medium uppercase tracking-widest text-warm-ash">
-                  REMOTE DISPLAY
-                </h2>
-              </div>
-
-              <div className="mt-4 space-y-5">
-                <label className="flex min-h-[48px] cursor-pointer items-center justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <span className="font-sans text-sm text-bone-white">Display visibility</span>
-                    <p className="font-sans text-[11px] leading-relaxed text-warm-ash/60">
-                      Show your active workout on the gym display
-                    </p>
-                  </div>
-                  <Switch checked={effectiveDisplayVisible} onCheckedChange={setDisplayVisible} />
-                </label>
-              </div>
+              <GymManagementSection userId={userId} />
             </section>
           </div>
 

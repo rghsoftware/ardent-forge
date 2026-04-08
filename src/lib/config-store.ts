@@ -7,8 +7,13 @@ import { validateConnection } from './connection-validator'
 // ---------------------------------------------------------------------------
 
 export const backendConfigSchema = z.object({
-  supabaseUrl: z.string().url(),
+  supabaseUrl: z.url(),
   supabaseKey: z.string().min(1),
+  // Public app URL, persisted at setup time from the discovery endpoint
+  // response (F019 D6/D21). Optional so pre-F019 persisted configs remain
+  // valid under Zod parsing; the D22 backfill form repairs missing values
+  // on the first Show-display tap.
+  appUrl: z.url().optional(),
 })
 
 export type BackendConfig = z.infer<typeof backendConfigSchema>
@@ -34,7 +39,12 @@ class BrowserConfigStore implements ConfigStore {
       const parsed = backendConfigSchema.safeParse(JSON.parse(raw))
       if (!parsed.success) {
         console.warn('[config-store] Corrupt config found, clearing:', raw?.slice(0, 50))
-        this.clearConfig()
+        // P15-011: await cleanup so the corrupt-then-fresh-write sequence is
+        // deterministic. Catch any failure so we still return null rather
+        // than leaking the cleanup error into the caller.
+        await this.clearConfig().catch((cleanupErr) => {
+          console.error('[config-store] Cleanup of corrupt config failed:', cleanupErr)
+        })
         return null
       }
       return parsed.data
@@ -85,7 +95,12 @@ class TauriConfigStore implements ConfigStore {
       const parsed = backendConfigSchema.safeParse(JSON.parse(raw))
       if (!parsed.success) {
         console.warn('[config-store] Corrupt config found, clearing:', raw?.slice(0, 50))
-        this.clearConfig()
+        // P15-011: await cleanup so a Tauri IPC failure during corruption
+        // recovery is observable, and so a subsequent setConfig can't race
+        // with an in-flight clear.
+        await this.clearConfig().catch((cleanupErr) => {
+          console.error('[config-store] Cleanup of corrupt config failed:', cleanupErr)
+        })
         return null
       }
       return parsed.data

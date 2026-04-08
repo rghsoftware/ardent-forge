@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useAuth } from '@/lib/auth'
@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Icon } from '@/components/icon'
 import { useOnboarding } from '@/hooks/use-onboarding'
+import { filterHistoryBySessionNote } from './filter-history'
 
 export const Route = createFileRoute('/_authenticated/history/')({
   component: HistoryPage,
@@ -50,8 +51,18 @@ function HistoryPage() {
 
   const { data: summaries = [], isLoading, isError } = useWorkoutLogsSummary(userId)
 
-  // Filter to only completed workouts
-  const completedSummaries = summaries.filter((s) => !!s.log.completedAt)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Filter to only completed workouts, then apply search
+  const completedSummaries = useMemo(
+    () =>
+      filterHistoryBySessionNote(
+        summaries.filter((s) => !!s.log.completedAt),
+        searchQuery,
+      ),
+    [summaries, searchQuery],
+  )
+  const hasActiveQuery = searchQuery.trim().length > 0
 
   const parentRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line react-hooks/incompatible-library -- useVirtualizer manages its own deps
@@ -81,6 +92,26 @@ function HistoryPage() {
       <div className="mx-auto w-full max-w-5xl flex items-center gap-3 px-4 pt-6 pb-4 md:px-6 lg:px-8">
         <Icon name="history" size={24} className="text-warm-ash" />
         <h1 className="font-display text-2xl font-medium text-bone-white">Tracker</h1>
+        <button
+          type="button"
+          onClick={() => navigate({ to: '/log/new' })}
+          aria-label="Log past workout"
+          className="ml-auto h-12 w-12 flex items-center justify-center text-warm-ash hover:text-bone-white"
+        >
+          <Icon name="add" size={24} />
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="mx-auto w-full max-w-5xl px-4 pb-3 md:px-6 lg:px-8">
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search notes, tags, or titles..."
+          aria-label="Search workout history"
+          className="h-12 w-full border border-warm-ash/25 bg-surface-pit px-3 text-sm text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
+        />
       </div>
 
       {/* Content */}
@@ -95,6 +126,10 @@ function HistoryPage() {
           </span>
           <p className="font-display text-sm text-warning-flare">Failed to load history</p>
           <p className="mt-2 text-xs text-warm-ash">Check your connection and try again.</p>
+        </div>
+      ) : completedSummaries.length === 0 && hasActiveQuery ? (
+        <div className="mx-auto w-full max-w-5xl px-4 py-16 md:px-6 lg:px-8">
+          <p className="text-center text-sm text-warm-ash">No workouts match.</p>
         </div>
       ) : completedSummaries.length === 0 ? (
         <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col md:px-6 lg:px-8">

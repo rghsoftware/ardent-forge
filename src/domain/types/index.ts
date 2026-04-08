@@ -33,9 +33,11 @@ export type {
 } from './exercise'
 
 export * from './workout-log'
+export * from './workout-note'
 export * from './user'
 export * from './notification'
 export * from './sharing'
+export * from './gym'
 export * from './analytics'
 export * from './conversation'
 export * from './message'

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
   Dialog,
@@ -28,24 +28,58 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
   const { data: recentLogs = [] } = useWorkoutLogs(userId, 10)
   const deleteWorkoutLogMutation = useDeleteWorkoutLog()
 
-  // Find the most recent incomplete workout (no completedAt)
-  const incompleteWorkout: WorkoutLog | undefined = recentLogs.find((log) => !log.completedAt)
+  // Find the most recent incomplete workout that is not intentionally paused.
+  // Paused sessions (pausedAt != null) are handled by PausedSessionCard, not crash recovery.
+  const incompleteWorkout: WorkoutLog | undefined = recentLogs.find(
+    (log) => !log.completedAt && !log.pausedAt,
+  )
 
   // Fetch full workout data for the incomplete workout (groups, activities, sets)
   const { data: fullWorkout, isPending: isLoadingFullWorkout } = useWorkoutLogFull(
     incompleteWorkout?.id ?? '',
   )
 
+  // Qualify the candidate: a session is only "crash-orphaned" if it has at least
+  // one confirmed set OR was started more than 60s ago. Otherwise treat as a
+  // transient navigation race (fresh session that was never really used).
+  // `Date.now()` is captured in an effect to comply with React 19 purity rules.
+  const hasConfirmedSet = fullWorkout ? fullWorkout.sets.some((s) => s.completed) : false
+  const [nowMs, setNowMs] = useState(0)
+  useEffect(() => {
+    if (incompleteWorkout) setNowMs(Date.now())
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-capture when candidate identity changes
+  }, [incompleteWorkout?.id])
+  const startedMs = incompleteWorkout ? new Date(incompleteWorkout.startedAt).getTime() : 0
+  const ageMs = nowMs > 0 ? nowMs - startedMs : 0
+  const qualifiesAsCrash = hasConfirmedSet || ageMs > 60_000
+
   const [dismissed, setDismissed] = useState(false)
   const [isResuming, setIsResuming] = useState(false)
   const [isDiscarding, setIsDiscarding] = useState(false)
   const [discardError, setDiscardError] = useState<string | null>(null)
 
-  // Derive open state -- no effect needed
-  const open = Boolean(incompleteWorkout && !isActive && !dismissed)
+  // Open the dialog while the full workout is loading (so users see a loading state)
+  // OR once it has loaded and qualifies as a real crash. Transient sessions never
+  // qualify and the dialog auto-closes once fullWorkout resolves.
+  const open = Boolean(
+    incompleteWorkout &&
+    !isActive &&
+    !dismissed &&
+    (isLoadingFullWorkout || (fullWorkout && qualifiesAsCrash)),
+  )
+
+  if (incompleteWorkout && fullWorkout && !qualifiesAsCrash && !dismissed) {
+    console.info('[crash-recovery] Skipping transient session (no confirmed sets, <60s old):', {
+      workoutId: incompleteWorkout.id,
+      ageMs,
+    })
+  }
 
   const handleResume = () => {
-    if (!fullWorkout || !incompleteWorkout) return
+    if (!fullWorkout || !incompleteWorkout) {
+      console.warn('[crash-recovery] Resume ignored: workout not loaded yet')
+      return
+    }
     setIsResuming(true)
     setDismissed(true)
     resumeWorkout(fullWorkout)
@@ -71,6 +105,7 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
   }
 
   if (!incompleteWorkout) return null
+  if (fullWorkout && !qualifiesAsCrash) return null
 
   const startedDate = new Date(incompleteWorkout.startedAt)
   const timeAgo = formatTimeAgo(startedDate)
@@ -102,7 +137,7 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
           <div className="flex flex-1 flex-col gap-1">
             <Button
               variant="ghost"
-              className="w-full text-warm-ash hover:text-warning-flare"
+              className="h-12 w-full text-warm-ash hover:text-warning-flare"
               onClick={handleDiscard}
               disabled={isDiscarding || isResuming}
             >
@@ -114,7 +149,7 @@ export function CrashRecoveryDialog({ userId }: CrashRecoveryDialogProps) {
           </div>
           <Button
             variant="molten"
-            className="flex-1 h-12"
+            className="h-12 flex-1"
             onClick={handleResume}
             disabled={isResuming || isDiscarding || !fullWorkout}
           >

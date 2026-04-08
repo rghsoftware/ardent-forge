@@ -30,6 +30,11 @@ export function createMockAdapter(
     createLoggedActivity: vi.fn().mockResolvedValue({}),
     createLoggedSet: vi.fn().mockResolvedValue({}),
     updateLoggedSet: vi.fn().mockResolvedValue({}),
+    deleteLoggedSet: vi.fn().mockResolvedValue(undefined),
+    updateLoggedActivity: vi.fn().mockResolvedValue({}),
+    deleteLoggedActivity: vi.fn().mockResolvedValue(undefined),
+    updateLoggedActivityGroup: vi.fn().mockResolvedValue({}),
+    deleteLoggedActivityGroup: vi.fn().mockResolvedValue(undefined),
 
     // Exercise history operations
     getOneRepMaxHistory: vi.fn().mockResolvedValue([]),
@@ -40,6 +45,18 @@ export function createMockAdapter(
     getUserProfile: vi.fn().mockResolvedValue(null),
     updateUserProfile: vi.fn().mockResolvedValue({}),
     saveOneRepMax: vi.fn().mockResolvedValue({}),
+
+    // Gym operations (F018)
+    listUserGyms: vi.fn().mockResolvedValue([]),
+    listAllGyms: vi.fn().mockResolvedValue([]),
+    getGym: vi.fn().mockResolvedValue(null),
+    createGym: vi.fn().mockResolvedValue({}),
+    updateGym: vi.fn().mockResolvedValue({}),
+    deleteGym: vi.fn().mockResolvedValue(undefined),
+    joinGym: vi.fn().mockResolvedValue(undefined),
+    leaveGym: vi.fn().mockResolvedValue(undefined),
+    kickGymMember: vi.fn().mockResolvedValue(undefined),
+    listGymMembers: vi.fn().mockResolvedValue([]),
 
     // Session template operations
     getSessionTemplates: vi.fn().mockResolvedValue([]),

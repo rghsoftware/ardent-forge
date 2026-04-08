@@ -63,6 +63,42 @@ const handleSave = () => {
 }
 ```
 
+## Mutation Hook Error Handling
+
+All `useMutation`-based hooks must attach an `onError` handler that logs with a bracketed `[module-name]` prefix and includes enough context (operation name, key entity ids) to diagnose the failure from logs alone. Where the mutation performs an optimistic cache update, `onError` must also roll the cache back to the snapshotted previous state.
+
+```typescript
+// Bad -- silent mutation failure
+export function useDeleteWidget() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => adapter.deleteWidget(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['widgets'] }),
+  })
+}
+
+// Good -- prefixed log + cache rollback
+export function useDeleteWidget() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => adapter.deleteWidget(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ['widgets'] })
+      const previous = qc.getQueryData(['widgets'])
+      qc.setQueryData(['widgets'], (old: Widget[] = []) => old.filter((w) => w.id !== id))
+      return { previous }
+    },
+    onError: (err, id, ctx) => {
+      console.error('[widgets] deleteWidget failed:', { id, err })
+      if (ctx?.previous) qc.setQueryData(['widgets'], ctx.previous)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['widgets'] }),
+  })
+}
+```
+
+A mutation hook that lacks `onError` is a silent failure: the user-facing component cannot distinguish "request still in flight" from "request failed and the optimistic UI is now lying". The `[module-name]` prefix makes the failure greppable in production logs.
+
 ## Query Hook Error States
 
 All `useQuery`-based hooks in user-facing components must destructure and handle `isError` (or `error`). Showing stale or empty UI on a fetch failure is a silent failure. At minimum, render an error state so the user knows something went wrong.
