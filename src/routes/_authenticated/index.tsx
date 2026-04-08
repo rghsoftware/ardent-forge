@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth'
 import { useWorkoutLogs } from '@/hooks/use-workout-logs'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
@@ -168,7 +169,13 @@ function TodayPage() {
       } else {
         configureDisplayPublisher({ gymId: choice, intent: 'broadcasting' })
       }
-      writeLastGymChoice(choice)
+      // P15-014: writeLastGymChoice returns false when the localStorage write
+      // fails (Safari private mode, quota exceeded). The user silently loses
+      // their sticky default otherwise; surface a light toast so they know.
+      if (!writeLastGymChoice(choice)) {
+        console.warn('[today-page] Failed to persist last gym choice (ad-hoc)')
+        toast('Could not save your last gym choice. Your preference will not persist.')
+      }
       navigate({ to: '/log/$workoutId', params: { workoutId: workoutLog.id } })
     } catch (err) {
       console.error('[today-page] handleStartWorkout:', err)
@@ -216,7 +223,12 @@ function TodayPage() {
       } else {
         configureDisplayPublisher({ gymId: choice, intent: 'broadcasting' })
       }
-      writeLastGymChoice(choice)
+      // P15-014: surface localStorage write failures so sticky-default loss
+      // is not silent (see handleStartWorkout above for rationale).
+      if (!writeLastGymChoice(choice)) {
+        console.warn('[today-page] Failed to persist last gym choice (programmed)')
+        toast('Could not save your last gym choice. Your preference will not persist.')
+      }
       navigate({ to: '/log/$workoutId', params: { workoutId: workoutLog.id } })
     } catch (err) {
       console.error('[today-page] handleStartProgrammedSession:', err)

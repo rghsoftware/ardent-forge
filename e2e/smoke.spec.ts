@@ -44,6 +44,12 @@ test('F019 Scenario 1: Show display panel reveals URL + Copy on web', async ({ p
 
   await signInViaForm(page, user)
 
+  // P15-041: Intermediate sign-in-success assertion so a CSP regression or
+  // auth provider timing failure localizes to the right step instead of
+  // bubbling up as an opaque showButton timeout. The root "/" redirect
+  // lands at "/today" for an authenticated user with no pending flows.
+  await expect(page).toHaveURL(/\/(today|profile|display)/, { timeout: 10_000 })
+
   await page.goto('/profile')
 
   // The "Show display" button is rendered by every MyGymRow with a

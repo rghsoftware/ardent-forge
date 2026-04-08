@@ -7,15 +7,20 @@ import type { Gym } from '@/domain/types'
 // dispatcher state. Split into its own module so it can be unit-tested
 // without mounting any React tree.
 //
-// Precedence rules (enforced by the switch ladder in computeDispatcherState):
-//   1. auth loading            → loading
-//   2. not authenticated       → unauthenticated
-//   3. gyms query error        → error
-//   4. gyms query loading      → loading
-//   5. gyms undefined          → loading (cache miss before first data)
-//   6. gyms.length === 0       → zero
-//   7. gyms.length === 1       → single(gymId)
-//   8. gyms.length >= 2        → many(gyms)
+// Precedence rules (enforced by the ladder in computeDispatcherState --
+// the numbers in this header match the body comments 1:1):
+//   1. auth loading                          → loading
+//   2. not authenticated                     → unauthenticated
+//   3. gyms query error AND no cached data   → error (P15-028)
+//   4. gyms query loading OR gyms undefined  → loading (cache miss)
+//   5. gyms.length === 0                     → zero
+//   6. gyms.length === 1                     → single(gymId)
+//   7. gyms.length >= 2                      → many(gyms)
+//
+// P15-028: A transient `isError` with stale cached `gyms` falls through
+// to the `'many'` / `'single'` / `'zero'` branch rather than blowing away
+// the chooser entirely. The dispatcher component logs the underlying
+// error via useEffect so operators still see the signal.
 // ---------------------------------------------------------------------------
 
 export type DispatcherState =
@@ -46,9 +51,13 @@ export function computeDispatcherState(inputs: DispatcherInputs): DispatcherStat
   //    operators with expired sessions.
   if (inputs.user === null) return { kind: 'unauthenticated' }
 
-  // 3. Gyms query error takes precedence over the other gyms query states
-  //    so the user can retry rather than seeing a misleading zero-gym setup.
-  if (inputs.gymsError) return { kind: 'error', retry: inputs.refetch }
+  // 3. Gyms query error with no cached data — render the error state.
+  //    If stale data IS cached (refetch failure), fall through to the
+  //    normal many/single/zero branches instead of painting the whole list
+  //    as "could not load" (P15-028).
+  if (inputs.gymsError && inputs.gyms === undefined) {
+    return { kind: 'error', retry: inputs.refetch }
+  }
 
   // 4. Gyms still loading (or undefined because the cache is cold).
   if (inputs.gymsLoading || inputs.gyms === undefined) return { kind: 'loading' }

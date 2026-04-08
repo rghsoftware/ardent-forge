@@ -22,7 +22,6 @@ import type { Gym } from '@/domain/types'
 // Props:
 //   - gym: the gym this row belongs to
 //   - isOpen: whether the panel should render (controlled by MyGymsList)
-//   - onToggle: collapse handler (wired to the "Show display" button)
 //
 // Origin resolution:
 //   - Web (isTauri() === false): `window.location.origin`
@@ -33,7 +32,6 @@ import type { Gym } from '@/domain/types'
 interface ShowDisplayPanelProps {
   gym: Gym
   isOpen: boolean
-  onToggle: () => void
 }
 
 export function ShowDisplayPanel({ gym, isOpen }: ShowDisplayPanelProps): ReactElement | null {
@@ -55,7 +53,7 @@ export function ShowDisplayPanel({ gym, isOpen }: ShowDisplayPanelProps): ReactE
         if (cancelled) return
         setOrigin(config?.appUrl ?? null)
       } catch (err) {
-        console.error('[display-setup] Failed to read config for origin:', err)
+        console.error('[show-display-panel] Failed to read config for origin:', err)
         if (!cancelled) setOrigin(null)
       } finally {
         if (!cancelled) setOriginLoaded(true)
@@ -78,11 +76,12 @@ export function ShowDisplayPanel({ gym, isOpen }: ShowDisplayPanelProps): ReactE
     )
   }
 
-  const url = buildDisplayUrl(gym.id, origin)
+  const urlResult = buildDisplayUrl(gym.id, origin)
 
-  if (url === null) {
+  if (!urlResult.ok) {
     return <BackfillForm gymId={gym.id} onRepaired={(newOrigin) => setOrigin(newOrigin)} />
   }
+  const url = urlResult.url
 
   const devOrigin = origin !== null && isDevOrigin(origin)
 
@@ -108,7 +107,7 @@ export function ShowDisplayPanel({ gym, isOpen }: ShowDisplayPanelProps): ReactE
               void copyToClipboard(url, {
                 successMessage: 'Display URL copied',
                 failureMessage: 'Copy failed -- long-press the URL to select it manually.',
-                logPrefix: 'display-setup',
+                logPrefix: 'show-display-panel',
               })
             }}
           >
@@ -178,12 +177,37 @@ function BackfillForm({ gymId, onRepaired }: BackfillFormProps): ReactElement {
     try {
       const result = await discoverInstance(serverUrl)
       if (!result.ok) {
-        console.error('[display-setup] Backfill discovery failed:', result.error, result.message)
-        setError('Could not verify that server. Check the URL and try again.')
+        // P15-007: Single error-object argument to stay within the
+        // `[module] Description:` convention (log aggregators drop positional
+        // args after the first error value).
+        // P15-032: Distinct user copy per failure code so users can self-correct.
+        console.error(
+          `[show-display-panel] Backfill discovery failed (${result.error}):`,
+          result.message,
+        )
+        switch (result.error) {
+          case 'NETWORK_ERROR':
+            setError('Could not reach that server. Check the URL and your connection.')
+            break
+          case 'NOT_FOUND':
+            setError('No Ardent Forge instance found at that URL.')
+            break
+          case 'INVALID_RESPONSE':
+            setError("That URL doesn't look like an Ardent Forge instance.")
+            break
+          case 'INVALID_INPUT':
+            setError('Enter a valid URL (including http:// or https://).')
+            break
+          default: {
+            const _exhaustive: never = result.error
+            console.warn('[show-display-panel] Unmapped discovery error:', _exhaustive)
+            setError('Could not verify that server. Check the URL and try again.')
+          }
+        }
         return
       }
       if (!result.appUrl) {
-        console.error('[display-setup] Backfill discovery returned no app_url')
+        console.error('[show-display-panel] Backfill discovery returned no app_url')
         setError('That server does not support display URLs. Upgrade the server and try again.')
         return
       }
@@ -191,7 +215,7 @@ function BackfillForm({ gymId, onRepaired }: BackfillFormProps): ReactElement {
       const store = getConfigStore()
       const existing = await store.getConfig()
       if (!existing) {
-        console.error('[display-setup] Backfill: no existing config to merge into')
+        console.error('[show-display-panel] Backfill: no existing config to merge into')
         setError('App is not configured yet. Complete setup first.')
         return
       }
@@ -200,10 +224,20 @@ function BackfillForm({ gymId, onRepaired }: BackfillFormProps): ReactElement {
         ...existing,
         appUrl: result.appUrl,
       }
-      await store.setConfig(merged)
+      // P15-004: Wrap setConfig in its own try/catch so Tauri SQLite write
+      // failures (quota exhaustion, broken plugin handle) produce a specific
+      // log and a persist-specific user message, not a generic "unexpected
+      // error" that could also mean the discovery fetch failed.
+      try {
+        await store.setConfig(merged)
+      } catch (persistErr) {
+        console.error('[show-display-panel] Backfill: setConfig failed', persistErr)
+        setError('Failed to save the repaired configuration. Try again or restart the app.')
+        return
+      }
       onRepaired(result.appUrl)
     } catch (err) {
-      console.error('[display-setup] Backfill unexpected error:', err)
+      console.error('[show-display-panel] Backfill unexpected error:', err)
       setError('Unexpected error. Check the URL and try again.')
     } finally {
       setSaving(false)

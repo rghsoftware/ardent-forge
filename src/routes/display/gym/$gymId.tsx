@@ -36,7 +36,9 @@ function DisplayGymPage() {
 
   // Validate the path param is a UUID. We do this here rather than in
   // validateSearch because $gymId is a path param, not a search param.
-  const isUuid = z.string().uuid().safeParse(gymId).success
+  // P15-046: Uses the Zod 4 top-level `z.uuid()` API (not the deprecated
+  // `z.string().uuid()`) so this file matches `display-url.ts`.
+  const isUuid = z.uuid().safeParse(gymId).success
 
   if (!isUuid) {
     return (

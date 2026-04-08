@@ -42,6 +42,30 @@ let _hasConnectedBefore = false
 const RETRY_BASE_MS = 2_000
 const RETRY_MAX_MS = 30_000
 
+// P15-012: Mirror `display-publisher.ts::removeChannelSafe` so subscriber
+// teardown paths cannot propagate a supabase throw. Each module keeps its
+// own failure counter so flapping in one surface doesn't silently reset the
+// other. Escalate warn -> error after 5 consecutive failures.
+let _removeChannelFailureCount = 0
+const REMOVE_CHANNEL_ESCALATE_AFTER = 5
+
+function removeChannelSafe(channel: RealtimeChannel, context: string): void {
+  if (!_client) return
+  try {
+    _client.removeChannel(channel)
+    _removeChannelFailureCount = 0
+  } catch (err) {
+    _removeChannelFailureCount++
+    const escalate = _removeChannelFailureCount >= REMOVE_CHANNEL_ESCALATE_AFTER
+    const logFn = escalate ? console.error : console.warn
+    logFn(
+      `[display-subscriber] removeChannel failed in ${context} ` +
+        `(consecutive=${_removeChannelFailureCount}${escalate ? ', escalated' : ''}):`,
+      err,
+    )
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Inline schemas for lightweight payload validation
 // ---------------------------------------------------------------------------
@@ -83,7 +107,7 @@ export function subscribeToDisplay({ gymId, handlers }: SubscribeToDisplayArgs):
 
   // Tear down any existing channel before creating a new one
   if (_channel) {
-    _client.removeChannel(_channel)
+    removeChannelSafe(_channel, 'subscribeToDisplay/existing')
     _channel = null
   }
 
@@ -147,7 +171,7 @@ export function subscribeToDisplay({ gymId, handlers }: SubscribeToDisplayArgs):
 
         // Remove the dead channel before clearing the reference (P6-002)
         if (_channel && _client) {
-          _client.removeChannel(_channel)
+          removeChannelSafe(_channel, `subscribe/${status}`)
         }
         _channel = null
 
@@ -196,7 +220,7 @@ export function destroyDisplaySubscriber(): void {
   }
 
   if (_channel && _client) {
-    _client.removeChannel(_channel)
+    removeChannelSafe(_channel, 'destroyDisplaySubscriber')
   }
 
   _channel = null
@@ -204,4 +228,5 @@ export function destroyDisplaySubscriber(): void {
   _status = 'disconnected'
   _retryAttempt = 0
   _hasConnectedBefore = false
+  _removeChannelFailureCount = 0
 }

@@ -76,14 +76,25 @@ function removeChannelSafe(channel: RealtimeChannel, context: string): void {
 /**
  * Lazily creates and subscribes the broadcast channel on first use for the
  * currently-active gym ID. Returns the channel, or null if the client is not
- * initialized or there is no active gym (Private workout).
+ * initialized or there is no active gym (Private workout OR publisher was
+ * never configured -- in the latter case `maybeLogSilentDrop` in the public
+ * entrypoints will log the drop before the caller sees the null).
  *
  * If the active gym ID has changed since the last call (i.e., the cached
  * channel was bound to a different gym), this helper tears down the stale
  * channel and creates a fresh one for the new gym.
  */
 function ensureChannel(): RealtimeChannel | null {
-  if (!_client) return null
+  if (!_client) {
+    // P15-015: In broadcasting mode the client should never be null (it is
+    // cleared on teardown, and broadcasting mode should have been cleared
+    // first). Log an error if this invariant is ever violated -- this is a
+    // logic-bug signal, not a routine silent-drop.
+    if (_publisherMode === 'broadcasting') {
+      console.error('[display-publisher] Invariant violation: broadcasting mode with null client')
+    }
+    return null
+  }
   if (_activeGymId === null) return null
 
   // If the cached channel is bound to a different gym, tear it down so we can
@@ -103,10 +114,6 @@ function ensureChannel(): RealtimeChannel | null {
   _channelGymId = _activeGymId
 
   _channel.on('broadcast', { event: 'display_hello' }, () => {
-    // Wrap responder invocation in try/catch -- the responder may call
-    // republishCurrentState() which can throw, and Supabase Realtime swallows
-    // exceptions inside `on` callbacks in some versions. Logging here ensures
-    // the failure is traceable instead of silently lost.
     if (!_helloResponder) {
       // P14-042: hello arrived during teardown (responder was cleared but
       // the channel hasn't been removed yet). Log at info so test logs and
@@ -116,6 +123,10 @@ function ensureChannel(): RealtimeChannel | null {
       )
       return
     }
+    // P15-005: Wrap responder invocation in try/catch -- the responder may
+    // call republishCurrentState() which can throw, and Supabase Realtime
+    // swallows exceptions inside `on` callbacks in some versions. Logging
+    // here ensures the failure is traceable instead of silently lost.
     try {
       _helloResponder()
     } catch (err) {

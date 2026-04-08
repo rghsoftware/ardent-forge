@@ -74,6 +74,12 @@ export function useGym(gymId: string | null | undefined) {
  * Creates a new gym owned by the current authenticated user.
  * Invalidates every gym list on success so the picker and browse view
  * immediately pick up the new row.
+ *
+ * P15-027: Invalidation lives in `onSuccess` (not `onSettled`) AND is
+ * awaited, so the caller's `onSuccess` navigation hand-off fires after
+ * the cache has been refreshed. Without this, a navigate -> back-nav
+ * sequence briefly flashes the dispatcher's `'zero'` state before the
+ * cache rehydrates.
  */
 export function useCreateGym() {
   const queryClient = useQueryClient()
@@ -83,8 +89,8 @@ export function useCreateGym() {
     onError: (err) => {
       console.error('[gyms] Failed to create gym:', err)
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['gyms'] })
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['gyms'] })
     },
   })
 }

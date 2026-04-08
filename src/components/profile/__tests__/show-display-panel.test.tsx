@@ -90,12 +90,12 @@ afterEach(() => {
 
 describe('ShowDisplayPanel (web)', () => {
   it('renders null when isOpen is false', () => {
-    const { container } = render(<ShowDisplayPanel gym={gym} isOpen={false} onToggle={() => {}} />)
+    const { container } = render(<ShowDisplayPanel gym={gym} isOpen={false} />)
     expect(container).toBeEmptyDOMElement()
   })
 
   it('renders URL + Copy + QR when origin is valid (production)', () => {
-    render(<ShowDisplayPanel gym={gym} isOpen={true} onToggle={() => {}} />)
+    render(<ShowDisplayPanel gym={gym} isOpen={true} />)
 
     const urlEl = screen.getByTestId(`show-display-url-${GYM_ID}`)
     expect(urlEl.textContent).toBe(`https://forge.example.com/display/gym/${GYM_ID}`)
@@ -108,7 +108,7 @@ describe('ShowDisplayPanel (web)', () => {
   })
 
   it('does not render the dev-origin warning for a production origin', () => {
-    render(<ShowDisplayPanel gym={gym} isOpen={true} onToggle={() => {}} />)
+    render(<ShowDisplayPanel gym={gym} isOpen={true} />)
 
     expect(screen.queryByTestId(`show-display-dev-warning-${GYM_ID}`)).not.toBeInTheDocument()
   })
@@ -119,14 +119,14 @@ describe('ShowDisplayPanel (web)', () => {
       value: { origin: 'http://localhost:5173' },
     })
 
-    render(<ShowDisplayPanel gym={gym} isOpen={true} onToggle={() => {}} />)
+    render(<ShowDisplayPanel gym={gym} isOpen={true} />)
 
     expect(screen.getByTestId(`show-display-dev-warning-${GYM_ID}`)).toBeInTheDocument()
   })
 
   it('Copy button calls copyToClipboard with the URL and expected messages', async () => {
     const user = userEvent.setup()
-    render(<ShowDisplayPanel gym={gym} isOpen={true} onToggle={() => {}} />)
+    render(<ShowDisplayPanel gym={gym} isOpen={true} />)
 
     await user.click(screen.getByTestId(`show-display-copy-${GYM_ID}`))
 
@@ -157,7 +157,7 @@ describe('ShowDisplayPanel (Tauri with appUrl)', () => {
   })
 
   it('renders URL from config.appUrl', async () => {
-    render(<ShowDisplayPanel gym={gym} isOpen={true} onToggle={() => {}} />)
+    render(<ShowDisplayPanel gym={gym} isOpen={true} />)
 
     await waitFor(() => {
       expect(screen.getByTestId(`show-display-url-${GYM_ID}`)).toBeInTheDocument()
@@ -183,7 +183,7 @@ describe('ShowDisplayPanel D22 backfill form', () => {
   })
 
   it('renders the backfill form when config.appUrl is missing', async () => {
-    render(<ShowDisplayPanel gym={gym} isOpen={true} onToggle={() => {}} />)
+    render(<ShowDisplayPanel gym={gym} isOpen={true} />)
 
     await waitFor(() => {
       expect(screen.getByTestId(`show-display-backfill-${GYM_ID}`)).toBeInTheDocument()
@@ -203,7 +203,7 @@ describe('ShowDisplayPanel D22 backfill form', () => {
     })
     mockSetConfig.mockResolvedValueOnce(undefined)
 
-    render(<ShowDisplayPanel gym={gym} isOpen={true} onToggle={() => {}} />)
+    render(<ShowDisplayPanel gym={gym} isOpen={true} />)
 
     const input = await screen.findByTestId(`show-display-backfill-input-${GYM_ID}`)
     await user.type(input, 'forge.example.com')
@@ -238,7 +238,7 @@ describe('ShowDisplayPanel D22 backfill form', () => {
       message: 'Could not reach the server.',
     })
 
-    render(<ShowDisplayPanel gym={gym} isOpen={true} onToggle={() => {}} />)
+    render(<ShowDisplayPanel gym={gym} isOpen={true} />)
 
     const input = await screen.findByTestId(`show-display-backfill-input-${GYM_ID}`)
     await user.type(input, 'bad-host.local')
@@ -249,10 +249,17 @@ describe('ShowDisplayPanel D22 backfill form', () => {
     })
     // Form remains visible.
     expect(screen.getByTestId(`show-display-backfill-input-${GYM_ID}`)).toBeInTheDocument()
+    // P15-007: Log format is `[module] Description:` (one description string
+    // + one error-like value), not three positional args. The error code is
+    // interpolated into the description so log aggregators do not drop it.
     expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[display-setup] Backfill discovery failed'),
-      'NETWORK_ERROR',
+      expect.stringContaining('[show-display-panel] Backfill discovery failed (NETWORK_ERROR)'),
       'Could not reach the server.',
+    )
+    // P15-032: NETWORK_ERROR should produce a network-specific message, not
+    // the generic "Could not verify that server" from before the fix.
+    expect(screen.getByTestId(`show-display-backfill-error-${GYM_ID}`)).toHaveTextContent(
+      /reach that server/i,
     )
     errorSpy.mockRestore()
   })
@@ -260,7 +267,7 @@ describe('ShowDisplayPanel D22 backfill form', () => {
   it('surfaces validation error when server URL is empty', async () => {
     const user = userEvent.setup()
 
-    render(<ShowDisplayPanel gym={gym} isOpen={true} onToggle={() => {}} />)
+    render(<ShowDisplayPanel gym={gym} isOpen={true} />)
 
     await screen.findByTestId(`show-display-backfill-input-${GYM_ID}`)
     await user.click(screen.getByTestId(`show-display-backfill-save-${GYM_ID}`))

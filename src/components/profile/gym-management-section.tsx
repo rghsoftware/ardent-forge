@@ -92,7 +92,11 @@ function MyGymsList({ userId }: MyGymsListProps): ReactElement {
   const [openDisplayRowId, setOpenDisplayRowId] = useState<string | null>(null)
 
   const handleLeave = (gym: Gym) => {
-    leaveGym.mutate(gym.id)
+    leaveGym.mutate(gym.id, {
+      onError: (err) => {
+        console.error('[gym-mgmt] leaveGym failed', { gymId: gym.id }, err)
+      },
+    })
   }
 
   const handleDeleteRequest = (gym: Gym) => {
@@ -101,12 +105,16 @@ function MyGymsList({ userId }: MyGymsListProps): ReactElement {
 
   const handleDeleteConfirm = () => {
     if (!pendingDelete) return
+    const gymId = pendingDelete.id
     // Defer dialog close to onSuccess so the user sees the error inside the
     // dialog (not in a banner they may have scrolled away from), and so a
     // failed delete cannot be silently masked by an optimistic close.
-    deleteGym.mutate(pendingDelete.id, {
+    deleteGym.mutate(gymId, {
       onSuccess: () => {
         setPendingDelete(null)
+      },
+      onError: (err) => {
+        console.error('[gym-mgmt] deleteGym failed', { gymId }, err)
       },
     })
   }
@@ -245,8 +253,27 @@ function MyGymRow({
   // Live member count per row. This is N+1 across the My gyms list, but
   // typical users belong to 1-5 gyms so the cost is bounded; revisit with a
   // single aggregated query if member-count UX expands to admin-style views.
-  const { data: members, isLoading: membersLoading, isError: membersError } = useGymMembers(gym.id)
+  const {
+    data: members,
+    isLoading: membersLoading,
+    isError: membersError,
+    error: membersErrorObj,
+  } = useGymMembers(gym.id)
   const memberCountLabel = membersLoading ? '--' : membersError ? '?' : (members?.length ?? 0)
+
+  // P15-013: Log the member-count fetch error so a transient backend hiccup
+  // that renders '?' for every row is visible in production traces. Logged
+  // at warn level because the rendered UI already communicates degraded
+  // state to the user.
+  useEffect(() => {
+    if (membersError) {
+      console.warn(
+        '[gym-mgmt] Member count fetch failed for gym',
+        { gymId: gym.id },
+        membersErrorObj,
+      )
+    }
+  }, [membersError, membersErrorObj, gym.id])
 
   return (
     <li
@@ -297,7 +324,7 @@ function MyGymRow({
           )}
         </div>
       </div>
-      <ShowDisplayPanel gym={gym} isOpen={isDisplayOpen} onToggle={onToggleDisplay} />
+      <ShowDisplayPanel gym={gym} isOpen={isDisplayOpen} />
     </li>
   )
 }
@@ -311,9 +338,11 @@ interface BrowseAllGymsListProps {
 }
 
 function BrowseAllGymsList({ userId }: BrowseAllGymsListProps): ReactElement {
-  // TODO: paginate when gyms.length > ~50 (Spec.md S8, RD-19). The underlying
-  // query is index-friendly and shape-compatible with LIMIT/OFFSET per M22
-  // and M24, so adding pagination later is a half-day change.
+  // TODO(backlog): paginate when gyms.length > ~50. See
+  // Context/Backlog/gym-management-pagination.md and Spec.md S8 / RD-19.
+  // The underlying query is index-friendly and shape-compatible with
+  // LIMIT/OFFSET per M22 and M24, so adding pagination later is a
+  // half-day change.
   const {
     data: allGyms,
     isLoading: allGymsLoading,
@@ -353,7 +382,11 @@ function BrowseAllGymsList({ userId }: BrowseAllGymsListProps): ReactElement {
   const joinedSet = useMemo(() => new Set((myGyms ?? []).map((g) => g.id)), [myGyms])
 
   const handleJoin = (gymId: string) => {
-    joinGym.mutate(gymId)
+    joinGym.mutate(gymId, {
+      onError: (err) => {
+        console.error('[gym-mgmt] joinGym failed', { gymId }, err)
+      },
+    })
   }
 
   const handleRetry = () => {

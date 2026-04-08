@@ -196,6 +196,15 @@ function SetupPage() {
       // clients can build display URLs pointing at the real server host
       // instead of `tauri://localhost`. Falls through to the D22 backfill
       // path when the server is pre-F019 and omits the field.
+      //
+      // P15-030: `result.appUrl === undefined` is the "pre-F019 server"
+      // programmatic signal. Surface a one-off toast so users understand
+      // why display URLs will require a manual repair later in Profile.
+      if (result.appUrl === undefined) {
+        toast(
+          'Display URLs will require one-time manual setup later in Profile — this server is an older version.',
+        )
+      }
       await validateAndSave(result.supabaseUrl, result.supabaseKey, result.appUrl)
     } catch (err) {
       console.error('[setup] Unexpected error in handleDiscoverAndConnect:', err)
@@ -364,12 +373,9 @@ function SetupPage() {
         )}
       </div>
 
-      {/* "Or" divider */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 border-t border-surface-charcoal" />
-        <span className="text-xs text-industrial">or</span>
-        <div className="flex-1 border-t border-surface-charcoal" />
-      </div>
+      {/* Section break via spacing + centered label per Iron & Ember
+          "no divider lines" rule (.claude/rules/layout-conventions.md). */}
+      <div className="my-6 text-center text-xs text-industrial">or</div>
 
       {/* Manual configuration toggle */}
       <button

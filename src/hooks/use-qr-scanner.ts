@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
+import { toast } from 'sonner'
 
 // ---------------------------------------------------------------------------
 // useQrScanner -- Tauri barcode scanner hook (F019 D12)
@@ -80,7 +81,12 @@ export function useQrScanner(): UseQrScannerResult | null {
       let perms = await checkPermissions()
       if (perms === 'prompt') perms = await requestPermissions()
       if (perms !== 'granted') {
+        // P15-031: surface a toast so the user understands why the camera
+        // didn't open and the settings app launched. Without this, the
+        // permission-denied path is indistinguishable from a cancelled
+        // scan to the caller (both return null).
         console.error('[qr-scanner] Camera permission not granted:', perms)
+        toast('Camera permission is required to scan QR codes. Opening Settings.')
         await openAppSettings()
         return null
       }

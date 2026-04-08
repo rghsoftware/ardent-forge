@@ -238,6 +238,13 @@ describe('DisplaySetupPanel Scan QR', () => {
       expect(mockToast).toHaveBeenCalledWith('Scanned code is not a display URL')
     })
     expect(mockNavigate).not.toHaveBeenCalled()
+    // P15-043: After a failed scan, focus should return to the URL input so
+    // the user has an obvious next step (paste manually). If a future
+    // refactor removes the `inputRef.current?.focus()` call, this
+    // assertion fails fast.
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByTestId('display-setup-panel-a-input'))
+    })
   })
 
   it('cancelled scan (returns null) is silent', async () => {

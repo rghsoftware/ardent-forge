@@ -59,12 +59,11 @@ export function DisplaySetupPanel({ userId }: DisplaySetupPanelProps): ReactElem
   const handleSubmit = () => {
     const result = parseDisplayUrlInput(input)
     if (!result.ok) {
+      console.error('[display-setup-panel] Panel A submit rejected:', result.reason)
       setPanelAError(
         result.reason === 'empty'
           ? 'Enter a display URL.'
-          : result.reason === 'not-a-uuid'
-            ? 'That does not look like a display URL.'
-            : 'That does not look like a display URL.',
+          : 'That does not look like a display URL.',
       )
       return
     }
@@ -78,6 +77,7 @@ export function DisplaySetupPanel({ userId }: DisplaySetupPanelProps): ReactElem
     if (content === null) return
     const result = parseDisplayUrlInput(content)
     if (!result.ok) {
+      console.error('[display-setup-panel] Panel A scan rejected:', result.reason)
       toast('Scanned code is not a display URL')
       inputRef.current?.focus()
       return
@@ -96,6 +96,9 @@ export function DisplaySetupPanel({ userId }: DisplaySetupPanelProps): ReactElem
             params: { gymId: newGym.id },
             replace: true,
           })
+        },
+        onError: (err) => {
+          console.error('[display-setup-panel] createGym failed:', err)
         },
       },
     )
@@ -168,12 +171,9 @@ export function DisplaySetupPanel({ userId }: DisplaySetupPanelProps): ReactElem
           )}
         </section>
 
-        {/* Divider */}
-        <div className="my-8 flex items-center gap-3">
-          <div className="flex-1 border-t border-surface-steel" />
-          <span className="text-xs uppercase tracking-widest text-warm-ash">or</span>
-          <div className="flex-1 border-t border-surface-steel" />
-        </div>
+        {/* Section break via spacing + centered label per Iron & Ember
+            "no divider lines" rule (.claude/rules/layout-conventions.md). */}
+        <div className="my-10 text-center text-xs uppercase tracking-widest text-warm-ash">or</div>
 
         {/* Panel B: Personal display */}
         <section className="space-y-3">

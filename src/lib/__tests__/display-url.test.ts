@@ -85,6 +85,10 @@ describe('parseDisplayUrlInput', () => {
   })
 
   describe('rejection cases', () => {
+    // P15-010 / P15-035: parseDisplayUrlInput returns only two failure
+    // reasons -- 'empty' and 'invalid'. The earlier three-variant API
+    // (empty / malformed / not-a-uuid) exposed distinctions the UI could
+    // not meaningfully surface to users.
     it('rejects empty input', () => {
       expect(parseDisplayUrlInput('')).toEqual({ ok: false, reason: 'empty' })
     })
@@ -95,37 +99,37 @@ describe('parseDisplayUrlInput', () => {
 
     it('rejects a URL with the wrong path shape', () => {
       const result = parseDisplayUrlInput(`https://forge.example.com/other/path/${VALID_UUID}`)
-      expect(result).toEqual({ ok: false, reason: 'malformed' })
+      expect(result).toEqual({ ok: false, reason: 'invalid' })
     })
 
     it('rejects a URL without /display/gym prefix', () => {
       const result = parseDisplayUrlInput(`https://forge.example.com/${VALID_UUID}`)
-      expect(result).toEqual({ ok: false, reason: 'malformed' })
+      expect(result).toEqual({ ok: false, reason: 'invalid' })
     })
 
     it('rejects a full URL with a non-UUID tail', () => {
       const result = parseDisplayUrlInput('https://forge.example.com/display/gym/not-a-uuid')
-      expect(result).toEqual({ ok: false, reason: 'not-a-uuid' })
+      expect(result).toEqual({ ok: false, reason: 'invalid' })
     })
 
     it('rejects a path-only URL with a non-UUID tail', () => {
       const result = parseDisplayUrlInput('/display/gym/not-a-uuid')
-      expect(result).toEqual({ ok: false, reason: 'not-a-uuid' })
+      expect(result).toEqual({ ok: false, reason: 'invalid' })
     })
 
     it('rejects a bare non-UUID token', () => {
-      expect(parseDisplayUrlInput('not-a-uuid')).toEqual({ ok: false, reason: 'not-a-uuid' })
+      expect(parseDisplayUrlInput('not-a-uuid')).toEqual({ ok: false, reason: 'invalid' })
     })
 
     it('rejects a javascript: URL', () => {
       expect(parseDisplayUrlInput('javascript:alert(1)')).toEqual({
         ok: false,
-        reason: 'not-a-uuid',
+        reason: 'invalid',
       })
     })
 
     it('rejects a URL missing the UUID entirely', () => {
-      expect(parseDisplayUrlInput('/display/gym/')).toEqual({ ok: false, reason: 'malformed' })
+      expect(parseDisplayUrlInput('/display/gym/')).toEqual({ ok: false, reason: 'invalid' })
     })
   })
 })
@@ -136,25 +140,28 @@ describe('parseDisplayUrlInput', () => {
 
 describe('buildDisplayUrl', () => {
   it('composes the canonical URL from origin + gym id', () => {
-    expect(buildDisplayUrl(VALID_UUID, 'https://forge.example.com')).toBe(
-      `https://forge.example.com/display/gym/${VALID_UUID}`,
-    )
+    expect(buildDisplayUrl(VALID_UUID, 'https://forge.example.com')).toEqual({
+      ok: true,
+      url: `https://forge.example.com/display/gym/${VALID_UUID}`,
+    })
   })
 
-  it('returns null when origin is null', () => {
-    expect(buildDisplayUrl(VALID_UUID, null)).toBeNull()
+  it('returns { ok: false, reason: no-origin } when origin is null', () => {
+    expect(buildDisplayUrl(VALID_UUID, null)).toEqual({ ok: false, reason: 'no-origin' })
   })
 
   it('strips a trailing slash from origin', () => {
-    expect(buildDisplayUrl(VALID_UUID, 'https://forge.example.com/')).toBe(
-      `https://forge.example.com/display/gym/${VALID_UUID}`,
-    )
+    expect(buildDisplayUrl(VALID_UUID, 'https://forge.example.com/')).toEqual({
+      ok: true,
+      url: `https://forge.example.com/display/gym/${VALID_UUID}`,
+    })
   })
 
   it('handles a dev origin with a port', () => {
-    expect(buildDisplayUrl(VALID_UUID, 'http://localhost:5173')).toBe(
-      `http://localhost:5173/display/gym/${VALID_UUID}`,
-    )
+    expect(buildDisplayUrl(VALID_UUID, 'http://localhost:5173')).toEqual({
+      ok: true,
+      url: `http://localhost:5173/display/gym/${VALID_UUID}`,
+    })
   })
 })
 

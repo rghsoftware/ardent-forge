@@ -6,12 +6,14 @@ import userEvent from '@testing-library/user-event'
 import type { Gym } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
-// S015-T: end-to-end-ish tests for /display dispatcher (F019)
+// S015-T: integration tests for /display DisplayDispatcher (F019)
 //
-// We mount the DisplayDispatcher component the route renders directly,
-// driving auth and gym query state from mocked hooks. This sidesteps the
-// real RouterProvider while still exercising the integration seam between
-// the dispatcher, sub-views, and shared mutations.
+// P15-042: File renamed from -dispatcher-route.test.tsx -- it does NOT
+// test the TanStack Router route shell (which is a 5-line module covered
+// by -gym-route.test.tsx). It mounts the DisplayDispatcher component
+// directly, driving auth and gym query state from mocked hooks, so it
+// exercises the integration seam between the dispatcher, sub-views, and
+// shared mutations without the real RouterProvider.
 // ---------------------------------------------------------------------------
 
 const {

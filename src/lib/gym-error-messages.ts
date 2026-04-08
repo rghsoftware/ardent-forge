@@ -13,14 +13,29 @@
 // ---------------------------------------------------------------------------
 
 /**
- * Narrow type guard for PG/PostgREST error shapes. The Supabase client can
- * return errors as any of: a plain Error, a PostgrestError object, or a
- * bare `{ code, message }` shape — so this guard accepts anything that is
- * an object with either `code` or `message`.
+ * P15-033: Exported alias for the gym mutation action kinds so consumers
+ * (gym-management-section, display-setup-panel, display-chooser) can type
+ * their handlers without duplicating the literal union.
+ */
+export type GymMutationAction = 'create' | 'join' | 'leave' | 'delete'
+
+/**
+ * P15-037: Narrow type guard for PG/PostgREST error shapes. Accepts any
+ * object that has SHAPE-like error metadata (either a `code` or a
+ * `message` field). Historically named `isPgError` but really means
+ * "has an error-like object shape"; keep the name for call-site
+ * compatibility and clarify in the JSDoc.
  */
 export function isPgError(err: unknown): err is { code?: string; message?: string } {
   return typeof err === 'object' && err !== null && ('code' in err || 'message' in err)
 }
+
+/**
+ * P15-038: Known gym-mutation Postgres/PostgREST error codes. Declared as
+ * a `const` tuple so adding a new mapping forces an exhaustive review in
+ * the switch below (via the narrowed `PgGymCode` type).
+ */
+export const PG_GYM_CODES = ['23505', '42501', 'PGRST116'] as const
 
 /**
  * Maps a Postgres/PostgREST error to a user-facing message keyed by the
@@ -28,14 +43,12 @@ export function isPgError(err: unknown): err is { code?: string; message?: strin
  * one helper covers create / join / leave / delete without stringly-typed
  * branching in call sites.
  */
-export function gymErrorMessage(
-  err: unknown,
-  action: 'create' | 'join' | 'leave' | 'delete',
-): string {
+export function gymErrorMessage(err: unknown, action: GymMutationAction): string {
   if (!isPgError(err)) {
     return `Failed to ${action} gym. Check your connection and try again.`
   }
-  switch (err.code) {
+  const code = err.code
+  switch (code) {
     case '23505': // unique_violation
       return action === 'create'
         ? 'A gym with this name already exists. Choose a different name.'
@@ -45,6 +58,11 @@ export function gymErrorMessage(
     case 'PGRST116': // PostgREST: no rows
       return `Failed to ${action} gym -- it may have been deleted. Refresh the list.`
     default:
+      // P15-039: warn when the PG-code fallback fires so operators get a
+      // signal when new codes start appearing (schema drift, new RLS
+      // policy errors, Supabase error type changes). Safety-net coercions
+      // at a boundary should be observable per .claude/rules/error-handling.md.
+      console.warn(`[gym-error-messages] Unmapped PG code for ${action}:`, code ?? '(no code)', err)
       return `Failed to ${action} gym. Check your connection and try again.`
   }
 }

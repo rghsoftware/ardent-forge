@@ -8,11 +8,13 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 // response so Tauri clients can persist a usable host at setup time and
 // later build display URLs that are reachable from outside the device.
 //
-// Uses `x-forwarded-proto` when present (Vercel edge sets this for TLS-
-// terminated requests, and Caddy in the self-hosted docker-compose also
-// forwards it). Defaults to `https` otherwise. Returns `undefined` when
-// the host header is missing so the caller can log and omit the field
-// cleanly instead of emitting a broken `https://undefined` value.
+// Reads `x-forwarded-proto` when present and defaults to `https`. Vercel
+// sets this header automatically; self-hosters running a reverse proxy
+// (Caddy, nginx, Traefik, etc.) should verify that their proxy forwards
+// the header -- the fallback is safe but collapses http-only deployments
+// to https-in-URL, which TVs on the same LAN will not be able to reach.
+// Returns `undefined` when the host header is missing so the caller can
+// log and omit the field cleanly instead of emitting `https://undefined`.
 // ---------------------------------------------------------------------------
 function computeAppUrl(req: VercelRequest): string | undefined {
   const host = req.headers.host

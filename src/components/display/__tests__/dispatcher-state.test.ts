@@ -52,16 +52,39 @@ describe('computeDispatcherState', () => {
   })
 
   it('unauthenticated beats gyms-error', () => {
-    const state = computeDispatcherState({ ...baseInputs, user: null, gymsError: true })
+    const state = computeDispatcherState({
+      ...baseInputs,
+      user: null,
+      gymsError: true,
+      gyms: undefined,
+    })
     expect(state.kind).toBe('unauthenticated')
   })
 
-  it('returns error with the refetch callback when gyms query failed', () => {
-    const state = computeDispatcherState({ ...baseInputs, gymsError: true })
+  it('returns error with the refetch callback when gyms query failed and no cached data', () => {
+    const state = computeDispatcherState({ ...baseInputs, gymsError: true, gyms: undefined })
     expect(state.kind).toBe('error')
     if (state.kind === 'error') {
       expect(state.retry).toBe(refetch)
     }
+  })
+
+  it('P15-028: falls through to many() on refetch error with stale cached data', () => {
+    // Transient error on refetch should not blow away the chooser when
+    // stale data is still cached. The dispatcher logs the error via a
+    // separate useEffect in display-dispatcher.tsx.
+    const gyms = [makeGym({ id: 'a' }), makeGym({ id: 'b' })]
+    const state = computeDispatcherState({ ...baseInputs, gymsError: true, gyms })
+    expect(state.kind).toBe('many')
+  })
+
+  it('P15-028: falls through to single() on refetch error with stale cached data', () => {
+    const state = computeDispatcherState({
+      ...baseInputs,
+      gymsError: true,
+      gyms: [makeGym({ id: 'g1' })],
+    })
+    expect(state).toEqual({ kind: 'single', gymId: 'g1' })
   })
 
   it('returns loading while gyms query is loading', () => {
@@ -96,11 +119,12 @@ describe('computeDispatcherState', () => {
     }
   })
 
-  it('gyms-error beats gyms-loading (operator can retry instead of waiting forever)', () => {
+  it('gyms-error beats gyms-loading when no cached data (operator can retry)', () => {
     const state = computeDispatcherState({
       ...baseInputs,
       gymsLoading: true,
       gymsError: true,
+      gyms: undefined,
     })
     expect(state.kind).toBe('error')
   })

@@ -13,6 +13,12 @@
 // localStorage can throw in environments where it is unavailable (e.g.,
 // Safari private mode, quota exceeded, sandboxed iframe). All catch blocks
 // log with the `[gym-picker]` prefix per .claude/rules/error-handling.md.
+//
+// BOTH `readLastGymChoice` AND `writeLastGymChoice` validate against
+// `isValidChoice` at the module boundary per .claude/rules/state-management.md
+// (Module-State Setter Validation). This file is listed as a canonical
+// example in that rule -- garbage cannot enter OR leave the storage
+// boundary even if a future caller bypasses upstream validation.
 // ---------------------------------------------------------------------------
 
 export const GYM_PICKER_STORAGE_KEY = 'ardent_forge_last_gym_choice'
@@ -72,6 +78,10 @@ export function readLastGymChoice(): GymPickerChoice | null {
  * "could not save preference" toast (P14-014). The current workout still
  * proceeds normally regardless -- the sticky default is a convenience, not
  * a correctness boundary.
+ *
+ * Validates against `isValidChoice` at the module boundary so a future
+ * caller cannot quietly bypass upstream validation
+ * (.claude/rules/state-management.md). See P14-006 / module header.
  */
 export function writeLastGymChoice(choice: GymPickerChoice): boolean {
   if (!isValidChoice(choice)) {

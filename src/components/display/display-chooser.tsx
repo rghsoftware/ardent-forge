@@ -10,11 +10,13 @@ import type { Gym } from '@/domain/types'
 // ---------------------------------------------------------------------------
 // DisplayChooser -- 2+-gym full-page selection (F019 D14, M10-M11, TA6-TA7)
 //
-// Lists every gym the user is a member of as a real <Link> so the browser
-// can hover-preview the destination and middle-click opens in a new tab.
-// Renders a muted tonal "Start a personal display" row at the bottom so
-// multi-gym users can still opt into the zero-ceremony personal flow
-// without having to leave all their gyms first (Spec RD-16 / TA23).
+// Lists every gym as a real <Link> so the browser (web build) preserves
+// native affordances -- hover preview, middle-click-to-new-tab, and the
+// browser URL bar. On Tauri the <Link> still renders correctly; these
+// affordances are web-only. Renders a muted tonal "Start a personal
+// display" row at the bottom so multi-gym users can still opt into the
+// zero-ceremony personal flow without having to leave all their gyms
+// first (Spec RD-16 / TA23).
 // ---------------------------------------------------------------------------
 
 interface DisplayChooserProps {
@@ -38,6 +40,9 @@ export function DisplayChooser({ gyms, userId }: DisplayChooserProps): ReactElem
             params: { gymId: newGym.id },
             replace: true,
           })
+        },
+        onError: (err) => {
+          console.error('[display-chooser] createGym failed:', err)
         },
       },
     )
@@ -65,7 +70,7 @@ export function DisplayChooser({ gyms, userId }: DisplayChooserProps): ReactElem
           ))}
         </ul>
 
-        <div className="mt-8 border-t border-surface-steel pt-6">
+        <div className="mt-8 bg-surface-pit/40 px-4 py-6">
           <p className="mb-3 font-sans text-xs uppercase tracking-widest text-warm-ash">Or</p>
           <Button
             type="button"

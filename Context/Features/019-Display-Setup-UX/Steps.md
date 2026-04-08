@@ -5,9 +5,9 @@
 
 ## Progress
 
-- **Status:** Complete
+- **Status:** Complete (Waves 1-7); Wave 8 post-review follow-ups pending
 - **Current task:** --
-- **Last milestone:** M7 (S016-QA pending manual Android pass)
+- **Last milestone:** M7 (S016-QA pending manual Android pass); Wave 8 added 2026-04-07 from PR review resolve session
 
 ## Team Orchestration
 
@@ -362,11 +362,64 @@ Read-only QA. Nothing to build. Catches anything the per-task tests missed.
 
 ---
 
+### Wave 8: Post-review follow-ups
+
+Tasks captured from the PR review in `Context/Reviews/0015-pr91-f019-display-setup-ux-review.md`. These are coverage gaps and hardening items that did not block the PR merge but should be worked in a follow-up session.
+
+- [ ] **S018-T (P15-021):** Rewrite `supabase/tests/018_gym_owner_enroll.sql` Section 2 so it actually exercises the trigger's idempotency path rather than the standalone `on conflict` clause. One approach: drop the trigger, manually insert a pre-existing `gym_members` row, re-create the trigger, then update the gym row to re-fire it — asserting no duplicate-row error. Also rename the file prefix and header from `018_*` / "F018" to F019 for traceability against migration `20260407000004_enroll_gym_creator.sql`.
+  - **Assigned:** fe-broadcast
+  - **Depends:** none
+  - **Parallel:** true
+
+- [ ] **S019-T (P15-022):** Add a `ShowDisplayPanel` test at `src/components/profile/__tests__/show-display-panel.test.tsx` covering the Tauri `getConfig()` rejection path. Mock `mockGetConfig.mockRejectedValue(new Error('store corrupted'))` and assert the backfill panel renders and the expected `[show-display-panel]` log is emitted. Verifies Spec.md **TA2**.
+  - **Assigned:** fe-ui
+  - **Depends:** none
+  - **Parallel:** true
+
+- [ ] **S020-T (P15-023):** Add tests at `src/hooks/__tests__/use-qr-scanner.test.tsx` for the standalone `result.current.cancel()` export. Cover: `cancel()` is a no-op when no scan is in progress (cancelRef null guard); `cancel()` resets `scanning` state and clears `cancelRef` after a completed scan. Exercises the Cancel button path in `setup.tsx:235`.
+  - **Assigned:** fe-ui
+  - **Depends:** none
+  - **Parallel:** true
+
+- [ ] **S021-T (P15-049):** Stabilize `src/lib/__tests__/display-publisher-hello.test.ts` — the current "force channel creation by publishing" pattern implicitly couples the test to the publisher's lazy-init strategy. Either extract an explicit `ensureChannel`/`subscribe` test-only hook, or add a comment documenting the implicit dependency so a future refactor that subscribes during `init()` doesn't silently pass the test for the wrong reason.
+  - **Assigned:** fe-broadcast
+  - **Depends:** none
+  - **Parallel:** true
+
+- [ ] **S022-T (P15-050):** Add `it('returns INVALID_INPUT for a javascript: URL', ...)` to `src/lib/__tests__/discovery.test.ts` rejection cases, parallel to the existing `file://` and `ftp://` cases. Defense-in-depth for the security boundary at the setup discovery flow — `display-url.test.ts` already covers the parser side.
+  - **Assigned:** fe-broadcast
+  - **Depends:** none
+  - **Parallel:** true
+
+- [ ] **S023 (P15-051):** Wire an external alerting hook for `supabase/functions/display-idle-snapshot/index.ts` permanent-failure classification. When all failures share a single error code (systemic regression), return a structured `permanent_failure: true` field AND emit a Sentry breadcrumb (or equivalent) so operators get paged instead of relying on someone watching function logs.
+  - **Assigned:** fe-broadcast
+  - **Depends:** none
+  - **Parallel:** true
+
+- [ ] **S024-T (P15-052):** Add a round-trip property test at `src/lib/__tests__/display-url.test.ts`: assert `parseDisplayUrlInput(buildDisplayUrl(uuid, origin).url).gymId === uuid` for a range of random UUIDs and origins. Fast-check or a simple loop over a fixed UUID set. Catches any future divergence between the parser and builder.
+  - **Assigned:** fe-broadcast
+  - **Depends:** none
+  - **Parallel:** true
+
+- [ ] **S025-T (P15-053):** Introduce `src/test/fixtures/gym.ts` exporting `makeGym(overrides: Partial<Gym> = {}): Gym` that runs the result through `gymSchema.parse` so test inputs are validated identically to production data. Migrate existing fixtures in `dispatcher-state.test.ts`, `display-dispatcher.test.tsx`, and `display-chooser.test.tsx` opportunistically.
+  - **Assigned:** fe-ui
+  - **Depends:** none
+  - **Parallel:** true
+
+- [ ] **S026-T (P15-054):** Add a Tauri-mode dev-origin warning test to `src/components/profile/__tests__/show-display-panel.test.tsx`. Mock `mockGetConfig.mockResolvedValue({ ..., appUrl: 'http://localhost:5173' })` and assert the dev-origin warning renders (the existing web-mode test only mutates `window.location.origin`).
+  - **Assigned:** fe-ui
+  - **Depends:** none
+  - **Parallel:** true
+
+🏁 **MILESTONE M8:** PR review follow-ups addressed.
+
+---
+
 ## Summary
 
-- **Total tasks:** 27 (13 implementation, 11 tests, 1 refactor verification, 1 doc, 1 QA smoke, 1 validation)
-- **Wave count:** 7
-- **Parallel opportunities:** Wave 1 (4 tasks), Wave 2 (2 tasks), Wave 5 parallel subset (S011 + S012 can run alongside each other before S013/S014)
+- **Total tasks:** 36 (13 implementation, 11 tests, 1 refactor verification, 1 doc, 1 QA smoke, 1 validation, 9 post-review follow-ups)
+- **Wave count:** 8
+- **Parallel opportunities:** Wave 1 (4 tasks), Wave 2 (2 tasks), Wave 5 parallel subset (S011 + S012 can run alongside each other before S013/S014), Wave 8 (all 9 post-review tasks are independent)
 - **Estimated critical path:** S001 → S005 → S008 → S009 → S010 → S015-T → S016-QA → S017-V (through Wave 4 work on S010, Wave 5 work depends on Wave 3, Wave 6 depends on Wave 5, Wave 7 depends on Wave 4 and Wave 6)
 - **New files:** 10 source + 10 test (matches Tech.md's File Structure)
 - **Modified files:** 6 (`api/discovery.ts`, `src/lib/config-store.ts`, the discovery callback, `src/routes/display/index.tsx`, `src/components/profile/gym-management-section.tsx`, `src/routes/setup.tsx`)

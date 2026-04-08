@@ -1,4 +1,4 @@
-import { type ReactElement } from 'react'
+import { useEffect, useRef, type ReactElement } from 'react'
 import { Navigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth'
@@ -25,7 +25,28 @@ import { DisplayChooser } from './display-chooser'
 export function DisplayDispatcher(): ReactElement {
   const auth = useAuth()
   const userId = auth.user?.id
-  const gymsQuery = useGyms(userId ?? '')
+  const gymsQuery = useGyms(userId)
+
+  // P15-003: Log the actual gymsQuery error so operators can distinguish RLS
+  // denial, schema drift, expired publishable keys, and transient network
+  // blips. Without this the DispatcherErrorState renders a generic "could not
+  // load" banner with zero production trace.
+  useEffect(() => {
+    if (gymsQuery.isError) {
+      console.error('[display-dispatcher] gyms query failed', gymsQuery.error)
+    }
+  }, [gymsQuery.isError, gymsQuery.error])
+
+  // P15-009: One-shot breadcrumb so operators can distinguish "auth state
+  // momentarily null during refresh" from "genuinely signed out" when a user
+  // reports seeing the legacy DISPLAY NOT CONFIGURED page.
+  const loggedUnauthRef = useRef(false)
+  useEffect(() => {
+    if (!auth.loading && auth.user === null && !loggedUnauthRef.current) {
+      console.info('[display-dispatcher] Unauthenticated user hit /display — showing legacy page')
+      loggedUnauthRef.current = true
+    }
+  }, [auth.loading, auth.user])
 
   const state = computeDispatcherState({
     authLoading: auth.loading,
@@ -49,6 +70,12 @@ export function DisplayDispatcher(): ReactElement {
       return <Navigate to="/display/gym/$gymId" params={{ gymId: state.gymId }} replace />
     case 'many':
       return <DisplayChooser gyms={state.gyms} userId={auth.user!.id} />
+    default: {
+      // P15-016: Exhaustiveness guard — if a new DispatcherState variant is
+      // added, this line fails the build instead of silently rendering nothing.
+      const _exhaustive: never = state
+      throw new Error(`[display-dispatcher] Unknown state kind: ${JSON.stringify(_exhaustive)}`)
+    }
   }
 }
 

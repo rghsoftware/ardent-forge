@@ -16,9 +16,19 @@ import { entityId, isoDateTime, syncableEntitySchema } from './units'
 // convention. The data-mapper layer (a later wave) handles the conversion.
 // ---------------------------------------------------------------------------
 
+/**
+ * Maximum allowed length of `gyms.name` in characters.
+ *
+ * Matches the SQL `check (char_length(name) between 1 and 60)` constraint
+ * and the Zod `z.string().min(1).max(60)` validator below. Exported so
+ * consumers (display-setup name derivation, UI forms) share a single
+ * source of truth instead of hardcoding `60` in multiple places (P15-034).
+ */
+export const GYM_NAME_MAX = 60
+
 export const gymSchema = syncableEntitySchema.extend({
-  // M1 / RD-15: name length 1..60 mirrors the SQL char_length check
-  name: z.string().min(1).max(60),
+  // M1 / RD-15: name length 1..GYM_NAME_MAX mirrors the SQL char_length check
+  name: z.string().min(1).max(GYM_NAME_MAX),
   // RD-15: ownership column is `owner_user_id`, not `created_by`
   ownerUserId: entityId,
   // Tech.md D1: at most one default gym per instance (enforced by partial unique index)

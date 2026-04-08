@@ -22,6 +22,13 @@ const DiscoverySchema = z.object({
  *
  * The returned credentials can be passed to `validateConnection` and then
  * persisted via the config store.
+ *
+ * P15-030: When the server omits `app_url` (pre-F019 servers), the result
+ * still succeeds with `appUrl: undefined`. Callers should treat
+ * `result.ok === true && result.appUrl === undefined` as the programmatic
+ * "backfill required later" signal and may show a setup-time notice. The
+ * warn log below is a diagnostic breadcrumb for operators; it is NOT the
+ * surfacing mechanism.
  */
 export async function discoverInstance(serverUrl: string): Promise<DiscoveryResult> {
   // Normalize: prepend https:// if no protocol, validate protocol, strip trailing slashes

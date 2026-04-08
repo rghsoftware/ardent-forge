@@ -1,4 +1,14 @@
 // @vitest-environment happy-dom
+//
+// P15-040: This file tests the wiring of `useAuth` / `useGyms` →
+// `computeDispatcherState` → render. The PURE state-machine logic (all
+// precedence rules between loading / unauthenticated / error / zero /
+// single / many) lives in `dispatcher-state.test.ts` and MUST NOT be
+// duplicated here. Add render-wiring cases only:
+//   - "this input shape produces THIS rendered testId"
+//   - "clicking retry invokes the refetch function"
+// If the assertion is about which `kind` the state machine returns, it
+// belongs in `dispatcher-state.test.ts`.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

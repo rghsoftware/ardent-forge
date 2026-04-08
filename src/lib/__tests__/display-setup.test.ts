@@ -36,44 +36,47 @@ describe('derivePersonalGymName', () => {
   })
 
   describe('length clamping', () => {
-    it('leaves names under 48 code points unchanged', () => {
-      const name = 'A'.repeat(47)
-      expect(derivePersonalGymName(name)).toBe(`${name}'s Training`)
-    })
-
-    it('leaves names exactly 48 code points unchanged', () => {
+    // P15-008: the clamp is now derived from GYM_NAME_MAX (60) minus the
+    // suffix length (11), so the maximum input length that survives
+    // unchanged is 49 code points (60 - 11 = 49).
+    it('leaves names under 49 code points unchanged', () => {
       const name = 'A'.repeat(48)
       expect(derivePersonalGymName(name)).toBe(`${name}'s Training`)
     })
 
-    it('clamps a 100-char input to 48 + suffix', () => {
+    it('leaves names exactly 49 code points unchanged', () => {
+      const name = 'A'.repeat(49)
+      expect(derivePersonalGymName(name)).toBe(`${name}'s Training`)
+    })
+
+    it('clamps a 100-char input to 49 + suffix', () => {
       const name = 'a'.repeat(100)
       const result = derivePersonalGymName(name)
-      expect(result).toBe(`${'a'.repeat(48)}'s Training`)
-      // 48 + 11 = 59 characters, comfortably under the 60-char gyms.name
+      expect(result).toBe(`${'a'.repeat(49)}'s Training`)
+      // 49 + 11 = 60 characters, exactly at the 60-char gyms.name
       // SQL check constraint.
       expect(result.length).toBeLessThanOrEqual(60)
     })
 
-    it('does not split a surrogate pair at the 48-code-point boundary', () => {
-      // Build a name where the 48th and 49th characters form one emoji so
-      // naive `.slice(0, 48)` on code units would mangle it.
-      const filler = 'a'.repeat(47)
+    it('does not split a surrogate pair at the 49-code-point boundary', () => {
+      // Build a name where the 49th and 50th characters form one emoji so
+      // naive `.slice(0, 49)` on code units would mangle it.
+      const filler = 'a'.repeat(48)
       const emoji = '\u{1F4AA}' // 💪 — 2 code units, 1 code point
       const name = `${filler}${emoji}${emoji}${emoji}`
       const result = derivePersonalGymName(name)
-      // The clamp runs on code points: 47 fillers + 1 full emoji = 48 cps
+      // The clamp runs on code points: 48 fillers + 1 full emoji = 49 cps
       expect(result).toBe(`${filler}${emoji}'s Training`)
       // And crucially, the first emoji should be intact (no lone surrogate).
       expect(result).not.toContain("\uD83D's")
     })
 
     it('handles a name that is exactly at the SQL limit after suffixing', () => {
-      const name = 'A'.repeat(49)
+      const name = 'A'.repeat(50)
       const result = derivePersonalGymName(name)
-      // 49 trimmed to 48 + 11 char suffix = 59 characters total
-      expect(result.length).toBe(59)
-      expect(result.startsWith('A'.repeat(48))).toBe(true)
+      // 50 trimmed to 49 + 11 char suffix = 60 characters total (the SQL max)
+      expect(result.length).toBe(60)
+      expect(result.startsWith('A'.repeat(49))).toBe(true)
       expect(result.endsWith("'s Training")).toBe(true)
     })
   })

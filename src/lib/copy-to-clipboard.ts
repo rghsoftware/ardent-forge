@@ -8,10 +8,11 @@ import { toast } from 'sonner'
 // error-handling.md`. Returns a Promise<boolean> so callers can chain on
 // success (e.g., close a dialog on copy success) or await both branches.
 //
-// Four existing call sites currently inline this try/catch/log/toast
-// pattern (`backend-settings.tsx`, `share-dialog.tsx`, `invite-code-
-// display.tsx`); F019 introduces a fifth at the display setup panel, so
-// the helper is earned. Existing call sites can migrate opportunistically.
+// Extracted from inline try/catch/log/toast blocks that were duplicated
+// across the codebase. Known call sites include `backend-settings.tsx`,
+// `share-dialog.tsx`, `invite-code-display.tsx`, and `show-display-panel.tsx`
+// (F019). Additional call sites can migrate opportunistically -- the
+// header intentionally does not hard-code a count because it drifts.
 // ---------------------------------------------------------------------------
 
 export interface CopyOptions {
