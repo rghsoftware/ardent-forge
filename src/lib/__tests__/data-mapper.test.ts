@@ -284,6 +284,7 @@ const userProfileRowFull: UserProfileRow = {
     },
   },
   max_reps: { 'ex-pullup-001': 20 },
+  display_visible: null,
   created_at: now,
   updated_at: now,
 }
@@ -296,6 +297,7 @@ const userProfileRowNulls: UserProfileRow = {
   training_age: null,
   exercise_maxes: null,
   max_reps: null,
+  display_visible: null,
   created_at: now,
   updated_at: now,
 }
