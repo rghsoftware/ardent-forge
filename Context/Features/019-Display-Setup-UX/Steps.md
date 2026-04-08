@@ -5,9 +5,9 @@
 
 ## Progress
 
-- **Status:** Complete (Waves 1-7); Wave 8 post-review follow-ups pending
+- **Status:** Complete (Waves 1-8); S016-QA Tauri smoke still pending manual Android device
 - **Current task:** --
-- **Last milestone:** M7 (S016-QA pending manual Android pass); Wave 8 added 2026-04-07 from PR review resolve session
+- **Last milestone:** M8 — Wave 8 follow-ups validated 2026-04-08, all 9 tasks PASS, lint+build clean, zero scope leak
 
 ## Team Orchestration
 
