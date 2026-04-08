@@ -457,16 +457,6 @@ function ActiveWorkoutPage() {
           />
         </div>
 
-        {/* Push to remote display */}
-        <div className="flex justify-end px-4">
-          <PushToDisplayButton
-            userId={workoutLog.userId}
-            publishFocus={publishFocus}
-            publishUnfocus={publishUnfocus}
-            isBroadcasting={isBroadcasting}
-          />
-        </div>
-
         <EventDetail
           workoutLogId={workoutLog.id}
           eventMetadata={workoutLog.eventMetadata}
