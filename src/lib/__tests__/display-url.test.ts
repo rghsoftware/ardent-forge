@@ -166,6 +166,58 @@ describe('buildDisplayUrl', () => {
 })
 
 // ---------------------------------------------------------------------------
+// parseDisplayUrlInput ∘ buildDisplayUrl round-trip (P15-052)
+//
+// Property-style check: for any valid UUID and any valid origin, the URL
+// produced by `buildDisplayUrl` must round-trip back through
+// `parseDisplayUrlInput` to the original UUID. Catches any future divergence
+// between the two functions (e.g., if `buildDisplayUrl` ever encodes or
+// normalizes a character that the parser doesn't round-trip, or vice
+// versa).
+//
+// Uses a hardcoded matrix of 10 UUIDs × 4 origins (40 cases per run)
+// rather than `fast-check` to avoid adding a new dependency. If a
+// divergence is ever observed, widening the matrix or switching to
+// fast-check is a drop-in change.
+// ---------------------------------------------------------------------------
+
+describe('parseDisplayUrlInput ∘ buildDisplayUrl round-trip', () => {
+  const ROUND_TRIP_UUIDS = [
+    '11111111-2222-4333-8444-555555555555',
+    'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+    '00000000-0000-4000-8000-000000000000',
+    'ffffffff-ffff-4fff-bfff-ffffffffffff',
+    '12345678-1234-4234-8234-123456789012',
+    'deadbeef-dead-4eef-beef-deadbeefdead',
+    'a1b2c3d4-e5f6-4789-8abc-def012345678',
+    '77777777-7777-4777-8777-777777777777',
+    'cafebabe-cafe-4abe-8abe-cafebabecafe',
+    '1a2b3c4d-5e6f-4789-8abc-1a2b3c4d5e6f',
+  ] as const
+
+  const ROUND_TRIP_ORIGINS = [
+    'https://forge.example.com',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'https://forge.example.com:8080',
+  ] as const
+
+  for (const origin of ROUND_TRIP_ORIGINS) {
+    for (const uuid of ROUND_TRIP_UUIDS) {
+      it(`round-trips ${uuid} via ${origin}`, () => {
+        const built = buildDisplayUrl(uuid, origin)
+        expect(built.ok).toBe(true)
+        if (!built.ok) return // narrow for TS; the expect above will have failed
+        const parsed = parseDisplayUrlInput(built.url)
+        expect(parsed.ok).toBe(true)
+        if (!parsed.ok) return
+        expect(parsed.gymId).toBe(uuid)
+      })
+    }
+  }
+})
+
+// ---------------------------------------------------------------------------
 // isDevOrigin
 // ---------------------------------------------------------------------------
 

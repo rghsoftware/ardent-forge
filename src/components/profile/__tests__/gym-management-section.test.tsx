@@ -233,7 +233,10 @@ describe('GymManagementSection', () => {
     await user.click(screen.getByTestId('my-gym-row-gym-joined-leave'))
 
     expect(leaveGymStub.mutate).toHaveBeenCalledTimes(1)
-    expect(leaveGymStub.mutate).toHaveBeenCalledWith('gym-joined')
+    expect(leaveGymStub.mutate).toHaveBeenCalledWith(
+      'gym-joined',
+      expect.objectContaining({ onError: expect.any(Function) }),
+    )
   })
 
   // -------------------------------------------------------------------------
@@ -341,7 +344,10 @@ describe('GymManagementSection', () => {
     await user.click(screen.getByTestId('browse-gym-row-gym-b-join'))
 
     expect(joinGymStub.mutate).toHaveBeenCalledTimes(1)
-    expect(joinGymStub.mutate).toHaveBeenCalledWith('gym-b')
+    expect(joinGymStub.mutate).toHaveBeenCalledWith(
+      'gym-b',
+      expect.objectContaining({ onError: expect.any(Function) }),
+    )
   })
 
   // -------------------------------------------------------------------------

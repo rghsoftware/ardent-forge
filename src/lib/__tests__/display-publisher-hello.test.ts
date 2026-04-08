@@ -70,6 +70,21 @@ beforeEach(() => {
   destroyDisplayPublisher()
 })
 
+// ---------------------------------------------------------------------------
+// IMPLICIT COUPLING NOTICE (P15-049)
+//
+// Every test below that asserts on `fireHello()` calls `publishDisplaySnapshot`
+// first for the sole purpose of driving the publisher down its LAZY
+// `ensureChannel()` path -- this is what attaches the `display_hello` listener
+// on the mock channel and thereby populates `helloListener` in
+// `createMockChannel()`. If `display-publisher.ts` ever subscribes to the
+// channel during `configureDisplayPublisher` (eager init) instead of on first
+// publish, replace the `publishDisplaySnapshot(SNAPSHOT)` calls below with
+// the new init path -- otherwise these tests will pass for the wrong reason
+// (the `fireHello()` call would silently no-op against a null listener, and
+// the `responder not invoked` branch of each test would go undetected).
+// ---------------------------------------------------------------------------
+
 // ===========================================================================
 // setHelloResponder
 // ===========================================================================

@@ -135,7 +135,7 @@ describe('ShowDisplayPanel (web)', () => {
         `https://forge.example.com/display/gym/${GYM_ID}`,
         expect.objectContaining({
           successMessage: 'Display URL copied',
-          logPrefix: 'display-setup',
+          logPrefix: 'show-display-panel',
         }),
       )
     })
@@ -165,6 +165,65 @@ describe('ShowDisplayPanel (Tauri with appUrl)', () => {
     expect(screen.getByTestId(`show-display-url-${GYM_ID}`).textContent).toBe(
       `https://forge.example.com/display/gym/${GYM_ID}`,
     )
+  })
+
+  // P15-022: A rejected getConfig() (e.g., Tauri SQLite store corruption)
+  // must surface the backfill form rather than silently hanging in the
+  // loading state or throwing. Verifies both the UI transition and the
+  // `[show-display-panel]` catch-block log so a regression in the error
+  // path is caught at unit-test time.
+  it('falls through to backfill form when getConfig() rejects', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockGetConfig.mockReset()
+    mockGetConfig.mockRejectedValueOnce(new Error('store corrupted'))
+
+    render(<ShowDisplayPanel gym={gym} isOpen={true} />)
+
+    // Backfill form is the expected fallback when origin cannot be resolved.
+    await waitFor(() => {
+      expect(screen.getByTestId(`show-display-backfill-${GYM_ID}`)).toBeInTheDocument()
+    })
+    expect(screen.getByTestId(`show-display-backfill-input-${GYM_ID}`)).toBeInTheDocument()
+    expect(screen.getByTestId(`show-display-backfill-save-${GYM_ID}`)).toBeInTheDocument()
+
+    // URL + Copy + QR section must NOT be rendered.
+    expect(screen.queryByTestId(`show-display-url-${GYM_ID}`)).not.toBeInTheDocument()
+    expect(screen.queryByTestId(`show-display-copy-${GYM_ID}`)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('qr-mock')).not.toBeInTheDocument()
+
+    // Catch-block log must fire with the actual production prefix/message.
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[show-display-panel] Failed to read config for origin:'),
+      expect.any(Error),
+    )
+
+    errorSpy.mockRestore()
+  })
+
+  // P15-054: Covers the Tauri-mode equivalent of the web-mode dev-origin
+  // warning test above. This is the more interesting case for QA (e.g., a
+  // local `vercel dev` or docker-compose setup where `config.appUrl`
+  // resolves to a loopback URL), and was previously uncovered.
+  it('renders dev-origin warning when Tauri appUrl is loopback', async () => {
+    mockGetConfig.mockReset()
+    mockGetConfig.mockResolvedValue({
+      supabaseUrl: 'https://abc.supabase.co',
+      supabaseKey: 'key',
+      appUrl: 'http://localhost:5173',
+    })
+
+    render(<ShowDisplayPanel gym={gym} isOpen={true} />)
+
+    // Wait for the URL element so we know the Tauri appUrl path resolved.
+    await waitFor(() => {
+      expect(screen.getByTestId(`show-display-url-${GYM_ID}`)).toBeInTheDocument()
+    })
+    expect(screen.getByTestId(`show-display-url-${GYM_ID}`).textContent).toBe(
+      `http://localhost:5173/display/gym/${GYM_ID}`,
+    )
+
+    // The dev-origin warning caption should be visible.
+    expect(screen.getByTestId(`show-display-dev-warning-${GYM_ID}`)).toBeInTheDocument()
   })
 })
 

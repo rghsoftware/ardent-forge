@@ -207,10 +207,31 @@ export async function handler(req: Request): Promise<Response> {
       // pattern alert so operators notice systemic issues (e.g., a tightened
       // RLS policy that bricked every gym at once).
       const codes = new Set(failures.map((f) => f.error_code).filter((c) => c !== undefined))
-      if (codes.size === 1) {
+      const sharedCode = codes.size === 1 ? ([...codes][0] as string) : undefined
+      if (sharedCode) {
         console.error(
-          `[display-idle-snapshot] All ${failures.length} failures share code: ${[...codes][0]}`,
+          `[display-idle-snapshot] All ${failures.length} failures share code: ${sharedCode}`,
         )
+      }
+
+      // External alerting hook (P15-051): scrape `permanent_failure: true`
+      // in the response body, or the `[display-idle-snapshot] PERMANENT_FAILURE`
+      // structured log line, to wire up an external alerter (Vercel/Supabase
+      // log alerts, Datadog, Sentry, etc.). A systemic permanent failure --
+      // every failing gym sharing the same permanent error code -- almost
+      // always means a config or schema regression bricked the whole
+      // instance (broken RLS policy, missing grant, renamed column), and
+      // needs a human in the loop because the cron alone cannot self-heal.
+      // No Sentry SDK is wired into supabase/functions/ today, so the
+      // structured console.error is the surfacing mechanism; swap it out
+      // for a Sentry breadcrumb if/when the SDK is added.
+      const isPermanentFailure = allPermanent && sharedCode !== undefined
+      if (isPermanentFailure) {
+        console.error('[display-idle-snapshot] PERMANENT_FAILURE', {
+          error_code: sharedCode,
+          failure_count: failures.length,
+          gym_count: gyms.length,
+        })
       }
 
       return new Response(
@@ -220,6 +241,16 @@ export async function handler(req: Request): Promise<Response> {
           total_sessions: totalSessions,
           failures,
           permanent: allPermanent,
+          // Additive alerting fields (P15-051). Present only when all
+          // failures share a permanent error code. Absent on transient
+          // partial failures or on a mix of permanent and transient codes.
+          ...(isPermanentFailure
+            ? {
+                permanent_failure: true,
+                error_code: sharedCode,
+                failure_count: failures.length,
+              }
+            : {}),
         }),
         {
           status: allPermanent ? 200 : 502,

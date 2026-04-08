@@ -155,6 +155,55 @@ describe('useQrScanner.scan failure paths', () => {
 })
 
 // ---------------------------------------------------------------------------
+// cancel() direct invocation (P15-023)
+//
+// setup.tsx:235 wires the overlay's Cancel button to `qrScanner?.cancel()`,
+// exercising the public `cancel` API directly rather than the auto-cancel
+// inside `scan()`. These tests cover the two branches of that public API:
+// the `cancelRef.current` null-guard (noop) and the state reset after a
+// completed scan.
+// ---------------------------------------------------------------------------
+
+describe('useQrScanner.cancel public API', () => {
+  it('cancel() is a noop when no scan is in progress', async () => {
+    const { result } = renderHook(() => useQrScanner())
+
+    // Call cancel() before any scan has started. The hook should hit the
+    // `if (!current) return` null-guard and do nothing.
+    await act(async () => {
+      await result.current!.cancel()
+    })
+
+    expect(cancelMock).not.toHaveBeenCalled()
+    expect(result.current?.scanning).toBe(false)
+  })
+
+  it('cancel() is a noop after a completed scan (cancelRef already cleared)', async () => {
+    // scan()'s own finally block sets cancelRef.current = null, so a
+    // subsequent cancel() call must still hit the null-guard and not
+    // double-invoke the underlying native cancel.
+    scanMock.mockResolvedValue({ content: 'payload' })
+    const { result } = renderHook(() => useQrScanner())
+
+    await act(async () => {
+      await result.current!.scan()
+    })
+
+    // scan()'s internal cleanup calls cancelMock once before resolving.
+    expect(cancelMock).toHaveBeenCalledTimes(1)
+    expect(result.current?.scanning).toBe(false)
+
+    await act(async () => {
+      await result.current!.cancel()
+    })
+
+    // cancel() public API hit the null-guard: no additional native cancel.
+    expect(cancelMock).toHaveBeenCalledTimes(1)
+    expect(result.current?.scanning).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Transparent webview side effect
 // ---------------------------------------------------------------------------
 

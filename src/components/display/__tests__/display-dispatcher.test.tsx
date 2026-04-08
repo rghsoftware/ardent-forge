@@ -58,22 +58,11 @@ vi.mock('../display-chooser', () => ({
 }))
 
 import { DisplayDispatcher } from '../display-dispatcher'
+import { makeGym } from '@/test/fixtures/gym'
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
-
-function makeGym(overrides: Partial<Gym> = {}): Gym {
-  return {
-    id: 'gym-default',
-    name: 'Gym',
-    ownerUserId: 'user-1',
-    isDefault: false,
-    createdAt: '2026-04-07T00:00:00Z',
-    updatedAt: '2026-04-07T00:00:00Z',
-    ...overrides,
-  }
-}
 
 function authState(overrides: { loading?: boolean; user?: { id: string } | null } = {}) {
   return {

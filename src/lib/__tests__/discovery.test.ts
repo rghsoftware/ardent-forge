@@ -140,6 +140,29 @@ describe('discoverInstance', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it('returns INVALID_INPUT for a javascript: URL', async () => {
+    // P15-050: defense-in-depth for the setup discovery flow. The URL
+    // parser at display-url.ts already rejects `javascript:` tokens for
+    // the TV-open path, but setup discovery is a separate code path and
+    // must independently refuse to fetch the well-known discovery JSON
+    // from an executable scheme. In discovery.ts the normalization step
+    // prepends `https://` (because `javascript:alert(1)` has no `://`),
+    // producing `https://javascript:alert(1)` which the URL constructor
+    // rejects as malformed -- the guard fires on the parse-error branch
+    // rather than the protocol-check branch, but the net effect is the
+    // same: INVALID_INPUT and no fetch.
+    const warnSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const result = await discoverInstance('javascript:alert(1)')
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'INVALID_INPUT',
+      message: 'Invalid URL. Please enter a valid server address.',
+    })
+    expect(fetch).not.toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
+
   it('returns INVALID_INPUT for an empty string', async () => {
     const result = await discoverInstance('')
 
