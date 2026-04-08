@@ -12,6 +12,7 @@ import { initSupabaseFromConfig } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { AuthPageShell } from '@/components/auth/auth-page-shell'
 import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
+import { useQrScanner } from '@/hooks/use-qr-scanner'
 
 type SetupState =
   | { phase: 'idle' }
@@ -50,22 +51,12 @@ function SetupPage() {
   const [url, setUrl] = useState(envUrl)
   const [key, setKey] = useState(envKey)
   const [advancedOpen, setAdvancedOpen] = useState(false)
-  const [scanning, setScanning] = useState(false)
   const [showPasteField, setShowPasteField] = useState(false)
 
-  // Make the webview transparent while the QR scanner is active so the
-  // native camera feed (rendered behind the webview) is visible.
-  useEffect(() => {
-    if (!scanning) return
-    const html = document.documentElement
-    const body = document.body
-    html.style.background = 'transparent'
-    body.style.background = 'transparent'
-    return () => {
-      html.style.background = ''
-      body.style.background = ''
-    }
-  }, [scanning])
+  // QR scanner lifecycle is owned by the shared hook (F019 D12). Returns
+  // null on web so the Cancel overlay and scan affordance are hidden.
+  const qrScanner = useQrScanner()
+  const scanning = qrScanner?.scanning ?? false
 
   // Unified process state -- one discriminated union, no impossible states
   const [state, setState] = useState<SetupState>({ phase: 'idle' })
@@ -73,14 +64,14 @@ function SetupPage() {
 
   const isBusy = state.phase === 'discovering' || state.phase === 'validating'
 
-  const validateAndSave = async (supabaseUrl: string, supabaseKey: string) => {
+  const validateAndSave = async (supabaseUrl: string, supabaseKey: string, appUrl?: string) => {
     setState({ phase: 'validating', supabaseUrl, supabaseKey })
 
     const result = await validateConnection(supabaseUrl, supabaseKey)
 
     if (result.status === 'ok') {
       try {
-        const config: BackendConfig = { supabaseUrl, supabaseKey }
+        const config: BackendConfig = { supabaseUrl, supabaseKey, ...(appUrl && { appUrl }) }
         await getConfigStore().setConfig(config)
         initSupabaseFromConfig(config)
         setState({ phase: 'success' })
@@ -158,53 +149,21 @@ function SetupPage() {
     }
   }
 
-  const cancelRef = useRef<(() => Promise<void>) | null>(null)
-
   const handleScan = async () => {
-    if (!isTauri()) {
+    if (!qrScanner) {
       console.error('[setup] QR scanning is only available in Tauri')
       return
     }
+    const content = await qrScanner.scan()
+    if (content === null) {
+      toast('QR scan failed. Try pasting the invite link instead.')
+      return
+    }
     try {
-      const { scan, cancel, checkPermissions, requestPermissions, openAppSettings, Format } =
-        await import('@tauri-apps/plugin-barcode-scanner')
-
-      cancelRef.current = cancel
-
-      let perms = await checkPermissions()
-      if (perms === 'prompt') perms = await requestPermissions()
-      if (perms !== 'granted') {
-        toast('Camera permission required')
-        await openAppSettings()
-        return
-      }
-
-      setScanning(true)
-      document.documentElement.classList.add('scanner-active')
-
-      let content: string
-      try {
-        const result = await scan({ windowed: true, formats: [Format.QRCode] })
-        await cancel()
-        content = result.content
-      } catch (err) {
-        console.error('[setup] Barcode scan failed:', err)
-        toast('QR scan failed. Try pasting the invite link instead.')
-        return
-      } finally {
-        document.documentElement.classList.remove('scanner-active')
-        setScanning(false)
-      }
-
-      try {
-        await processInviteLink(content)
-      } catch (err) {
-        console.error('[setup] Failed to process scanned invite:', err)
-        toast('Could not process the scanned invite. The link may be invalid or expired.')
-      }
+      await processInviteLink(content)
     } catch (err) {
-      console.error('[setup] QR scan setup failed:', err)
-      toast('QR scanner is not available. Try pasting the invite link instead.')
+      console.error('[setup] Failed to process scanned invite:', err)
+      toast('Could not process the scanned invite. The link may be invalid or expired.')
     }
   }
 
@@ -233,7 +192,20 @@ function SetupPage() {
       setUrl(result.supabaseUrl)
       setKey(result.supabaseKey)
 
-      await validateAndSave(result.supabaseUrl, result.supabaseKey)
+      // F019 S008: persist app_url from the discovery response so Tauri
+      // clients can build display URLs pointing at the real server host
+      // instead of `tauri://localhost`. Falls through to the D22 backfill
+      // path when the server is pre-F019 and omits the field.
+      //
+      // P15-030: `result.appUrl === undefined` is the "pre-F019 server"
+      // programmatic signal. Surface a one-off toast so users understand
+      // why display URLs will require a manual repair later in Profile.
+      if (result.appUrl === undefined) {
+        toast(
+          'Display URLs will require one-time manual setup later in Profile — this server is an older version.',
+        )
+      }
+      await validateAndSave(result.supabaseUrl, result.supabaseKey, result.appUrl)
     } catch (err) {
       console.error('[setup] Unexpected error in handleDiscoverAndConnect:', err)
       setState({
@@ -283,12 +255,7 @@ function SetupPage() {
           type="button"
           className="mt-8 flex items-center gap-2 rounded-md bg-black/60 px-6 py-3 text-sm text-bone-white"
           onClick={async () => {
-            try {
-              await cancelRef.current?.()
-            } catch (err) {
-              console.error('[setup] Failed to cancel scan:', err)
-            }
-            setScanning(false)
+            await qrScanner?.cancel()
           }}
         >
           <X className="h-4 w-4" />
@@ -406,12 +373,9 @@ function SetupPage() {
         )}
       </div>
 
-      {/* "Or" divider */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 border-t border-surface-charcoal" />
-        <span className="text-xs text-industrial">or</span>
-        <div className="flex-1 border-t border-surface-charcoal" />
-      </div>
+      {/* Section break via spacing + centered label per Iron & Ember
+          "no divider lines" rule (.claude/rules/layout-conventions.md). */}
+      <div className="my-6 text-center text-xs text-industrial">or</div>
 
       {/* Manual configuration toggle */}
       <button

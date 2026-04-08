@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth'
 import { useWorkoutLogs } from '@/hooks/use-workout-logs'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useActiveProgram, useProgramFull } from '@/hooks/use-programs'
+import { useGymPicker } from '@/hooks/use-gym-picker'
 import { CrashRecoveryDialog } from '@/components/workout/crash-recovery-dialog'
 import { ProgramSessionCard } from '@/components/today/program-session-card'
 import { PausedSessionCard } from '@/components/today/paused-session-card'
@@ -19,6 +21,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useNextUpcomingEvent } from '@/hooks/use-event-items'
 import { formatDuration } from '@/lib/format-duration'
+import { configureDisplayPublisher } from '@/lib/display-publisher'
+import { writeLastGymChoice } from '@/lib/gym-picker-storage'
 import type { WorkoutLog } from '@/domain/types'
 import type { ProgramFull } from '@/lib/data-adapter'
 
@@ -81,6 +85,13 @@ function TodayPage() {
   const navigate = useNavigate()
   const { startWorkout, startProgrammedWorkout, isStarting } = useActiveWorkout()
   const userId = user?.id ?? ''
+
+  // F018 (S025): gym picker -- the workout-start flow awaits a user decision
+  // (gym UUID or 'private') before creating the workout_log row and configuring
+  // the display publisher. The portal is mounted at the bottom of this route
+  // so any descendant in this render tree (e.g., ProgramSessionCard's
+  // onStartSession) can trigger openGymPicker via the handlers below.
+  const { openGymPicker, GymPickerPortal } = useGymPicker()
 
   const { markRouteVisited } = useOnboarding()
   const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
@@ -147,8 +158,26 @@ function TodayPage() {
       return
     }
     setStartError(null)
+
+    // F018 (D11, M11, M12, M13, M14): prompt for the target gym (or Private)
+    // before creating the workout. Cancelling the picker is a no-op.
+    const choice = await openGymPicker({ userId })
+    if (choice === null) return
+
     try {
       const workoutLog = await startWorkout(userId)
+      if (choice === 'private') {
+        configureDisplayPublisher({ gymId: null, intent: 'private' })
+      } else {
+        configureDisplayPublisher({ gymId: choice, intent: 'broadcasting' })
+      }
+      // P15-014: writeLastGymChoice returns false when the localStorage write
+      // fails (Safari private mode, quota exceeded). The user silently loses
+      // their sticky default otherwise; surface a light toast so they know.
+      if (!writeLastGymChoice(choice)) {
+        console.warn('[today-page] Failed to persist last gym choice (ad-hoc)')
+        toast('Could not save your last gym choice. Your preference will not persist.')
+      }
       navigate({ to: '/log/$workoutId', params: { workoutId: workoutLog.id } })
     } catch (err) {
       console.error('[today-page] handleStartWorkout:', err)
@@ -163,10 +192,22 @@ function TodayPage() {
       !activation ||
       !todayContext.block
     ) {
+      console.error('[today-page] Cannot start programmed session: incomplete program data', {
+        hasUserId: !!userId,
+        hasSessionTemplateId: !!todayContext?.session?.sessionTemplateId,
+        hasActivation: !!activation,
+        hasBlock: !!todayContext?.block,
+      })
       setStartError('Unable to start session. Program data may be incomplete.')
       return
     }
     setStartError(null)
+
+    // F018 (D11, M11, M12, M13, M14): same picker gate as ad-hoc start --
+    // programmed sessions also publish via the configured gym.
+    const choice = await openGymPicker({ userId })
+    if (choice === null) return
+
     try {
       const workoutLog = await startProgrammedWorkout(
         userId,
@@ -179,6 +220,17 @@ function TodayPage() {
         },
         todayContext.session.overrides,
       )
+      if (choice === 'private') {
+        configureDisplayPublisher({ gymId: null, intent: 'private' })
+      } else {
+        configureDisplayPublisher({ gymId: choice, intent: 'broadcasting' })
+      }
+      // P15-014: surface localStorage write failures so sticky-default loss
+      // is not silent (see handleStartWorkout above for rationale).
+      if (!writeLastGymChoice(choice)) {
+        console.warn('[today-page] Failed to persist last gym choice (programmed)')
+        toast('Could not save your last gym choice. Your preference will not persist.')
+      }
       navigate({ to: '/log/$workoutId', params: { workoutId: workoutLog.id } })
     } catch (err) {
       console.error('[today-page] handleStartProgrammedSession:', err)
@@ -353,6 +405,11 @@ function TodayPage() {
           programFull={programFull}
         />
       )}
+
+      {/* F018 (S025): gym picker portal -- renders the bottom-sheet/dialog on
+          demand when handleStartWorkout / handleStartProgrammedSession call
+          openGymPicker. Returns null when closed. */}
+      <GymPickerPortal />
     </div>
   )
 }

@@ -18,6 +18,7 @@ const navItems = [
   { label: 'Groups', icon: 'group', to: '/groups' },
   { label: 'Connections', icon: 'person_add', to: '/connections' },
   { label: 'Comms', icon: 'chat', to: '/comms' },
+  { label: 'Display', icon: 'cast', to: '/display' },
 ] as const
 
 // Uses first and last name only (skips middle names) for two-letter initials

@@ -7,8 +7,11 @@ import { z } from 'zod'
 // Shared non-empty string schema for all entity IDs and foreign key references
 export const entityId = z.string().min(1)
 
-// Shared ISO 8601 datetime schema for all timestamp fields
-export const isoDateTime = z.iso.datetime()
+// Shared ISO 8601 datetime schema for all timestamp fields.
+// `offset: true` accepts both `Z` UTC and `+HH:MM` offsets, because Postgres
+// `timestamptz` columns return values like `2026-04-08T00:38:29.568618+00:00`
+// and Zod's default `datetime()` only allows the `Z` form.
+export const isoDateTime = z.iso.datetime({ offset: true })
 
 // ---------------------------------------------------------------------------
 // SyncableEntity -- base fields present on all persisted, syncable entities

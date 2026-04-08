@@ -8,6 +8,7 @@ import {
   type IdleSnapshot,
 } from '@/domain/types/display-snapshot'
 import { z } from 'zod'
+import { getGymChannelName } from '@/lib/gym-channel'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,6 +21,11 @@ export interface DisplayEventHandlers {
   onUnfocus: () => void
   onIdleSnapshot: (snapshot: IdleSnapshot) => void
   onStatusChange: (status: DisplayConnectionStatus) => void
+}
+
+export interface SubscribeToDisplayArgs {
+  gymId: string
+  handlers: DisplayEventHandlers
 }
 
 // ---------------------------------------------------------------------------
@@ -35,6 +41,30 @@ let _hasConnectedBefore = false
 
 const RETRY_BASE_MS = 2_000
 const RETRY_MAX_MS = 30_000
+
+// P15-012: Mirror `display-publisher.ts::removeChannelSafe` so subscriber
+// teardown paths cannot propagate a supabase throw. Each module keeps its
+// own failure counter so flapping in one surface doesn't silently reset the
+// other. Escalate warn -> error after 5 consecutive failures.
+let _removeChannelFailureCount = 0
+const REMOVE_CHANNEL_ESCALATE_AFTER = 5
+
+function removeChannelSafe(channel: RealtimeChannel, context: string): void {
+  if (!_client) return
+  try {
+    _client.removeChannel(channel)
+    _removeChannelFailureCount = 0
+  } catch (err) {
+    _removeChannelFailureCount++
+    const escalate = _removeChannelFailureCount >= REMOVE_CHANNEL_ESCALATE_AFTER
+    const logFn = escalate ? console.error : console.warn
+    logFn(
+      `[display-subscriber] removeChannel failed in ${context} ` +
+        `(consecutive=${_removeChannelFailureCount}${escalate ? ', escalated' : ''}):`,
+      err,
+    )
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Inline schemas for lightweight payload validation
@@ -55,23 +85,34 @@ export function initDisplaySubscriber(client: SupabaseClient): void {
 }
 
 /**
- * Create the broadcast channel, register listeners for each event type,
- * and subscribe. Validates all incoming payloads with Zod before dispatching.
+ * Create the broadcast channel for the given gym, register listeners for each
+ * event type, and subscribe. Validates all incoming payloads with Zod before
+ * dispatching.
+ *
+ * On reconnect (after a terminal channel status), the subscriber automatically
+ * re-subscribes to the same gym. The `gymId` is captured in the closure so
+ * retries do not leak to a different gym.
  */
-export function subscribeToDisplay(handlers: DisplayEventHandlers): void {
+export function subscribeToDisplay({ gymId, handlers }: SubscribeToDisplayArgs): void {
   if (!_client) {
-    console.warn('[display-subscriber] Cannot subscribe: client not initialized')
-    handlers.onStatusChange('disconnected')
-    return
+    // P14-004: throw instead of warn-and-return so the route's outer
+    // try/catch can map this into a `subscribe-failed` BootError with a
+    // visible Retry button. Returning silently here puts the route into a
+    // "stuck reconnecting" state with no recovery affordance for the user.
+    throw new Error(
+      '[display-subscriber] Cannot subscribe: client not initialized. ' +
+        'Call initDisplaySubscriber(client) before subscribeToDisplay().',
+    )
   }
 
   // Tear down any existing channel before creating a new one
   if (_channel) {
-    _client.removeChannel(_channel)
+    removeChannelSafe(_channel, 'subscribeToDisplay/existing')
     _channel = null
   }
 
-  _channel = _client.channel('display', {
+  const channelName = getGymChannelName(gymId)
+  _channel = _client.channel(channelName, {
     config: { broadcast: { ack: false, self: false } },
   })
 
@@ -130,7 +171,7 @@ export function subscribeToDisplay(handlers: DisplayEventHandlers): void {
 
         // Remove the dead channel before clearing the reference (P6-002)
         if (_channel && _client) {
-          _client.removeChannel(_channel)
+          removeChannelSafe(_channel, `subscribe/${status}`)
         }
         _channel = null
 
@@ -139,7 +180,9 @@ export function subscribeToDisplay(handlers: DisplayEventHandlers): void {
         console.info(`[display-subscriber] Reconnecting in ${delay}ms (attempt ${_retryAttempt})`)
         _retryTimer = setTimeout(() => {
           _retryTimer = null
-          if (_client) subscribeToDisplay(handlers)
+          // Re-subscribe using the same gymId captured in this closure so the
+          // retry cannot leak to a different gym channel.
+          if (_client) subscribeToDisplay({ gymId, handlers })
         }, delay)
       }
     })
@@ -177,7 +220,7 @@ export function destroyDisplaySubscriber(): void {
   }
 
   if (_channel && _client) {
-    _client.removeChannel(_channel)
+    removeChannelSafe(_channel, 'destroyDisplaySubscriber')
   }
 
   _channel = null
@@ -185,4 +228,5 @@ export function destroyDisplaySubscriber(): void {
   _status = 'disconnected'
   _retryAttempt = 0
   _hasConnectedBefore = false
+  _removeChannelFailureCount = 0
 }

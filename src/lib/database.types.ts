@@ -21,7 +21,6 @@ export interface ExerciseRow {
 export interface UserProfileRow {
   id: string
   display_name: string | null
-  display_visible: boolean | null
   preferred_units: string
   bodyweight: unknown
   training_age: unknown
@@ -29,6 +28,24 @@ export interface UserProfileRow {
   max_reps: unknown
   created_at: string
   updated_at: string
+}
+
+// F018 / Tech.md D1: shape of a `gyms` row.
+export interface GymRow {
+  id: string
+  name: string
+  owner_user_id: string
+  is_default: boolean
+  created_at: string
+  updated_at: string
+}
+
+// F018 / Tech.md D1: shape of a `gym_members` row. Note: composite primary
+// key (gym_id, user_id), no `id` column.
+export interface GymMemberRow {
+  gym_id: string
+  user_id: string
+  joined_at: string
 }
 
 export interface WorkoutLogRow {

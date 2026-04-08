@@ -2,7 +2,8 @@
  * seed-display.ts -- Broadcast mock display events to test all display modes.
  *
  * Usage:
- *   bun scripts/seed-display.ts [mode]
+ *   GYM_ID=<gym-uuid> bun scripts/seed-display.ts [mode]
+ *   bun scripts/seed-display.ts [mode] [gym-id]
  *
  * Modes:
  *   idle     - Sends an idle_snapshot with scheduled sessions (default after clearing)
@@ -11,18 +12,43 @@
  *   full     - Runs idle -> board -> focused -> unfocus -> end in sequence with delays
  *   clear    - Sends session_ended for all mock users
  *
- * The script connects to local Supabase and broadcasts on the 'display' channel,
- * matching the same channel the display page subscribes to.
+ * The script connects to local Supabase and broadcasts on the gym-scoped channel
+ * (`display:gym:<gymId>`), matching the channel the `/display/gym/$gymId` route
+ * subscribes to. The gym ID must match a real gym the reviewer is a member of.
+ *
+ * Supply the gym ID via the GYM_ID env var, a positional CLI argument after the
+ * mode, or fall back to the placeholder (which the operator should override).
  */
 
 import { createClient } from '@supabase/supabase-js'
+import { getGymChannelName } from '../src/lib/gym-channel'
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321'
 const SUPABASE_KEY = process.env.SUPABASE_KEY ?? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
 
 const client = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-const channel = client.channel('display', {
+// Resolve the target gym in this order:
+//   1. GYM_ID env var
+//   2. Positional CLI arg: `bun scripts/seed-display.ts <mode> <gym-id>` or
+//      `bun scripts/seed-display.ts <mode> <count> <gym-id>` for board mode
+//   3. Placeholder UUID -- operators running against a real DB MUST override this
+const PLACEHOLDER_GYM_ID = '00000000-0000-0000-0000-000000000001'
+const GYM_ID =
+  process.env.GYM_ID ??
+  process.argv.find((arg, idx) => idx >= 3 && /^[0-9a-f-]{36}$/i.test(arg)) ??
+  PLACEHOLDER_GYM_ID
+
+if (GYM_ID === PLACEHOLDER_GYM_ID) {
+  console.warn(
+    `[seed-display] Using placeholder gym id ${PLACEHOLDER_GYM_ID}. ` +
+      `Set GYM_ID=<uuid> to target a real gym.`,
+  )
+}
+
+const CHANNEL_NAME = getGymChannelName(GYM_ID)
+
+const channel = client.channel(CHANNEL_NAME, {
   config: { broadcast: { ack: true, self: true } },
 })
 
@@ -212,7 +238,7 @@ const mode = process.argv[2] ?? 'full'
 channel.subscribe(async (status) => {
   if (status !== 'SUBSCRIBED') return
 
-  console.log(`Connected to display channel. Mode: ${mode}\n`)
+  console.log(`Connected to channel ${CHANNEL_NAME}. Mode: ${mode}\n`)
 
   switch (mode) {
     case 'idle':

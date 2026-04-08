@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, afterEach } from 'vitest'
+import { vi, describe, it, expect, afterEach, beforeEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { DisplaySnapshot } from '@/domain/types/display-snapshot'
 import {
@@ -8,6 +8,7 @@ import {
   destroyDisplaySubscriber,
   type DisplayEventHandlers,
 } from '@/lib/display-subscriber'
+import { getGymChannelName } from '@/lib/gym-channel'
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -45,6 +46,10 @@ function createMockClient(channel: ReturnType<typeof createMockChannel>['channel
   } as unknown as SupabaseClient
 }
 
+// Test gym IDs
+const GYM_A = 'gym-a-0000-0000-000000000000'
+const GYM_B = 'gym-b-0000-0000-000000000000'
+
 // Minimal valid snapshot
 const SNAPSHOT_FIXTURE: DisplaySnapshot = {
   user_id: 'user-123',
@@ -75,8 +80,13 @@ function createMockHandlers(): DisplayEventHandlers {
 // Reset module state between tests
 // ---------------------------------------------------------------------------
 
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
 afterEach(() => {
   destroyDisplaySubscriber()
+  vi.useRealTimers()
 })
 
 // ===========================================================================
@@ -91,10 +101,10 @@ describe('initDisplaySubscriber', () => {
     initDisplaySubscriber(client)
 
     const handlers = createMockHandlers()
-    subscribeToDisplay(handlers)
+    subscribeToDisplay({ gymId: GYM_A, handlers })
 
-    // The client.channel method should have been called
-    expect(client.channel).toHaveBeenCalledWith('display', {
+    // The client.channel method should have been called with the per-gym name
+    expect(client.channel).toHaveBeenCalledWith(getGymChannelName(GYM_A), {
       config: { broadcast: { ack: false, self: false } },
     })
   })
@@ -105,24 +115,38 @@ describe('initDisplaySubscriber', () => {
 // ===========================================================================
 
 describe('subscribeToDisplay', () => {
-  it('creates channel with correct config', () => {
+  it('creates channel named display:gym:<gymId> with correct config', () => {
     const { channel } = createMockChannel()
     const client = createMockClient(channel)
     initDisplaySubscriber(client)
 
-    subscribeToDisplay(createMockHandlers())
+    subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })
 
-    expect(client.channel).toHaveBeenCalledWith('display', {
+    expect(client.channel).toHaveBeenCalledWith(getGymChannelName(GYM_A), {
       config: { broadcast: { ack: false, self: false } },
     })
   })
 
-  it('is a no-op if client is not initialized', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    subscribeToDisplay(createMockHandlers())
+  it('opens a different channel name for a different gym', () => {
+    const { channel } = createMockChannel()
+    const client = createMockClient(channel)
+    initDisplaySubscriber(client)
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Cannot subscribe'))
-    warnSpy.mockRestore()
+    subscribeToDisplay({ gymId: GYM_B, handlers: createMockHandlers() })
+
+    expect(client.channel).toHaveBeenCalledWith(getGymChannelName(GYM_B), {
+      config: { broadcast: { ack: false, self: false } },
+    })
+  })
+
+  it('throws if client is not initialized (P14-004)', () => {
+    // Per F018 P14-004: subscribeToDisplay must throw rather than warn-and-
+    // return when the client is not initialized, so the route's outer
+    // try/catch can map this into a `subscribe-failed` BootError with a
+    // visible Retry button.
+    expect(() => subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })).toThrow(
+      /client not initialized/i,
+    )
   })
 })
 
@@ -137,7 +161,7 @@ describe('event dispatching', () => {
     initDisplaySubscriber(client)
 
     const handlers = createMockHandlers()
-    subscribeToDisplay(handlers)
+    subscribeToDisplay({ gymId: GYM_A, handlers })
 
     // Simulate a valid snapshot broadcast
     const listener = listeners.get('workout_snapshot')!
@@ -153,7 +177,7 @@ describe('event dispatching', () => {
 
     const handlers = createMockHandlers()
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    subscribeToDisplay(handlers)
+    subscribeToDisplay({ gymId: GYM_A, handlers })
 
     const listener = listeners.get('workout_snapshot')!
     listener({ payload: { bad: 'data' } })
@@ -172,7 +196,7 @@ describe('event dispatching', () => {
     initDisplaySubscriber(client)
 
     const handlers = createMockHandlers()
-    subscribeToDisplay(handlers)
+    subscribeToDisplay({ gymId: GYM_A, handlers })
 
     const listener = listeners.get('session_ended')!
     listener({ payload: { user_id: 'u1' } })
@@ -186,7 +210,7 @@ describe('event dispatching', () => {
     initDisplaySubscriber(client)
 
     const handlers = createMockHandlers()
-    subscribeToDisplay(handlers)
+    subscribeToDisplay({ gymId: GYM_A, handlers })
 
     const listener = listeners.get('focus')!
     listener({ payload: { user_id: 'u2' } })
@@ -200,7 +224,7 @@ describe('event dispatching', () => {
     initDisplaySubscriber(client)
 
     const handlers = createMockHandlers()
-    subscribeToDisplay(handlers)
+    subscribeToDisplay({ gymId: GYM_A, handlers })
 
     // unfocus handler has a different signature -- no payload arg
     const listener = listeners.get('unfocus')!
@@ -221,7 +245,7 @@ describe('status changes', () => {
     initDisplaySubscriber(client)
 
     const handlers = createMockHandlers()
-    subscribeToDisplay(handlers)
+    subscribeToDisplay({ gymId: GYM_A, handlers })
 
     const cb = getSubscribeCallback()!
     cb('SUBSCRIBED')
@@ -238,7 +262,7 @@ describe('status changes', () => {
 
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const handlers = createMockHandlers()
-      subscribeToDisplay(handlers)
+      subscribeToDisplay({ gymId: GYM_A, handlers })
 
       const cb = getSubscribeCallback()!
       cb(status)
@@ -250,6 +274,53 @@ describe('status changes', () => {
 })
 
 // ===========================================================================
+// Reconnect retains the original gymId
+// ===========================================================================
+
+describe('reconnect retains gym ID', () => {
+  it('reuses the original gymId on retry after a CHANNEL_ERROR', () => {
+    const { channel, getSubscribeCallback } = createMockChannel()
+    const client = createMockClient(channel)
+    initDisplaySubscriber(client)
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+
+    const handlers = createMockHandlers()
+    subscribeToDisplay({ gymId: GYM_A, handlers })
+
+    expect(client.channel).toHaveBeenCalledTimes(1)
+    expect(client.channel).toHaveBeenLastCalledWith(getGymChannelName(GYM_A), expect.any(Object))
+
+    // Trigger a terminal status to force a retry
+    const cb = getSubscribeCallback()!
+    cb('CHANNEL_ERROR')
+
+    // Fast-forward through the retry delay using an explicit time budget
+    // (P14-046). `vi.runOnlyPendingTimers` was sensitive to timer-ordering
+    // changes (e.g., a defensive setTimeout(0) added in the subscribe
+    // path). Using a generous budget keeps the test deterministic against
+    // future production-code timer additions.
+    vi.advanceTimersByTime(5_000)
+
+    // The reconnect must have opened a channel for the same gym, not a
+    // different one.
+    expect(client.channel).toHaveBeenCalledTimes(2)
+    expect(client.channel).toHaveBeenNthCalledWith(2, getGymChannelName(GYM_A), expect.any(Object))
+
+    // Guard: the other gym's channel name was never used
+    const channelNames = (client.channel as unknown as ReturnType<typeof vi.fn>).mock.calls.map(
+      (call: unknown[]) => call[0] as string,
+    )
+    expect(channelNames.every((name) => name === getGymChannelName(GYM_A))).toBe(true)
+    expect(channelNames.includes(getGymChannelName(GYM_B))).toBe(false)
+
+    warnSpy.mockRestore()
+    infoSpy.mockRestore()
+  })
+})
+
+// ===========================================================================
 // publishHello
 // ===========================================================================
 
@@ -258,7 +329,7 @@ describe('publishHello', () => {
     const { channel } = createMockChannel()
     const client = createMockClient(channel)
     initDisplaySubscriber(client)
-    subscribeToDisplay(createMockHandlers())
+    subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })
 
     publishHello()
 
@@ -284,16 +355,17 @@ describe('destroyDisplaySubscriber', () => {
     const { channel } = createMockChannel()
     const client = createMockClient(channel)
     initDisplaySubscriber(client)
-    subscribeToDisplay(createMockHandlers())
+    subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })
 
     destroyDisplaySubscriber()
 
     expect(client.removeChannel).toHaveBeenCalled()
 
-    // Subsequent subscribe should warn (no client)
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    subscribeToDisplay(createMockHandlers())
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Cannot subscribe'))
-    warnSpy.mockRestore()
+    // Subsequent subscribe should throw (no client). Per F018 P14-004,
+    // subscribeToDisplay throws on uninit so the route's outer try/catch
+    // can map this into a `subscribe-failed` BootError.
+    expect(() => subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })).toThrow(
+      /client not initialized/i,
+    )
   })
 })

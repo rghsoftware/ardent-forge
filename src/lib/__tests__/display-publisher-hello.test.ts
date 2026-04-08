@@ -44,6 +44,9 @@ function createMockClient(channel: ReturnType<typeof createMockChannel>['channel
   } as unknown as SupabaseClient
 }
 
+// Test gym ID (F018 -- publisher is now gym-scoped)
+const GYM_A = 'gym-a-0000-0000-000000000000'
+
 // Minimal valid snapshot to trigger channel creation
 const SNAPSHOT: DisplaySnapshot = {
   user_id: 'user-1',
@@ -67,6 +70,21 @@ beforeEach(() => {
   destroyDisplayPublisher()
 })
 
+// ---------------------------------------------------------------------------
+// IMPLICIT COUPLING NOTICE (P15-049)
+//
+// Every test below that asserts on `fireHello()` calls `publishDisplaySnapshot`
+// first for the sole purpose of driving the publisher down its LAZY
+// `ensureChannel()` path -- this is what attaches the `display_hello` listener
+// on the mock channel and thereby populates `helloListener` in
+// `createMockChannel()`. If `display-publisher.ts` ever subscribes to the
+// channel during `configureDisplayPublisher` (eager init) instead of on first
+// publish, replace the `publishDisplaySnapshot(SNAPSHOT)` calls below with
+// the new init path -- otherwise these tests will pass for the wrong reason
+// (the `fireHello()` call would silently no-op against a null listener, and
+// the `responder not invoked` branch of each test would go undetected).
+// ---------------------------------------------------------------------------
+
 // ===========================================================================
 // setHelloResponder
 // ===========================================================================
@@ -80,7 +98,7 @@ describe('setHelloResponder', () => {
     const { channel, fireHello } = createMockChannel()
     const client = createMockClient(channel)
     initDisplayPublisher(client)
-    configureDisplayPublisher({ displayVisible: true })
+    configureDisplayPublisher({ gymId: GYM_A, intent: 'broadcasting' })
 
     // Force channel creation by publishing
     publishDisplaySnapshot(SNAPSHOT)
@@ -101,7 +119,7 @@ describe('display_hello event on channel', () => {
     const { channel, fireHello } = createMockChannel()
     const client = createMockClient(channel)
     initDisplayPublisher(client)
-    configureDisplayPublisher({ displayVisible: true })
+    configureDisplayPublisher({ gymId: GYM_A, intent: 'broadcasting' })
 
     const responder = vi.fn()
     setHelloResponder(responder)
@@ -118,7 +136,7 @@ describe('display_hello event on channel', () => {
     const { channel, fireHello } = createMockChannel()
     const client = createMockClient(channel)
     initDisplayPublisher(client)
-    configureDisplayPublisher({ displayVisible: true })
+    configureDisplayPublisher({ gymId: GYM_A, intent: 'broadcasting' })
 
     setHelloResponder(null)
 
@@ -145,7 +163,7 @@ describe('destroyDisplayPublisher', () => {
     const { channel, fireHello } = createMockChannel()
     const client = createMockClient(channel)
     initDisplayPublisher(client)
-    configureDisplayPublisher({ displayVisible: true })
+    configureDisplayPublisher({ gymId: GYM_A, intent: 'broadcasting' })
 
     publishDisplaySnapshot(SNAPSHOT)
     fireHello()

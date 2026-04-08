@@ -30,6 +30,8 @@ import type {
   Message,
   MessageType,
   MediaAttachment,
+  Gym,
+  GymMember,
 } from '@/domain/types'
 import type {
   ExerciseCategory,
@@ -202,6 +204,53 @@ export interface DataAdapter {
   saveOneRepMax(
     entry: Omit<OneRepMaxHistory, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<OneRepMaxHistory>
+
+  // ============================================================
+  // Gym operations (F018 -- Gym-Scoped Displays)
+  //
+  // Gyms are an online-only concept (per Tech.md D14). The Tauri adapter
+  // exposes empty-collection sentinels for reads and "online required"
+  // errors for writes; the Supabase adapter is the canonical implementation.
+  // ============================================================
+
+  /** Returns every gym the given user is a member of. */
+  listUserGyms(userId: string): Promise<Gym[]>
+
+  /** Returns every gym on the instance (used by the "browse all" picker). */
+  listAllGyms(): Promise<Gym[]>
+
+  /** Returns a single gym by id, or null if it does not exist. */
+  getGym(gymId: string): Promise<Gym | null>
+
+  /**
+   * Creates a new gym owned by the current authenticated user. The owner is
+   * automatically inserted as a `gym_members` row by the Postgres trigger
+   * `trg_gym_owner_enroll` (see migration `20260407000004_enroll_gym_creator.sql`).
+   * Note: RLS policies are gates, not actions -- they cannot insert rows; the
+   * trigger is the only thing that performs the enrollment.
+   */
+  createGym(input: { name: string }): Promise<Gym>
+
+  /** Updates a gym (owner-only, enforced server-side via RLS). */
+  updateGym(input: Partial<Gym> & { id: string }): Promise<Gym>
+
+  /** Deletes a gym (owner-only, enforced server-side via RLS). */
+  deleteGym(gymId: string): Promise<void>
+
+  /** Joins the current authenticated user to the given gym. */
+  joinGym(gymId: string): Promise<void>
+
+  /** Removes the current authenticated user's membership from the given gym. */
+  leaveGym(gymId: string): Promise<void>
+
+  /**
+   * Removes another user's membership from the given gym.
+   * Owner-only, enforced server-side via RLS.
+   */
+  kickGymMember(gymId: string, userId: string): Promise<void>
+
+  /** Lists all members of the given gym. */
+  listGymMembers(gymId: string): Promise<GymMember[]>
 
   // Session template operations
   getSessionTemplates(userId: string, filters?: SessionTemplateFilters): Promise<SessionTemplate[]>

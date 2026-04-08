@@ -3,13 +3,17 @@ import { z } from 'zod'
 export type DiscoveryError = 'INVALID_INPUT' | 'NETWORK_ERROR' | 'NOT_FOUND' | 'INVALID_RESPONSE'
 
 export type DiscoveryResult =
-  | { ok: true; supabaseUrl: string; supabaseKey: string }
+  | { ok: true; supabaseUrl: string; supabaseKey: string; appUrl: string | undefined }
   | { ok: false; error: DiscoveryError; message: string }
 
 const DiscoverySchema = z.object({
   version: z.string().min(1),
-  supabase_url: z.string().url(),
+  supabase_url: z.url(),
   supabase_publishable_key: z.string().min(1),
+  // F019 D21: additive field. Pre-F019 servers omit this; newer servers
+  // derive it from the request Host header. The client falls through to
+  // the D22 backfill path when it's absent.
+  app_url: z.url().optional(),
 })
 
 /**
@@ -18,6 +22,13 @@ const DiscoverySchema = z.object({
  *
  * The returned credentials can be passed to `validateConnection` and then
  * persisted via the config store.
+ *
+ * P15-030: When the server omits `app_url` (pre-F019 servers), the result
+ * still succeeds with `appUrl: undefined`. Callers should treat
+ * `result.ok === true && result.appUrl === undefined` as the programmatic
+ * "backfill required later" signal and may show a setup-time notice. The
+ * warn log below is a diagnostic breadcrumb for operators; it is NOT the
+ * surfacing mechanism.
  */
 export async function discoverInstance(serverUrl: string): Promise<DiscoveryResult> {
   // Normalize: prepend https:// if no protocol, validate protocol, strip trailing slashes
@@ -105,9 +116,16 @@ export async function discoverInstance(serverUrl: string): Promise<DiscoveryResu
     }
   }
 
+  if (result.data.app_url === undefined) {
+    console.warn(
+      '[discovery] Server did not return app_url; Tauri users will hit the D22 backfill flow',
+    )
+  }
+
   return {
     ok: true,
     supabaseUrl: result.data.supabase_url,
     supabaseKey: result.data.supabase_publishable_key,
+    appUrl: result.data.app_url,
   }
 }

@@ -12,6 +12,7 @@ import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useProgramFull } from '@/hooks/use-programs'
 import { detectPersonalRecords } from '@/lib/pr-detection'
 import { useDisplayBroadcast } from '@/hooks/use-display-broadcast'
+import { getActiveGymId } from '@/lib/display-publisher'
 import { WorkoutHeader } from '@/components/workout/workout-header'
 import { WorkoutPausedBar } from '@/components/workout/workout-paused-bar'
 import { ErrorBanner } from '@/components/workout/error-banner'
@@ -95,9 +96,15 @@ function ActiveWorkoutPage() {
     }
   }, [workoutLog?.programContext, programFull])
 
-  // Display broadcast (called unconditionally -- hook manages its own cleanup)
+  // Display broadcast (called unconditionally -- hook manages its own cleanup).
+  // The gym ID was set by `configureDisplayPublisher` in the start-workout
+  // handler before navigation; we read it back from publisher module state
+  // here so the broadcast keeps targeting the picked gym for the lifetime of
+  // the workout. Direct page-load (e.g., refresh) before any pick reads as
+  // null, which puts the publisher in safe Private no-op mode.
   const { publishFocus, publishUnfocus, isBroadcasting } = useDisplayBroadcast(
     workoutLog?.userId ?? '',
+    getActiveGymId(),
   )
 
   // Exercise ID -> Exercise lookup

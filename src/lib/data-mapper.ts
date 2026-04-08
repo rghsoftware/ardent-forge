@@ -32,6 +32,8 @@ import type {
   ConversationParticipant,
   Message,
   MediaAttachment,
+  Gym,
+  GymMember,
 } from '@/domain/types'
 import {
   entityId,
@@ -65,6 +67,8 @@ import {
   mediaProviderSchema,
   mediaTypeSchema,
   mediaStatusSchema,
+  gymSchema,
+  gymMemberSchema,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -89,6 +93,8 @@ import type {
   ConversationParticipantRow,
   MessageRow,
   MediaAttachmentRow,
+  GymRow,
+  GymMemberRow,
 } from './database.types'
 
 /**
@@ -313,7 +319,6 @@ export function toUserProfile(row: UserProfileRow): UserProfile {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     displayName: row.display_name ?? undefined,
-    displayVisible: row.display_visible ?? undefined,
     preferredUnits: preferredUnitsSchema.parse(row.preferred_units),
     bodyweight: row.bodyweight != null ? weightSchema.parse(row.bodyweight) : undefined,
     trainingAge: row.training_age != null ? durationSchema.parse(row.training_age) : undefined,
@@ -334,12 +339,91 @@ export function fromUserProfile(
   const row: Partial<UserProfileRow> = { id: profile.id }
 
   if (profile.displayName !== undefined) row.display_name = profile.displayName ?? null
-  if (profile.displayVisible !== undefined) row.display_visible = profile.displayVisible ?? null
   if (profile.preferredUnits !== undefined) row.preferred_units = profile.preferredUnits
   if (profile.bodyweight !== undefined) row.bodyweight = profile.bodyweight ?? null
   if (profile.trainingAge !== undefined) row.training_age = profile.trainingAge ?? null
   if (profile.exerciseMaxes !== undefined) row.exercise_maxes = profile.exerciseMaxes
   if (profile.maxReps !== undefined) row.max_reps = profile.maxReps
+
+  return row
+}
+
+// ---------------------------------------------------------------------------
+// Gym (F018, Tech.md D1) -- a physical place where lifting happens.
+// ---------------------------------------------------------------------------
+
+export function toGym(row: GymRow): Gym {
+  // P14-039: defense in depth -- the row types declare these as non-null,
+  // but a future migration that introduces a nullable column would silently
+  // produce malformed Gym objects. Warn at the adapter boundary so the
+  // failure is observable.
+  if (row.id == null || row.name == null || row.owner_user_id == null) {
+    console.warn('[data-mapper] toGym: missing required fields', row)
+  }
+  // P14-005: parse through the schema so a future Postgres migration that
+  // loosens column constraints (or returns over-long names from a stale
+  // view) cannot silently ship malformed Gym objects through the app. The
+  // try/catch matches the convention used by toConversation/toMessage.
+  try {
+    return gymSchema.parse({
+      id: row.id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      name: row.name,
+      ownerUserId: row.owner_user_id,
+      isDefault: row.is_default,
+    })
+  } catch (err) {
+    console.error('[data-mapper] Failed to map gym row:', err, row)
+    throw new Error(`Failed to map gym row (id=${row.id}): ${(err as Error).message}`)
+  }
+}
+
+export function fromGym(gym: Partial<Gym>): Partial<GymRow> {
+  const row: Partial<GymRow> = {}
+
+  if (gym.id !== undefined) row.id = gym.id
+  if (gym.name !== undefined) row.name = gym.name
+  if (gym.ownerUserId !== undefined) row.owner_user_id = gym.ownerUserId
+  if (gym.isDefault !== undefined) row.is_default = gym.isDefault
+  if (gym.createdAt !== undefined) row.created_at = gym.createdAt
+  if (gym.updatedAt !== undefined) row.updated_at = gym.updatedAt
+
+  return row
+}
+
+// ---------------------------------------------------------------------------
+// GymMember (F018, Tech.md D1) -- M:N join row between a user and a gym.
+// No `id` -- composite (gym_id, user_id) is the primary key.
+// ---------------------------------------------------------------------------
+
+export function toGymMember(row: GymMemberRow): GymMember {
+  if (row.gym_id == null || row.user_id == null) {
+    console.warn('[data-mapper] toGymMember: missing required fields', row)
+  }
+  // P14-005: parse through the schema for the same reason as toGym -- a
+  // schema-drift event must surface as a loud failure rather than a silently
+  // malformed object propagating through the app.
+  try {
+    return gymMemberSchema.parse({
+      gymId: row.gym_id,
+      userId: row.user_id,
+      joinedAt: row.joined_at,
+    })
+  } catch (err) {
+    console.error('[data-mapper] Failed to map gym_member row:', err, row)
+    throw new Error(
+      `Failed to map gym_member row (gym=${row.gym_id}, user=${row.user_id}): ${(err as Error).message}`,
+    )
+  }
+}
+
+export function fromGymMember(member: Partial<GymMember>): Partial<GymMemberRow> {
+  const row: Partial<GymMemberRow> = {}
+
+  if (member.gymId !== undefined) row.gym_id = member.gymId
+  if (member.userId !== undefined) row.user_id = member.userId
+  if (member.joinedAt !== undefined) row.joined_at = member.joinedAt
 
   return row
 }

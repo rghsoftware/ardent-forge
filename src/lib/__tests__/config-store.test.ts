@@ -46,8 +46,8 @@ vi.mock('../connection-validator', () => ({
 }))
 
 // Import after mocks are registered
-import { getConfigStore, type BackendConfig } from '../config-store'
-import { isTauri } from '@tauri-apps/api/core'
+import { backendConfigSchema, getConfigStore, type BackendConfig } from '../config-store'
+import { isTauri, invoke } from '@tauri-apps/api/core'
 import { validateConnection } from '../connection-validator'
 
 // ---------------------------------------------------------------------------
@@ -309,5 +309,132 @@ describe('resolveConfig', () => {
     )
 
     warnSpy.mockRestore()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// backendConfigSchema (F019 appUrl extension)
+// ---------------------------------------------------------------------------
+
+describe('backendConfigSchema with appUrl', () => {
+  it('accepts a config without appUrl (backward compat with pre-F019 persisted configs)', () => {
+    const result = backendConfigSchema.safeParse({
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-key',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.appUrl).toBeUndefined()
+    }
+  })
+
+  it('accepts a config with a valid appUrl', () => {
+    const result = backendConfigSchema.safeParse({
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-key',
+      appUrl: 'https://forge.example.com',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.appUrl).toBe('https://forge.example.com')
+    }
+  })
+
+  it('rejects a config with a non-URL appUrl', () => {
+    const result = backendConfigSchema.safeParse({
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-key',
+      appUrl: 'not-a-url',
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('BrowserConfigStore round-trips appUrl', () => {
+  let store: ReturnType<typeof getConfigStore>
+
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    restoreLocalStorageMocks()
+    storage.clear()
+    vi.resetModules()
+    const mod = await import('../config-store')
+    store = mod.getConfigStore()
+  })
+
+  it('persists and reads appUrl via setConfig / getConfig', async () => {
+    const withAppUrl: BackendConfig = {
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-key',
+      appUrl: 'https://forge.example.com',
+    }
+
+    await store.setConfig(withAppUrl)
+    const result = await store.getConfig()
+    expect(result).toEqual(withAppUrl)
+  })
+
+  it('reads a stored config missing appUrl (pre-F019 upgrade path)', async () => {
+    // Simulate a config saved by a pre-F019 build.
+    storage.set(
+      STORAGE_KEY,
+      JSON.stringify({
+        supabaseUrl: 'https://example.supabase.co',
+        supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-key',
+      }),
+    )
+
+    const result = await store.getConfig()
+    expect(result).toEqual({
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-key',
+    })
+    expect(result?.appUrl).toBeUndefined()
+  })
+})
+
+describe('TauriConfigStore round-trips appUrl', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(isTauri).mockReturnValue(true)
+  })
+
+  afterEach(() => {
+    vi.mocked(isTauri).mockReturnValue(false)
+  })
+
+  it('persists appUrl via the Tauri invoke bridge', async () => {
+    vi.resetModules()
+    vi.mocked(isTauri).mockReturnValue(true)
+    const payloads = new Map<string, string>()
+    vi.mocked(invoke).mockImplementation((cmd: string, args?: unknown) => {
+      const { key, value } = (args ?? {}) as { key?: string; value?: string }
+      if (cmd === 'set_app_config' && key && value !== undefined) {
+        payloads.set(key, value)
+        return Promise.resolve(undefined as never)
+      }
+      if (cmd === 'get_app_config' && key) {
+        return Promise.resolve((payloads.get(key) ?? null) as never)
+      }
+      return Promise.resolve(undefined as never)
+    })
+
+    const mod = await import('../config-store')
+    const store = mod.getConfigStore()
+
+    const cfg: BackendConfig = {
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test-key',
+      appUrl: 'https://forge.example.com',
+    }
+
+    await store.setConfig(cfg)
+    const result = await store.getConfig()
+
+    expect(result).toEqual(cfg)
+    expect(invoke).toHaveBeenCalledWith('set_app_config', {
+      key: 'backend_config',
+      value: JSON.stringify(cfg),
+    })
   })
 })

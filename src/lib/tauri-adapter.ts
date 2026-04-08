@@ -46,6 +46,8 @@ import type {
   Message,
   MessageType,
   MediaAttachment,
+  Gym,
+  GymMember,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -198,7 +200,9 @@ interface TauriLoggedSetResponse {
 interface TauriUserProfileResponse {
   id: string
   display_name: string | null
-  display_visible: number | null
+  // F018 (M10): `display_visible` removed -- was the legacy global publish
+  // opt-in. The Wave 3b SQLite migration drops the column on the Tauri side
+  // in lockstep with the Postgres drop in Wave 2.
   preferred_units: string | null
   bodyweight: string | null
   training_age: string | null
@@ -530,6 +534,27 @@ export class AdapterError extends Error {
   }
 }
 
+/**
+ * Distinct error variant for operations that require an online Supabase
+ * connection in the Tauri (offline-first) build. Mutation hooks can
+ * `instanceof OnlineRequiredError` to surface a contextual "Offline mode"
+ * banner instead of a generic failure message.
+ *
+ * Per .claude/rules/error-handling.md: error types at system boundaries
+ * must distinguish input validation failures from network/transport
+ * failures. This is the network/transport variant for the gym domain.
+ */
+export class OnlineRequiredError extends Error {
+  readonly code = 'ONLINE_REQUIRED' as const
+  readonly operation: string
+
+  constructor(operation: string) {
+    super(`${operation} requires an online connection`)
+    this.name = 'OnlineRequiredError'
+    this.operation = operation
+  }
+}
+
 /** Invoke a Tauri command and translate AppError responses into AdapterError. */
 async function invokeCommand<T>(cmd: string, args: Record<string, unknown>): Promise<T> {
   try {
@@ -726,7 +751,6 @@ function toUserProfileRow(r: TauriUserProfileResponse): UserProfileRow {
   return {
     id: r.id,
     display_name: r.display_name,
-    display_visible: r.display_visible != null ? intToBool(r.display_visible) : null,
     preferred_units: r.preferred_units ?? 'IMPERIAL',
     bodyweight: parseJson(r.bodyweight, 'bodyweight'),
     training_age: parseJson(r.training_age, 'training_age'),
@@ -1359,10 +1383,12 @@ export class TauriAdapter implements DataAdapter {
 
   async updateUserProfile(profile: Partial<UserProfile> & { id: string }): Promise<UserProfile> {
     const partial = fromUserProfile(profile)
+    // F018 (M10): `display_visible` was removed from the schema; the Rust
+    // command and the SQLite migration on the Tauri side drop it in lockstep
+    // (Wave 3b). We do not pass it here.
     const input = {
       id: partial.id!,
       display_name: partial.display_name ?? null,
-      display_visible: partial.display_visible ?? null,
       preferred_units: partial.preferred_units ?? null,
       bodyweight: partial.bodyweight != null ? JSON.stringify(partial.bodyweight) : null,
       training_age: partial.training_age != null ? JSON.stringify(partial.training_age) : null,
@@ -2041,6 +2067,70 @@ export class TauriAdapter implements DataAdapter {
 
   async deleteShareLink(_id: string): Promise<void> {
     throw new Error('Share links are not supported in offline mode')
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gym operations (F018 -- online-only per Tech.md D14)
+  //
+  // Gyms are an online concept: the publisher only matters when there is a
+  // live Supabase Realtime channel to broadcast on. Reads return empty
+  // collections so offline UI renders gracefully (the picker shows only the
+  // Private option) but log a one-line warn so the empty result is not
+  // mistaken for "no gyms exist on this instance." Writes throw a distinct
+  // `OnlineRequiredError` (P14-003) so mutation hooks can surface an
+  // "Offline mode" banner instead of a generic failure message.
+  // ---------------------------------------------------------------------------
+
+  async listUserGyms(_userId: string): Promise<Gym[]> {
+    console.warn(
+      '[tauri-adapter] listUserGyms called in offline mode; returning empty (gyms require online)',
+    )
+    return []
+  }
+
+  async listAllGyms(): Promise<Gym[]> {
+    console.warn(
+      '[tauri-adapter] listAllGyms called in offline mode; returning empty (gyms require online)',
+    )
+    return []
+  }
+
+  async getGym(_gymId: string): Promise<Gym | null> {
+    console.warn(
+      '[tauri-adapter] getGym called in offline mode; returning null (gyms require online)',
+    )
+    return null
+  }
+
+  async createGym(_input: { name: string }): Promise<Gym> {
+    throw new OnlineRequiredError('createGym')
+  }
+
+  async updateGym(_input: Partial<Gym> & { id: string }): Promise<Gym> {
+    throw new OnlineRequiredError('updateGym')
+  }
+
+  async deleteGym(_gymId: string): Promise<void> {
+    throw new OnlineRequiredError('deleteGym')
+  }
+
+  async joinGym(_gymId: string): Promise<void> {
+    throw new OnlineRequiredError('joinGym')
+  }
+
+  async leaveGym(_gymId: string): Promise<void> {
+    throw new OnlineRequiredError('leaveGym')
+  }
+
+  async kickGymMember(_gymId: string, _userId: string): Promise<void> {
+    throw new OnlineRequiredError('kickGymMember')
+  }
+
+  async listGymMembers(_gymId: string): Promise<GymMember[]> {
+    console.warn(
+      '[tauri-adapter] listGymMembers called in offline mode; returning empty (gyms require online)',
+    )
+    return []
   }
 
   // ---------------------------------------------------------------------------
