@@ -5,9 +5,9 @@
 
 ## Progress
 
-- **Status:** Draft (not started)
+- **Status:** Complete
 - **Current task:** --
-- **Last milestone:** --
+- **Last milestone:** M7 (S016-QA pending manual Android pass)
 
 ## Team Orchestration
 
