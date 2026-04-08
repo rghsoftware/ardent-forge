@@ -92,6 +92,7 @@ vi.mock('@/hooks/use-active-workout', () => ({
 // Empty recent workouts -- avoid rendering history cards in the harness.
 vi.mock('@/hooks/use-workout-logs', () => ({
   useWorkoutLogs: () => ({ data: [], isError: false }),
+  useDeleteWorkoutLog: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 
 // No active program -- this keeps the Program section from rendering and

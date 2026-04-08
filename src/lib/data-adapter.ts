@@ -174,6 +174,14 @@ export interface DataAdapter {
   ): Promise<LoggedActivity>
   createLoggedSet(set: Omit<LoggedSet, 'id'>, userId: string): Promise<LoggedSet>
   updateLoggedSet(set: LoggedSet, userId: string): Promise<LoggedSet>
+  deleteLoggedSet(id: string): Promise<void>
+  updateLoggedActivity(activity: LoggedActivity, userId: string): Promise<LoggedActivity>
+  deleteLoggedActivity(id: string): Promise<void>
+  updateLoggedActivityGroup(
+    group: LoggedActivityGroup,
+    userId: string,
+  ): Promise<LoggedActivityGroup>
+  deleteLoggedActivityGroup(id: string): Promise<void>
 
   // Exercise history operations
 

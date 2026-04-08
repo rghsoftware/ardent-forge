@@ -42,6 +42,7 @@ interface MobileBlockEditorProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onPreviewSession?: (sessionTemplateId: string) => void
   onCopyWeek: (sourceWeekClientId: string) => void
   showWeekends: boolean
   onToggleWeekends: () => void
@@ -52,6 +53,7 @@ export function MobileBlockEditor({
   draft,
   onUpdate,
   onPickSession,
+  onPreviewSession,
   onCopyWeek,
   showWeekends,
   onToggleWeekends,
@@ -99,6 +101,7 @@ export function MobileBlockEditor({
           draft={draft}
           onUpdate={onUpdate}
           onPickSession={onPickSession}
+          onPreviewSession={onPreviewSession}
           onCopyWeek={onCopyWeek}
           showWeekends={showWeekends}
           isNew={block.clientId === newBlockId}
@@ -137,6 +140,7 @@ interface MobileBlockCardProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onPreviewSession?: (sessionTemplateId: string) => void
   onCopyWeek: (sourceWeekClientId: string) => void
   showWeekends: boolean
   isNew?: boolean
@@ -149,6 +153,7 @@ function MobileBlockCard({
   draft,
   onUpdate,
   onPickSession,
+  onPreviewSession,
   onCopyWeek,
   showWeekends,
   isNew,
@@ -395,6 +400,7 @@ function MobileBlockCard({
                     blockClientId={block.clientId}
                     onUpdate={onUpdate}
                     onPickSession={onPickSession}
+                    onPreviewSession={onPreviewSession}
                     onCopyWeek={onCopyWeek}
                     showWeekends={showWeekends}
                     isNew={week.clientId === newWeekId}
@@ -439,6 +445,7 @@ interface MobileWeekSectionProps {
   blockClientId: string
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onPreviewSession?: (sessionTemplateId: string) => void
   onCopyWeek: (sourceWeekClientId: string) => void
   showWeekends: boolean
   isNew?: boolean
@@ -452,6 +459,7 @@ function MobileWeekSection({
   blockClientId,
   onUpdate,
   onPickSession,
+  onPreviewSession,
   onCopyWeek,
   showWeekends,
   isNew,
@@ -533,6 +541,7 @@ function MobileWeekSection({
               draft={draft}
               onUpdate={onUpdate}
               onPickSession={onPickSession}
+              onPreview={onPreviewSession}
             />
           )
         })}
@@ -566,6 +575,7 @@ interface MobileDayRowProps {
   draft: ProgramDraft
   onUpdate: (draft: ProgramDraft) => void
   onPickSession: (weekClientId: string, dayOfWeek: DayOfWeek) => void
+  onPreview?: (sessionTemplateId: string) => void
 }
 
 function MobileDayRow({
@@ -575,12 +585,19 @@ function MobileDayRow({
   draft,
   onUpdate,
   onPickSession,
+  onPreview,
 }: MobileDayRowProps) {
   const handleTap = useCallback(() => {
     if (!session) {
       onPickSession(weekClientId, dayOfWeek)
     }
   }, [weekClientId, dayOfWeek, session, onPickSession])
+
+  const handlePreview = useCallback(() => {
+    if (session && onPreview) {
+      onPreview(session.sessionTemplateId)
+    }
+  }, [session, onPreview])
 
   const handleRemove = useCallback(
     (e: React.MouseEvent | React.KeyboardEvent) => {
@@ -623,7 +640,20 @@ function MobileDayRow({
 
   return (
     <div
-      className={`flex min-h-12 items-center gap-3 px-3 py-2 ${
+      role={onPreview ? 'button' : undefined}
+      tabIndex={onPreview ? 0 : undefined}
+      onClick={onPreview ? handlePreview : undefined}
+      onKeyDown={
+        onPreview
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                handlePreview()
+              }
+            }
+          : undefined
+      }
+      className={`flex min-h-12 items-center gap-3 px-3 py-2 ${onPreview ? 'cursor-pointer' : ''} ${
         isEvent ? 'border-l-2 border-ember bg-surface-iron' : 'bg-surface-charcoal'
       } ${SESSION_TINT[session.sessionType] ?? ''}`}
     >

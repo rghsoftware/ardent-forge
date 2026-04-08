@@ -59,7 +59,10 @@ export interface WorkoutLogRow {
   perceived_difficulty: number | null
   bodyweight_at_session: unknown
   overall_notes: string | null
+  note_tags: string[]
   event_metadata: unknown
+  paused_at: string | null
+  total_paused_ms: number
   created_at: string
   updated_at: string
 }
@@ -83,6 +86,7 @@ export interface LoggedActivityRow {
   exercise_id: string
   ordinal: number
   notes: string | null
+  note_tags: string[]
   created_at: string
   updated_at: string
 }
@@ -105,6 +109,7 @@ export interface LoggedSetRow {
   rpe: number | null
   completed: boolean
   notes: string | null
+  note_tags: string[]
   created_at: string
   updated_at: string
 }

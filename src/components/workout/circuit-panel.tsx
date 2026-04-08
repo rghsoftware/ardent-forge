@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { formatCountdown } from '@/lib/format-duration'
+import { RestPanel } from '@/components/workout/rest-panel'
 
 type CircuitPhase = 'overview' | 'exercise' | 'interExerciseRest' | 'interRoundRest' | 'done'
 
@@ -15,6 +15,13 @@ interface CircuitPanelProps {
   rounds: number
   interExerciseRestSeconds?: number
   interRoundRestSeconds?: number
+  /**
+   * Fires immediately when the user taps "Done" on an exercise. The parent
+   * should record a confirmed set with the supplied actual reps. exerciseIndex
+   * matches the index in the exercises prop. round is 1-based.
+   */
+  onExerciseDone?: (exerciseIndex: number, round: number, actualReps: number) => void
+  /** Fires once after the last exercise of the last round. */
   onComplete: (completedRounds: number) => void
 }
 
@@ -23,6 +30,7 @@ export function CircuitPanel({
   rounds,
   interExerciseRestSeconds = 90,
   interRoundRestSeconds = 180,
+  onExerciseDone,
   onComplete,
 }: CircuitPanelProps) {
   const [phase, setPhase] = useState<CircuitPhase>('overview')
@@ -30,6 +38,10 @@ export function CircuitPanel({
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0)
   const [restSeconds, setRestSeconds] = useState(0)
   const [completedRounds, setCompletedRounds] = useState(0)
+  // Track only the user's edit, keyed to (exerciseIndex, round). When the key
+  // doesn't match the current position, we fall back to the target reps. This
+  // avoids a setState-in-effect violation while still letting the user edit.
+  const [repsOverride, setRepsOverride] = useState<{ key: string; value: string } | null>(null)
   const restIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Rest countdown effect
@@ -69,7 +81,24 @@ export function CircuitPanel({
     setCompletedRounds(0)
   }, [])
 
+  const currentRepsKey = `${currentExerciseIndex}-${currentRound}`
+  const currentTargetReps = exercises[currentExerciseIndex]?.targetReps
+  const actualRepsInput =
+    repsOverride?.key === currentRepsKey
+      ? repsOverride.value
+      : currentTargetReps != null
+        ? String(currentTargetReps)
+        : ''
+
   const handleExerciseDone = useCallback(() => {
+    // Record the actual reps the user entered (or fall back to target).
+    const parsed = parseInt(actualRepsInput, 10)
+    const actualReps =
+      Number.isFinite(parsed) && parsed >= 0
+        ? parsed
+        : (exercises[currentExerciseIndex]?.targetReps ?? 0)
+    onExerciseDone?.(currentExerciseIndex, currentRound, actualReps)
+
     const isLastExercise = currentExerciseIndex >= exercises.length - 1
     const isLastRound = currentRound >= rounds
 
@@ -91,12 +120,14 @@ export function CircuitPanel({
       setPhase('interExerciseRest')
     }
   }, [
+    actualRepsInput,
     currentExerciseIndex,
     currentRound,
-    exercises.length,
+    exercises,
     rounds,
     interExerciseRestSeconds,
     interRoundRestSeconds,
+    onExerciseDone,
   ])
 
   const handleSkipRest = useCallback(() => {
@@ -113,7 +144,7 @@ export function CircuitPanel({
   const currentExercise = exercises[currentExerciseIndex]
 
   return (
-    <section className="bg-surface-iron" aria-label="SE circuit">
+    <section className="flex flex-1 flex-col bg-surface-iron" aria-label="SE circuit">
       {/* Header */}
       <div className="px-4 pt-4 pb-2">
         <h3 className="font-display text-xs font-medium uppercase tracking-widest text-ember">
@@ -161,82 +192,92 @@ export function CircuitPanel({
 
       {/* Exercise phase */}
       {phase === 'exercise' && currentExercise && (
-        <div className="flex flex-col items-center gap-4 px-4 py-8">
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-8">
           {/* Round indicator */}
-          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">
+          <span className="text-sm font-bold uppercase tracking-widest text-warm-ash/70">
             ROUND {currentRound} / {rounds}
           </span>
 
           {/* Exercise name */}
-          <span className="font-display text-2xl text-bone-white">{currentExercise.name}</span>
-
-          {/* Target reps */}
-          <span className="font-display text-5xl tabular-nums text-ember">
-            {currentExercise.targetReps}
+          <span className="text-center font-display text-5xl leading-tight text-bone-white">
+            {currentExercise.name}
           </span>
-          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">REPS</span>
+
+          {/* Target reps (read-only reference) */}
+          <span className="text-sm font-bold uppercase tracking-widest text-warm-ash/70">
+            TARGET {currentExercise.targetReps}
+          </span>
+
+          {/* Actual reps input -- pre-filled with target, user edits before tapping Done */}
+          <label className="flex flex-col items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-widest text-warm-ash/60">
+              ACTUAL
+            </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={actualRepsInput}
+              onChange={(e) =>
+                setRepsOverride({
+                  key: currentRepsKey,
+                  value: e.target.value.replace(/[^0-9]/g, ''),
+                })
+              }
+              className="w-48 border-b-2 border-ember/60 bg-transparent py-2 text-center font-display text-8xl tabular-nums leading-none text-ember placeholder:text-warm-ash/30 focus:border-ember focus:outline-none"
+              aria-label={`Actual reps for ${currentExercise.name}`}
+            />
+            <span className="text-xs font-bold uppercase tracking-widest text-warm-ash/60">
+              REPS
+            </span>
+          </label>
 
           {/* Done button */}
           <Button
             variant="default"
             size="lg"
             onClick={handleExerciseDone}
-            className="mt-4 min-h-12 min-w-32"
+            className="mt-4 min-h-16 min-w-48 text-lg font-bold uppercase tracking-widest"
           >
             Done
           </Button>
 
           {/* Progress */}
-          <span className="text-xs tabular-nums text-warm-ash/60">
+          <span className="text-sm font-bold tabular-nums uppercase tracking-widest text-warm-ash/60">
             {currentExerciseIndex + 1} / {exercises.length}
           </span>
         </div>
       )}
 
-      {/* Inter-exercise rest */}
+      {/* Inter-exercise rest -- shared cooling-rest primitive */}
       {phase === 'interExerciseRest' && (
-        <div className="flex flex-col items-center gap-3 px-4 py-8">
-          <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">REST</span>
-          <span className="font-display text-5xl tabular-nums tracking-tight text-bone-white">
-            {formatCountdown(restSeconds)}
-          </span>
-
-          {/* Next exercise preview */}
-          {exercises[currentExerciseIndex + 1] && (
-            <div className="mt-2 flex flex-col items-center gap-1">
-              <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">NEXT</span>
-              <span className="text-sm text-bone-white">
-                {exercises[currentExerciseIndex + 1].name}
-              </span>
-            </div>
-          )}
-
-          <Button variant="ghost" size="sm" onClick={handleSkipRest} className="mt-2 text-xs">
-            Skip rest
-          </Button>
-        </div>
+        <RestPanel
+          remaining={restSeconds}
+          total={interExerciseRestSeconds}
+          onSkip={handleSkipRest}
+          nextLabel={exercises[currentExerciseIndex + 1] ? 'Next' : undefined}
+          nextPrimary={exercises[currentExerciseIndex + 1]?.name}
+        />
       )}
 
-      {/* Inter-round rest */}
+      {/* Inter-round rest -- shared cooling-rest primitive */}
       {phase === 'interRoundRest' && (
-        <div className="flex flex-col items-center gap-3 px-4 py-8">
-          <Badge variant="pending">
-            ROUND {currentRound} / {rounds} COMPLETE
-          </Badge>
-          <span className="mt-2 text-[11px] uppercase tracking-widest text-warm-ash/60">REST</span>
-          <span className="font-display text-5xl tabular-nums tracking-tight text-bone-white">
-            {formatCountdown(restSeconds)}
-          </span>
-
-          <Button variant="ghost" size="sm" onClick={handleSkipRest} className="mt-2 text-xs">
-            Skip rest
-          </Button>
-        </div>
+        <RestPanel
+          remaining={restSeconds}
+          total={interRoundRestSeconds}
+          onSkip={handleSkipRest}
+          topBadge={
+            <Badge variant="pending">
+              ROUND {currentRound} / {rounds} COMPLETE
+            </Badge>
+          }
+          nextLabel="Next round"
+          nextPrimary={exercises[0]?.name}
+        />
       )}
 
       {/* Done phase -- reports actual completedRounds, not the rounds prop */}
       {phase === 'done' && (
-        <div className="flex flex-col items-center gap-4 px-4 py-8">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-8">
           <Badge variant="complete">CIRCUIT COMPLETE</Badge>
           <div className="flex items-baseline gap-2">
             <span className="font-display text-4xl tabular-nums text-bone-white">

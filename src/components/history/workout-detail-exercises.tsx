@@ -1,6 +1,7 @@
 import { formatDuration } from '@/lib/format-duration'
 import { Icon } from '@/components/icon'
 import { EmptyState } from '@/components/shared/empty-state'
+import { NoteDisplay } from '@/components/workout/notes/note-display'
 import type { Exercise, LoggedActivityGroup, LoggedActivity, LoggedSet } from '@/domain/types'
 
 interface WorkoutDetailExercisesProps {
@@ -115,44 +116,52 @@ export function WorkoutDetailExercises({
 
                 {/* Set rows */}
                 {activitySets.map((set, setIdx) => (
-                  <div
-                    key={set.id}
-                    className={`flex items-center py-2 ${
-                      setIdx % 2 === 0 ? 'bg-surface-iron' : 'bg-surface-charcoal'
-                    }`}
-                  >
-                    {/* Set number */}
-                    <span className="w-12 text-center font-display text-sm tabular-nums text-bone-white">
-                      {set.setNumber}
-                    </span>
+                  <div key={set.id}>
+                    <div
+                      className={`flex items-center py-2 ${
+                        setIdx % 2 === 0 ? 'bg-surface-iron' : 'bg-surface-charcoal'
+                      }`}
+                    >
+                      {/* Set number */}
+                      <span className="w-12 text-center font-display text-sm tabular-nums text-bone-white">
+                        {set.setNumber}
+                      </span>
 
-                    {/* Actual values */}
-                    <span className="flex-1 font-display text-sm tabular-nums text-bone-white">
-                      {formatActualValue(set)}
-                    </span>
+                      {/* Actual values */}
+                      <span className="flex-1 font-display text-sm tabular-nums text-bone-white">
+                        {formatActualValue(set)}
+                      </span>
 
-                    {/* Status badge */}
-                    <div className="w-24 flex justify-center">
-                      {set.completed ? (
-                        <span className="inline-flex items-center gap-1 bg-forge text-on-forge text-[11px] px-2 py-0.5 uppercase tracking-widest">
-                          <Icon name="check" size={12} />
-                          DONE
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center bg-surface-gunmetal text-warm-ash text-[11px] px-2 py-0.5 uppercase tracking-widest">
-                          SKIP
-                        </span>
-                      )}
+                      {/* Status badge */}
+                      <div className="w-24 flex justify-center">
+                        {set.completed ? (
+                          <span className="inline-flex items-center gap-1 bg-forge text-on-forge text-[11px] px-2 py-0.5 uppercase tracking-widest">
+                            <Icon name="check" size={12} />
+                            DONE
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center bg-surface-gunmetal text-warm-ash text-[11px] px-2 py-0.5 uppercase tracking-widest">
+                            SKIP
+                          </span>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Set-level note (Spec assertion 9: null when empty) */}
+                    <NoteDisplay
+                      value={{ text: set.notes ?? '', tags: set.noteTags ?? [] }}
+                      className={`px-3 py-1.5 ${
+                        setIdx % 2 === 0 ? 'bg-surface-iron' : 'bg-surface-charcoal'
+                      }`}
+                    />
                   </div>
                 ))}
 
-                {/* Activity notes */}
-                {activity.notes && (
-                  <div className="mt-1 px-3 py-1.5">
-                    <span className="text-xs text-warm-ash/60 italic">{activity.notes}</span>
-                  </div>
-                )}
+                {/* Activity-level note */}
+                <NoteDisplay
+                  value={{ text: activity.notes ?? '', tags: activity.noteTags ?? [] }}
+                  className="mt-1 px-3 py-1.5"
+                />
               </div>
             </div>
           )

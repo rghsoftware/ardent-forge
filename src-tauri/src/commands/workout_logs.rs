@@ -24,6 +24,7 @@ pub struct CreateWorkoutLogInput {
     pub session_template_id: Option<String>,
     pub program_context: Option<String>,
     pub overall_notes: Option<String>,
+    pub note_tags: Option<String>, // JSON array string
     pub perceived_difficulty: Option<i32>,
     pub bodyweight_at_session: Option<String>,
 }
@@ -43,6 +44,7 @@ pub struct CreateLoggedActivityInput {
     pub exercise_id: String,
     pub ordinal: i32,
     pub notes: Option<String>,
+    pub note_tags: Option<String>, // JSON array string
 }
 
 #[derive(serde::Deserialize)]
@@ -62,6 +64,7 @@ pub struct CreateLoggedSetInput {
     pub rpe: Option<i32>,
     pub completed: Option<bool>,
     pub notes: Option<String>,
+    pub note_tags: Option<String>, // JSON array string
 }
 
 #[derive(serde::Deserialize)]
@@ -82,6 +85,27 @@ pub struct UpdateLoggedSetInput {
     pub rpe: Option<i32>,
     pub completed: Option<bool>,
     pub notes: Option<String>,
+    pub note_tags: Option<String>, // JSON array string
+}
+
+#[derive(serde::Deserialize)]
+pub struct UpdateLoggedActivityInput {
+    pub id: String,
+    pub logged_group_id: String,
+    pub exercise_id: String,
+    pub ordinal: i32,
+    pub notes: Option<String>,
+    pub note_tags: Option<String>, // JSON array string
+}
+
+#[derive(serde::Deserialize)]
+pub struct UpdateLoggedActivityGroupInput {
+    pub id: String,
+    pub workout_log_id: String,
+    pub group_type: String,
+    pub ordinal: i32,
+    pub actual_rounds_completed: Option<i32>,
+    pub completion_time: Option<String>,
 }
 
 #[derive(serde::Deserialize)]
@@ -333,9 +357,9 @@ pub async fn create_workout_log(
     sqlx::query(
         "INSERT INTO workout_logs \
          (id, user_id, title, started_at, completed_at, session_template_id, \
-          program_context, overall_notes, perceived_difficulty, bodyweight_at_session, \
+          program_context, overall_notes, note_tags, perceived_difficulty, bodyweight_at_session, \
           created_at, updated_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&log.user_id)
@@ -345,6 +369,7 @@ pub async fn create_workout_log(
     .bind(&log.session_template_id)
     .bind(&log.program_context)
     .bind(&log.overall_notes)
+    .bind(log.note_tags.as_deref().unwrap_or("[]"))
     .bind(log.perceived_difficulty)
     .bind(&log.bodyweight_at_session)
     .bind(now)
@@ -369,6 +394,7 @@ pub async fn update_workout_log(
     title: Option<String>,
     completed_at: Option<i64>,
     overall_notes: Option<String>,
+    note_tags: Option<String>,
     perceived_difficulty: Option<i32>,
 ) -> Result<WorkoutLogRow, AppError> {
     let now = now_unix();
@@ -378,6 +404,7 @@ pub async fn update_workout_log(
          title = ?, \
          completed_at = ?, \
          overall_notes = ?, \
+         note_tags = ?, \
          perceived_difficulty = ?, \
          updated_at = ? \
          WHERE id = ?",
@@ -385,6 +412,7 @@ pub async fn update_workout_log(
     .bind(&title)
     .bind(completed_at)
     .bind(&overall_notes)
+    .bind(note_tags.as_deref().unwrap_or("[]"))
     .bind(perceived_difficulty)
     .bind(now)
     .bind(&id)
@@ -470,8 +498,8 @@ pub async fn create_logged_activity(
 
     sqlx::query(
         "INSERT INTO logged_activities \
-         (id, logged_group_id, user_id, exercise_id, ordinal, notes, created_at, updated_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+         (id, logged_group_id, user_id, exercise_id, ordinal, notes, note_tags, created_at, updated_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&activity.logged_group_id)
@@ -479,6 +507,7 @@ pub async fn create_logged_activity(
     .bind(&activity.exercise_id)
     .bind(activity.ordinal)
     .bind(&activity.notes)
+    .bind(activity.note_tags.as_deref().unwrap_or("[]"))
     .bind(now)
     .bind(now)
     .execute(&mut *tx)
@@ -530,9 +559,9 @@ pub async fn create_logged_set(
         "INSERT INTO logged_sets \
          (id, logged_activity_id, user_id, set_number, set_type, prescribed, \
           actual_reps, actual_weight, actual_duration, actual_distance, actual_pace, \
-          actual_heart_rate, ruck_load, elevation_gain, rpe, completed, notes, \
+          actual_heart_rate, ruck_load, elevation_gain, rpe, completed, notes, note_tags, \
           created_at, updated_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&set.logged_activity_id)
@@ -551,6 +580,7 @@ pub async fn create_logged_set(
     .bind(set.rpe)
     .bind(completed)
     .bind(&set.notes)
+    .bind(set.note_tags.as_deref().unwrap_or("[]"))
     .bind(now)
     .bind(now)
     .execute(&mut *tx)
@@ -582,7 +612,7 @@ pub async fn update_logged_set(
          logged_activity_id = ?, user_id = ?, set_number = ?, set_type = ?, \
          prescribed = ?, actual_reps = ?, actual_weight = ?, actual_duration = ?, \
          actual_distance = ?, actual_pace = ?, actual_heart_rate = ?, ruck_load = ?, \
-         elevation_gain = ?, rpe = ?, completed = ?, notes = ?, updated_at = ? \
+         elevation_gain = ?, rpe = ?, completed = ?, notes = ?, note_tags = ?, updated_at = ? \
          WHERE id = ?",
     )
     .bind(&set.logged_activity_id)
@@ -601,6 +631,7 @@ pub async fn update_logged_set(
     .bind(set.rpe)
     .bind(completed)
     .bind(&set.notes)
+    .bind(set.note_tags.as_deref().unwrap_or("[]"))
     .bind(now)
     .bind(&set.id)
     .execute(&mut *tx)
@@ -713,6 +744,7 @@ pub async fn get_exercise_workout_history(
         rpe: Option<i32>,
         completed: Option<i32>,
         notes: Option<String>,
+        note_tags: String,
         created_at: Option<i64>,
         updated_at: Option<i64>,
         _wl_id: String,
@@ -754,6 +786,7 @@ pub async fn get_exercise_workout_history(
             rpe: fs.rpe,
             completed: fs.completed,
             notes: fs.notes,
+            note_tags: fs.note_tags,
             created_at: fs.created_at,
             updated_at: fs.updated_at,
         });
@@ -792,9 +825,9 @@ pub async fn create_workout_log_full(
     sqlx::query(
         "INSERT INTO workout_logs \
          (id, user_id, title, started_at, completed_at, session_template_id, \
-          program_context, overall_notes, perceived_difficulty, bodyweight_at_session, \
+          program_context, overall_notes, note_tags, perceived_difficulty, bodyweight_at_session, \
           created_at, updated_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&log_id)
     .bind(&user_id)
@@ -804,6 +837,7 @@ pub async fn create_workout_log_full(
     .bind(&input.log.session_template_id)
     .bind(&input.log.program_context)
     .bind(&input.log.overall_notes)
+    .bind(input.log.note_tags.as_deref().unwrap_or("[]"))
     .bind(input.log.perceived_difficulty)
     .bind(&input.log.bodyweight_at_session)
     .bind(now)
@@ -847,8 +881,8 @@ pub async fn create_workout_log_full(
             let act_id = Uuid::new_v4().to_string();
             sqlx::query(
                 "INSERT INTO logged_activities \
-                 (id, logged_group_id, user_id, exercise_id, ordinal, notes, created_at, updated_at) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                 (id, logged_group_id, user_id, exercise_id, ordinal, notes, note_tags, created_at, updated_at) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             )
             .bind(&act_id)
             .bind(&group_id)
@@ -856,6 +890,7 @@ pub async fn create_workout_log_full(
             .bind(&act_input.activity.exercise_id)
             .bind(act_input.activity.ordinal)
             .bind(&act_input.activity.notes)
+            .bind(act_input.activity.note_tags.as_deref().unwrap_or("[]"))
             .bind(now)
             .bind(now)
             .execute(&mut *tx)
@@ -876,9 +911,9 @@ pub async fn create_workout_log_full(
                     "INSERT INTO logged_sets \
                      (id, logged_activity_id, user_id, set_number, set_type, prescribed, \
                       actual_reps, actual_weight, actual_duration, actual_distance, actual_pace, \
-                      actual_heart_rate, ruck_load, elevation_gain, rpe, completed, notes, \
+                      actual_heart_rate, ruck_load, elevation_gain, rpe, completed, notes, note_tags, \
                       created_at, updated_at) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 )
                 .bind(&set_id)
                 .bind(&act_id)
@@ -897,6 +932,7 @@ pub async fn create_workout_log_full(
                 .bind(set_input.rpe)
                 .bind(completed)
                 .bind(&set_input.notes)
+                .bind(set_input.note_tags.as_deref().unwrap_or("[]"))
                 .bind(now)
                 .bind(now)
                 .execute(&mut *tx)
@@ -925,4 +961,133 @@ pub async fn create_workout_log_full(
         activities: all_activities,
         sets: all_sets,
     })
+}
+
+#[tauri::command]
+pub async fn delete_logged_set(pool: State<'_, SqlitePool>, id: String) -> Result<(), AppError> {
+    let result = sqlx::query("DELETE FROM logged_sets WHERE id = ?")
+        .bind(&id)
+        .execute(pool.inner())
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("LoggedSet", &id));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_logged_activity(
+    pool: State<'_, SqlitePool>,
+    id: String,
+) -> Result<(), AppError> {
+    let result = sqlx::query("DELETE FROM logged_activities WHERE id = ?")
+        .bind(&id)
+        .execute(pool.inner())
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("LoggedActivity", &id));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_logged_activity_group(
+    pool: State<'_, SqlitePool>,
+    id: String,
+) -> Result<(), AppError> {
+    let result = sqlx::query("DELETE FROM logged_activity_groups WHERE id = ?")
+        .bind(&id)
+        .execute(pool.inner())
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("LoggedActivityGroup", &id));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn update_logged_activity(
+    pool: State<'_, SqlitePool>,
+    activity: UpdateLoggedActivityInput,
+    user_id: String,
+) -> Result<LoggedActivityRow, AppError> {
+    let now = now_unix();
+
+    let mut tx = pool.begin().await?;
+
+    let result = sqlx::query(
+        "UPDATE logged_activities SET \
+         logged_group_id = ?, user_id = ?, exercise_id = ?, ordinal = ?, notes = ?, note_tags = ?, updated_at = ? \
+         WHERE id = ?",
+    )
+    .bind(&activity.logged_group_id)
+    .bind(&user_id)
+    .bind(&activity.exercise_id)
+    .bind(activity.ordinal)
+    .bind(&activity.notes)
+    .bind(activity.note_tags.as_deref().unwrap_or("[]"))
+    .bind(now)
+    .bind(&activity.id)
+    .execute(&mut *tx)
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("LoggedActivity", &activity.id));
+    }
+
+    let row =
+        sqlx::query_as::<_, LoggedActivityRow>("SELECT * FROM logged_activities WHERE id = ?")
+            .bind(&activity.id)
+            .fetch_one(&mut *tx)
+            .await?;
+
+    tx.commit().await?;
+
+    Ok(row)
+}
+
+#[tauri::command]
+pub async fn update_logged_activity_group(
+    pool: State<'_, SqlitePool>,
+    group: UpdateLoggedActivityGroupInput,
+    user_id: String,
+) -> Result<LoggedActivityGroupRow, AppError> {
+    let now = now_unix();
+
+    let mut tx = pool.begin().await?;
+
+    let result = sqlx::query(
+        "UPDATE logged_activity_groups SET \
+         workout_log_id = ?, user_id = ?, group_type = ?, ordinal = ?, \
+         actual_rounds_completed = ?, completion_time = ?, updated_at = ? \
+         WHERE id = ?",
+    )
+    .bind(&group.workout_log_id)
+    .bind(&user_id)
+    .bind(&group.group_type)
+    .bind(group.ordinal)
+    .bind(group.actual_rounds_completed)
+    .bind(&group.completion_time)
+    .bind(now)
+    .bind(&group.id)
+    .execute(&mut *tx)
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::not_found("LoggedActivityGroup", &group.id));
+    }
+
+    let row = sqlx::query_as::<_, LoggedActivityGroupRow>(
+        "SELECT * FROM logged_activity_groups WHERE id = ?",
+    )
+    .bind(&group.id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    Ok(row)
 }

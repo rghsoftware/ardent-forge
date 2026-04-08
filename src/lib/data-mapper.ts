@@ -171,8 +171,11 @@ export function toWorkoutLog(row: WorkoutLogRow): WorkoutLog {
     bodyweightAtSession:
       row.bodyweight_at_session != null ? weightSchema.parse(row.bodyweight_at_session) : undefined,
     overallNotes: row.overall_notes ?? undefined,
+    noteTags: row.note_tags && row.note_tags.length > 0 ? row.note_tags : undefined,
     eventMetadata:
       row.event_metadata != null ? eventMetadataSchema.parse(row.event_metadata) : undefined,
+    pausedAt: row.paused_at ?? undefined,
+    totalPausedMs: row.total_paused_ms ?? 0,
   }
 }
 
@@ -189,7 +192,10 @@ export function fromWorkoutLog(
     perceived_difficulty: log.perceivedDifficulty ?? null,
     bodyweight_at_session: log.bodyweightAtSession ?? null,
     overall_notes: log.overallNotes ?? null,
+    note_tags: log.noteTags ?? [],
     event_metadata: log.eventMetadata ?? null,
+    paused_at: log.pausedAt ?? null,
+    total_paused_ms: log.totalPausedMs ?? 0,
   }
 }
 
@@ -234,6 +240,7 @@ export function toLoggedActivity(row: LoggedActivityRow): LoggedActivity {
     exerciseId: row.exercise_id,
     ordinal: row.ordinal,
     notes: row.notes ?? undefined,
+    noteTags: row.note_tags && row.note_tags.length > 0 ? row.note_tags : undefined,
   }
 }
 
@@ -247,6 +254,7 @@ export function fromLoggedActivity(
     exercise_id: activity.exerciseId,
     ordinal: activity.ordinal,
     notes: activity.notes ?? null,
+    note_tags: activity.noteTags ?? [],
   }
 }
 
@@ -272,6 +280,7 @@ export function toLoggedSet(row: LoggedSetRow): LoggedSet {
     rpe: row.rpe ?? undefined,
     completed: row.completed,
     notes: row.notes ?? undefined,
+    noteTags: row.note_tags && row.note_tags.length > 0 ? row.note_tags : undefined,
     ruckLoad: row.ruck_load != null ? weightSchema.parse(row.ruck_load) : undefined,
     elevationGain:
       row.elevation_gain != null ? distanceSchema.parse(row.elevation_gain) : undefined,
@@ -296,6 +305,7 @@ export function fromLoggedSet(set: Omit<LoggedSet, 'id'>, userId: string): Parti
     rpe: set.rpe ?? null,
     completed: set.completed,
     notes: set.notes ?? null,
+    note_tags: set.noteTags ?? [],
   }
 }
 

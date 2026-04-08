@@ -12,6 +12,7 @@ import { ProgramForm } from '@/components/program-builder/program-form'
 import { BlockList } from '@/components/program-builder/block-list'
 import { MobileBlockEditor } from '@/components/program-builder/mobile-block-editor'
 import { SessionPickerSheet } from '@/components/program-builder/session-picker-sheet'
+import { WorkoutPreviewSheet } from '@/components/workout/workout-preview-sheet'
 import { CopyWeekDialog } from '@/components/program-builder/copy-week-dialog'
 import {
   createEmptyDraft,
@@ -57,6 +58,7 @@ function BuilderPage() {
 
   // Draft state
   const [draft, setDraft] = useState<ProgramDraft>(createEmptyDraft)
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null)
 
   // Session picker state
   const [pickerState, setPickerState] = useState<{
@@ -377,6 +379,7 @@ function BuilderPage() {
               draft={draft}
               onUpdate={handleUpdateDraft}
               onPickSession={handlePickSession}
+              onPreviewSession={(id) => setPreviewTemplateId(id)}
               onCopyWeek={handleCopyWeek}
               showWeekends={showWeekends}
               fieldErrors={fieldErrors}
@@ -388,6 +391,7 @@ function BuilderPage() {
               draft={draft}
               onUpdate={handleUpdateDraft}
               onPickSession={handlePickSession}
+              onPreviewSession={(id) => setPreviewTemplateId(id)}
               onCopyWeek={handleCopyWeek}
               showWeekends={showWeekends}
               onToggleWeekends={() => setShowWeekends((prev) => !prev)}
@@ -396,6 +400,15 @@ function BuilderPage() {
           </div>
         </div>
       </div>
+
+      {/* Workout preview sheet */}
+      <WorkoutPreviewSheet
+        open={previewTemplateId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewTemplateId(null)
+        }}
+        sessionTemplateId={previewTemplateId}
+      />
 
       {/* Session picker sheet */}
       <SessionPickerSheet
