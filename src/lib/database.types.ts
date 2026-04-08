@@ -21,7 +21,6 @@ export interface ExerciseRow {
 export interface UserProfileRow {
   id: string
   display_name: string | null
-  display_visible: boolean | null
   preferred_units: string
   bodyweight: unknown
   training_age: unknown

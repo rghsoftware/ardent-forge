@@ -29,7 +29,6 @@ function ProfilePage() {
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [bodyweight, setBodyweight] = useState<string | null>(null)
   const [preferredUnits, setPreferredUnits] = useState<PreferredUnits | null>(null)
-  const [displayVisible, setDisplayVisible] = useState<boolean | null>(null)
   const [signOutError, setSignOutError] = useState<string | null>(null)
 
   // Derive effective values: local state overrides profile data
@@ -37,9 +36,6 @@ function ProfilePage() {
   const effectiveBodyweight = bodyweight ?? String(profile?.bodyweight?.value ?? '')
   const effectiveUnits = preferredUnits ?? profile?.preferredUnits ?? 'IMPERIAL'
   const bodyweightUnit = effectiveUnits === 'IMPERIAL' ? 'lb' : 'kg'
-  const effectiveDisplayVisible = displayVisible ?? profile?.displayVisible ?? true
-
-  const [saveError, setSaveError] = useState<string | null>(null)
 
   const [saveError, setSaveError] = useState<string | null>(null)
 
@@ -60,10 +56,6 @@ function ProfilePage() {
       updates.bodyweight = { value: bodyweightValue, unit: bodyweightUnit }
     }
 
-    if (displayVisible !== null) {
-      updates.displayVisible = displayVisible
-    }
-
     try {
       await updateProfile.mutateAsync(updates)
 
@@ -71,7 +63,6 @@ function ProfilePage() {
       setDisplayName(null)
       setBodyweight(null)
       setPreferredUnits(null)
-      setDisplayVisible(null)
     } catch (err) {
       console.error('[profile] Failed to save settings:', err)
       setSaveError('Failed to save settings. Please try again.')

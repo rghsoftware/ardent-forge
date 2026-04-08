@@ -143,7 +143,6 @@ const userProfileRow: UserProfileRow = {
     },
   },
   max_reps: { 'ex-pullup-001': 20 },
-  display_visible: null,
   created_at: now,
   updated_at: now,
 }

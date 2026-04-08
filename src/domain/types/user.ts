@@ -26,7 +26,6 @@ export type PreferredUnits = z.infer<typeof preferredUnitsSchema>
 // in the F018 migration.
 export const userProfileSchema = syncableEntitySchema.extend({
   displayName: z.string().optional(),
-  displayVisible: z.boolean().optional(),
   // Map from exerciseId to OneRepMax -- PR-1 enforced by oneRepMaxSchema
   exerciseMaxes: z.record(entityId, oneRepMaxSchema),
   bodyweight: weightSchema.optional(),

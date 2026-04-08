@@ -23,15 +23,6 @@ type SetupState =
   | { phase: 'schema-missing'; supabaseUrl: string; supabaseKey: string }
   | { phase: 'success' }
 
-type SetupState =
-  | { phase: 'idle' }
-  | { phase: 'discovering'; serverUrl: string }
-  | { phase: 'discovery-failed'; serverUrl: string; error: string }
-  | { phase: 'validating'; supabaseUrl: string; supabaseKey: string }
-  | { phase: 'validation-failed'; supabaseUrl: string; supabaseKey: string; error: string }
-  | { phase: 'schema-missing'; supabaseUrl: string; supabaseKey: string }
-  | { phase: 'success' }
-
 export const Route = createFileRoute('/setup')({
   validateSearch: (search: Record<string, unknown>): { url?: string; key?: string } => ({
     url: typeof search.url === 'string' ? search.url || undefined : undefined,
@@ -448,27 +439,6 @@ function SetupPage() {
           See the setup guide
         </a>
       </p>
-      {/* Scanning overlay (Tauri/Android only) */}
-      {scanning && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80">
-          <div className="h-[280px] w-[280px] rounded-lg border-2 border-ember" />
-          <button
-            type="button"
-            className="mt-8 flex items-center gap-2 rounded-md px-6 py-3 text-sm text-bone-white hover:bg-surface-gunmetal"
-            onClick={async () => {
-              try {
-                await cancelRef.current?.()
-              } catch (err) {
-                console.error('[setup] Failed to cancel scan:', err)
-              }
-              setScanning(false)
-            }}
-          >
-            <X className="h-4 w-4" />
-            Cancel
-          </button>
-        </div>
-      )}
     </AuthPageShell>
   )
 }
