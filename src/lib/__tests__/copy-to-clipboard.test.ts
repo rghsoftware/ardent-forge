@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { toast } from 'sonner'
 
@@ -16,11 +17,12 @@ const mockWriteText = vi.fn()
 beforeEach(() => {
   vi.clearAllMocks()
   // Stub navigator.clipboard per-test so the rejected-promise path can swap
-  // in a mock that rejects.
-  Object.assign(navigator, {
-    clipboard: {
-      writeText: mockWriteText,
-    },
+  // in a mock that rejects. happy-dom exposes navigator.clipboard as a
+  // getter, so Object.assign would throw -- defineProperty is required.
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: mockWriteText },
+    writable: true,
+    configurable: true,
   })
 })
 

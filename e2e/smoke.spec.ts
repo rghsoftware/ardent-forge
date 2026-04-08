@@ -46,9 +46,11 @@ test('F019 Scenario 1: Show display panel reveals URL + Copy on web', async ({ p
 
   // P15-041: Intermediate sign-in-success assertion so a CSP regression or
   // auth provider timing failure localizes to the right step instead of
-  // bubbling up as an opaque showButton timeout. The root "/" redirect
-  // lands at "/today" for an authenticated user with no pending flows.
-  await expect(page).toHaveURL(/\/(today|profile|display)/, { timeout: 10_000 })
+  // bubbling up as an opaque showButton timeout. After sign-in the user
+  // lands on the authenticated index route (today page) at "/", and any
+  // sign-in failure would leave the URL on /sign-in. We assert NOT on
+  // /sign-in, which is the actual signal we care about.
+  await expect(page).not.toHaveURL(/\/sign-in/, { timeout: 10_000 })
 
   await page.goto('/profile')
 
