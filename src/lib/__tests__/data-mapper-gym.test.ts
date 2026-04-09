@@ -4,20 +4,27 @@ import {
   fromGym,
   toGymMember,
   fromGymMember,
+  toGymInvitation,
+  fromGymInvitation,
+  toGymOwnershipTransfer,
+  fromGymOwnershipTransfer,
+  toGymMemberCount,
   toUserProfile,
   fromUserProfile,
 } from '../data-mapper'
-import type { GymRow, GymMemberRow, UserProfileRow } from '../database.types'
+import type {
+  GymRow,
+  GymMemberRow,
+  GymInvitationRow,
+  GymOwnershipTransferRow,
+  GymMemberCountRow,
+  UserProfileRow,
+} from '../database.types'
 
 // ===========================================================================
-// F018 (S008-T) -- data-mapper gym round-trips and displayVisible regression
-//
-// These tests assert:
-//   1. The Gym mapper round-trips through GymRow without losing data.
-//   2. The GymMember mapper round-trips through GymMemberRow without losing data.
-//   3. The legacy `display_visible` field is no longer surfaced by toUserProfile
-//      even when present on the input row (defensive against stale fixtures).
-//   4. The legacy `displayVisible` field is no longer written by fromUserProfile.
+// F018 (S008-T) -- data-mapper gym round-trips and displayVisible regression.
+// F021 (S008-T) -- added coverage for GymInvitation, GymOwnershipTransfer,
+// and GymMemberCount mappers. `is_default` / `isDefault` removed in F021.
 // ===========================================================================
 
 const now = '2026-04-06T10:00:00Z'
@@ -31,7 +38,6 @@ const gymRow: GymRow = {
   id: 'gym-001',
   name: 'Home Garage',
   owner_user_id: 'user-001',
-  is_default: true,
   created_at: now,
   updated_at: later,
 }
@@ -40,7 +46,6 @@ const gymRowSecondary: GymRow = {
   id: 'gym-002',
   name: 'Iron Pit',
   owner_user_id: 'user-002',
-  is_default: false,
   created_at: now,
   updated_at: now,
 }
@@ -53,6 +58,33 @@ const gymMemberRow: GymMemberRow = {
   gym_id: 'gym-001',
   user_id: 'user-007',
   joined_at: now,
+}
+
+// ---------------------------------------------------------------------------
+// F021 fixtures
+// ---------------------------------------------------------------------------
+
+const gymInvitationRow: GymInvitationRow = {
+  id: 'inv-001',
+  gym_id: 'gym-001',
+  token: 'tok_abcdef123456',
+  expires_at: later,
+  max_uses: 10,
+  uses_count: 3,
+  created_by: 'user-001',
+  created_at: now,
+}
+
+const gymOwnershipTransferRow: GymOwnershipTransferRow = {
+  gym_id: 'gym-001',
+  proposed_by: 'user-001',
+  proposed_to: 'user-007',
+  proposed_at: now,
+}
+
+const gymMemberCountRow: GymMemberCountRow = {
+  gym_id: 'gym-001',
+  member_count: 12,
 }
 
 // ===========================================================================
@@ -69,24 +101,22 @@ describe('toGym / fromGym', () => {
       updatedAt: later,
       name: 'Home Garage',
       ownerUserId: 'user-001',
-      isDefault: true,
     })
   })
 
-  it('maps a non-default gym row correctly', () => {
+  it('maps a secondary gym row correctly', () => {
     const result = toGym(gymRowSecondary)
 
     expect(result.id).toBe('gym-002')
     expect(result.name).toBe('Iron Pit')
     expect(result.ownerUserId).toBe('user-002')
-    expect(result.isDefault).toBe(false)
   })
 
   it('does not surface any unexpected fields on the output Gym', () => {
     const result = toGym(gymRow)
 
     expect(Object.keys(result).sort()).toEqual(
-      ['createdAt', 'id', 'isDefault', 'name', 'ownerUserId', 'updatedAt'].sort(),
+      ['createdAt', 'id', 'name', 'ownerUserId', 'updatedAt'].sort(),
     )
   })
 
@@ -100,7 +130,6 @@ describe('toGym / fromGym', () => {
       updated_at: later,
       name: 'Home Garage',
       owner_user_id: 'user-001',
-      is_default: true,
     })
   })
 
@@ -110,26 +139,18 @@ describe('toGym / fromGym', () => {
     expect(row).toEqual({ name: 'New Name' })
     expect(row.id).toBeUndefined()
     expect(row.owner_user_id).toBeUndefined()
-    expect(row.is_default).toBeUndefined()
   })
 
-  it('handles a creation-shaped Gym (name + ownerUserId + isDefault, no id/timestamps)', () => {
+  it('handles a creation-shaped Gym (name + ownerUserId, no id/timestamps)', () => {
     const row = fromGym({
       name: 'Garage',
       ownerUserId: 'user-001',
-      isDefault: false,
     })
 
     expect(row).toEqual({
       name: 'Garage',
       owner_user_id: 'user-001',
-      is_default: false,
     })
-  })
-
-  it('preserves explicit boolean false on isDefault (not treated as undefined)', () => {
-    const row = fromGym({ isDefault: false })
-    expect(row).toEqual({ is_default: false })
   })
 })
 
@@ -174,14 +195,148 @@ describe('toGymMember / fromGymMember', () => {
 })
 
 // ===========================================================================
+// toGymInvitation / fromGymInvitation (F021)
+// ===========================================================================
+
+describe('toGymInvitation / fromGymInvitation', () => {
+  it('maps a fully-populated gym_invitations row to a domain GymInvitation', () => {
+    const result = toGymInvitation(gymInvitationRow)
+
+    expect(result).toEqual({
+      id: 'inv-001',
+      gymId: 'gym-001',
+      token: 'tok_abcdef123456',
+      expiresAt: later,
+      maxUses: 10,
+      usesCount: 3,
+      createdBy: 'user-001',
+      createdAt: now,
+    })
+  })
+
+  it('does not surface any unexpected fields on the output GymInvitation', () => {
+    const result = toGymInvitation(gymInvitationRow)
+
+    expect(Object.keys(result).sort()).toEqual(
+      [
+        'createdAt',
+        'createdBy',
+        'expiresAt',
+        'gymId',
+        'id',
+        'maxUses',
+        'token',
+        'usesCount',
+      ].sort(),
+    )
+  })
+
+  it('round-trips a GymInvitation back to a row with all fields preserved', () => {
+    const invitation = toGymInvitation(gymInvitationRow)
+    const row = fromGymInvitation(invitation)
+
+    expect(row).toEqual({
+      id: 'inv-001',
+      gym_id: 'gym-001',
+      token: 'tok_abcdef123456',
+      expires_at: later,
+      max_uses: 10,
+      uses_count: 3,
+      created_by: 'user-001',
+      created_at: now,
+    })
+  })
+
+  it('omits unset fields from a partial fromGymInvitation write', () => {
+    const row = fromGymInvitation({ gymId: 'gym-001', token: 'tok_new' })
+
+    expect(row).toEqual({ gym_id: 'gym-001', token: 'tok_new' })
+    expect(row.id).toBeUndefined()
+    expect(row.max_uses).toBeUndefined()
+    expect(row.uses_count).toBeUndefined()
+  })
+})
+
+// ===========================================================================
+// toGymOwnershipTransfer / fromGymOwnershipTransfer (F021)
+// ===========================================================================
+
+describe('toGymOwnershipTransfer / fromGymOwnershipTransfer', () => {
+  it('maps a fully-populated gym_ownership_transfers row to domain', () => {
+    const result = toGymOwnershipTransfer(gymOwnershipTransferRow)
+
+    expect(result).toEqual({
+      gymId: 'gym-001',
+      proposedBy: 'user-001',
+      proposedTo: 'user-007',
+      proposedAt: now,
+    })
+  })
+
+  it('does not surface any unexpected fields on the output transfer', () => {
+    const result = toGymOwnershipTransfer(gymOwnershipTransferRow)
+
+    expect(Object.keys(result).sort()).toEqual(
+      ['gymId', 'proposedAt', 'proposedBy', 'proposedTo'].sort(),
+    )
+  })
+
+  it('round-trips a GymOwnershipTransfer back to a row with all fields preserved', () => {
+    const transfer = toGymOwnershipTransfer(gymOwnershipTransferRow)
+    const row = fromGymOwnershipTransfer(transfer)
+
+    expect(row).toEqual({
+      gym_id: 'gym-001',
+      proposed_by: 'user-001',
+      proposed_to: 'user-007',
+      proposed_at: now,
+    })
+  })
+
+  it('omits unset fields from a partial fromGymOwnershipTransfer write', () => {
+    const row = fromGymOwnershipTransfer({ gymId: 'gym-001', proposedTo: 'user-007' })
+
+    expect(row).toEqual({ gym_id: 'gym-001', proposed_to: 'user-007' })
+    expect(row.proposed_by).toBeUndefined()
+    expect(row.proposed_at).toBeUndefined()
+  })
+})
+
+// ===========================================================================
+// toGymMemberCount (F021) -- one-way (view, no fromX)
+// ===========================================================================
+
+describe('toGymMemberCount', () => {
+  it('maps a fully-populated gym_member_counts view row to domain', () => {
+    const result = toGymMemberCount(gymMemberCountRow)
+
+    expect(result).toEqual({
+      gymId: 'gym-001',
+      memberCount: 12,
+    })
+  })
+
+  it('does not surface any unexpected fields on the output count', () => {
+    const result = toGymMemberCount(gymMemberCountRow)
+
+    expect(Object.keys(result).sort()).toEqual(['gymId', 'memberCount'].sort())
+  })
+
+  it('coerces a null member_count to 0 (safety-net path)', () => {
+    // The view is declared nullable by generated types. A coerced 0 is the
+    // expected safety-net behaviour per data-mapper.ts comments.
+    const row = { gym_id: 'gym-001', member_count: null } as unknown as GymMemberCountRow
+    const result = toGymMemberCount(row)
+    expect(result.memberCount).toBe(0)
+  })
+})
+
+// ===========================================================================
 // toUserProfile / fromUserProfile -- F018 (M10) display_visible regression
 // ===========================================================================
 
 describe('toUserProfile / fromUserProfile -- displayVisible removal regression', () => {
   it('toUserProfile does not surface a `displayVisible` field even when display_visible is present on the row', () => {
-    // Cast to a relaxed shape so the test can simulate a stale row that still
-    // has the legacy column on disk (e.g. local cache, old fixture, etc.).
-    // The mapper output must NOT carry the field forward.
     const staleRow = {
       id: 'user-001',
       display_name: 'Coach Hamilton',
@@ -202,8 +357,6 @@ describe('toUserProfile / fromUserProfile -- displayVisible removal regression',
   })
 
   it('fromUserProfile does not write display_visible even if a legacy field is supplied via cast', () => {
-    // Cast away the type system to simulate a caller that still tries to
-    // pass `displayVisible`. The mapper must drop it on the floor.
     const legacyInput = {
       id: 'user-001',
       displayName: 'Coach Hamilton',

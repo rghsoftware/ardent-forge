@@ -47,7 +47,6 @@ function makeGym(overrides: Partial<Gym> = {}): Gym {
     updatedAt: '2026-04-06T10:00:00.000Z',
     name: 'Home Gym',
     ownerUserId: 'user-1',
-    isDefault: false,
     ...overrides,
   }
 }

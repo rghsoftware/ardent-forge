@@ -34,6 +34,9 @@ import type {
   MediaAttachment,
   Gym,
   GymMember,
+  GymInvitation,
+  GymOwnershipTransfer,
+  GymMemberCount,
 } from '@/domain/types'
 import {
   entityId,
@@ -69,8 +72,14 @@ import {
   mediaStatusSchema,
   gymSchema,
   gymMemberSchema,
+  gymInvitationSchema,
+  gymOwnershipTransferSchema,
+  gymMemberCountSchema,
 } from '@/domain/types'
 import type {
+  GymInvitationRow,
+  GymOwnershipTransferRow,
+  GymMemberCountRow,
   ExerciseRow,
   WorkoutLogRow,
   LoggedActivityGroupRow,
@@ -371,7 +380,6 @@ export function toGym(row: GymRow): Gym {
       updatedAt: row.updated_at,
       name: row.name,
       ownerUserId: row.owner_user_id,
-      isDefault: row.is_default,
     })
   } catch (err) {
     console.error('[data-mapper] Failed to map gym row:', err, row)
@@ -385,7 +393,6 @@ export function fromGym(gym: Partial<Gym>): Partial<GymRow> {
   if (gym.id !== undefined) row.id = gym.id
   if (gym.name !== undefined) row.name = gym.name
   if (gym.ownerUserId !== undefined) row.owner_user_id = gym.ownerUserId
-  if (gym.isDefault !== undefined) row.is_default = gym.isDefault
   if (gym.createdAt !== undefined) row.created_at = gym.createdAt
   if (gym.updatedAt !== undefined) row.updated_at = gym.updatedAt
 
@@ -426,6 +433,104 @@ export function fromGymMember(member: Partial<GymMember>): Partial<GymMemberRow>
   if (member.joinedAt !== undefined) row.joined_at = member.joinedAt
 
   return row
+}
+
+// ---------------------------------------------------------------------------
+// GymInvitation (F021) -- redeemable invite token row.
+// ---------------------------------------------------------------------------
+
+export function toGymInvitation(row: GymInvitationRow): GymInvitation {
+  try {
+    return gymInvitationSchema.parse({
+      id: row.id,
+      gymId: row.gym_id,
+      token: row.token,
+      expiresAt: row.expires_at,
+      maxUses: row.max_uses,
+      usesCount: row.uses_count,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+    })
+  } catch (err) {
+    console.error('[data-mapper] Failed to map gym_invitation row:', err, row)
+    throw new Error(`Failed to map gym_invitation row (id=${row.id}): ${(err as Error).message}`)
+  }
+}
+
+export function fromGymInvitation(invitation: Partial<GymInvitation>): Partial<GymInvitationRow> {
+  const row: Partial<GymInvitationRow> = {}
+  if (invitation.id !== undefined) row.id = invitation.id
+  if (invitation.gymId !== undefined) row.gym_id = invitation.gymId
+  if (invitation.token !== undefined) row.token = invitation.token
+  if (invitation.expiresAt !== undefined) row.expires_at = invitation.expiresAt
+  if (invitation.maxUses !== undefined) row.max_uses = invitation.maxUses
+  if (invitation.usesCount !== undefined) row.uses_count = invitation.usesCount
+  if (invitation.createdBy !== undefined) row.created_by = invitation.createdBy
+  if (invitation.createdAt !== undefined) row.created_at = invitation.createdAt
+  return row
+}
+
+// ---------------------------------------------------------------------------
+// GymOwnershipTransfer (F021) -- pending transfer proposal row. The composite
+// PK is (gym_id), enforcing single-pending-transfer-per-gym.
+// ---------------------------------------------------------------------------
+
+export function toGymOwnershipTransfer(row: GymOwnershipTransferRow): GymOwnershipTransfer {
+  try {
+    return gymOwnershipTransferSchema.parse({
+      gymId: row.gym_id,
+      proposedBy: row.proposed_by,
+      proposedTo: row.proposed_to,
+      proposedAt: row.proposed_at,
+    })
+  } catch (err) {
+    console.error('[data-mapper] Failed to map gym_ownership_transfer row:', err, row)
+    throw new Error(
+      `Failed to map gym_ownership_transfer row (gym=${row.gym_id}): ${(err as Error).message}`,
+    )
+  }
+}
+
+export function fromGymOwnershipTransfer(
+  transfer: Partial<GymOwnershipTransfer>,
+): Partial<GymOwnershipTransferRow> {
+  const row: Partial<GymOwnershipTransferRow> = {}
+  if (transfer.gymId !== undefined) row.gym_id = transfer.gymId
+  if (transfer.proposedBy !== undefined) row.proposed_by = transfer.proposedBy
+  if (transfer.proposedTo !== undefined) row.proposed_to = transfer.proposedTo
+  if (transfer.proposedAt !== undefined) row.proposed_at = transfer.proposedAt
+  return row
+}
+
+// ---------------------------------------------------------------------------
+// GymMemberCount (F021) -- read-only view row, mapped one-way.
+//
+// The view's columns are nullable in the generated types because Postgres
+// views cannot enforce NOT NULL. In practice the view's underlying query
+// (LEFT JOIN gyms + COUNT) always emits a non-null gym_id and a non-null
+// member_count >= 0. We log + throw on the safety-net path so a future view
+// regression surfaces loudly rather than producing silently malformed
+// objects (per .claude/rules/error-handling.md adapter boundary policy).
+// ---------------------------------------------------------------------------
+
+export function toGymMemberCount(row: GymMemberCountRow): GymMemberCount {
+  if (row.gym_id == null) {
+    console.warn('[data-mapper] toGymMemberCount: gym_id was null, view contract violated', row)
+  }
+  if (row.member_count == null) {
+    console.warn('[data-mapper] toGymMemberCount: member_count was null, coercing to 0', row)
+  }
+  try {
+    return gymMemberCountSchema.parse({
+      gymId: row.gym_id,
+      memberCount: row.member_count ?? 0,
+    })
+  } catch (err) {
+    console.error('[data-mapper] Failed to map gym_member_counts row:', err, row)
+    throw new Error(
+      `Failed to map gym_member_counts row (gym=${row.gym_id}): ${(err as Error).message}`,
+    )
+  }
 }
 
 // ---------------------------------------------------------------------------
