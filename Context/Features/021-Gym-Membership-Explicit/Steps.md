@@ -5,9 +5,9 @@
 
 ## Progress
 
-- **Status:** Not started
-- **Current task:** —
-- **Last milestone:** —
+- **Status:** In progress
+- **Current task:** Phase 5 (E2E tests)
+- **Last milestone:** Phase 4 -- UI layer complete (2026-04-09)
 
 ## Team Orchestration
 
