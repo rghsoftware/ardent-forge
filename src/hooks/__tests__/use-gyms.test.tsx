@@ -19,7 +19,15 @@ vi.mock('@/lib/adapter', () => ({
 }))
 
 // Import hooks after mock is set up
-import { useGyms, useAllGyms, useGym, useCreateGym, useUpdateGym, useDeleteGym } from '../use-gyms'
+import {
+  useGyms,
+  useAllGyms,
+  useListAllGymsWithCounts,
+  useGym,
+  useCreateGym,
+  useUpdateGym,
+  useDeleteGym,
+} from '../use-gyms'
 
 // ---------------------------------------------------------------------------
 // Per-test QueryClient wrapper so we can spy on invalidateQueries
@@ -119,6 +127,62 @@ describe('useAllGyms', () => {
 
     expect(mockAdapter.listAllGyms).toHaveBeenCalled()
     expect(result.current.data).toHaveLength(3)
+  })
+})
+
+// ===========================================================================
+// useListAllGymsWithCounts -- joins listAllGyms with listGymMemberCounts
+// ===========================================================================
+
+describe('useListAllGymsWithCounts', () => {
+  it('joins gyms with member counts from the counts view', async () => {
+    const gyms = [
+      makeGym({ id: 'gym-1', name: 'Home Gym' }),
+      makeGym({ id: 'gym-2', name: 'Garage' }),
+    ]
+    vi.mocked(mockAdapter.listAllGyms).mockResolvedValue(gyms)
+    vi.mocked(mockAdapter.listGymMemberCounts).mockResolvedValue([
+      { gymId: 'gym-1', memberCount: 5 },
+      { gymId: 'gym-2', memberCount: 2 },
+    ])
+
+    const { wrapper } = buildWrapper()
+    const { result } = renderHook(() => useListAllGymsWithCounts(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    expect(mockAdapter.listAllGyms).toHaveBeenCalled()
+    expect(mockAdapter.listGymMemberCounts).toHaveBeenCalled()
+    expect(result.current.data).toEqual([
+      expect.objectContaining({ id: 'gym-1', name: 'Home Gym', memberCount: 5 }),
+      expect.objectContaining({ id: 'gym-2', name: 'Garage', memberCount: 2 }),
+    ])
+  })
+
+  it('falls back to memberCount: 0 when a gym is missing from the counts view', async () => {
+    const gyms = [
+      makeGym({ id: 'gym-1', name: 'Home Gym' }),
+      makeGym({ id: 'gym-2', name: 'Garage' }),
+    ]
+    vi.mocked(mockAdapter.listAllGyms).mockResolvedValue(gyms)
+    vi.mocked(mockAdapter.listGymMemberCounts).mockResolvedValue([
+      { gymId: 'gym-1', memberCount: 3 },
+      // gym-2 missing
+    ])
+
+    const { wrapper } = buildWrapper()
+    const { result } = renderHook(() => useListAllGymsWithCounts(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    expect(result.current.data).toEqual([
+      expect.objectContaining({ id: 'gym-1', memberCount: 3 }),
+      expect.objectContaining({ id: 'gym-2', memberCount: 0 }),
+    ])
   })
 })
 

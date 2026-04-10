@@ -58,6 +58,18 @@ export function createMockAdapter(
     kickGymMember: vi.fn().mockResolvedValue(undefined),
     listGymMembers: vi.fn().mockResolvedValue([]),
 
+    // Gym invite operations (F021)
+    listGymMemberCounts: vi.fn().mockResolvedValue([]),
+    createGymInvite: vi.fn().mockResolvedValue(null),
+    listGymInvites: vi.fn().mockResolvedValue([]),
+    redeemGymInvite: vi.fn().mockResolvedValue({ ok: true, gymId: 'gym-0' }),
+
+    // Gym ownership transfer operations (F021)
+    proposeGymTransfer: vi.fn().mockResolvedValue(undefined),
+    acceptGymTransfer: vi.fn().mockResolvedValue(undefined),
+    cancelOrDeclineGymTransfer: vi.fn().mockResolvedValue(undefined),
+    getPendingTransfer: vi.fn().mockResolvedValue(null),
+
     // Session template operations
     getSessionTemplates: vi.fn().mockResolvedValue([]),
     getSessionTemplate: vi.fn().mockResolvedValue(null),

@@ -32,6 +32,10 @@ import type {
   MediaAttachment,
   Gym,
   GymMember,
+  GymInvitation,
+  GymMemberCount,
+  GymOwnershipTransfer,
+  RedeemInviteError,
 } from '@/domain/types'
 import type {
   ExerciseCategory,
@@ -251,6 +255,46 @@ export interface DataAdapter {
 
   /** Lists all members of the given gym. */
   listGymMembers(gymId: string): Promise<GymMember[]>
+
+  // ============================================================
+  // Gym invite operations (F021)
+  // ============================================================
+
+  /** Lists (gymId, memberCount) for every gym visible to the caller. */
+  listGymMemberCounts(): Promise<GymMemberCount[]>
+
+  /** Owner-only. Creates a new invite. */
+  createGymInvite(
+    gymId: string,
+    options?: { expiresAt?: string; maxUses?: number },
+  ): Promise<GymInvitation>
+
+  /** Owner-only. Lists all invites for a gym. */
+  listGymInvites(gymId: string): Promise<GymInvitation[]>
+
+  /**
+   * Redeems an invite token. Returns a discriminated result — on failure the
+   * `error.kind` distinguishes invalid/expired/exhausted.
+   */
+  redeemGymInvite(
+    token: string,
+  ): Promise<{ ok: true; gymId: string } | { ok: false; error: RedeemInviteError }>
+
+  // ============================================================
+  // Gym ownership transfer operations (F021)
+  // ============================================================
+
+  /** Owner-only. Proposes an ownership transfer to another gym member. */
+  proposeGymTransfer(gymId: string, targetUserId: string): Promise<void>
+
+  /** Target-only. Accepts a pending ownership transfer. */
+  acceptGymTransfer(gymId: string): Promise<void>
+
+  /** Owner or target may call. Cancels (owner) or declines (target) a pending transfer. */
+  cancelOrDeclineGymTransfer(gymId: string): Promise<void>
+
+  /** Returns the pending ownership transfer for a gym, or null if none. */
+  getPendingTransfer(gymId: string): Promise<GymOwnershipTransfer | null>
 
   // Session template operations
   getSessionTemplates(userId: string, filters?: SessionTemplateFilters): Promise<SessionTemplate[]>

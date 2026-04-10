@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { ForgeInput, FORGE_LABEL_CLASS } from '@/components/ui/forge-input'
 import {
@@ -11,7 +12,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useGyms, useAllGyms, useCreateGym, useDeleteGym } from '@/hooks/use-gyms'
+import {
+  useGyms,
+  useAllGyms,
+  useListAllGymsWithCounts,
+  useCreateGym,
+  useDeleteGym,
+} from '@/hooks/use-gyms'
 import { useGymMembers, useJoinGym, useLeaveGym } from '@/hooks/use-gym-members'
 import { gymSchema } from '@/domain/types/gym'
 import { cn } from '@/lib/utils'
@@ -349,7 +356,7 @@ function BrowseAllGymsList({ userId }: BrowseAllGymsListProps): ReactElement {
     isError: allGymsError,
     error: allGymsErrorObj,
     refetch: refetchAllGyms,
-  } = useAllGyms()
+  } = useListAllGymsWithCounts()
   // Surface myGyms error too -- if we don't, joinedSet silently becomes empty
   // and every gym in the browse list appears un-joined, leading the user to
   // tap Join on a gym they already belong to (RLS will block, but the UX
@@ -437,6 +444,7 @@ function BrowseAllGymsList({ userId }: BrowseAllGymsListProps): ReactElement {
             <BrowseGymRow
               key={gym.id}
               gym={gym}
+              memberCount={gym.memberCount}
               alreadyJoined={joinedSet.has(gym.id)}
               onJoin={() => handleJoin(gym.id)}
               joinPending={joinGym.isPending && joinGym.variables === gym.id}
@@ -457,6 +465,7 @@ function BrowseAllGymsList({ userId }: BrowseAllGymsListProps): ReactElement {
 
 interface BrowseGymRowProps {
   gym: Gym
+  memberCount: number
   alreadyJoined: boolean
   onJoin: () => void
   joinPending: boolean
@@ -464,6 +473,7 @@ interface BrowseGymRowProps {
 
 function BrowseGymRow({
   gym,
+  memberCount,
   alreadyJoined,
   onJoin,
   joinPending,
@@ -473,14 +483,18 @@ function BrowseGymRow({
       data-testid={`browse-gym-row-${gym.id}`}
       className="flex min-h-12 items-center justify-between gap-3 bg-surface-charcoal/40 px-3 py-2"
     >
-      <div className="flex min-w-0 flex-1 flex-col">
+      <Link
+        to="/profile/gyms/$gymId"
+        params={{ gymId: gym.id }}
+        className="flex min-w-0 flex-1 flex-col hover:bg-surface-gunmetal/20"
+      >
         <span className="truncate font-sans text-sm font-medium uppercase tracking-wider text-bone-white">
           {gym.name}
         </span>
         <span className="font-sans text-[11px] text-warm-ash/60">
-          <span data-testid={`browse-gym-row-${gym.id}-member-count`}>--</span> members
+          <span data-testid={`browse-gym-row-${gym.id}-member-count`}>{memberCount}</span> members
         </span>
-      </div>
+      </Link>
       <div className="shrink-0">
         {alreadyJoined ? (
           <span

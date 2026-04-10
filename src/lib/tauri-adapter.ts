@@ -48,6 +48,10 @@ import type {
   MediaAttachment,
   Gym,
   GymMember,
+  GymInvitation,
+  GymMemberCount,
+  GymOwnershipTransfer,
+  RedeemInviteError,
 } from '@/domain/types'
 import type {
   ExerciseRow,
@@ -2131,6 +2135,49 @@ export class TauriAdapter implements DataAdapter {
       '[tauri-adapter] listGymMembers called in offline mode; returning empty (gyms require online)',
     )
     return []
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gym invite + ownership transfer operations (F021) — all require online
+  // ---------------------------------------------------------------------------
+
+  async listGymMemberCounts(): Promise<GymMemberCount[]> {
+    console.warn('[tauri-adapter] listGymMemberCounts called in offline mode; returning empty')
+    return []
+  }
+
+  async createGymInvite(
+    _gymId: string,
+    _options?: { expiresAt?: string; maxUses?: number },
+  ): Promise<GymInvitation> {
+    throw new OnlineRequiredError('createGymInvite')
+  }
+
+  async listGymInvites(_gymId: string): Promise<GymInvitation[]> {
+    console.warn('[tauri-adapter] listGymInvites called in offline mode; returning empty')
+    return []
+  }
+
+  async redeemGymInvite(
+    _token: string,
+  ): Promise<{ ok: true; gymId: string } | { ok: false; error: RedeemInviteError }> {
+    throw new OnlineRequiredError('redeemGymInvite')
+  }
+
+  async proposeGymTransfer(_gymId: string, _targetUserId: string): Promise<void> {
+    throw new OnlineRequiredError('proposeGymTransfer')
+  }
+
+  async acceptGymTransfer(_gymId: string): Promise<void> {
+    throw new OnlineRequiredError('acceptGymTransfer')
+  }
+
+  async cancelOrDeclineGymTransfer(_gymId: string): Promise<void> {
+    throw new OnlineRequiredError('cancelOrDeclineGymTransfer')
+  }
+
+  async getPendingTransfer(_gymId: string): Promise<GymOwnershipTransfer | null> {
+    return null
   }
 
   // ---------------------------------------------------------------------------
