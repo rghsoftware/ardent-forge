@@ -72,7 +72,6 @@ function makeGym(overrides: Partial<Gym> = {}): Gym {
     id: 'gym-default',
     name: 'Gym',
     ownerUserId: 'user-1',
-    isDefault: false,
     createdAt: '2026-04-07T00:00:00Z',
     updatedAt: '2026-04-07T00:00:00Z',
     ...overrides,

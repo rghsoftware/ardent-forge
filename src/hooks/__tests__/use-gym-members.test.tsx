@@ -18,8 +18,27 @@ vi.mock('@/lib/adapter', () => ({
   getAdapter: () => mockAdapter,
 }))
 
+// Supabase client mock for useGymRoster's user_profiles fetch.
+// Builder is a thenable so `await client.from(...).select(...).in(...)` works.
+const mockUserProfilesIn = vi.fn()
+vi.mock('@/lib/supabase', () => ({
+  getSupabaseClient: () => ({
+    from: (_table: string) => ({
+      select: (_cols: string) => ({
+        in: (_col: string, ids: string[]) => mockUserProfilesIn(ids),
+      }),
+    }),
+  }),
+}))
+
 // Import hooks after mock is set up
-import { useGymMembers, useJoinGym, useLeaveGym, useKickGymMember } from '../use-gym-members'
+import {
+  useGymMembers,
+  useGymRoster,
+  useJoinGym,
+  useLeaveGym,
+  useKickGymMember,
+} from '../use-gym-members'
 
 // ---------------------------------------------------------------------------
 // Per-test QueryClient wrapper so we can spy on invalidateQueries
@@ -51,6 +70,7 @@ function makeGymMember(overrides: Partial<GymMember> = {}): GymMember {
 
 beforeEach(() => {
   mockAdapter = createMockAdapter()
+  mockUserProfilesIn.mockReset()
 })
 
 // ===========================================================================
@@ -89,6 +109,81 @@ describe('useGymMembers', () => {
   it('does not fetch when gymId is undefined', () => {
     const { wrapper } = buildWrapper()
     const { result } = renderHook(() => useGymMembers(undefined), { wrapper })
+
+    expect(result.current.fetchStatus).toBe('idle')
+    expect(mockAdapter.listGymMembers).not.toHaveBeenCalled()
+  })
+})
+
+// ===========================================================================
+// useGymRoster -- list + display-name join, sorted by joinedAt
+// ===========================================================================
+
+describe('useGymRoster', () => {
+  it('returns members sorted by joinedAt asc with display names joined', async () => {
+    // Intentionally out-of-order to prove sort happens
+    const members = [
+      makeGymMember({
+        gymId: 'gym-1',
+        userId: 'user-b',
+        joinedAt: '2026-04-07T10:00:00.000Z',
+      }),
+      makeGymMember({
+        gymId: 'gym-1',
+        userId: 'user-a',
+        joinedAt: '2026-04-05T10:00:00.000Z',
+      }),
+      makeGymMember({
+        gymId: 'gym-1',
+        userId: 'user-c',
+        joinedAt: '2026-04-06T10:00:00.000Z',
+      }),
+    ]
+    vi.mocked(mockAdapter.listGymMembers).mockResolvedValue(members)
+    mockUserProfilesIn.mockResolvedValue({
+      data: [
+        { id: 'user-a', display_name: 'Alice' },
+        { id: 'user-b', display_name: 'Bob' },
+        // user-c intentionally missing -> displayName should fall back to null
+      ],
+      error: null,
+    })
+
+    const { wrapper } = buildWrapper()
+    const { result } = renderHook(() => useGymRoster('gym-1'), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    expect(mockAdapter.listGymMembers).toHaveBeenCalledWith('gym-1')
+    expect(mockUserProfilesIn).toHaveBeenCalledTimes(1)
+
+    const roster = result.current.data!
+    expect(roster).toHaveLength(3)
+    expect(roster.map((r) => r.userId)).toEqual(['user-a', 'user-c', 'user-b'])
+    expect(roster[0].displayName).toBe('Alice')
+    expect(roster[1].displayName).toBeNull()
+    expect(roster[2].displayName).toBe('Bob')
+  })
+
+  it('returns empty array without fetching profiles when gym has no members', async () => {
+    vi.mocked(mockAdapter.listGymMembers).mockResolvedValue([])
+
+    const { wrapper } = buildWrapper()
+    const { result } = renderHook(() => useGymRoster('gym-1'), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true)
+    })
+
+    expect(result.current.data).toEqual([])
+    expect(mockUserProfilesIn).not.toHaveBeenCalled()
+  })
+
+  it('does not fetch when gymId is null', () => {
+    const { wrapper } = buildWrapper()
+    const { result } = renderHook(() => useGymRoster(null), { wrapper })
 
     expect(result.current.fetchStatus).toBe('idle')
     expect(mockAdapter.listGymMembers).not.toHaveBeenCalled()

@@ -23,7 +23,6 @@ const DEFAULTS: Gym = {
   id: '00000000-0000-0000-0000-000000000001',
   name: 'Test Gym',
   ownerUserId: '00000000-0000-0000-0000-000000000002',
-  isDefault: false,
   createdAt: '2026-01-01T00:00:00.000+00:00',
   updatedAt: '2026-01-01T00:00:00.000+00:00',
 }
