@@ -22,6 +22,8 @@ interface SessionTemplateCardProps {
   exerciseCount?: number
   onEdit: () => void
   onDelete: () => void
+  onClone?: () => void
+  isCloning?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -48,6 +50,8 @@ export function SessionTemplateCard({
   exerciseCount,
   onEdit,
   onDelete,
+  onClone,
+  isCloning,
 }: SessionTemplateCardProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const scoringLabel = SCORING_LABELS[template.scoring]
@@ -84,6 +88,28 @@ export function SessionTemplateCard({
             </span>
           )}
         </button>
+
+        {/* Clone button */}
+        {onClone && (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (!isCloning) onClone()
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation()
+                if (!isCloning) onClone()
+              }
+            }}
+            className={`flex min-h-10 min-w-10 items-center justify-center text-warm-ash/60 hover:text-ember ${isCloning ? 'animate-pulse opacity-50' : ''}`}
+            aria-label={`Duplicate ${template.name}`}
+          >
+            <Icon name="content_copy" size={18} />
+          </div>
+        )}
 
         {/* Delete button */}
         <button
