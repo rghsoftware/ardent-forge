@@ -10,23 +10,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Icon } from '@/components/icon'
 import { ShareDialog } from '@/components/sharing/share-dialog'
 import { TimeTravelSheet } from '@/components/program/time-travel-sheet'
 import { SOURCE_LABELS } from '@/components/program-builder/constants'
 import { SessionTemplateCard } from '@/components/session-builder/session-template-card'
+import { SessionTemplateDialog } from '@/components/session-builder/session-template-dialog'
 import { EventCard } from '@/components/event-builder/event-card'
-import { SessionTemplateForm } from '@/components/session-builder/session-template-form'
-import type { SessionTemplateFull } from '@/lib/data-adapter'
-import { EventTemplateForm } from '@/components/event-builder/event-template-form'
+import { EventTemplateDialog } from '@/components/event-builder/event-template-dialog'
 import { ExerciseSearchInput } from '@/components/exercises/exercise-search-input'
 import { ExerciseFilterBar } from '@/components/exercises/exercise-filter-bar'
 import { ExerciseListItem } from '@/components/exercises/exercise-list-item'
@@ -38,7 +30,6 @@ import { TemplateFilterBar } from '@/components/library/template-filter-bar'
 import { PublishDialog } from '@/components/library/publish-dialog'
 import {
   useSessionTemplates,
-  useSessionTemplateFull,
   useDeleteSessionTemplate,
   useCloneSessionTemplate,
   usePublishSessionTemplate,
@@ -127,33 +118,30 @@ function LibraryPage() {
     name: string
   } | null>(null)
 
-  const [sheetOpen, setSheetOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [sheetMode, setSheetMode] = useState<'session' | 'event'>('session')
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
+  const [eventDialogOpen, setEventDialogOpen] = useState(false)
+  const [editingEventId, setEditingEventId] = useState<string | null>(null)
   const [showCreateExercise, setShowCreateExercise] = useState(false)
 
   const handleCreate = () => {
-    setEditingId(null)
-    setSheetMode('session')
-    setSheetOpen(true)
+    setEditingTemplateId(null)
+    setTemplateDialogOpen(true)
   }
 
   const handleCreateEvent = () => {
-    setEditingId(null)
-    setSheetMode('event')
-    setSheetOpen(true)
+    setEditingEventId(null)
+    setEventDialogOpen(true)
   }
 
   const handleEdit = (id: string) => {
-    setEditingId(id)
-    setSheetMode('session')
-    setSheetOpen(true)
+    setEditingTemplateId(id)
+    setTemplateDialogOpen(true)
   }
 
   const handleEditEvent = (id: string) => {
-    setEditingId(id)
-    setSheetMode('event')
-    setSheetOpen(true)
+    setEditingEventId(id)
+    setEventDialogOpen(true)
   }
 
   const handleDelete = async (id: string) => {
@@ -211,14 +199,24 @@ function LibraryPage() {
     }
   }
 
-  const handleSaved = () => {
-    setSheetOpen(false)
-    setEditingId(null)
+  const handleTemplateDialogChange = (open: boolean) => {
+    setTemplateDialogOpen(open)
+    if (!open) setEditingTemplateId(null)
   }
 
-  const handleCancel = () => {
-    setSheetOpen(false)
-    setEditingId(null)
+  const handleEventDialogChange = (open: boolean) => {
+    setEventDialogOpen(open)
+    if (!open) setEditingEventId(null)
+  }
+
+  const handleTemplateSaved = () => {
+    setTemplateDialogOpen(false)
+    setEditingTemplateId(null)
+  }
+
+  const handleEventSaved = () => {
+    setEventDialogOpen(false)
+    setEditingEventId(null)
   }
 
   return (
@@ -531,59 +529,19 @@ function LibraryPage() {
         </div>
       )}
 
-      {/* Template form sheet */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent
-          side="bottom"
-          className="max-h-[95vh] overflow-y-auto bg-surface-anvil p-0"
-          showCloseButton={false}
-        >
-          <div className="px-4 lg:px-12">
-            <SheetHeader className="px-4 pt-4 pb-0">
-              <SheetTitle className="text-xs text-ember">
-                {sheetMode === 'event'
-                  ? editingId
-                    ? 'Edit event'
-                    : 'New event'
-                  : editingId
-                    ? 'Edit template'
-                    : 'New template'}
-              </SheetTitle>
-              <SheetDescription className="sr-only">
-                {sheetMode === 'event'
-                  ? editingId
-                    ? 'Edit an existing event template'
-                    : 'Create a new event template'
-                  : editingId
-                    ? 'Edit an existing session template'
-                    : 'Create a new session template'}
-              </SheetDescription>
-            </SheetHeader>
-
-            <div className="pt-2">
-              {sheetMode === 'event' ? (
-                editingId ? (
-                  <EditEventFormLoader
-                    templateId={editingId}
-                    onSave={handleSaved}
-                    onCancel={handleCancel}
-                  />
-                ) : (
-                  <EventTemplateForm onSave={handleSaved} onCancel={handleCancel} />
-                )
-              ) : editingId ? (
-                <EditTemplateFormLoader
-                  templateId={editingId}
-                  onSave={handleSaved}
-                  onCancel={handleCancel}
-                />
-              ) : (
-                <SessionTemplateForm onSave={handleSaved} onCancel={handleCancel} />
-              )}
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Template / event create + edit dialogs */}
+      <SessionTemplateDialog
+        open={templateDialogOpen}
+        onOpenChange={handleTemplateDialogChange}
+        onSaved={handleTemplateSaved}
+        editingId={editingTemplateId}
+      />
+      <EventTemplateDialog
+        open={eventDialogOpen}
+        onOpenChange={handleEventDialogChange}
+        onSaved={handleEventSaved}
+        editingId={editingEventId}
+      />
 
       <CreateExerciseSheet open={showCreateExercise} onOpenChange={setShowCreateExercise} />
 
@@ -1177,96 +1135,3 @@ function ProgramCard({
   )
 }
 
-// ---------------------------------------------------------------------------
-// Loader for edit mode -- fetches full template data
-// ---------------------------------------------------------------------------
-
-function EditTemplateFormLoader({
-  templateId,
-  onSave,
-  onCancel,
-}: {
-  templateId: string
-  onSave: () => void
-  onCancel: () => void
-}) {
-  const { data, isLoading, error } = useSessionTemplateFull(templateId)
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-10 w-full bg-surface-iron" />
-        <Skeleton className="h-8 w-48 bg-surface-iron" />
-        <Skeleton className="h-32 w-full bg-surface-iron" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center gap-2 p-4">
-        <p className="text-center text-xs text-destructive">Failed to load template</p>
-        <p className="text-center text-xs text-warm-ash/40">
-          {error instanceof Error ? error.message : 'An unexpected error occurred.'}
-        </p>
-      </div>
-    )
-  }
-
-  if (!data) {
-    return <div className="p-4 text-center text-xs text-warm-ash/60">Template not found</div>
-  }
-
-  return (
-    <SessionTemplateForm
-      initial={data as SessionTemplateFull}
-      onSave={onSave}
-      onCancel={onCancel}
-    />
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Loader for event edit mode -- fetches full template data for events
-// ---------------------------------------------------------------------------
-
-function EditEventFormLoader({
-  templateId,
-  onSave,
-  onCancel,
-}: {
-  templateId: string
-  onSave: () => void
-  onCancel: () => void
-}) {
-  const { data, isLoading, error } = useSessionTemplateFull(templateId)
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-4 p-4">
-        <Skeleton className="h-10 w-full bg-surface-iron" />
-        <Skeleton className="h-8 w-48 bg-surface-iron" />
-        <Skeleton className="h-32 w-full bg-surface-iron" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center gap-2 p-4">
-        <p className="text-center text-xs text-destructive">Failed to load event</p>
-        <p className="text-center text-xs text-warm-ash/40">
-          {error instanceof Error ? error.message : 'An unexpected error occurred.'}
-        </p>
-      </div>
-    )
-  }
-
-  if (!data) {
-    return <div className="p-4 text-center text-xs text-warm-ash/60">Event not found</div>
-  }
-
-  return (
-    <EventTemplateForm initial={data as SessionTemplateFull} onSave={onSave} onCancel={onCancel} />
-  )
-}
