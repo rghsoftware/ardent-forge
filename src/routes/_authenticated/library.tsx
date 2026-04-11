@@ -61,10 +61,11 @@ import { useAuth } from '@/lib/auth'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useGymPicker } from '@/hooks/use-gym-picker'
 import { configureDisplayPublisher } from '@/lib/display-publisher'
-import { writeLastGymChoice } from '@/lib/gym-picker-storage'
+import { writeLastGymChoice, readLastGymChoice } from '@/lib/gym-picker-storage'
 import { toast } from 'sonner'
 import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useOnboarding } from '@/hooks/use-onboarding'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 import type {
   Program,
   ExerciseCategory,
@@ -86,6 +87,7 @@ function LibraryPage() {
   const navigate = useNavigate()
 
   const { markRouteVisited } = useOnboarding()
+  const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
 
   useEffect(() => {
     markRouteVisited('/library')
@@ -172,8 +174,18 @@ function LibraryPage() {
 
     setStartingTemplateId(templateId)
 
-    // Prompt for gym selection before starting workout
-    const choice = await openGymPicker({ userId })
+    // After first workout is completed, use saved gym choice without prompting
+    let choice: string | 'private' | null
+    if (firstWorkoutCompleted) {
+      choice = readLastGymChoice()
+      if (choice === null) {
+        // Fallback to picker if no saved choice exists
+        choice = await openGymPicker({ userId })
+      }
+    } else {
+      // First workout: prompt for gym selection
+      choice = await openGymPicker({ userId })
+    }
     if (choice === null) {
       setStartingTemplateId(null)
       return
@@ -1166,7 +1178,7 @@ function ProgramCard({
 }
 
 // ---------------------------------------------------------------------------
-// Loader for edit mode -- fetches the full template data
+// Loader for edit mode -- fetches full template data
 // ---------------------------------------------------------------------------
 
 function EditTemplateFormLoader({
@@ -1215,7 +1227,7 @@ function EditTemplateFormLoader({
 }
 
 // ---------------------------------------------------------------------------
-// Loader for event edit mode -- fetches the full template data for events
+// Loader for event edit mode -- fetches full template data for events
 // ---------------------------------------------------------------------------
 
 function EditEventFormLoader({
