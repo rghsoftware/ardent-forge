@@ -78,7 +78,7 @@ export function ActivityEditor({
             <button
               type="button"
               onClick={() => setShowExerciseSheet(true)}
-              className="min-h-8 px-2 text-xs font-medium text-warm-ash/60 hover:text-bone-white"
+              className="min-h-12 min-w-12 px-3 text-xs font-medium text-warm-ash/60 hover:text-bone-white"
             >
               Change
             </button>
@@ -101,7 +101,7 @@ export function ActivityEditor({
               type="button"
               onClick={onMoveUp}
               disabled={isFirst}
-              className="flex min-h-10 min-w-8 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
+              className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
               aria-label="Move activity up"
             >
               <Icon name="keyboard_arrow_up" size={18} />
@@ -112,7 +112,7 @@ export function ActivityEditor({
               type="button"
               onClick={onMoveDown}
               disabled={isLast}
-              className="flex min-h-10 min-w-8 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
+              className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
               aria-label="Move activity down"
             >
               <Icon name="keyboard_arrow_down" size={18} />
@@ -121,7 +121,7 @@ export function ActivityEditor({
           <button
             type="button"
             onClick={() => setShowNotes(!showNotes)}
-            className="flex min-h-10 min-w-10 items-center justify-center text-warm-ash/60 hover:text-bone-white"
+            className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white"
             aria-label="Toggle notes"
           >
             <Icon name="notes" size={18} />
@@ -129,7 +129,7 @@ export function ActivityEditor({
           <button
             type="button"
             onClick={onDelete}
-            className="flex min-h-10 min-w-10 items-center justify-center text-warm-ash/60 hover:text-warning-flare"
+            className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-warning-flare"
             aria-label="Delete activity"
           >
             <Icon name="delete" size={18} />

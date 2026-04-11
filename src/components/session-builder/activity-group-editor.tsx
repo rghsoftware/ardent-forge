@@ -153,7 +153,7 @@ export function ActivityGroupEditor({
               type="button"
               onClick={onMoveUp}
               disabled={isFirst}
-              className="flex h-5 w-8 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
+              className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
               aria-label="Move group up"
             >
               <Icon name="keyboard_arrow_up" size={16} />
@@ -167,7 +167,7 @@ export function ActivityGroupEditor({
               type="button"
               onClick={onMoveDown}
               disabled={isLast}
-              className="flex h-5 w-8 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
+              className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
               aria-label="Move group down"
             >
               <Icon name="keyboard_arrow_down" size={16} />
@@ -186,7 +186,7 @@ export function ActivityGroupEditor({
             <ToggleGroupItem
               key={gt.value}
               value={gt.value}
-              className="min-h-8 px-2 py-1 text-xs font-medium uppercase tracking-wider"
+              className="min-h-12 min-w-12 px-3 text-xs font-medium uppercase tracking-wider"
             >
               {gt.label}
             </ToggleGroupItem>
@@ -198,7 +198,7 @@ export function ActivityGroupEditor({
         <button
           type="button"
           onClick={onDelete}
-          className="flex min-h-10 min-w-10 items-center justify-center text-warm-ash/60 hover:text-warning-flare"
+          className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-warning-flare"
           aria-label="Delete group"
         >
           <Icon name="delete" size={20} />
@@ -228,7 +228,7 @@ export function ActivityGroupEditor({
                     }}
                     placeholder="--"
                     min={1}
-                    className="min-h-10 w-16 border-0 border-b border-warm-ash/30 bg-transparent py-1 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
+                    className="min-h-12 w-16 border-0 border-b border-warm-ash/30 bg-transparent py-1 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
                     aria-label="Rounds"
                   />
                 </div>
