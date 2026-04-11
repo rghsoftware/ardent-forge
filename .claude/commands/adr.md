@@ -1,6 +1,6 @@
 ---
 description: Create or review Architecture Decision Records
-model: opus
+model: sonnet
 ---
 
 # Architecture Decision Record
@@ -46,7 +46,25 @@ This command routes to the architecture category model:
 ### Step 4: Draft ADR content
 1. **Context:** What problem or situation motivated this decision
 2. **Decision:** What was decided (1-2 sentences, then details)
-3. **Consequences:** Benefits, trade-offs, and risks
+3. **Consequences:** Benefits, trade-offs, and risks. For non-trivial ADRs, consult the Advisor tool before writing this section:
+
+   ```bash
+   cat > /tmp/cortex-adr-consequences-<NNNN>.md <<'EOF'
+   Decision being documented:
+   [1-2 sentence summary of the decision]
+
+   Known context and constraints:
+   [paste Context section of the draft ADR]
+
+   Question: what are the two most load-bearing consequences (one benefit,
+   one risk) that this ADR must name to be honest about the trade-off?
+   Respond as enumerated bullets.
+   EOF
+
+   bun run .claude/hooks/advisor/advisor-cli.ts --question-file /tmp/cortex-adr-consequences-<NNNN>.md
+   ```
+
+   Exit 0: fold the Advisor's response into the Consequences section. Exit 2: draft in-thread without the consult.
 4. **Compatibility:** Check against overlapping ADRs
    - Same files affected
    - Same feature area

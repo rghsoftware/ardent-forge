@@ -1,6 +1,6 @@
 ---
 description: Work through captured review findings with interactive triage
-model: opus
+model: sonnet
 ---
 
 # Review Resolution
@@ -33,6 +33,28 @@ Process each remaining finding one at a time. For each, show the finding details
 6. **Discard** -- drop the finding
 
 Wait for the user's choice before proceeding. Save progress to the review file after each decision.
+
+**Advisor consult on ambiguous findings.** When the recommended action is not obvious (for example: a finding that could plausibly be Fix, Task, or ADR depending on blast radius), write a question file and consult the Advisor before presenting the menu:
+
+```bash
+cat > /tmp/cortex-triage-<id>.md <<'EOF'
+Finding [ID] from [review file]:
+[verbatim finding text]
+
+Files referenced:
+[list]
+
+Category from capture: [FIX/TASK/ADR/RULE]
+
+Question: is this best handled as (1) Fix inline, (2) Task in Steps.md,
+(3) ADR, or (4) Rule addition? Which option and why, in <=100 words,
+as enumerated bullets.
+EOF
+
+bun run .claude/hooks/advisor/advisor-cli.ts --question-file /tmp/cortex-triage-<id>.md
+```
+
+Exit 0: present the Advisor's recommendation alongside the numbered menu as Claude's suggestion. Exit 2: present the menu without an Advisor suggestion. Either way, the user decides.
 
 ### Step 4: Execute actions
 Process all triaged findings in order: Fix, Task, ADR, Rule, Defer, Discard. Update each finding's status and resolution in the review file.

@@ -49,3 +49,12 @@ public/*.zip
 docker/kong/kong.yml
 screenshots/
 .playwright-mcp/
+
+# Claude memory compiler - runtime state (knowledge/ and daily/ are committed)
+.claude/memory-compiler/.venv/
+.claude/memory-compiler/scripts/state.json
+.claude/memory-compiler/scripts/last-flush.json
+.claude/memory-compiler/reports/
+.claude/memory-compiler/__pycache__/
+.claude/memory-compiler/**/__pycache__/
+plans/
