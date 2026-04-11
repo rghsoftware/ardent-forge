@@ -44,6 +44,18 @@ interface SessionTemplateFormProps {
   PickerComponent?: ComponentType<PickerComponentProps>
 }
 
+interface GroupValidationErrors {
+  noType?: string
+  noActivities?: string
+}
+
+interface ValidationErrors {
+  name?: string
+  noGroups?: string
+  groups: Record<string, GroupValidationErrors>
+  activities: Record<string, string>
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -112,6 +124,65 @@ function hydrateGroups(initial: SessionTemplateFull): ActivityGroupData[] {
   })
 }
 
+function computeErrors(name: string, groups: ActivityGroupData[]): ValidationErrors {
+  const errs: ValidationErrors = { groups: {}, activities: {} }
+  if (!name.trim()) errs.name = 'Give your template a name'
+  if (groups.length === 0) errs.noGroups = 'Add at least one group to continue'
+  for (const g of groups) {
+    const ge: GroupValidationErrors = {}
+    if (!g.groupType) ge.noType = 'Pick a group type'
+    if (g.activities.length === 0) ge.noActivities = 'Add at least one exercise'
+    if (ge.noType || ge.noActivities) errs.groups[g.clientId] = ge
+    for (const a of g.activities) {
+      if (!a.exerciseId) errs.activities[a.clientId] = 'Select an exercise'
+    }
+  }
+  return errs
+}
+
+function hasValidationErrors(e: ValidationErrors): boolean {
+  return !!(
+    e.name ||
+    e.noGroups ||
+    Object.keys(e.groups).length > 0 ||
+    Object.keys(e.activities).length > 0
+  )
+}
+
+function scrollToFirstError(e: ValidationErrors, orderedGroups: ActivityGroupData[]): void {
+  let id: string | null = null
+
+  if (e.name) {
+    id = 'field-name'
+  } else if (e.noGroups) {
+    id = 'field-add-group'
+  } else {
+    loop: for (const g of orderedGroups) {
+      if (e.groups[g.clientId]?.noType) {
+        id = `field-group-${g.clientId}-type`
+        break loop
+      }
+      if (e.groups[g.clientId]?.noActivities) {
+        id = `field-group-${g.clientId}-add-activity`
+        break loop
+      }
+      for (const a of g.activities) {
+        if (e.activities[a.clientId]) {
+          id = `field-activity-${a.clientId}-exercise`
+          break loop
+        }
+      }
+    }
+  }
+
+  if (!id) return
+  const el = document.getElementById(id)
+  if (!el) return
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
+  el.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'center' })
+  if (el instanceof HTMLElement) el.focus()
+}
+
 // ---------------------------------------------------------------------------
 // Main form component
 // ---------------------------------------------------------------------------
@@ -144,7 +215,49 @@ export function SessionTemplateForm({
   )
   const [groups, setGroups] = useState<ActivityGroupData[]>(initial ? hydrateGroups(initial) : [])
   const [showAllSchemeTypes, setShowAllSchemeTypes] = useState(false)
-  const [errors, setErrors] = useState<string[]>([])
+
+  // Validation state
+  const [hasAttemptedSave, setHasAttemptedSave] = useState(false)
+  const [nameTouched, setNameTouched] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
+
+  // Always-current derived errors (no useState -- avoids stale reads in handlers)
+  const errors = useMemo(() => computeErrors(name, groups), [name, groups])
+
+  // Display gating: name shows on blur or after first save attempt; group/activity
+  // errors show only after first save attempt so the form doesn't scold on first load.
+  const showNameError = (nameTouched || hasAttemptedSave) && !!errors.name
+  const visibleGroupErrors = hasAttemptedSave ? errors.groups : {}
+  const visibleActivityErrors = hasAttemptedSave ? errors.activities : {}
+
+  // Clickable error summary -- only materializes after the first save attempt
+  const summaryItems = useMemo(() => {
+    if (!hasAttemptedSave) return []
+    const items: Array<{ label: string; anchorId: string }> = []
+    if (errors.name) items.push({ label: 'Template needs a name', anchorId: 'field-name' })
+    if (errors.noGroups)
+      items.push({ label: 'Add at least one group', anchorId: 'field-add-group' })
+    for (const g of groups) {
+      if (errors.groups[g.clientId]?.noType)
+        items.push({
+          label: `Group ${g.ordinal} - pick a group type`,
+          anchorId: `field-group-${g.clientId}-type`,
+        })
+      if (errors.groups[g.clientId]?.noActivities)
+        items.push({
+          label: `Group ${g.ordinal} - add at least one exercise`,
+          anchorId: `field-group-${g.clientId}-add-activity`,
+        })
+      for (const a of g.activities) {
+        if (errors.activities[a.clientId])
+          items.push({
+            label: `Group ${g.ordinal}, activity ${a.ordinal} - select an exercise`,
+            anchorId: `field-activity-${a.clientId}-exercise`,
+          })
+      }
+    }
+    return items
+  }, [hasAttemptedSave, errors, groups])
 
   // Dirty tracking: snapshot initial form state, compare to current on every render.
   // After successful save, snapshot is reset so navigating away is unblocked.
@@ -219,35 +332,17 @@ export function SessionTemplateForm({
     })
   }, [])
 
-  const validate = useCallback((): boolean => {
-    const errs: string[] = []
-
-    if (!name.trim()) errs.push('Template name is required')
-    if (groups.length === 0) errs.push('At least one activity group is required')
-
-    for (const g of groups) {
-      if (!g.groupType) {
-        errs.push(`Group ${g.ordinal} needs a group type selected`)
-      }
-      if (g.activities.length === 0) {
-        errs.push(`Group ${g.ordinal} must have at least one activity`)
-      }
-      for (const a of g.activities) {
-        if (!a.exerciseId) {
-          errs.push(`Group ${g.ordinal}, activity ${a.ordinal}: exercise is required`)
-        }
-      }
-    }
-
-    setErrors(errs)
-    return errs.length === 0
-  }, [name, groups])
-
   const handleSave = useCallback(async () => {
-    if (!validate()) return
+    setHasAttemptedSave(true)
+    setServerError(null)
+
+    if (hasValidationErrors(errors)) {
+      scrollToFirstError(errors, groups)
+      return
+    }
     if (!userId) {
       console.error('[session-template-form] Cannot save: no authenticated user')
-      setErrors(['You must be signed in to save templates.'])
+      setServerError('You must be signed in to save templates.')
       return
     }
 
@@ -296,12 +391,12 @@ export function SessionTemplateForm({
     } catch (err) {
       const action = isEditing ? 'update' : 'create'
       console.error(`[session-template-form] Failed to ${action} template "${name.trim()}":`, err)
-      setErrors([`Failed to ${action} session template. Please try again.`])
+      setServerError(`Failed to ${action} session template. Please try again.`)
     }
   }, [
-    validate,
-    userId,
+    errors,
     groups,
+    userId,
     isEditing,
     initial,
     name,
@@ -326,13 +421,26 @@ export function SessionTemplateForm({
         {/* Template name */}
         <div className="px-4 lg:px-0">
           <input
+            id="field-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={() => setNameTouched(true)}
             placeholder="Template name"
-            className="w-full border-0 border-b border-warm-ash/30 bg-transparent py-3 font-display text-lg font-medium text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
             aria-label="Template name"
+            aria-invalid={showNameError || undefined}
+            aria-describedby={showNameError ? 'field-name-error' : undefined}
+            className={`w-full border-0 border-b bg-transparent py-3 font-display text-lg font-medium text-bone-white placeholder:text-warm-ash/40 focus:outline-none ${
+              showNameError
+                ? 'border-destructive focus:border-destructive'
+                : 'border-warm-ash/30 focus:border-ember'
+            }`}
           />
+          {showNameError && (
+            <p id="field-name-error" role="alert" className="mt-1 text-xs text-destructive">
+              {errors.name}
+            </p>
+          )}
         </div>
 
         {/* Category selector */}
@@ -475,11 +583,14 @@ export function SessionTemplateForm({
             isFirst={index === 0}
             isLast={index === groups.length - 1}
             PickerComponent={PickerComponent}
+            groupErrors={visibleGroupErrors[group.clientId]}
+            activityErrors={visibleActivityErrors}
           />
         ))}
 
-        <div className="px-4 lg:px-0">
+        <div className="flex flex-col gap-1 px-4 lg:px-0">
           <Button
+            id="field-add-group"
             type="button"
             variant="secondary"
             onClick={handleAddGroup}
@@ -488,17 +599,45 @@ export function SessionTemplateForm({
             <Icon name="add" size={16} />
             Add group
           </Button>
+          {hasAttemptedSave && errors.noGroups && (
+            <p role="alert" className="text-center text-xs text-destructive">
+              {errors.noGroups}
+            </p>
+          )}
         </div>
       </div>
 
-      {/* ---- Full-width footer: errors + actions ---- */}
-      {errors.length > 0 && (
+      {/* ---- Full-width footer: error summary + actions ---- */}
+      {summaryItems.length > 0 && (
         <div className="flex flex-col gap-1 px-4 lg:col-span-2 lg:px-0">
-          {errors.map((err, i) => (
-            <p key={i} className="text-xs text-destructive">
-              {err}
-            </p>
+          {summaryItems.map((item) => (
+            <button
+              key={item.anchorId}
+              type="button"
+              className="text-left text-xs text-destructive underline-offset-2 hover:underline"
+              onClick={() => {
+                const el = document.getElementById(item.anchorId)
+                if (!el) return
+                const reducedMotion =
+                  window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
+                el.scrollIntoView({
+                  behavior: reducedMotion ? 'instant' : 'smooth',
+                  block: 'center',
+                })
+                if (el instanceof HTMLElement) el.focus()
+              }}
+            >
+              {item.label}
+            </button>
           ))}
+        </div>
+      )}
+
+      {serverError && (
+        <div className="px-4 lg:col-span-2 lg:px-0">
+          <p role="alert" className="text-xs text-destructive">
+            {serverError}
+          </p>
         </div>
       )}
 

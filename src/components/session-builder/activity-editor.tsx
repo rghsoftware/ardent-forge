@@ -37,6 +37,7 @@ interface ActivityEditorProps {
   isFirst?: boolean
   isLast?: boolean
   PickerComponent?: ComponentType<PickerComponentProps>
+  exerciseError?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -56,6 +57,7 @@ export function ActivityEditor({
   isFirst,
   isLast,
   PickerComponent = AddExerciseSheet,
+  exerciseError,
 }: ActivityEditorProps) {
   const [showExerciseSheet, setShowExerciseSheet] = useState(false)
   const [showNotes, setShowNotes] = useState(!!activity.notes)
@@ -84,15 +86,31 @@ export function ActivityEditor({
             </button>
           </div>
         ) : (
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowExerciseSheet(true)}
-            className="flex-1 text-xs"
-          >
-            Select exercise
-          </Button>
+          <div className="flex flex-1 flex-col gap-1">
+            <Button
+              id={`field-activity-${activity.clientId}-exercise`}
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowExerciseSheet(true)}
+              className={`w-full text-xs${exerciseError ? ' ring-1 ring-destructive' : ''}`}
+              aria-invalid={exerciseError ? true : undefined}
+              aria-describedby={
+                exerciseError ? `field-activity-${activity.clientId}-exercise-error` : undefined
+              }
+            >
+              Select exercise
+            </Button>
+            {exerciseError && (
+              <p
+                id={`field-activity-${activity.clientId}-exercise-error`}
+                role="alert"
+                className="text-xs text-destructive"
+              >
+                {exerciseError}
+              </p>
+            )}
+          </div>
         )}
 
         <div className="flex items-center gap-0.5">

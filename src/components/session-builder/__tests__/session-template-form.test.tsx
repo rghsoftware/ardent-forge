@@ -83,7 +83,7 @@ describe('SessionTemplateForm', () => {
 
     await user.click(screen.getByText('Save template'))
 
-    expect(screen.getByText('Template name is required')).toBeInTheDocument()
+    expect(screen.getByText('Give your template a name')).toBeInTheDocument()
   })
 
   it('shows validation error when saving with no activity groups', async () => {
@@ -94,7 +94,7 @@ describe('SessionTemplateForm', () => {
     await user.type(screen.getByLabelText('Template name'), 'My Session')
     await user.click(screen.getByText('Save template'))
 
-    expect(screen.getByText('At least one activity group is required')).toBeInTheDocument()
+    expect(screen.getByText('Add at least one group to continue')).toBeInTheDocument()
   })
 
   it('renders Cancel button when onCancel prop is provided', () => {

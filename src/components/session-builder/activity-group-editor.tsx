@@ -37,6 +37,8 @@ interface ActivityGroupEditorProps {
   isFirst?: boolean
   isLast?: boolean
   PickerComponent?: ComponentType<PickerComponentProps>
+  groupErrors?: { noType?: string; noActivities?: string }
+  activityErrors?: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -85,6 +87,8 @@ export function ActivityGroupEditor({
   isFirst,
   isLast,
   PickerComponent,
+  groupErrors,
+  activityErrors,
 }: ActivityGroupEditorProps) {
   const isStage1 = group.groupType === null
   const visibility = group.groupType ? GROUP_FIELD_VISIBILITY[group.groupType] : null
@@ -176,22 +180,31 @@ export function ActivityGroupEditor({
         </div>
 
         {/* Group type selector */}
-        <ToggleGroup
-          type="single"
-          value={group.groupType ?? ''}
-          onValueChange={handleTypeChange}
-          className="flex flex-1 flex-wrap gap-1"
-        >
-          {GROUP_TYPES.map((gt) => (
-            <ToggleGroupItem
-              key={gt.value}
-              value={gt.value}
-              className="min-h-12 min-w-12 px-3 text-xs font-medium uppercase tracking-wider"
-            >
-              {gt.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+        <div className="flex flex-1 flex-col gap-1">
+          <ToggleGroup
+            id={`field-group-${group.clientId}-type`}
+            type="single"
+            value={group.groupType ?? ''}
+            onValueChange={handleTypeChange}
+            className="flex flex-1 flex-wrap gap-1"
+            aria-invalid={groupErrors?.noType ? true : undefined}
+          >
+            {GROUP_TYPES.map((gt) => (
+              <ToggleGroupItem
+                key={gt.value}
+                value={gt.value}
+                className="min-h-12 min-w-12 px-3 text-xs font-medium uppercase tracking-wider"
+              >
+                {gt.label}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          {groupErrors?.noType && (
+            <p role="alert" className="text-xs text-destructive">
+              {groupErrors.noType}
+            </p>
+          )}
+        </div>
 
         <HelpTrigger title="Group types" content={groupTypeHelpContent} />
 
@@ -273,6 +286,7 @@ export function ActivityGroupEditor({
                 isFirst={index === 0}
                 isLast={index === group.activities.length - 1}
                 PickerComponent={PickerComponent}
+                exerciseError={activityErrors?.[activity.clientId]}
               />
             ))}
           </div>
@@ -280,6 +294,7 @@ export function ActivityGroupEditor({
           {/* Add exercise button */}
           <div className="px-4 pb-4">
             <Button
+              id={`field-group-${group.clientId}-add-activity`}
               type="button"
               variant="secondary"
               size="sm"
@@ -289,6 +304,11 @@ export function ActivityGroupEditor({
               <Icon name="add" size={16} />
               Select exercise
             </Button>
+            {groupErrors?.noActivities && (
+              <p role="alert" className="mt-1 text-center text-xs text-destructive">
+                {groupErrors.noActivities}
+              </p>
+            )}
           </div>
         </>
       )}
