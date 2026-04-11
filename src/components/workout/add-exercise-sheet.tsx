@@ -7,6 +7,7 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 import { ExerciseSearchInput } from '@/components/exercises/exercise-search-input'
+import { CreateExerciseSheet } from '@/components/exercises/create-exercise-sheet'
 import { useExercises, useRecentlyUsedExercises } from '@/hooks/use-exercises'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import type { Exercise, GroupType } from '@/domain/types'
@@ -25,6 +26,7 @@ export function AddExerciseSheet({
   userId,
 }: AddExerciseSheetProps) {
   const [searchQuery, setSearchQuery] = useState('')
+  const [createSheetOpen, setCreateSheetOpen] = useState(false)
   const debouncedQuery = useDebouncedValue(searchQuery, 200)
 
   const { data: allExercises = [] } = useExercises()
@@ -49,61 +51,92 @@ export function AddExerciseSheet({
     [onExerciseSelected, onOpenChange],
   )
 
+  const handleCreated = useCallback(
+    (exercise: Exercise) => {
+      onExerciseSelected(exercise, 'STRAIGHT_SETS')
+      onOpenChange(false)
+      setSearchQuery('')
+    },
+    [onExerciseSelected, onOpenChange],
+  )
+
   const showRecent = debouncedQuery.length === 0 && recentExercises.length > 0
+  const showCreateCta = debouncedQuery.length > 0 && filteredExercises.length === 0
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-h-[80vh] bg-surface-anvil p-0">
-        <SheetHeader className="px-4 pt-4 pb-0">
-          <SheetTitle className="text-xs text-ember">Add Exercise</SheetTitle>
-          <SheetDescription className="sr-only">
-            Search and select an exercise to add to your workout
-          </SheetDescription>
-        </SheetHeader>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="max-h-[80vh] bg-surface-anvil p-0">
+          <SheetHeader className="px-4 pt-4 pb-0">
+            <SheetTitle className="text-xs text-ember">Add Exercise</SheetTitle>
+            <SheetDescription className="sr-only">
+              Search and select an exercise to add to your workout
+            </SheetDescription>
+          </SheetHeader>
 
-        {/* Search input */}
-        <div className="px-4 pt-2">
-          <ExerciseSearchInput value={searchQuery} onChange={setSearchQuery} autoFocus={open} />
-        </div>
+          {/* Search input */}
+          <div className="px-4 pt-2">
+            <ExerciseSearchInput value={searchQuery} onChange={setSearchQuery} autoFocus={open} />
+          </div>
 
-        {/* Results */}
-        <div className="flex-1 overflow-y-auto px-4 py-3">
-          {/* Recently used */}
-          {showRecent && (
-            <div className="mb-4">
-              <span className="mb-2 block text-[11px] uppercase tracking-widest text-warm-ash/60">
-                RECENTLY USED
-              </span>
-              <div className="flex flex-col">
-                {recentExercises.map((ex) => (
-                  <ExerciseRow key={ex.id} exercise={ex} onSelect={handleSelect} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Search results */}
-          {debouncedQuery.length > 0 && (
-            <div>
-              {filteredExercises.length === 0 ? (
-                <p className="py-8 text-center text-xs text-warm-ash/60">No matches</p>
-              ) : (
+          {/* Results */}
+          <div className="flex-1 overflow-y-auto px-4 py-3">
+            {/* Recently used */}
+            {showRecent && (
+              <div className="mb-4">
+                <span className="mb-2 block text-[11px] uppercase tracking-widest text-warm-ash/60">
+                  RECENTLY USED
+                </span>
                 <div className="flex flex-col">
-                  {filteredExercises.map((ex) => (
+                  {recentExercises.map((ex) => (
                     <ExerciseRow key={ex.id} exercise={ex} onSelect={handleSelect} />
                   ))}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
 
-          {/* Empty state when no search and no recent */}
-          {debouncedQuery.length === 0 && recentExercises.length === 0 && (
-            <p className="py-8 text-center text-xs text-warm-ash/60">Type to search exercises</p>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
+            {/* Search results */}
+            {debouncedQuery.length > 0 && (
+              <div>
+                {filteredExercises.length === 0 ? (
+                  <div className="flex flex-col items-center gap-4 py-8">
+                    <p className="text-center text-xs text-warm-ash/60">No matches</p>
+                    <button
+                      type="button"
+                      onClick={() => setCreateSheetOpen(true)}
+                      className="inline-flex min-h-12 items-center gap-2 bg-forge px-4 py-2 text-xs font-medium text-on-forge"
+                    >
+                      <span className="material-symbols-outlined text-base">add</span>
+                      Create exercise
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col">
+                    {filteredExercises.map((ex) => (
+                      <ExerciseRow key={ex.id} exercise={ex} onSelect={handleSelect} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Empty state when no search and no recent */}
+            {debouncedQuery.length === 0 && recentExercises.length === 0 && (
+              <p className="py-8 text-center text-xs text-warm-ash/60">Type to search exercises</p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {showCreateCta || createSheetOpen ? (
+        <CreateExerciseSheet
+          open={createSheetOpen}
+          onOpenChange={setCreateSheetOpen}
+          defaultName={searchQuery}
+          onCreated={handleCreated}
+        />
+      ) : null}
+    </>
   )
 }
 
