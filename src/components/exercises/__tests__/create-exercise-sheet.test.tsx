@@ -1,16 +1,36 @@
 // @vitest-environment happy-dom
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/render-helpers'
 import { CreateExerciseSheet } from '@/components/exercises/create-exercise-sheet'
+import type { Exercise } from '@/domain/types'
+
+const createdExercise: Exercise = {
+  id: 'ex-new-1',
+  name: 'Test Exercise',
+  aliases: [],
+  category: 'BARBELL',
+  movementPattern: 'PUSH',
+  muscleGroups: { primary: ['CHEST'], secondary: [] },
+  equipmentRequired: [],
+  supports1RM: true,
+  isBilateral: true,
+  isCustom: true,
+  isPublic: false,
+  createdAt: '2026-04-10T00:00:00.000Z',
+  updatedAt: '2026-04-10T00:00:00.000Z',
+}
+
+// Hoist a mutable hook state so tests can control isError independently
+const mockHookState = vi.hoisted(() => ({
+  mutateAsync: vi.fn(),
+  isPending: false,
+  isError: false,
+}))
 
 // Mock the hook to avoid adapter dependency
 vi.mock('@/hooks/use-exercises', () => ({
-  useCreateExercise: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({}),
-    isPending: false,
-    isError: false,
-  }),
+  useCreateExercise: () => mockHookState,
 }))
 
 describe('CreateExerciseSheet', () => {
@@ -18,6 +38,12 @@ describe('CreateExerciseSheet', () => {
     open: true,
     onOpenChange: vi.fn(),
   }
+
+  beforeEach(() => {
+    mockHookState.mutateAsync.mockReset()
+    mockHookState.mutateAsync.mockResolvedValue(createdExercise)
+    mockHookState.isError = false
+  })
 
   it('renders sheet title', () => {
     renderWithProviders(<CreateExerciseSheet {...defaultProps} />)
@@ -89,5 +115,66 @@ describe('CreateExerciseSheet', () => {
   it('does not render when open is false', () => {
     renderWithProviders(<CreateExerciseSheet open={false} onOpenChange={vi.fn()} />)
     expect(screen.queryByText('Create Custom Exercise')).not.toBeInTheDocument()
+  })
+
+  it('pre-populates name from defaultName prop when opened', () => {
+    renderWithProviders(<CreateExerciseSheet {...defaultProps} defaultName="Seed Name" />)
+    expect(screen.getByLabelText('Name')).toHaveValue('Seed Name')
+  })
+
+  it('calls onCreated with the created exercise after successful submission', async () => {
+    const user = userEvent.setup()
+    const onCreated = vi.fn()
+    const onOpenChange = vi.fn()
+
+    renderWithProviders(
+      <CreateExerciseSheet
+        open={true}
+        onOpenChange={onOpenChange}
+        onCreated={onCreated}
+        defaultName="Hip Thrust"
+      />,
+    )
+
+    // Select a primary muscle group so validation passes
+    const chestCheckbox = screen.getByRole('checkbox', { name: /chest/i })
+    await user.click(chestCheckbox)
+
+    await user.click(screen.getByText('Create exercise'))
+
+    await waitFor(() => expect(onCreated).toHaveBeenCalledTimes(1))
+    expect(onCreated).toHaveBeenCalledWith(createdExercise)
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('does not call onCreated or close the sheet when mutateAsync rejects', async () => {
+    const user = userEvent.setup()
+    const onCreated = vi.fn()
+    const onOpenChange = vi.fn()
+
+    mockHookState.mutateAsync.mockRejectedValueOnce(new Error('Network error'))
+
+    renderWithProviders(
+      <CreateExerciseSheet
+        open={true}
+        onOpenChange={onOpenChange}
+        onCreated={onCreated}
+        defaultName="Hip Thrust"
+      />,
+    )
+
+    const chestCheckbox = screen.getByRole('checkbox', { name: /chest/i })
+    await user.click(chestCheckbox)
+    await user.click(screen.getByText('Create exercise'))
+
+    await waitFor(() => expect(mockHookState.mutateAsync).toHaveBeenCalledTimes(1))
+    expect(onCreated).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+  })
+
+  it('renders inline error message when isError is true', () => {
+    mockHookState.isError = true
+    renderWithProviders(<CreateExerciseSheet open={true} onOpenChange={vi.fn()} />)
+    expect(screen.getByText('Failed to create exercise. Please try again.')).toBeInTheDocument()
   })
 })

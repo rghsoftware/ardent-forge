@@ -113,3 +113,51 @@ const { data, isLoading, isError } = useMyQuery(id)
 // ... later in JSX:
 // {isError ? <ErrorMessage /> : isLoading ? <Skeleton /> : <Content data={data} />}
 ```
+
+## Mutation Hook Log Ownership
+
+When a `useMutation` hook has an `onError` handler that logs the failure, the consuming
+component must not also catch and log the same rejection. The hook is the single log
+owner for that mutation -- a single failure producing two log lines with different module
+prefixes is misleading and harder to trace in production.
+
+```typescript
+// Bad -- hook logs and component also logs the same rejection
+export function useCreateFoo() {
+  return useMutation({
+    mutationFn: createFoo,
+    onError: (err) => console.error('[foos] createFoo failed:', err),
+  })
+}
+
+// Component:
+const handleSubmit = async () => {
+  try {
+    await createFoo.mutateAsync(values)
+  } catch (err) {
+    console.error('[foo-form] Failed to create:', err) // duplicate log -- BAD
+  }
+}
+
+// Good -- hook owns the log; component may still render isError state
+export function useCreateFoo() {
+  return useMutation({
+    mutationFn: createFoo,
+    onError: (err) => console.error('[foos] createFoo failed:', err),
+  })
+}
+
+// Component:
+const handleSubmit = async () => {
+  try {
+    await createFoo.mutateAsync(values)
+  } catch {
+    // Hook already logged. Component renders error state via createFoo.isError.
+  }
+}
+```
+
+Exception: if the consuming component invokes the mutation via a callback that may
+itself throw after the mutation resolves (e.g., an `onCreated` prop), wrap that
+callback in its own distinct `try/catch` with a clearly different `[module-name]`
+prefix -- that is a separate error domain from the mutation itself.

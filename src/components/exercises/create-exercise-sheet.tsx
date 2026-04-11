@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -6,6 +7,7 @@ import {
   movementPatternSchema,
   muscleGroupSchema,
   equipmentSchema,
+  type Exercise,
   type ExerciseCategory,
   type MovementPattern,
   type MuscleGroup,
@@ -47,12 +49,31 @@ const createExerciseSchema = z.object({
 
 type CreateExerciseFormValues = z.infer<typeof createExerciseSchema>
 
+const DEFAULT_FORM_VALUES: CreateExerciseFormValues = {
+  name: '',
+  category: 'BARBELL' as ExerciseCategory,
+  movementPattern: 'PUSH' as MovementPattern,
+  primaryMuscles: [],
+  equipment: [],
+  supports1RM: true,
+  isBilateral: true,
+}
+
 interface CreateExerciseSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Optional callback fired with the newly created exercise after successful submission. */
+  onCreated?: (exercise: Exercise) => void
+  /** Optional initial value for the name field; applied when the sheet opens. */
+  defaultName?: string
 }
 
-export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetProps) {
+export function CreateExerciseSheet({
+  open,
+  onOpenChange,
+  onCreated,
+  defaultName,
+}: CreateExerciseSheetProps) {
   const createExercise = useCreateExercise()
 
   const {
@@ -63,20 +84,21 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
     formState: { errors, isSubmitting },
   } = useForm<CreateExerciseFormValues>({
     resolver: zodResolver(createExerciseSchema),
-    defaultValues: {
-      name: '',
-      category: 'BARBELL' as ExerciseCategory,
-      movementPattern: 'PUSH' as MovementPattern,
-      primaryMuscles: [],
-      equipment: [],
-      supports1RM: true,
-      isBilateral: true,
-    },
+    defaultValues: { ...DEFAULT_FORM_VALUES, name: defaultName ?? '' },
   })
+
+  // When the sheet opens with a defaultName, pre-populate the name field.
+  // Skipped when no defaultName is provided to preserve prior behavior
+  // (Library/Exercises index callers rely on form state persisting across opens).
+  useEffect(() => {
+    if (open && defaultName !== undefined) {
+      reset({ ...DEFAULT_FORM_VALUES, name: defaultName })
+    }
+  }, [open, defaultName, reset])
 
   const onSubmit = async (values: CreateExerciseFormValues) => {
     try {
-      await createExercise.mutateAsync({
+      const created = await createExercise.mutateAsync({
         name: values.name,
         aliases: [],
         category: values.category,
@@ -93,8 +115,13 @@ export function CreateExerciseSheet({ open, onOpenChange }: CreateExerciseSheetP
       })
       reset()
       onOpenChange(false)
+      try {
+        onCreated?.(created)
+      } catch (callbackErr) {
+        console.error('[create-exercise-sheet] onCreated callback threw:', callbackErr)
+      }
     } catch {
-      // Error state is available via createExercise.isError
+      // Hook already logged this. Error state surfaces via createExercise.isError.
     }
   }
 
