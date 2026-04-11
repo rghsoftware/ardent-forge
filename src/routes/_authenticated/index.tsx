@@ -22,7 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useNextUpcomingEvent } from '@/hooks/use-event-items'
 import { formatDuration } from '@/lib/format-duration'
 import { configureDisplayPublisher } from '@/lib/display-publisher'
-import { writeLastGymChoice } from '@/lib/gym-picker-storage'
+import { writeLastGymChoice, readLastGymChoice } from '@/lib/gym-picker-storage'
 import type { WorkoutLog } from '@/domain/types'
 import type { ProgramFull } from '@/lib/data-adapter'
 
@@ -31,7 +31,7 @@ export const Route = createFileRoute('/_authenticated/')({
 })
 
 // ---------------------------------------------------------------------------
-// Helpers -- resolve today's session from the program structure
+// Helpers -- resolve today's session from program structure
 // ---------------------------------------------------------------------------
 
 type TodaySessionResult = {
@@ -49,13 +49,13 @@ function resolveTodaySession(
   // dayOfWeek uses JS Date.getDay() convention: 0=Sun..6=Sat (matches scheduledSessions schema)
   const todayDow = new Date().getDay()
 
-  // Find the current block by ordinal
+  // Find current block by ordinal
   const currentBlock = programFull.blocks.find((b) => b.ordinal === blockOrdinal)
   if (!currentBlock) {
     return { block: null, week: null, session: null, error: 'block-not-found' }
   }
 
-  // Find the current week within that block
+  // Find current week within that block
   const currentWeek = programFull.blockWeeks.find(
     (bw) => bw.blockId === currentBlock.id && bw.weekNumber === weekNumber,
   )
@@ -86,7 +86,7 @@ function TodayPage() {
   const { startWorkout, startProgrammedWorkout, isStarting } = useActiveWorkout()
   const userId = user?.id ?? ''
 
-  // F018 (S025): gym picker -- the workout-start flow awaits a user decision
+  // F018 (S025): gym picker -- workout-start flow awaits a user decision
   // (gym UUID or 'private') before creating the workout_log row and configuring
   // the display publisher. The portal is mounted at the bottom of this route
   // so any descendant in this render tree (e.g., ProgramSessionCard's
@@ -159,9 +159,18 @@ function TodayPage() {
     }
     setStartError(null)
 
-    // F018 (D11, M11, M12, M13, M14): prompt for the target gym (or Private)
-    // before creating the workout. Cancelling the picker is a no-op.
-    const choice = await openGymPicker({ userId })
+    // After first workout is completed, use saved gym choice without prompting
+    let choice: string | 'private' | null
+    if (firstWorkoutCompleted) {
+      choice = readLastGymChoice()
+      if (choice === null) {
+        // Fallback to picker if no saved choice exists
+        choice = await openGymPicker({ userId })
+      }
+    } else {
+      // First workout: prompt for gym selection
+      choice = await openGymPicker({ userId })
+    }
     if (choice === null) return
 
     try {
@@ -203,9 +212,18 @@ function TodayPage() {
     }
     setStartError(null)
 
-    // F018 (D11, M11, M12, M13, M14): same picker gate as ad-hoc start --
-    // programmed sessions also publish via the configured gym.
-    const choice = await openGymPicker({ userId })
+    // After first workout is completed, use saved gym choice without prompting
+    let choice: string | 'private' | null
+    if (firstWorkoutCompleted) {
+      choice = readLastGymChoice()
+      if (choice === null) {
+        // Fallback to picker if no saved choice exists
+        choice = await openGymPicker({ userId })
+      }
+    } else {
+      // First workout: prompt for gym selection
+      choice = await openGymPicker({ userId })
+    }
     if (choice === null) return
 
     try {
@@ -225,7 +243,7 @@ function TodayPage() {
       } else {
         configureDisplayPublisher({ gymId: choice, intent: 'broadcasting' })
       }
-      // P15-014: surface localStorage write failures so sticky-default loss
+      // P15-014: surface localStorage write failures so the sticky-default loss
       // is not silent (see handleStartWorkout above for rationale).
       if (!writeLastGymChoice(choice)) {
         console.warn('[today-page] Failed to persist last gym choice (programmed)')
