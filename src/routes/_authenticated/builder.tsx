@@ -12,8 +12,8 @@ import { ProgramForm } from '@/components/program-builder/program-form'
 import { BlockList } from '@/components/program-builder/block-list'
 import { MobileBlockEditor } from '@/components/program-builder/mobile-block-editor'
 import { SessionPickerSheet } from '@/components/program-builder/session-picker-sheet'
-import { CreateTemplateDialog } from '@/components/program-builder/create-template-dialog'
-import { CreateEventDialog } from '@/components/program-builder/create-event-dialog'
+import { SessionTemplateDialog } from '@/components/session-builder/session-template-dialog'
+import { EventTemplateDialog } from '@/components/event-builder/event-template-dialog'
 import { WorkoutPreviewSheet } from '@/components/workout/workout-preview-sheet'
 import { CopyWeekDialog } from '@/components/program-builder/copy-week-dialog'
 import {
@@ -471,15 +471,15 @@ function BuilderPage() {
       />
 
       {/* Template / event creation dialogs */}
-      <CreateTemplateDialog
+      <SessionTemplateDialog
         open={showCreateTemplate}
         onOpenChange={setShowCreateTemplate}
-        onCreated={handleTemplateCreated}
+        onSaved={handleTemplateCreated}
       />
-      <CreateEventDialog
+      <EventTemplateDialog
         open={showCreateEvent}
         onOpenChange={setShowCreateEvent}
-        onCreated={handleEventCreated}
+        onSaved={handleEventCreated}
       />
 
       {/* Copy week dialog */}
