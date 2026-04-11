@@ -53,11 +53,13 @@ Begin or resume implementation of a planned feature. Restores full context from 
 4. Ask: "Proceed with implementation?"
 
 ### Step 5: Execute via agent delegation
-Delegate to the `/impl` command workflow:
-- Spawn agents for current wave's tasks
-- Pass upstream contracts from previous milestones
-- Monitor task completion
-- Run milestone checkpoints (stub detection, drift check, contract extraction)
+Delegate to the `/impl` command workflow, which uses the background + Monitor + event-log pattern (see `core/skills/monitor-loop/SKILL.md`):
+- Render each task's specialist prompt to `.cortex/prompts/<S-id>.md`
+- Spawn agents for the current wave with `Task({run_in_background: true})`, one call per parallel task in a single orchestrator message
+- Start a `Monitor` on `.cortex/events.log` filtered to `task_done`, `contract_ready`, `milestone_reached`, and `error`
+- React to events instead of blocking on `TaskOutput`. Only pull an agent's output when an `error` event fires or an expected `task_done` is missing past its deadline
+- Pass upstream contracts from previous milestones by injecting them into the next wave's prompt files
+- Run milestone checkpoints (stub detection, drift check via the Advisor tool, contract extraction)
 - Continue through waves until complete
 
 For quick plans (single-file plan, no team orchestration):

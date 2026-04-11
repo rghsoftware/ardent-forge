@@ -171,6 +171,19 @@ Skill({
 
 ## Coordination Patterns
 
+### Background + Event Log (preferred for `/impl` and `/team-impl`)
+
+The orchestrator spawns specialists with `Task({run_in_background: true})`, then watches `.cortex/events.log` via the `Monitor` tool. Specialists call `bun run .claude/hooks/event-log/event-log.ts append` at task-complete and contract-ready moments; the orchestrator only sees those filtered lines, never the full sub-agent transcript.
+
+Use this pattern whenever:
+- Multiple specialists will run in parallel on the same wave
+- The orchestrator is Sonnet and you want to keep its context window small
+- You do not need to inspect every agent's output on the happy path
+
+See `core/skills/monitor-loop/SKILL.md` for the full protocol, event shape, safety-net rules, and the boilerplate to paste into every specialist's prompt. Commands `/impl` and `/team-impl` both implement this pattern.
+
+Only pull `TaskOutput` on `error` events or when an expected `task_done` is missing past its deadline. Never pull `TaskOutput` on the happy path.
+
 ### Parallel Execution
 
 Invoke multiple agents using multiple Task tool calls in **ONE message**.
