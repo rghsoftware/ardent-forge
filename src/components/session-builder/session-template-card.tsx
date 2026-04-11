@@ -20,8 +20,25 @@ interface SessionTemplateCardProps {
   template: SessionTemplate
   groupCount?: number
   exerciseCount?: number
+  lastAssignedAt?: string | null
   onEdit: () => void
   onDelete: () => void
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function formatRelativeDate(date: string | null | undefined): string | null {
+  if (!date) return null
+  const d = new Date(date)
+  const now = new Date()
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24))
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return `${diffDays}d ago`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
+  return `${Math.floor(diffDays / 30)}mo ago`
 }
 
 // ---------------------------------------------------------------------------
@@ -46,11 +63,13 @@ export function SessionTemplateCard({
   template,
   groupCount,
   exerciseCount,
+  lastAssignedAt,
   onEdit,
   onDelete,
 }: SessionTemplateCardProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const scoringLabel = SCORING_LABELS[template.scoring]
+  const relativeDate = formatRelativeDate(lastAssignedAt)
 
   return (
     <>
@@ -82,6 +101,9 @@ export function SessionTemplateCard({
                 .filter(Boolean)
                 .join(' / ')}
             </span>
+          )}
+          {relativeDate && (
+            <span className="text-[11px] text-warm-ash/40">Last used {relativeDate}</span>
           )}
         </button>
 

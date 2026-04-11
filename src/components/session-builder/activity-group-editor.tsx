@@ -45,11 +45,14 @@ interface ActivityGroupEditorProps {
 // Constants
 // ---------------------------------------------------------------------------
 
-const GROUP_TYPES: Array<{ value: GroupType; label: string }> = [
+const STRENGTH_TYPES: Array<{ value: GroupType; label: string }> = [
   { value: 'STRAIGHT_SETS', label: 'STRAIGHT' },
   { value: 'SUPERSET', label: 'SUPERSET' },
   { value: 'CIRCUIT', label: 'CIRCUIT' },
   { value: 'COMPLEX', label: 'COMPLEX' },
+]
+
+const CONDITIONING_TYPES: Array<{ value: GroupType; label: string }> = [
   { value: 'EMOM', label: 'EMOM' },
   { value: 'AMRAP', label: 'AMRAP' },
   { value: 'COUPLET', label: 'COUPLET' },
@@ -186,18 +189,41 @@ export function ActivityGroupEditor({
             type="single"
             value={group.groupType ?? ''}
             onValueChange={handleTypeChange}
-            className="flex flex-1 flex-wrap gap-1"
+            className="flex flex-1 flex-col gap-1"
             aria-invalid={groupErrors?.noType ? true : undefined}
           >
-            {GROUP_TYPES.map((gt) => (
-              <ToggleGroupItem
-                key={gt.value}
-                value={gt.value}
-                className="min-h-12 min-w-12 px-3 text-xs font-medium uppercase tracking-wider"
-              >
-                {gt.label}
-              </ToggleGroupItem>
-            ))}
+            <div className="flex items-center gap-1">
+              <span className="w-20 shrink-0 text-[10px] uppercase tracking-widest text-warm-ash/40">
+                Strength
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {STRENGTH_TYPES.map((gt) => (
+                  <ToggleGroupItem
+                    key={gt.value}
+                    value={gt.value}
+                    className="min-h-8 px-2 py-1 text-xs font-medium uppercase tracking-wider"
+                  >
+                    {gt.label}
+                  </ToggleGroupItem>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-20 shrink-0 text-[10px] uppercase tracking-widest text-warm-ash/40">
+                Conditioning
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {CONDITIONING_TYPES.map((gt) => (
+                  <ToggleGroupItem
+                    key={gt.value}
+                    value={gt.value}
+                    className="min-h-8 px-2 py-1 text-xs font-medium uppercase tracking-wider"
+                  >
+                    {gt.label}
+                  </ToggleGroupItem>
+                ))}
+              </div>
+            </div>
           </ToggleGroup>
           {groupErrors?.noType && (
             <p role="alert" className="text-xs text-destructive">

@@ -319,7 +319,7 @@ function LibraryPage() {
                     </p>
                     <p className="text-xs text-warm-ash/50 leading-relaxed">
                       Session templates are reusable workout blueprints. Design a Push Day, a Tempo
-                      Run, or an EMOM -- then snap them into any program.
+                      Run, or an EMOM -- then wire them into any program.
                     </p>
                     <Button
                       variant="default"
@@ -376,6 +376,7 @@ function LibraryPage() {
                   <div key={template.id} className="flex flex-col gap-0">
                     <SessionTemplateCard
                       template={template}
+                      lastAssignedAt={template.lastAssignedAt}
                       onEdit={() => handleEdit(template.id)}
                       onDelete={() => handleDelete(template.id)}
                     />
@@ -664,7 +665,7 @@ function ProgramList({ userId }: { userId: string | undefined }) {
       <Dialog open={!!confirmDeleteId} onOpenChange={() => setConfirmDeleteId(null)}>
         <DialogContent className="bg-surface-iron">
           <DialogHeader>
-            <DialogTitle className="text-xs text-ember">Delete Program</DialogTitle>
+            <DialogTitle className="text-sm font-medium text-bone-white">Delete Program</DialogTitle>
             <DialogDescription className="text-sm text-warm-ash">
               Are you sure you want to delete &quot;{programToDelete?.name}&quot;? This cannot be
               undone.

@@ -445,7 +445,7 @@ export function SessionTemplateForm({
 
         {/* Category selector */}
         <div className="px-4 lg:px-0">
-          <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
+          <span className="mb-2 block text-xs font-medium text-warm-ash/60">
             Category
           </span>
           <ToggleGroup
@@ -470,7 +470,7 @@ export function SessionTemplateForm({
 
         {/* Description */}
         <div className="px-4 lg:px-0">
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
+          <span className="mb-1 block text-xs font-medium text-warm-ash/60">
             Description (optional)
           </span>
           <textarea
@@ -487,7 +487,7 @@ export function SessionTemplateForm({
         {(() => {
           const scoringField = (
             <div className="px-4 lg:px-0">
-              <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
+              <span className="mb-2 block text-xs font-medium text-warm-ash/60">
                 Scoring
               </span>
               <Select value={scoring} onValueChange={(v) => setScoring(v as ScoringType)}>
@@ -592,7 +592,7 @@ export function SessionTemplateForm({
           <Button
             id="field-add-group"
             type="button"
-            variant="secondary"
+            variant="default"
             onClick={handleAddGroup}
             className="w-full min-h-12 text-xs"
           >
