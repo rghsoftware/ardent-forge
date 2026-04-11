@@ -151,7 +151,7 @@ export function ActivityEditor({
 
       {/* Notes (collapsible) */}
       {showNotes && (
-        <div className="border-t border-warm-ash/10 px-4 py-3">
+        <div className="bg-surface-pit/40 px-4 py-3">
           <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
             Notes
           </span>
