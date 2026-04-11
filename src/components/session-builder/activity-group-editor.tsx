@@ -232,6 +232,11 @@ export function ActivityGroupEditor({
               {groupErrors.noType}
             </p>
           )}
+          {group.groupType && (
+            <p className="font-body text-xs text-warm-ash">
+              {GROUP_TYPE_HELP[group.groupType].oneLiner}
+            </p>
+          )}
         </div>
 
         <HelpTrigger title="Group types" content={groupTypeHelpContent} />

@@ -13,6 +13,10 @@ export interface BlockTypeHelpEntry extends HelpEntry {
   oneLiner: string
 }
 
+export interface GroupTypeHelpEntry extends HelpEntry {
+  oneLiner: string
+}
+
 // ---------------------------------------------------------------------------
 // Group Type Help
 // ---------------------------------------------------------------------------
@@ -21,32 +25,39 @@ export const GROUP_TYPE_HELP = {
   STRAIGHT_SETS: {
     label: 'Straight Sets',
     description: 'One exercise at a time. Complete all sets before moving on.',
+    oneLiner: 'One exercise at a time. All sets done before moving on.',
   },
   SUPERSET: {
     label: 'Superset',
     description: 'Two exercises alternated set-for-set with minimal rest.',
+    oneLiner: 'Two exercises alternated set-for-set. Fixed rest, no time cap.',
   },
   CIRCUIT: {
     label: 'Circuit',
     description: 'Three or more exercises performed back-to-back as rounds.',
+    oneLiner: 'Three or more exercises back-to-back for rounds.',
   },
   COMPLEX: {
     label: 'Complex',
     description: 'Multiple barbell movements performed without releasing the bar.',
+    oneLiner: 'Barbell only -- multiple movements without releasing the bar.',
   },
   EMOM: {
     label: 'EMOM',
     description: 'Fixed work every minute on the minute for a set duration.',
+    oneLiner: 'Fixed work every minute on the minute for a set duration.',
   },
   AMRAP: {
     label: 'AMRAP',
     description: 'As many rounds as possible within a time cap.',
+    oneLiner: 'As many rounds as possible within a time cap.',
   },
   COUPLET: {
     label: 'Couplet',
     description: 'Two movements alternated for rounds, typically for time.',
+    oneLiner: 'Two movements alternated for rounds -- typically scored for time.',
   },
-} satisfies Record<GroupType, HelpEntry>
+} satisfies Record<GroupType, GroupTypeHelpEntry>
 
 // ---------------------------------------------------------------------------
 // Block Type Help
