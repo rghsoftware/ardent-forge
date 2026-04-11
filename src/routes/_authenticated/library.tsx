@@ -445,6 +445,10 @@ function LibraryPage() {
                       template={template}
                       onEdit={() => handleEdit(template.id)}
                       onDelete={() => handleDelete(template.id)}
+                      onClone={() => cloneMutation.mutate({ id: template.id, userId })}
+                      isCloning={
+                        cloneMutation.isPending && cloneMutation.variables?.id === template.id
+                      }
                       onStartWorkout={
                         isOwned && templateScope === 'mine'
                           ? () => handleStartFromTemplate(template.id)
