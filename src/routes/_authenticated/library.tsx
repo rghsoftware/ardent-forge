@@ -159,9 +159,9 @@ function LibraryPage() {
             <Button
               variant="default"
               onClick={handleCreateEvent}
-              className="min-h-12 border-l-2 border-ember bg-surface-iron text-xs text-bone-white hover:bg-surface-gunmetal"
+              className="min-h-12 bg-forge text-xs text-on-forge hover:brightness-110"
             >
-              <Icon name="flag" size={16} className="text-ember" />
+              <Icon name="flag" size={16} />
               New event
             </Button>
           </div>

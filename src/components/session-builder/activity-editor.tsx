@@ -72,7 +72,9 @@ export function ActivityEditor({
 
         {exercise ? (
           <div className="flex flex-1 items-center gap-2">
-            <span className="font-display text-xs font-medium text-ember">{exercise.name}</span>
+            <span className="font-display text-sm font-medium text-bone-white">
+              {exercise.name}
+            </span>
             <button
               type="button"
               onClick={() => setShowExerciseSheet(true)}
