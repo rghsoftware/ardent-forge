@@ -151,12 +151,15 @@ export function useActiveWorkout() {
    * Start a programmed workout from a session template. Resolves the template
    * into pre-filled groups/activities/sets, persists everything to DB, and
    * hydrates the Zustand store.
+   *
+   * Can be used for program-based workouts (with programContext) or
+   * standalone template workouts (without programContext).
    */
   const startProgrammedWorkout = useCallback(
     async (
       userId: string,
       sessionTemplateId: string,
-      programContext: ProgramContext,
+      programContext?: ProgramContext,
       overrides?: SessionOverrides | null,
     ): Promise<WorkoutLog> => {
       try {

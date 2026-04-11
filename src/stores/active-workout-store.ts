@@ -209,10 +209,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     },
 
     startProgrammedWorkout(workoutLog: WorkoutLog, groups: LoggedActivityGroupWithActivities[]) {
-      if (!workoutLog.programContext) {
-        throw new Error('startProgrammedWorkout requires a WorkoutLog with programContext')
-      }
-
       const state = get()
       if (state.workoutLog !== null) {
         // Invariant L-8: only one active workout at a time

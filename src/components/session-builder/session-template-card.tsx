@@ -22,6 +22,8 @@ interface SessionTemplateCardProps {
   exerciseCount?: number
   onEdit: () => void
   onDelete: () => void
+  onStartWorkout?: () => void
+  isStarting?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -48,6 +50,8 @@ export function SessionTemplateCard({
   exerciseCount,
   onEdit,
   onDelete,
+  onStartWorkout,
+  isStarting,
 }: SessionTemplateCardProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const scoringLabel = SCORING_LABELS[template.scoring]
@@ -84,6 +88,28 @@ export function SessionTemplateCard({
             </span>
           )}
         </button>
+
+        {/* Start workout button */}
+        {onStartWorkout && (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (!isStarting) onStartWorkout()
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation()
+                if (!isStarting) onStartWorkout()
+              }
+            }}
+            className={`flex min-h-10 min-w-10 items-center justify-center text-warm-ash/60 hover:text-ember ${isStarting ? 'animate-pulse opacity-50' : ''}`}
+            aria-label={`Start workout from ${template.name}`}
+          >
+            <Icon name="play_arrow" size={18} />
+          </div>
+        )}
 
         {/* Delete button */}
         <button
