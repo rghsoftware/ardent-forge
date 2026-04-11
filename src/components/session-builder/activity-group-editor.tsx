@@ -4,7 +4,8 @@ import { Icon } from '@/components/icon'
 import { HelpTrigger } from '@/components/ui/help-trigger'
 import { GROUP_TYPE_HELP } from '@/components/builders/help-content'
 import { GROUP_FIELD_VISIBILITY } from '@/components/builders/visibility-maps'
-import { ActivityEditor, type ActivityData } from './activity-editor'
+import { ActivityEditor, type ActivityData, type PickerComponentProps } from './activity-editor'
+import type { ComponentType } from 'react'
 import { DurationInput } from './inputs/duration-input'
 import { defaultScheme } from './set-scheme-defaults'
 import type { GroupType, Duration, Exercise, SessionType } from '@/domain/types'
@@ -35,6 +36,7 @@ interface ActivityGroupEditorProps {
   onMoveDown?: () => void
   isFirst?: boolean
   isLast?: boolean
+  PickerComponent?: ComponentType<PickerComponentProps>
 }
 
 // ---------------------------------------------------------------------------
@@ -82,6 +84,7 @@ export function ActivityGroupEditor({
   onMoveDown,
   isFirst,
   isLast,
+  PickerComponent,
 }: ActivityGroupEditorProps) {
   const isStage1 = group.groupType === null
   const visibility = group.groupType ? GROUP_FIELD_VISIBILITY[group.groupType] : null
@@ -269,6 +272,7 @@ export function ActivityGroupEditor({
                 onMoveDown={() => handleMoveActivity(index, index + 1)}
                 isFirst={index === 0}
                 isLast={index === group.activities.length - 1}
+                PickerComponent={PickerComponent}
               />
             ))}
           </div>

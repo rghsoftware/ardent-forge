@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo, type ComponentType } from 'react'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ActivityGroupEditor, type ActivityGroupData } from './activity-group-editor'
+import type { PickerComponentProps } from './activity-editor'
 import { CollapsedFieldsRow } from './collapsed-fields-row'
 import { DurationInput } from './inputs/duration-input'
 import { CATEGORY_FIELD_VISIBILITY } from '@/components/builders/visibility-maps'
@@ -39,6 +40,8 @@ interface SessionTemplateFormProps {
   initial?: SessionTemplateFull
   onSave?: (template: SessionTemplate) => void
   onCancel?: () => void
+  onDirtyChange?: (dirty: boolean) => void
+  PickerComponent?: ComponentType<PickerComponentProps>
 }
 
 // ---------------------------------------------------------------------------
@@ -113,7 +116,13 @@ function hydrateGroups(initial: SessionTemplateFull): ActivityGroupData[] {
 // Main form component
 // ---------------------------------------------------------------------------
 
-export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTemplateFormProps) {
+export function SessionTemplateForm({
+  initial,
+  onSave,
+  onCancel,
+  onDirtyChange,
+  PickerComponent,
+}: SessionTemplateFormProps) {
   const { user } = useAuth()
   const userId = user?.id ?? ''
   const { data: exercises = [] } = useExercises()
@@ -136,6 +145,40 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
   const [groups, setGroups] = useState<ActivityGroupData[]>(initial ? hydrateGroups(initial) : [])
   const [showAllSchemeTypes, setShowAllSchemeTypes] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
+
+  // Dirty tracking: snapshot initial form state, compare to current on every render.
+  // After successful save, snapshot is reset so navigating away is unblocked.
+  const computeSnapshot = useCallback(
+    (
+      n: string,
+      c: SessionType,
+      d: string,
+      s: ScoringType,
+      tc: Duration | undefined,
+      rbg: Duration | undefined,
+      g: ActivityGroupData[],
+    ) => JSON.stringify({ n, c, d, s, tc, rbg, g }),
+    [],
+  )
+  const [baselineSnapshot, setBaselineSnapshot] = useState(() =>
+    computeSnapshot(
+      initial?.template.name ?? '',
+      initial?.template.category ?? 'STRENGTH',
+      initial?.template.description ?? '',
+      initial?.template.scoring ?? 'NONE',
+      initial?.template.timeCap ?? undefined,
+      initial?.template.restBetweenGroups ?? undefined,
+      initial ? hydrateGroups(initial) : [],
+    ),
+  )
+  const currentSnapshot = useMemo(
+    () => computeSnapshot(name, category, description, scoring, timeCap, restBetweenGroups, groups),
+    [computeSnapshot, name, category, description, scoring, timeCap, restBetweenGroups, groups],
+  )
+  const dirty = currentSnapshot !== baselineSnapshot
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
 
   const isSaving = createMutation.isPending || updateMutation.isPending
 
@@ -231,6 +274,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
             },
           })),
         })
+        setBaselineSnapshot(currentSnapshot)
         onSave?.(result.template)
       } else {
         const result = await createMutation.mutateAsync({
@@ -246,6 +290,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
           },
           groups: groupPayload,
         })
+        setBaselineSnapshot(currentSnapshot)
         onSave?.(result.template)
       }
     } catch (err) {
@@ -268,6 +313,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
     createMutation,
     updateMutation,
     onSave,
+    currentSnapshot,
   ])
 
   const { scoring: showScoring, timeCap: showTimeCap } = CATEGORY_FIELD_VISIBILITY[category]
@@ -428,6 +474,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
             onMoveDown={() => handleMoveGroup(index, index + 1)}
             isFirst={index === 0}
             isLast={index === groups.length - 1}
+            PickerComponent={PickerComponent}
           />
         ))}
 

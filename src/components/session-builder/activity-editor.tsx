@@ -1,9 +1,16 @@
-import { useState } from 'react'
+import { useState, type ComponentType } from 'react'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { SetSchemeEditor } from './set-scheme-editor'
 import { AddExerciseSheet } from '@/components/workout/add-exercise-sheet'
-import type { SetScheme, Exercise, SessionType } from '@/domain/types'
+import type { Exercise, GroupType, SessionType, SetScheme } from '@/domain/types'
+
+export interface PickerComponentProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onExerciseSelected: (exercise: Exercise, groupType: GroupType) => void
+  userId?: string
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,6 +36,7 @@ interface ActivityEditorProps {
   onMoveDown?: () => void
   isFirst?: boolean
   isLast?: boolean
+  PickerComponent?: ComponentType<PickerComponentProps>
 }
 
 // ---------------------------------------------------------------------------
@@ -47,6 +55,7 @@ export function ActivityEditor({
   onMoveDown,
   isFirst,
   isLast,
+  PickerComponent = AddExerciseSheet,
 }: ActivityEditorProps) {
   const [showExerciseSheet, setShowExerciseSheet] = useState(false)
   const [showNotes, setShowNotes] = useState(!!activity.notes)
@@ -155,8 +164,8 @@ export function ActivityEditor({
         </div>
       )}
 
-      {/* Exercise picker sheet */}
-      <AddExerciseSheet
+      {/* Exercise picker (sheet or drawer, injected by parent route) */}
+      <PickerComponent
         open={showExerciseSheet}
         onOpenChange={setShowExerciseSheet}
         onExerciseSelected={(ex) => {

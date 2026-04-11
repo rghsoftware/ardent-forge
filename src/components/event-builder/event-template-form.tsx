@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { useCreateSessionTemplate, useUpdateSessionTemplate } from '@/hooks/use-session-templates'
@@ -19,6 +19,7 @@ interface EventTemplateFormProps {
   initial?: SessionTemplateFull
   onSave?: (template: SessionTemplate) => void
   onCancel?: () => void
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -52,7 +53,12 @@ function hydrateDraftItems(initial?: SessionTemplateFull): DraftEventItem[] {
 // Main form component
 // ---------------------------------------------------------------------------
 
-export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFormProps) {
+export function EventTemplateForm({
+  initial,
+  onSave,
+  onCancel,
+  onDirtyChange,
+}: EventTemplateFormProps) {
   const { user } = useAuth()
   const userId = user?.id ?? ''
   const createMutation = useCreateSessionTemplate()
@@ -85,6 +91,55 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
   const [draftItems, setDraftItems] = useState<DraftEventItem[]>(initialDraftItems)
   const [errors, setErrors] = useState<string[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
+
+  // -- Dirty tracking ------------------------------------------------------
+  // Snapshot the initial form state, compare to current on every render.
+  // After successful save, snapshot is reset so navigating away is unblocked.
+  const [baselineSnapshot, setBaselineSnapshot] = useState(() =>
+    JSON.stringify({
+      name: initial?.template.name ?? '',
+      description: initial?.template.description ?? '',
+      eventDate: initDate,
+      eventTime: initTime,
+      location: initial?.template.eventMetadata?.location ?? '',
+      latitude: initial?.template.eventMetadata?.latitude?.toString() ?? '',
+      longitude: initial?.template.eventMetadata?.longitude?.toString() ?? '',
+      eventUrl: initial?.template.eventMetadata?.eventUrl ?? '',
+      requirements: initialRequirements,
+      draftItems: initialDraftItems,
+    }),
+  )
+  const currentSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        name,
+        description,
+        eventDate,
+        eventTime,
+        location,
+        latitude,
+        longitude,
+        eventUrl,
+        requirements,
+        draftItems,
+      }),
+    [
+      name,
+      description,
+      eventDate,
+      eventTime,
+      location,
+      latitude,
+      longitude,
+      eventUrl,
+      requirements,
+      draftItems,
+    ],
+  )
+  const dirty = currentSnapshot !== baselineSnapshot
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
 
   // -- Expandable sections -------------------------------------------------
   const [requirementsExpanded, setRequirementsExpanded] = useState(
@@ -316,6 +371,7 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
         // Reconcile event items: delete removed, update existing, create new
         await reconcileEventItems(result.template.id, initial)
 
+        setBaselineSnapshot(currentSnapshot)
         onSave?.(result.template)
       } else {
         // -- Create new template --
@@ -335,6 +391,7 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
         // Create event items for the new template
         await createDraftItems(result.template.id)
 
+        setBaselineSnapshot(currentSnapshot)
         onSave?.(result.template)
       }
     } catch (err) {
@@ -359,6 +416,7 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
     createMutation,
     updateMutation,
     onSave,
+    currentSnapshot,
     createDraftItems,
     reconcileEventItems,
   ])
