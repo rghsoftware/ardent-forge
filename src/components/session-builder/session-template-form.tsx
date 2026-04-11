@@ -223,6 +223,7 @@ export function SessionTemplateForm({
 
   // Always-current derived errors (no useState -- avoids stale reads in handlers)
   const errors = useMemo(() => computeErrors(name, groups), [name, groups])
+  const isFormValid = !hasValidationErrors(errors)
 
   // Display gating: name shows on blur or after first save attempt; group/activity
   // errors show only after first save attempt so the form doesn't scold on first load.
@@ -652,10 +653,14 @@ export function SessionTemplateForm({
           type="button"
           variant="molten"
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSaving || (hasAttemptedSave && !isFormValid)}
           className="min-h-12 flex-1 text-xs"
         >
-          {isSaving ? 'Saving...' : 'Save template'}
+          {isSaving
+            ? 'Saving...'
+            : hasAttemptedSave && !isFormValid
+              ? 'Resolve issues above'
+              : 'Save template'}
         </Button>
       </div>
     </div>
