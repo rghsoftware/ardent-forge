@@ -166,6 +166,8 @@ export function ActivityGroupEditor({
               <Icon name="keyboard_arrow_up" size={16} />
             </button>
           )}
+          {/* surface-steel intentional: ordinal is a positional index, not a primary action.
+              Position already communicates order; ember here would dilute the accent. */}
           <span className="flex h-8 w-8 items-center justify-center bg-surface-steel font-display text-xs font-medium tabular-nums text-bone-white">
             {group.ordinal}
           </span>
