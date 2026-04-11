@@ -115,10 +115,13 @@ export function CreateExerciseSheet({
       })
       reset()
       onOpenChange(false)
-      onCreated?.(created)
-    } catch (err) {
-      console.error('[create-exercise-sheet] Failed to create exercise:', err)
-      // Error state is also available via createExercise.isError
+      try {
+        onCreated?.(created)
+      } catch (callbackErr) {
+        console.error('[create-exercise-sheet] onCreated callback threw:', callbackErr)
+      }
+    } catch {
+      // Hook already logged this. Error state surfaces via createExercise.isError.
     }
   }
 

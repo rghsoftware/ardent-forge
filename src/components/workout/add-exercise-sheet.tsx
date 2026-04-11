@@ -29,8 +29,8 @@ export function AddExerciseSheet({
   const [createSheetOpen, setCreateSheetOpen] = useState(false)
   const debouncedQuery = useDebouncedValue(searchQuery, 200)
 
-  const { data: allExercises = [] } = useExercises()
-  const { data: recentExercises = [] } = useRecentlyUsedExercises(userId)
+  const { data: allExercises = [], isError: exercisesError } = useExercises()
+  const { data: recentExercises = [], isError: recentError } = useRecentlyUsedExercises(userId)
 
   // Filter exercises by search query
   const filteredExercises =
@@ -51,17 +51,7 @@ export function AddExerciseSheet({
     [onExerciseSelected, onOpenChange],
   )
 
-  const handleCreated = useCallback(
-    (exercise: Exercise) => {
-      onExerciseSelected(exercise, 'STRAIGHT_SETS')
-      onOpenChange(false)
-      setSearchQuery('')
-    },
-    [onExerciseSelected, onOpenChange],
-  )
-
   const showRecent = debouncedQuery.length === 0 && recentExercises.length > 0
-  const showCreateCta = debouncedQuery.length > 0 && filteredExercises.length === 0
 
   return (
     <>
@@ -81,8 +71,15 @@ export function AddExerciseSheet({
 
           {/* Results */}
           <div className="flex-1 overflow-y-auto px-4 py-3">
+            {/* Fetch error */}
+            {(exercisesError || recentError) && (
+              <p className="py-8 text-center text-xs text-warning-flare">
+                Failed to load exercises. Please try again.
+              </p>
+            )}
+
             {/* Recently used */}
-            {showRecent && (
+            {!exercisesError && !recentError && showRecent && (
               <div className="mb-4">
                 <span className="mb-2 block text-[11px] uppercase tracking-widest text-warm-ash/60">
                   RECENTLY USED
@@ -96,7 +93,7 @@ export function AddExerciseSheet({
             )}
 
             {/* Search results */}
-            {debouncedQuery.length > 0 && (
+            {!exercisesError && !recentError && debouncedQuery.length > 0 && (
               <div>
                 {filteredExercises.length === 0 ? (
                   <div className="flex flex-col items-center gap-4 py-8">
@@ -128,14 +125,12 @@ export function AddExerciseSheet({
         </SheetContent>
       </Sheet>
 
-      {showCreateCta || createSheetOpen ? (
-        <CreateExerciseSheet
-          open={createSheetOpen}
-          onOpenChange={setCreateSheetOpen}
-          defaultName={searchQuery}
-          onCreated={handleCreated}
-        />
-      ) : null}
+      <CreateExerciseSheet
+        open={createSheetOpen}
+        onOpenChange={setCreateSheetOpen}
+        defaultName={searchQuery}
+        onCreated={handleSelect}
+      />
     </>
   )
 }

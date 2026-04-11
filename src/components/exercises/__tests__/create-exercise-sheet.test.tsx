@@ -21,13 +21,16 @@ const createdExercise: Exercise = {
   updatedAt: '2026-04-10T00:00:00.000Z',
 }
 
+// Hoist a mutable hook state so tests can control isError independently
+const mockHookState = vi.hoisted(() => ({
+  mutateAsync: vi.fn(),
+  isPending: false,
+  isError: false,
+}))
+
 // Mock the hook to avoid adapter dependency
 vi.mock('@/hooks/use-exercises', () => ({
-  useCreateExercise: () => ({
-    mutateAsync: vi.fn().mockResolvedValue(createdExercise),
-    isPending: false,
-    isError: false,
-  }),
+  useCreateExercise: () => mockHookState,
 }))
 
 describe('CreateExerciseSheet', () => {
@@ -35,6 +38,12 @@ describe('CreateExerciseSheet', () => {
     open: true,
     onOpenChange: vi.fn(),
   }
+
+  beforeEach(() => {
+    mockHookState.mutateAsync.mockReset()
+    mockHookState.mutateAsync.mockResolvedValue(createdExercise)
+    mockHookState.isError = false
+  })
 
   it('renders sheet title', () => {
     renderWithProviders(<CreateExerciseSheet {...defaultProps} />)
@@ -128,7 +137,7 @@ describe('CreateExerciseSheet', () => {
     )
 
     // Select a primary muscle group so validation passes
-    const chestCheckbox = screen.getAllByRole('checkbox')[0]
+    const chestCheckbox = screen.getByRole('checkbox', { name: /chest/i })
     await user.click(chestCheckbox)
 
     await user.click(screen.getByText('Create exercise'))
@@ -136,5 +145,36 @@ describe('CreateExerciseSheet', () => {
     await waitFor(() => expect(onCreated).toHaveBeenCalledTimes(1))
     expect(onCreated).toHaveBeenCalledWith(createdExercise)
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('does not call onCreated or close the sheet when mutateAsync rejects', async () => {
+    const user = userEvent.setup()
+    const onCreated = vi.fn()
+    const onOpenChange = vi.fn()
+
+    mockHookState.mutateAsync.mockRejectedValueOnce(new Error('Network error'))
+
+    renderWithProviders(
+      <CreateExerciseSheet
+        open={true}
+        onOpenChange={onOpenChange}
+        onCreated={onCreated}
+        defaultName="Hip Thrust"
+      />,
+    )
+
+    const chestCheckbox = screen.getByRole('checkbox', { name: /chest/i })
+    await user.click(chestCheckbox)
+    await user.click(screen.getByText('Create exercise'))
+
+    await waitFor(() => expect(mockHookState.mutateAsync).toHaveBeenCalledTimes(1))
+    expect(onCreated).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+  })
+
+  it('renders inline error message when isError is true', () => {
+    mockHookState.isError = true
+    renderWithProviders(<CreateExerciseSheet open={true} onOpenChange={vi.fn()} />)
+    expect(screen.getByText('Failed to create exercise. Please try again.')).toBeInTheDocument()
   })
 })
