@@ -12,6 +12,7 @@ import {
 import { ActivityGroupEditor, type ActivityGroupData } from './activity-group-editor'
 import type { PickerComponentProps } from './activity-editor'
 import { CollapsedFieldsRow } from './collapsed-fields-row'
+import { TemplatePreviewPanel } from './template-preview-panel'
 import { DurationInput } from './inputs/duration-input'
 import { CATEGORY_FIELD_VISIBILITY } from '@/components/builders/visibility-maps'
 import { useExercises } from '@/hooks/use-exercises'
@@ -415,7 +416,7 @@ export function SessionTemplateForm({
   const { scoring: showScoring, timeCap: showTimeCap } = CATEGORY_FIELD_VISIBILITY[category]
 
   return (
-    <div className="flex flex-col gap-6 pb-8 lg:grid lg:grid-cols-[320px_1fr] lg:gap-8">
+    <div className="flex flex-col gap-6 pb-8 lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 xl:grid-cols-[280px_1fr_260px]">
       {/* ---- Left column: template metadata ---- */}
       {/* Sticky within its grid cell so it remains visible while scrolling the activity groups column */}
       <div className="flex flex-col gap-6 lg:sticky lg:top-0 lg:self-start">
@@ -604,9 +605,19 @@ export function SessionTemplateForm({
         </div>
       </div>
 
+      {/* ---- Right column (xl only): live template preview ---- */}
+      <TemplatePreviewPanel
+        name={name}
+        category={category}
+        scoring={scoring}
+        timeCap={timeCap}
+        groups={groups}
+        exercises={exercises}
+      />
+
       {/* ---- Full-width footer: error summary + actions ---- */}
       {summaryItems.length > 0 && (
-        <div className="flex flex-col gap-1 px-4 lg:col-span-2 lg:px-0">
+        <div className="flex flex-col gap-1 px-4 lg:col-span-2 xl:col-span-3 lg:px-0">
           {summaryItems.map((item) => (
             <button
               key={item.anchorId}
@@ -631,14 +642,14 @@ export function SessionTemplateForm({
       )}
 
       {serverError && (
-        <div className="px-4 lg:col-span-2 lg:px-0">
+        <div className="px-4 lg:col-span-2 xl:col-span-3 lg:px-0">
           <p role="alert" className="text-xs text-destructive">
             {serverError}
           </p>
         </div>
       )}
 
-      <div className="flex gap-3 px-4 lg:col-span-2 lg:px-0">
+      <div className="flex gap-3 px-4 lg:col-span-2 xl:col-span-3 lg:px-0">
         {onCancel && (
           <Button
             type="button"
