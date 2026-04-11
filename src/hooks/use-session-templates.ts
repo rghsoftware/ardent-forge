@@ -85,7 +85,22 @@ export function useCloneSessionTemplate() {
       getAdapter().cloneSessionTemplate(id, userId),
     onError: (err) => {
       console.error('[session-templates] Failed to clone:', err)
+      toast('Failed to duplicate template. Please try again.')
     },
+    onSuccess: () => {
+      toast('Template duplicated')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['session-templates'] })
+    },
+  })
+}
+
+export function useTouchSessionTemplateLastAssigned() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => getAdapter().touchSessionTemplateLastAssigned(id),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['session-templates'] })
     },

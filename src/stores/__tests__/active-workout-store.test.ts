@@ -427,12 +427,18 @@ describe('startProgrammedWorkout', () => {
     }).toThrow('Cannot start')
   })
 
-  it('throws when workoutLog has no programContext', () => {
+  it('accepts workout without programContext (standalone template workout)', () => {
     const wlNoProgramContext = makeWorkoutLog({ id: 'wl-no-ctx' })
+    const groups: LoggedActivityGroupWithActivities[] = [makeGroupWithActivities()]
 
-    expect(() => {
-      getState().startProgrammedWorkout(wlNoProgramContext, [])
-    }).toThrow('programContext')
+    getState().startProgrammedWorkout(wlNoProgramContext, groups)
+
+    const state = getState()
+    expect(state.workoutLog).toEqual(wlNoProgramContext)
+    expect(state.loggedGroups).toEqual(groups)
+    expect(state.elapsedSeconds).toBe(0)
+    expect(state.restTimer).toBeNull()
+    expect(state.undoAction).toBeNull()
   })
 
   it('sets workoutLog and pre-filled groups when valid', () => {

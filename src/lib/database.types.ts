@@ -31,11 +31,11 @@ export interface UserProfileRow {
 }
 
 // F018 / Tech.md D1: shape of a `gyms` row.
+// F021: `is_default` column dropped in migration 20260408000002.
 export interface GymRow {
   id: string
   name: string
   owner_user_id: string
-  is_default: boolean
   created_at: string
   updated_at: string
 }
@@ -46,6 +46,33 @@ export interface GymMemberRow {
   gym_id: string
   user_id: string
   joined_at: string
+}
+
+// F021: shape of a `gym_invitations` row.
+export interface GymInvitationRow {
+  id: string
+  gym_id: string
+  token: string
+  expires_at: string
+  max_uses: number
+  uses_count: number
+  created_by: string
+  created_at: string
+}
+
+// F021: shape of a `gym_ownership_transfers` row. `gym_id` is the PK
+// (enforces single-pending invariant via supersede-on-propose).
+export interface GymOwnershipTransferRow {
+  gym_id: string
+  proposed_by: string
+  proposed_to: string
+  proposed_at: string
+}
+
+// F021: shape of a `gym_member_counts` view row.
+export interface GymMemberCountRow {
+  gym_id: string
+  member_count: number
 }
 
 export interface WorkoutLogRow {

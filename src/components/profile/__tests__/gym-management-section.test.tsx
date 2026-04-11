@@ -20,9 +20,38 @@ const mockUseDeleteGym = vi.fn()
 const mockUseJoinGym = vi.fn()
 const mockUseLeaveGym = vi.fn()
 
+// F021: Link navigates to /profile/gyms/$gymId but tests don't mount a router.
+// Stub Link to render a bare anchor so tests stay router-free.
+vi.mock('@tanstack/react-router', async () => {
+  const actual =
+    await vi.importActual<typeof import('@tanstack/react-router')>('@tanstack/react-router')
+  return {
+    ...actual,
+    Link: ({ children, ...rest }: { children?: React.ReactNode }) => (
+      <a {...(rest as Record<string, unknown>)}>{children}</a>
+    ),
+  }
+})
+
 vi.mock('@/hooks/use-gyms', () => ({
   useGyms: (...args: unknown[]) => mockUseGyms(...args),
   useAllGyms: () => mockUseAllGyms(),
+  // F021: gym-management-section now uses useListAllGymsWithCounts for the
+  // browse list. We re-use the same mock and attach a `memberCount` default
+  // so each gym row renders its real count instead of the old `--` placeholder.
+  useListAllGymsWithCounts: () => {
+    const base = mockUseAllGyms() as {
+      data?: Gym[]
+      isLoading?: boolean
+      isError?: boolean
+      error?: unknown
+      refetch?: () => void
+    }
+    return {
+      ...base,
+      data: base.data?.map((g) => ({ ...g, memberCount: 0 })),
+    }
+  },
   useCreateGym: () => mockUseCreateGym(),
   useDeleteGym: () => mockUseDeleteGym(),
 }))
@@ -48,7 +77,6 @@ function makeGym(overrides: Partial<Gym> = {}): Gym {
     id: 'gym-default',
     name: 'Home Gym',
     ownerUserId: ME,
-    isDefault: false,
     createdAt: '2026-04-06T10:00:00.000Z',
     updatedAt: '2026-04-06T10:00:00.000Z',
     ...overrides,
@@ -325,8 +353,9 @@ describe('GymManagementSection', () => {
     expect(screen.getByTestId('browse-gym-row-gym-b-join')).toBeInTheDocument()
     expect(screen.queryByTestId('browse-gym-row-gym-b-joined')).not.toBeInTheDocument()
 
-    // Member-count placeholder
-    expect(screen.getByTestId('browse-gym-row-gym-b-member-count')).toHaveTextContent('--')
+    // F021: member count now uses real data from useListAllGymsWithCounts.
+    // The mock defaults memberCount to 0 so we assert the numeric render path.
+    expect(screen.getByTestId('browse-gym-row-gym-b-member-count')).toHaveTextContent('0')
   })
 
   // -------------------------------------------------------------------------

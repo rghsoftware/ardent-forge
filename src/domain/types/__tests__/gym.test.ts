@@ -11,7 +11,6 @@ const baseGym = {
   updatedAt: '2026-01-01T00:00:00Z',
   name: 'Home Garage Iron Works Limited', // 30 chars
   ownerUserId: 'user-1',
-  isDefault: false,
 }
 
 const baseGymMember = {
@@ -31,14 +30,8 @@ describe('gymSchema', () => {
     expect(result.id).toBe('gym-1')
     expect(result.name).toBe('Home Garage Iron Works Limited')
     expect(result.ownerUserId).toBe('user-1')
-    expect(result.isDefault).toBe(false)
     expect(result.createdAt).toBe('2026-01-01T00:00:00Z')
     expect(result.updatedAt).toBe('2026-01-01T00:00:00Z')
-  })
-
-  it('accepts isDefault = true', () => {
-    const result = gymSchema.parse({ ...baseGym, isDefault: true })
-    expect(result.isDefault).toBe(true)
   })
 
   // -------------------------------------------------------------------------
@@ -78,12 +71,6 @@ describe('gymSchema', () => {
   it('rejects a row missing ownerUserId', () => {
     const { ownerUserId: _ownerUserId, ...withoutOwner } = baseGym
     const result = gymSchema.safeParse(withoutOwner)
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects a row missing isDefault', () => {
-    const { isDefault: _isDefault, ...withoutDefault } = baseGym
-    const result = gymSchema.safeParse(withoutDefault)
     expect(result.success).toBe(false)
   })
 

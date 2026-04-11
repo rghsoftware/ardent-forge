@@ -65,7 +65,6 @@ const gym: Gym = {
   id: GYM_ID,
   name: 'Iron Temple',
   ownerUserId: 'user-1',
-  isDefault: false,
   createdAt: '2026-04-07T00:00:00Z',
   updatedAt: '2026-04-07T00:00:00Z',
 }
