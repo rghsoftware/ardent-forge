@@ -55,7 +55,7 @@ export function TemplatePreviewPanel({
   const populatedGroups = groups.filter((g) => g.activities.length > 0)
 
   return (
-    <div className="hidden xl:flex xl:flex-col xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100dvh-3rem)] xl:overflow-y-auto">
+    <div className="hidden xl:flex xl:flex-col xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100dvh-3rem)] xl:overflow-y-auto 2xl:top-8 2xl:max-h-[calc(100dvh-4rem)]">
       {/* Panel header */}
       <div className="flex items-center gap-3 bg-surface-steel px-4 py-2">
         <span className="font-display text-[10px] font-semibold uppercase tracking-widest text-warm-ash/80">

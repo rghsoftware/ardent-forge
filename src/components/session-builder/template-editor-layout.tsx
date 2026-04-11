@@ -10,14 +10,14 @@ interface TemplateEditorLayoutProps {
 
 /**
  * Full-page shell for the template editor routes. Purely presentational:
- * provides the max-w-5xl wrapper, header with back link + title, and hosts
+ * provides the full-width wrapper, header with back link + title, and hosts
  * the form body as children. Save/cancel remain inside the form itself
  * (ADR-021-02).
  */
 export function TemplateEditorLayout({ title, children, onBack }: TemplateEditorLayoutProps) {
   return (
     <div className="min-h-[100dvh] bg-surface-anvil">
-      <div className="mx-auto max-w-5xl px-4 md:px-6 lg:px-8">
+      <div className="px-4 md:px-6 lg:px-8">
         <header className="flex items-center gap-3 py-4 md:py-6">
           {onBack ? (
             <button

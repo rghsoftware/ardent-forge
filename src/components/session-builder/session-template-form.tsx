@@ -416,7 +416,7 @@ export function SessionTemplateForm({
   const { scoring: showScoring, timeCap: showTimeCap } = CATEGORY_FIELD_VISIBILITY[category]
 
   return (
-    <div className="flex flex-col gap-6 pb-8 lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 xl:grid-cols-[280px_1fr_260px]">
+    <div className="flex flex-col gap-6 pb-8 lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 xl:grid-cols-[300px_1fr_280px] 2xl:grid-cols-[340px_1fr_320px]">
       {/* ---- Left column: template metadata ---- */}
       {/* Sticky within its grid cell so it remains visible while scrolling the activity groups column */}
       <div className="flex flex-col gap-6 lg:sticky lg:top-0 lg:self-start">
