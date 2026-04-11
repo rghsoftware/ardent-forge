@@ -203,7 +203,7 @@ export function ActivityGroupEditor({
                   <ToggleGroupItem
                     key={gt.value}
                     value={gt.value}
-                    className="min-h-8 px-2 py-1 text-xs font-medium uppercase tracking-wider"
+                    className="min-h-12 px-2 text-xs font-medium uppercase tracking-wider"
                   >
                     {gt.label}
                   </ToggleGroupItem>
@@ -219,7 +219,7 @@ export function ActivityGroupEditor({
                   <ToggleGroupItem
                     key={gt.value}
                     value={gt.value}
-                    className="min-h-8 px-2 py-1 text-xs font-medium uppercase tracking-wider"
+                    className="min-h-12 px-2 text-xs font-medium uppercase tracking-wider"
                   >
                     {gt.label}
                   </ToggleGroupItem>

@@ -460,7 +460,7 @@ export function SessionTemplateForm({
               <ToggleGroupItem
                 key={c.value}
                 value={c.value}
-                className="min-h-10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider"
+                className="min-h-12 px-3 text-[11px] font-medium uppercase tracking-wider"
               >
                 {c.label}
               </ToggleGroupItem>

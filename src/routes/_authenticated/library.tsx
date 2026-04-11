@@ -156,11 +156,7 @@ function LibraryPage() {
               <Icon name="add" size={16} />
               New session
             </Button>
-            <Button
-              variant="default"
-              onClick={handleCreateEvent}
-              className="min-h-12 bg-forge text-xs text-on-forge hover:brightness-110"
-            >
+            <Button variant="secondary" onClick={handleCreateEvent} className="min-h-12 text-xs">
               <Icon name="flag" size={16} />
               New event
             </Button>
@@ -170,7 +166,7 @@ function LibraryPage() {
           <Button
             variant="default"
             onClick={() => navigate({ to: '/builder', search: { programId: undefined } })}
-            className="min-h-12 bg-forge text-on-forge text-xs hover:brightness-110"
+            className="min-h-12 text-xs"
           >
             <Icon name="add" size={16} />
             Create program
@@ -197,7 +193,7 @@ function LibraryPage() {
 
       {/* Tab navigation */}
       <div
-        className="mx-auto max-w-5xl flex border-b border-warm-ash/10 px-4 md:px-6 lg:px-8"
+        className="mx-auto max-w-5xl flex bg-surface-gunmetal/20 px-4 md:px-6 lg:px-8"
         role="tablist"
       >
         <button
@@ -665,7 +661,9 @@ function ProgramList({ userId }: { userId: string | undefined }) {
       <Dialog open={!!confirmDeleteId} onOpenChange={() => setConfirmDeleteId(null)}>
         <DialogContent className="bg-surface-iron">
           <DialogHeader>
-            <DialogTitle className="text-sm font-medium text-bone-white">Delete Program</DialogTitle>
+            <DialogTitle className="text-sm font-medium text-bone-white">
+              Delete Program
+            </DialogTitle>
             <DialogDescription className="text-sm text-warm-ash">
               Are you sure you want to delete &quot;{programToDelete?.name}&quot;? This cannot be
               undone.
