@@ -1,7 +1,7 @@
 {
   "statusLine": {
     "type": "command",
-    "command": "bun run hooks/context-recovery/statusline-monitor.ts"
+    "command": "bun run .claude/hooks/context-recovery/statusline-monitor.ts"
   },
   "permissions": {
     "allow": [
@@ -24,31 +24,48 @@
     "ask": []
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv --project .claude/memory-compiler run python .claude/memory-compiler/hooks/session-start.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv --project .claude/memory-compiler run python .claude/memory-compiler/hooks/session-end.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "bun run hooks/skill-activation/skill-activation.ts"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun run /home/rghamilton3/workspace/cortex/output/.claude/hooks/skill-activation/skill-activation.ts"
+            "command": "bun run .claude/hooks/skill-activation/skill-activation.ts"
           }
         ]
       }
     ],
     "PreCompact": [
       {
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "bun run hooks/context-recovery/conv-backup.ts",
-            "async": true
+            "command": "uv --project .claude/memory-compiler run python .claude/memory-compiler/hooks/pre-compact.py",
+            "timeout": 10
           }
         ]
       },
@@ -56,7 +73,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun run /home/rghamilton3/workspace/cortex/output/.claude/hooks/context-recovery/conv-backup.ts",
+            "command": "bun run .claude/hooks/context-recovery/conv-backup.ts",
             "async": true
           }
         ]
@@ -68,16 +85,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun run hooks/formatter/formatter.ts"
-          }
-        ]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bun run /home/rghamilton3/workspace/cortex/output/.claude/hooks/formatter/formatter.ts"
+            "command": "bun run .claude/hooks/formatter/formatter.ts"
           }
         ]
       }

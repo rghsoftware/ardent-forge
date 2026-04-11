@@ -1,6 +1,6 @@
 ---
 description: Full 4-phase planning: Spec, Tech, Steps with team orchestration
-model: opus
+model: sonnet
 ---
 
 # Full Planning Workflow
@@ -34,7 +34,26 @@ Generate a complete 4-phase plan for major features or complex tasks. Creates Sp
 ### Step 3: Create Tech.md (Phase 2)
 1. Use the `plan-research` skill to create `Context/Features/NNN-FeatureName/Tech.md`
 2. Research and document: Architecture overview, key decisions with options considered, stack-specific details, integration points, risks and unknowns
-3. Create ADRs for significant architectural decisions
+3. Create ADRs for significant architectural decisions. For each significant decision, consult the Advisor tool before finalising the ADR:
+
+   ```bash
+   cat > /tmp/cortex-adr-<short-name>.md <<'EOF'
+   Context (from Spec.md and research so far):
+   [paste the relevant requirement, constraint, or trade-off]
+
+   Options considered:
+   [enumerate the options and their observable consequences]
+
+   Question: which option should the ADR accept, and what are the two
+   most load-bearing consequences the Consequences section must name?
+   Respond as enumerated bullets.
+   EOF
+
+   bun run .claude/hooks/advisor/advisor-cli.ts --question-file /tmp/cortex-adr-<short-name>.md
+   ```
+
+   - Exit 0: fold the Advisor's enumerated response into the ADR draft.
+   - Exit 2: Advisor unavailable; draft the ADR in-thread without the consult.
 4. Present to user for review and approval before proceeding
 
 ### Step 4: Create Steps.md (Phase 3)
