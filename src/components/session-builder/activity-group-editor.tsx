@@ -191,35 +191,35 @@ export function ActivityGroupEditor({
             type="single"
             value={group.groupType ?? ''}
             onValueChange={handleTypeChange}
-            className="flex flex-1 flex-col gap-1"
+            className="flex flex-col items-start gap-2"
             aria-invalid={groupErrors?.noType ? true : undefined}
           >
-            <div className="flex items-center gap-1">
-              <span className="w-20 shrink-0 text-[10px] uppercase tracking-widest text-warm-ash/40">
+            <div className="flex flex-col gap-0.5">
+              <p className="font-display text-[10px] uppercase tracking-widest text-warm-ash/40">
                 Strength
-              </span>
-              <div className="flex flex-wrap gap-1">
+              </p>
+              <div className="flex gap-1">
                 {STRENGTH_TYPES.map((gt) => (
                   <ToggleGroupItem
                     key={gt.value}
                     value={gt.value}
-                    className="min-h-12 px-2 text-xs font-medium uppercase tracking-wider"
+                    className="min-h-12 w-24 shrink-0 px-2 text-xs font-medium uppercase tracking-wider"
                   >
                     {gt.label}
                   </ToggleGroupItem>
                 ))}
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <span className="w-20 shrink-0 text-[10px] uppercase tracking-widest text-warm-ash/40">
+            <div className="flex flex-col gap-0.5">
+              <p className="font-display text-[10px] uppercase tracking-widest text-warm-ash/40">
                 Conditioning
-              </span>
-              <div className="flex flex-wrap gap-1">
+              </p>
+              <div className="flex gap-1">
                 {CONDITIONING_TYPES.map((gt) => (
                   <ToggleGroupItem
                     key={gt.value}
                     value={gt.value}
-                    className="min-h-12 px-2 text-xs font-medium uppercase tracking-wider"
+                    className="min-h-12 w-24 shrink-0 px-2 text-xs font-medium uppercase tracking-wider"
                   >
                     {gt.label}
                   </ToggleGroupItem>
