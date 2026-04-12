@@ -8,11 +8,11 @@
 
 ## Team Composition
 
-| Role | Agent | Scope |
-|------|-------|-------|
-| `backend-specialist` | backend-specialist | Migrations (Postgres + SQLite), Rust model/command changes, data mapper |
+| Role                  | Agent               | Scope                                                                                     |
+| --------------------- | ------------------- | ----------------------------------------------------------------------------------------- |
+| `backend-specialist`  | backend-specialist  | Migrations (Postgres + SQLite), Rust model/command changes, data mapper                   |
 | `frontend-specialist` | frontend-specialist | Zod schema, snapshot builder, publisher module, hook, Settings UI, Push to Display button |
-| `quality-engineer` | quality-engineer | Unit tests for schema, builder, and publisher; integration validation |
+| `quality-engineer`    | quality-engineer    | Unit tests for schema, builder, and publisher; integration validation                     |
 
 ---
 
@@ -296,14 +296,122 @@ Add "Remote Display" section to the profile/settings page:
 
 ---
 
+## Wave 5: display-realtime.ts Coverage Gaps (quality-engineer, post-refactor)
+
+### S015-T: Missing test — `subscribeToDisplay` throws when uninitialized
+
+**Agent:** quality-engineer
+**Files:** `src/lib/__tests__/display-realtime.test.ts`
+**Depends on:** None (existing module)
+**Parallel:** Yes (all Wave 5 tasks parallel)
+
+- [ ] Add test: `'throws when subscribeToDisplay is called before initDisplaySubscriber'`
+- [ ] Verify the thrown `Error` message includes `'Call initDisplaySubscriber first'`
+- [ ] This contract is relied on by `src/routes/display/gym/$gymId.tsx` to render the Retry button via its outer `try/catch` → `BootError` mapping
+
+**Acceptance:** Test confirms the throw and message. (Ported from deleted `display-subscriber.test.ts`)
+
+---
+
+### S016-T: Missing test — auto-`publishHello` on reconnect
+
+**Agent:** quality-engineer
+**Files:** `src/lib/__tests__/display-realtime.test.ts`
+**Depends on:** None
+**Parallel:** Yes
+
+- [ ] Add test: `'auto-fires publishHello on reconnect when previously connected'`
+- [ ] Sequence: `SUBSCRIBED` → `CHANNEL_ERROR` → timer fires → `SUBSCRIBED` again
+- [ ] Assert `channel.send` called with `{ type: 'broadcast', event: 'display_hello', payload: {} }` on the second `SUBSCRIBED`
+- [ ] Assert `channel.send` is NOT called with `display_hello` on the first `SUBSCRIBED` (first connect, not reconnect)
+
+**Acceptance:** Full reconnect cycle exercises the `_subConnectedBefore` flag correctly.
+
+---
+
+### S017-T: Missing tests — `onStatusChange` callback assertions
+
+**Agent:** quality-engineer
+**Files:** `src/lib/__tests__/display-realtime.test.ts`
+**Depends on:** None
+**Parallel:** Yes
+
+- [ ] Add test: `'calls onStatusChange("connected") on SUBSCRIBED'`
+- [ ] Add parameterized tests: `onStatusChange("reconnecting")` fires for `TIMED_OUT`, `CHANNEL_ERROR`, and `CLOSED`
+
+**Acceptance:** `onStatusChange` is asserted in subscriber tests (it was mocked but never asserted).
+
+---
+
+### S018-T: Missing tests — `focus`, `unfocus`, `idle_snapshot` subscriber handler tests
+
+**Agent:** quality-engineer
+**Files:** `src/lib/__tests__/display-realtime.test.ts`
+**Depends on:** None
+**Parallel:** Yes
+
+- [ ] Add test: `'fires onFocus when subscriber receives a focus broadcast'`
+- [ ] Add test: `'fires onUnfocus when subscriber receives an unfocus broadcast'`
+- [ ] Add test: `'fires onIdleSnapshot when subscriber receives a valid idle_snapshot broadcast'`
+- [ ] The `idle_snapshot` test must use a valid `idleSnapshotSchema` payload (distinct from `displaySnapshotSchema`)
+
+**Acceptance:** All five subscriber event handlers are covered (currently only `workout_snapshot` and `session_ended` are tested).
+
+---
+
+### S019-T: Missing test — gym-switch channel teardown/recreation
+
+**Agent:** quality-engineer
+**Files:** `src/lib/__tests__/display-realtime.test.ts`
+**Depends on:** None
+**Parallel:** Yes
+
+- [ ] Add test: `'tears down the old channel and creates a new one when gymId changes via configureDisplayPublisher'`
+- [ ] Configure publisher with `GYM_A`, publish to force channel creation, then configure with `GYM_B`
+- [ ] Assert `removeChannel` was called for the `GYM_A` channel
+- [ ] Assert a new channel is created with `getGymChannelName(GYM_B)` on next publish
+
+**Acceptance:** Gym-switch path exercises `teardownPubChannel()` correctly. (Ported from deleted `display-publisher.test.ts`)
+
+---
+
+### S020-T: Missing tests — exponential backoff sequencing
+
+**Agent:** quality-engineer
+**Files:** `src/lib/__tests__/display-realtime.test.ts`
+**Depends on:** None
+**Parallel:** Yes
+
+- [ ] Add test: `'reconnects after CHANNEL_ERROR with exponential backoff delay'` — first failure uses 2000ms delay
+- [ ] Add test: `'resets retry attempt counter after successful reconnect'`
+- [ ] Add test: `'caps retry delay at 30 seconds'` — advance attempt counter high enough to hit the cap
+
+**Acceptance:** `scheduleRetry` delay math and `_subRetryAttempt` reset-on-reconnect are verified.
+
+---
+
+### S021-T: Missing tests — `getActiveGymId` and `getSubscriberStatus` state transitions
+
+**Agent:** quality-engineer
+**Files:** `src/lib/__tests__/display-realtime.test.ts`
+**Depends on:** None
+**Parallel:** Yes
+
+- [ ] `getActiveGymId`: add tests — returns `null` when unconfigured, returns gym ID when broadcasting, returns `null` after `destroyDisplayPublisher`
+- [ ] `getSubscriberStatus`: add tests — returns `'disconnected'` when unsubscribed, `'connected'` after `SUBSCRIBED`, `'reconnecting'` after `CHANNEL_ERROR`
+
+**Acceptance:** Both exported getters have state-transition coverage. (Ported from deleted `display-publisher.test.ts`; `getSubscriberStatus` was never tested.)
+
+---
+
 ## Milestone Summary
 
-| Wave | Tasks | Parallel | Description |
-|------|-------|----------|-------------|
-| Wave 1 | S001-S005 | S001-S004 parallel; S005 sequential after S002+S004 | Domain types, migrations, data mapper |
-| Wave 2 | S006-S007 | Both parallel | Snapshot builder + publisher module |
-| Wave 3 | S008-S012 | S010+S011 parallel with S008+S009; S012 sequential last | Store wiring, hook, Settings UI, button |
-| Wave 4 | S013-T, S014-T | Both parallel | Unit tests for schema, builder, publisher |
+| Wave   | Tasks          | Parallel                                                | Description                               |
+| ------ | -------------- | ------------------------------------------------------- | ----------------------------------------- |
+| Wave 1 | S001-S005      | S001-S004 parallel; S005 sequential after S002+S004     | Domain types, migrations, data mapper     |
+| Wave 2 | S006-S007      | Both parallel                                           | Snapshot builder + publisher module       |
+| Wave 3 | S008-S012      | S010+S011 parallel with S008+S009; S012 sequential last | Store wiring, hook, Settings UI, button   |
+| Wave 4 | S013-T, S014-T | Both parallel                                           | Unit tests for schema, builder, publisher |
 
 **Totals:** 12 implementation tasks + 2 validation tasks = 14 tasks
 **Agents:** 1 frontend specialist + 1 backend specialist + 1 quality engineer = 3 agents
@@ -334,7 +442,7 @@ interface DisplaySnapshot {
   user_id: string
   display_name: string
   session_name: string
-  workout_started_at: string        // ISO 8601
+  workout_started_at: string // ISO 8601
   current_exercise: string
   exercise_index: number
   total_exercises: number
