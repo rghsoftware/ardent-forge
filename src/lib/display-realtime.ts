@@ -28,7 +28,10 @@ const userIdPayload = z.object({ user_id: z.string() })
 const BC = { config: { broadcast: { ack: false, self: false } } } as const
 
 function removeSafe(client: SupabaseClient | null, ch: RealtimeChannel, ctx: string): void {
-  if (!client) return
+  if (!client) {
+    console.warn(`${L} removeSafe(${ctx}): client is null, channel may be leaked`)
+    return
+  }
   try {
     client.removeChannel(ch)
   } catch (err) {
@@ -39,7 +42,7 @@ function removeSafe(client: SupabaseClient | null, ch: RealtimeChannel, ctx: str
 function validated<T>(schema: z.ZodType<T>, p: unknown, ev: string, cb: (d: T) => void) {
   const r = schema.safeParse(p)
   if (r.success) cb(r.data)
-  else console.warn(`${L} Invalid ${ev} payload, dropping`, r.error)
+  else console.warn(`${L} Invalid ${ev} payload (dropping):`, r.error.toString(), p)
 }
 
 let _client: SupabaseClient | null = null
@@ -76,16 +79,18 @@ function ensurePubChannel(): RealtimeChannel | null {
   return _pubChannel
 }
 
-function pubSend(event: string, payload: Record<string, unknown>): void {
+function pubSend(event: string, payload: unknown): void {
   const ch = ensurePubChannel()
   if (!ch) {
     if (_pubConfigured && _pubGymId !== null)
       console.warn(`${L} Dropped ${event}: channel unavailable while broadcasting`)
     return
   }
-  ch.send({ type: 'broadcast', event, payload }).catch((err: unknown) => {
-    console.error(`${L} Failed to send ${event}:`, err)
-  })
+  ch.send({ type: 'broadcast', event, payload: payload as Record<string, unknown> }).catch(
+    (err: unknown) => {
+      console.error(`${L} Failed to send ${event}:`, err)
+    },
+  )
 }
 
 export function initDisplayPublisher(client: SupabaseClient): void {
@@ -103,6 +108,10 @@ export function configureDisplayPublisher({ gymId, intent }: PubConfig): void {
     console.error(`${L} configure: private requires gymId=null, got ${gymId}`)
     return
   }
+  if (gymId !== null && gymId.trim() === '') {
+    console.error(`${L} configure: gymId must not be empty`)
+    return
+  }
   const next = intent === 'broadcasting'
   if (_pubConfigured === next && _pubGymId === gymId) return
   console.info(`${L} ${_pubConfigured ? 'broadcasting' : 'off'} -> ${intent}`)
@@ -112,7 +121,7 @@ export function configureDisplayPublisher({ gymId, intent }: PubConfig): void {
 }
 
 export function publishDisplaySnapshot(snapshot: DisplaySnapshot): void {
-  pubSend('workout_snapshot', snapshot as unknown as Record<string, unknown>)
+  pubSend('workout_snapshot', snapshot)
 }
 export function publishSessionEnded(userId: string): void {
   pubSend('session_ended', { user_id: userId })
@@ -153,7 +162,13 @@ function scheduleRetry(gymId: string, handlers: DisplayEventHandlers): void {
   console.info(`${L} Reconnecting in ${delay}ms (attempt ${_subRetryAttempt})`)
   _subRetryTimer = setTimeout(() => {
     _subRetryTimer = null
-    if (_client) subscribeToDisplay({ gymId, handlers })
+    if (_client) {
+      subscribeToDisplay({ gymId, handlers })
+    } else {
+      console.error(`${L} Retry fired but client is null — stopping reconnect loop`)
+      _subStatus = 'disconnected'
+      handlers.onStatusChange('disconnected')
+    }
   }, delay)
 }
 
@@ -164,6 +179,12 @@ export function initDisplaySubscriber(client: SupabaseClient): void {
 export function subscribeToDisplay({ gymId, handlers }: SubscribeToDisplayArgs): void {
   if (!_client)
     throw new Error(`${L} Cannot subscribe: no client. Call initDisplaySubscriber first.`)
+  if (!gymId || gymId.trim() === '')
+    throw new Error(`${L} Cannot subscribe: gymId must be a non-empty string`)
+  if (_subRetryTimer !== null) {
+    clearTimeout(_subRetryTimer)
+    _subRetryTimer = null
+  }
   if (_subChannel) {
     removeSafe(_client, _subChannel, 'sub/existing')
     _subChannel = null
@@ -182,7 +203,13 @@ export function subscribeToDisplay({ gymId, handlers }: SubscribeToDisplayArgs):
     .on('broadcast', { event: 'idle_snapshot' }, ({ payload }) =>
       validated(idleSnapshotSchema, payload, 'idle_snapshot', handlers.onIdleSnapshot),
     )
-    .on('broadcast', { event: 'unfocus' }, () => handlers.onUnfocus())
+    .on('broadcast', { event: 'unfocus' }, () => {
+      try {
+        handlers.onUnfocus()
+      } catch (err) {
+        console.error(`${L} unfocus handler threw:`, err)
+      }
+    })
     .subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
         _subStatus = 'connected'
@@ -191,7 +218,10 @@ export function subscribeToDisplay({ gymId, handlers }: SubscribeToDisplayArgs):
         _subConnectedBefore = true
         handlers.onStatusChange('connected')
       } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR' || status === 'CLOSED') {
-        console.warn(`${L} Subscriber channel ${status}`, err)
+        ;(status === 'CLOSED' ? console.info : console.error)(
+          `${L} Subscriber channel ${status}`,
+          err ?? '',
+        )
         _subStatus = 'reconnecting'
         handlers.onStatusChange('reconnecting')
         if (_subChannel) removeSafe(_client, _subChannel, `subSub/${status}`)
