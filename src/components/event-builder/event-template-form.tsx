@@ -394,7 +394,7 @@ export function EventTemplateForm({
         setBaselineSnapshot(currentSnapshot)
         onSave?.(result.template)
       }
-    } catch (_err) {
+    } catch {
       const action = isEditing ? 'update' : 'create'
       // Hook's onError already logged. Render error state for the user.
       setErrors([`Failed to ${action} event. Please try again.`])

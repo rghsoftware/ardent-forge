@@ -4,9 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/render-helpers'
 import {
   SessionTemplateForm,
-  computeErrors,
   type SessionTemplateFull,
 } from '@/components/session-builder/session-template-form'
+import { computeErrors } from '@/components/session-builder/session-template-validation'
 import type { ActivityGroupData } from '@/components/session-builder/activity-group-editor'
 import { useUpdateSessionTemplate } from '@/hooks/use-session-templates'
 

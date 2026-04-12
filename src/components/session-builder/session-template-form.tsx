@@ -4,6 +4,7 @@ import { Icon } from '@/components/icon'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { ActivityGroupEditor, type ActivityGroupData } from './activity-group-editor'
 import type { PickerComponentProps } from './activity-editor'
+import { computeErrors, type ValidationErrors } from './session-template-validation'
 import { CollapsedFieldsRow } from './collapsed-fields-row'
 import { TemplatePreviewPanel } from './template-preview-panel'
 import { DurationInput } from './inputs/duration-input'
@@ -36,18 +37,6 @@ interface SessionTemplateFormProps {
   onCancel?: () => void
   onDirtyChange?: (dirty: boolean) => void
   PickerComponent?: ComponentType<PickerComponentProps>
-}
-
-interface GroupValidationErrors {
-  noType?: string
-  noActivities?: string
-}
-
-interface ValidationErrors {
-  name?: string
-  noGroups?: string
-  groups: Record<string, GroupValidationErrors>
-  activities: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
@@ -116,22 +105,6 @@ function hydrateGroups(initial: SessionTemplateFull): ActivityGroupData[] {
       })),
     }
   })
-}
-
-export function computeErrors(name: string, groups: ActivityGroupData[]): ValidationErrors {
-  const errs: ValidationErrors = { groups: {}, activities: {} }
-  if (!name.trim()) errs.name = 'Give your template a name'
-  if (groups.length === 0) errs.noGroups = 'Add at least one group to continue'
-  for (const g of groups) {
-    const ge: GroupValidationErrors = {}
-    if (!g.groupType) ge.noType = 'Pick a group type'
-    if (g.activities.length === 0) ge.noActivities = 'Add at least one exercise'
-    if (ge.noType || ge.noActivities) errs.groups[g.clientId] = ge
-    for (const a of g.activities) {
-      if (!a.exerciseId) errs.activities[a.clientId] = 'Select an exercise'
-    }
-  }
-  return errs
 }
 
 function hasValidationErrors(e: ValidationErrors): boolean {
@@ -394,7 +367,7 @@ export function SessionTemplateForm({
         setBaselineSnapshot(currentSnapshot)
         onSave?.(result.template)
       }
-    } catch (_err) {
+    } catch {
       const action = isEditing ? 'update' : 'create'
       // Hook's onError already logged. Render error state for the user.
       setServerError(`Failed to ${action} session template. Please try again.`)
