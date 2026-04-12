@@ -37,7 +37,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { getExerciseModality, parseNumericInput, DEFAULT_CIRCUIT_REPS } from '@/lib/workout-utils'
-import type { Exercise, GroupType, PersonalRecord, SetType } from '@/domain/types'
+import type { Exercise, PersonalRecord, SetType } from '@/domain/types'
 import type { LoggedActivityGroupWithActivities } from '@/stores/active-workout-store'
 
 export const Route = createFileRoute('/_authenticated/log/$workoutId')({
@@ -334,9 +334,9 @@ function ActiveWorkoutPage() {
   }, [discardWorkout, navigate])
 
   const handleAddExercise = useCallback(
-    async (exercise: Exercise, groupType: GroupType) => {
+    async (exercise: Exercise) => {
       try {
-        await addExercise(exercise, groupType)
+        await addExercise(exercise, 'STRAIGHT_SETS')
       } catch (err) {
         console.error('[workout-page] handleAddExercise:', err)
         setPageError('Failed to add exercise. Please try again.')

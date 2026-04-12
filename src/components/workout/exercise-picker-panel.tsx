@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react'
+import { Icon } from '@/components/icon'
 import { ExerciseSearchInput } from '@/components/exercises/exercise-search-input'
 import { useExercises, useRecentlyUsedExercises } from '@/hooks/use-exercises'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
-import type { Exercise, GroupType } from '@/domain/types'
+import type { Exercise } from '@/domain/types'
 
 export interface ExercisePickerPanelProps {
   userId?: string
-  onExerciseSelected: (exercise: Exercise, groupType: GroupType) => void
+  onExerciseSelected: (exercise: Exercise) => void
   autoFocus?: boolean
 }
 
@@ -37,7 +38,7 @@ export function ExercisePickerPanel({
 
   const handleSelect = useCallback(
     (exercise: Exercise) => {
-      onExerciseSelected(exercise, 'STRAIGHT_SETS')
+      onExerciseSelected(exercise)
       setSearchQuery('')
     },
     [onExerciseSelected],
@@ -100,7 +101,7 @@ function ExerciseRow({
       onClick={() => onSelect(exercise)}
       className="flex min-h-12 w-full items-center gap-3 bg-transparent px-1 py-2 text-left transition-colors hover:bg-surface-charcoal"
     >
-      <span className="material-symbols-outlined text-warm-ash/60 text-xl">fitness_center</span>
+      <Icon name="fitness_center" size={20} className="shrink-0 text-warm-ash/60" />
       <div className="flex flex-col">
         <span className="text-sm text-bone-white">{exercise.name}</span>
         <span className="text-[11px] uppercase tracking-wider text-warm-ash/60">

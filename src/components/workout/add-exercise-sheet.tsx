@@ -7,12 +7,12 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 import { ExercisePickerPanel } from './exercise-picker-panel'
-import type { Exercise, GroupType } from '@/domain/types'
+import type { Exercise } from '@/domain/types'
 
 interface AddExerciseSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onExerciseSelected: (exercise: Exercise, groupType: GroupType) => void
+  onExerciseSelected: (exercise: Exercise) => void
   userId?: string
 }
 
@@ -29,8 +29,8 @@ export function AddExerciseSheet({
   userId,
 }: AddExerciseSheetProps) {
   const handleSelected = useCallback(
-    (exercise: Exercise, groupType: GroupType) => {
-      onExerciseSelected(exercise, groupType)
+    (exercise: Exercise) => {
+      onExerciseSelected(exercise)
       onOpenChange(false)
     },
     [onExerciseSelected, onOpenChange],

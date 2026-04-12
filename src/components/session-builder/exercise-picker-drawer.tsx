@@ -2,12 +2,12 @@ import { useCallback, useEffect } from 'react'
 import { Icon } from '@/components/icon'
 import { ExercisePickerPanel } from '@/components/workout/exercise-picker-panel'
 import { cn } from '@/lib/utils'
-import type { Exercise, GroupType } from '@/domain/types'
+import type { Exercise } from '@/domain/types'
 
 interface ExercisePickerDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onExerciseSelected: (exercise: Exercise, groupType: GroupType) => void
+  onExerciseSelected: (exercise: Exercise) => void
   userId?: string
 }
 
@@ -35,8 +35,8 @@ export function ExercisePickerDrawer({
   userId,
 }: ExercisePickerDrawerProps) {
   const handleSelected = useCallback(
-    (exercise: Exercise, groupType: GroupType) => {
-      onExerciseSelected(exercise, groupType)
+    (exercise: Exercise) => {
+      onExerciseSelected(exercise)
       onOpenChange(false)
     },
     [onExerciseSelected, onOpenChange],
