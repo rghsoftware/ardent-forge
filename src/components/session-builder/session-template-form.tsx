@@ -1,16 +1,12 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo, type ComponentType } from 'react'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { ActivityGroupEditor, type ActivityGroupData } from './activity-group-editor'
+import type { PickerComponentProps } from './activity-editor'
+import { computeErrors, type ValidationErrors } from './session-template-validation'
 import { CollapsedFieldsRow } from './collapsed-fields-row'
+import { TemplatePreviewPanel } from './template-preview-panel'
 import { DurationInput } from './inputs/duration-input'
 import { CATEGORY_FIELD_VISIBILITY } from '@/components/builders/visibility-maps'
 import { useExercises } from '@/hooks/use-exercises'
@@ -39,6 +35,8 @@ interface SessionTemplateFormProps {
   initial?: SessionTemplateFull
   onSave?: (template: SessionTemplate) => void
   onCancel?: () => void
+  onDirtyChange?: (dirty: boolean) => void
+  PickerComponent?: ComponentType<PickerComponentProps>
 }
 
 // ---------------------------------------------------------------------------
@@ -109,14 +107,67 @@ function hydrateGroups(initial: SessionTemplateFull): ActivityGroupData[] {
   })
 }
 
+function hasValidationErrors(e: ValidationErrors): boolean {
+  return !!(
+    e.name ||
+    e.noGroups ||
+    Object.keys(e.groups).length > 0 ||
+    Object.keys(e.activities).length > 0
+  )
+}
+
+function scrollToAnchor(id: string): void {
+  const el = document.getElementById(id)
+  if (!el) return
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
+  el.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'center' })
+  if (el instanceof HTMLElement) el.focus()
+}
+
+function scrollToFirstError(e: ValidationErrors, orderedGroups: ActivityGroupData[]): void {
+  let id: string | null = null
+
+  if (e.name) {
+    id = 'field-name'
+  } else if (e.noGroups) {
+    id = 'field-add-group'
+  } else {
+    loop: for (const g of orderedGroups) {
+      if (e.groups[g.clientId]?.noType) {
+        id = `field-group-${g.clientId}-type`
+        break loop
+      }
+      if (e.groups[g.clientId]?.noActivities) {
+        id = `field-group-${g.clientId}-add-activity`
+        break loop
+      }
+      for (const a of g.activities) {
+        if (e.activities[a.clientId]) {
+          id = `field-activity-${a.clientId}-exercise`
+          break loop
+        }
+      }
+    }
+  }
+
+  if (!id) return
+  scrollToAnchor(id)
+}
+
 // ---------------------------------------------------------------------------
 // Main form component
 // ---------------------------------------------------------------------------
 
-export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTemplateFormProps) {
+export function SessionTemplateForm({
+  initial,
+  onSave,
+  onCancel,
+  onDirtyChange,
+  PickerComponent,
+}: SessionTemplateFormProps) {
   const { user } = useAuth()
   const userId = user?.id ?? ''
-  const { data: exercises = [] } = useExercises()
+  const { data: exercises = [], isError: exercisesFailed } = useExercises()
   const createMutation = useCreateSessionTemplate()
   const updateMutation = useUpdateSessionTemplate()
 
@@ -135,7 +186,89 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
   )
   const [groups, setGroups] = useState<ActivityGroupData[]>(initial ? hydrateGroups(initial) : [])
   const [showAllSchemeTypes, setShowAllSchemeTypes] = useState(false)
-  const [errors, setErrors] = useState<string[]>([])
+
+  // Validation state
+  const [hasAttemptedSave, setHasAttemptedSave] = useState(false)
+  const [nameTouched, setNameTouched] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
+
+  // Always-current derived errors (no useState -- avoids stale reads in handlers)
+  const errors = useMemo(() => computeErrors(name, groups), [name, groups])
+  const isFormValid = !hasValidationErrors(errors)
+
+  // Display gating: name shows on blur or after first save attempt; group/activity
+  // errors show only after first save attempt so the form doesn't scold on first load.
+  const showNameError = (nameTouched || hasAttemptedSave) && !!errors.name
+  const visibleGroupErrors = hasAttemptedSave ? errors.groups : {}
+  const visibleActivityErrors = hasAttemptedSave ? errors.activities : {}
+
+  // Clickable error summary -- only materializes after the first save attempt
+  const summaryItems = useMemo(() => {
+    if (!hasAttemptedSave) return []
+    const items: Array<{ label: string; anchorId: string }> = []
+    if (errors.name) items.push({ label: 'Template needs a name', anchorId: 'field-name' })
+    if (errors.noGroups)
+      items.push({ label: 'Add at least one group', anchorId: 'field-add-group' })
+    for (const g of groups) {
+      if (errors.groups[g.clientId]?.noType)
+        items.push({
+          label: `Group ${g.ordinal} - pick a group type`,
+          anchorId: `field-group-${g.clientId}-type`,
+        })
+      if (errors.groups[g.clientId]?.noActivities)
+        items.push({
+          label: `Group ${g.ordinal} - add at least one exercise`,
+          anchorId: `field-group-${g.clientId}-add-activity`,
+        })
+      for (const a of g.activities) {
+        if (errors.activities[a.clientId])
+          items.push({
+            label: `Group ${g.ordinal}, activity ${a.ordinal} - select an exercise`,
+            anchorId: `field-activity-${a.clientId}-exercise`,
+          })
+      }
+    }
+    return items
+  }, [hasAttemptedSave, errors, groups])
+
+  // Dirty tracking: snapshot initial form state, compare to current on every render.
+  // After successful save, snapshot is reset so navigating away is unblocked.
+  const computeSnapshot = useCallback(
+    (
+      n: string,
+      c: SessionType,
+      d: string,
+      s: ScoringType,
+      tc: Duration | undefined,
+      rbg: Duration | undefined,
+      g: ActivityGroupData[],
+    ) => JSON.stringify({ n, c, d, s, tc, rbg, g }),
+    [],
+  )
+  const [baselineSnapshot, setBaselineSnapshot] = useState(() =>
+    computeSnapshot(
+      initial?.template.name ?? '',
+      initial?.template.category ?? 'STRENGTH',
+      initial?.template.description ?? '',
+      initial?.template.scoring ?? 'NONE',
+      initial?.template.timeCap ?? undefined,
+      initial?.template.restBetweenGroups ?? undefined,
+      initial ? hydrateGroups(initial) : [],
+    ),
+  )
+  const currentSnapshot = useMemo(
+    () => computeSnapshot(name, category, description, scoring, timeCap, restBetweenGroups, groups),
+    [computeSnapshot, name, category, description, scoring, timeCap, restBetweenGroups, groups],
+  )
+  const dirty = currentSnapshot !== baselineSnapshot
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
+  useEffect(() => {
+    if (exercisesFailed) {
+      console.error('[session-template-form] Failed to load exercises')
+    }
+  }, [exercisesFailed])
 
   const isSaving = createMutation.isPending || updateMutation.isPending
 
@@ -166,6 +299,8 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
   const handleMoveGroup = useCallback((fromIndex: number, toIndex: number) => {
     setGroups((prev) => {
       if (toIndex < 0 || toIndex >= prev.length) {
+        // Guard is only reachable if state desynchronizes -- the Move up/down
+        // controls are disabled at bounds, so no user-facing error state is needed.
         console.warn('[session-template-form] handleMoveGroup: target index out of bounds')
         return prev
       }
@@ -176,35 +311,17 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
     })
   }, [])
 
-  const validate = useCallback((): boolean => {
-    const errs: string[] = []
-
-    if (!name.trim()) errs.push('Template name is required')
-    if (groups.length === 0) errs.push('At least one activity group is required')
-
-    for (const g of groups) {
-      if (!g.groupType) {
-        errs.push(`Group ${g.ordinal} needs a group type selected`)
-      }
-      if (g.activities.length === 0) {
-        errs.push(`Group ${g.ordinal} must have at least one activity`)
-      }
-      for (const a of g.activities) {
-        if (!a.exerciseId) {
-          errs.push(`Group ${g.ordinal}, activity ${a.ordinal}: exercise is required`)
-        }
-      }
-    }
-
-    setErrors(errs)
-    return errs.length === 0
-  }, [name, groups])
-
   const handleSave = useCallback(async () => {
-    if (!validate()) return
+    setHasAttemptedSave(true)
+    setServerError(null)
+
+    if (hasValidationErrors(errors)) {
+      scrollToFirstError(errors, groups)
+      return
+    }
     if (!userId) {
       console.error('[session-template-form] Cannot save: no authenticated user')
-      setErrors(['You must be signed in to save templates.'])
+      setServerError('You must be signed in to save templates.')
       return
     }
 
@@ -231,6 +348,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
             },
           })),
         })
+        setBaselineSnapshot(currentSnapshot)
         onSave?.(result.template)
       } else {
         const result = await createMutation.mutateAsync({
@@ -246,17 +364,18 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
           },
           groups: groupPayload,
         })
+        setBaselineSnapshot(currentSnapshot)
         onSave?.(result.template)
       }
-    } catch (err) {
+    } catch {
       const action = isEditing ? 'update' : 'create'
-      console.error(`[session-template-form] Failed to ${action} template "${name.trim()}":`, err)
-      setErrors([`Failed to ${action} session template. Please try again.`])
+      // Hook's onError already logged. Render error state for the user.
+      setServerError(`Failed to ${action} session template. Please try again.`)
     }
   }, [
-    validate,
-    userId,
+    errors,
     groups,
+    userId,
     isEditing,
     initial,
     name,
@@ -268,32 +387,44 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
     createMutation,
     updateMutation,
     onSave,
+    currentSnapshot,
   ])
 
   const { scoring: showScoring, timeCap: showTimeCap } = CATEGORY_FIELD_VISIBILITY[category]
 
   return (
-    <div className="flex flex-col gap-6 pb-8 lg:grid lg:grid-cols-[320px_1fr] lg:gap-8">
+    <div className="flex flex-col gap-6 pb-8 lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 xl:grid-cols-[300px_1fr_280px] 2xl:grid-cols-[340px_1fr_320px]">
       {/* ---- Left column: template metadata ---- */}
       {/* Sticky within its grid cell so it remains visible while scrolling the activity groups column */}
       <div className="flex flex-col gap-6 lg:sticky lg:top-0 lg:self-start">
         {/* Template name */}
         <div className="px-4 lg:px-0">
           <input
+            id="field-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={() => setNameTouched(true)}
             placeholder="Template name"
-            className="w-full border-0 border-b border-warm-ash/30 bg-transparent py-3 font-display text-lg font-medium text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
             aria-label="Template name"
+            aria-invalid={showNameError || undefined}
+            aria-describedby={showNameError ? 'field-name-error' : undefined}
+            className={`w-full border-0 border-b bg-transparent py-3 font-display text-lg font-medium text-bone-white placeholder:text-warm-ash/40 focus:outline-none ${
+              showNameError
+                ? 'border-destructive focus:border-destructive'
+                : 'border-warm-ash/30 focus:border-ember'
+            }`}
           />
+          {showNameError && (
+            <p id="field-name-error" role="alert" className="mt-1 text-xs text-destructive">
+              {errors.name}
+            </p>
+          )}
         </div>
 
         {/* Category selector */}
         <div className="px-4 lg:px-0">
-          <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
-            Category
-          </span>
+          <span className="mb-2 block text-xs font-medium text-warm-ash/60">Category</span>
           <ToggleGroup
             type="single"
             value={category}
@@ -306,7 +437,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
               <ToggleGroupItem
                 key={c.value}
                 value={c.value}
-                className="min-h-10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider"
+                className="min-h-12 px-3 text-[11px] font-medium uppercase tracking-wider"
               >
                 {c.label}
               </ToggleGroupItem>
@@ -316,7 +447,7 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
 
         {/* Description */}
         <div className="px-4 lg:px-0">
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
+          <span className="mb-1 block text-xs font-medium text-warm-ash/60">
             Description (optional)
           </span>
           <textarea
@@ -336,18 +467,24 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
               <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
                 Scoring
               </span>
-              <Select value={scoring} onValueChange={(v) => setScoring(v as ScoringType)}>
-                <SelectTrigger className="min-h-12 border-0 border-b border-warm-ash/30 bg-transparent text-xs uppercase tracking-wider text-bone-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-surface-gunmetal">
-                  {SCORING_TYPES.map((s) => (
-                    <SelectItem key={s.value} value={s.value} className="text-xs uppercase">
-                      {s.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ToggleGroup
+                type="single"
+                value={scoring}
+                onValueChange={(v) => {
+                  if (v) setScoring(v as ScoringType)
+                }}
+                className="flex flex-wrap gap-1"
+              >
+                {SCORING_TYPES.map((s) => (
+                  <ToggleGroupItem
+                    key={s.value}
+                    value={s.value}
+                    className="min-h-10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider"
+                  >
+                    {s.label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
             </div>
           )
 
@@ -409,9 +546,12 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
       {/* ---- Right column: activity groups ---- */}
       <div className="flex flex-col gap-3">
         <div className="px-4 lg:px-0">
-          <span className="text-xs font-medium uppercase tracking-wider text-warm-ash/60">
+          <h2 className="font-display text-sm uppercase tracking-wide text-bone-white">
             Activity Groups
-          </span>
+            {groups.length > 0 && (
+              <span className="ml-2 tabular-nums text-warm-ash/60">· {groups.length}</span>
+            )}
+          </h2>
         </div>
 
         {groups.map((group, index) => (
@@ -428,40 +568,72 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
             onMoveDown={() => handleMoveGroup(index, index + 1)}
             isFirst={index === 0}
             isLast={index === groups.length - 1}
+            PickerComponent={PickerComponent}
+            groupErrors={visibleGroupErrors[group.clientId]}
+            activityErrors={visibleActivityErrors}
           />
         ))}
 
-        <div className="px-4 lg:px-0">
+        <div className="flex flex-col gap-1 px-4 lg:px-0">
           <Button
+            id="field-add-group"
             type="button"
-            variant="secondary"
+            variant="default"
             onClick={handleAddGroup}
             className="w-full min-h-12 text-xs"
           >
             <Icon name="add" size={16} />
             Add group
           </Button>
+          {hasAttemptedSave && errors.noGroups && (
+            <p role="alert" className="text-center text-xs text-destructive">
+              {errors.noGroups}
+            </p>
+          )}
         </div>
       </div>
 
-      {/* ---- Full-width footer: errors + actions ---- */}
-      {errors.length > 0 && (
-        <div className="flex flex-col gap-1 px-4 lg:col-span-2 lg:px-0">
-          {errors.map((err, i) => (
-            <p key={i} className="text-xs text-destructive">
-              {err}
-            </p>
+      {/* ---- Right column (xl only): live template preview ---- */}
+      <TemplatePreviewPanel
+        name={name}
+        category={category}
+        scoring={scoring}
+        timeCap={timeCap}
+        groups={groups}
+        exercises={exercises}
+      />
+
+      {/* ---- Full-width footer: error summary + actions ---- */}
+      {summaryItems.length > 0 && (
+        <div className="flex flex-col gap-1 px-4 lg:col-span-2 xl:col-span-3 lg:px-0">
+          {summaryItems.map((item) => (
+            <button
+              key={item.anchorId}
+              type="button"
+              className="text-left text-xs text-destructive underline-offset-2 hover:underline"
+              onClick={() => scrollToAnchor(item.anchorId)}
+            >
+              {item.label}
+            </button>
           ))}
         </div>
       )}
 
-      <div className="flex gap-3 px-4 lg:col-span-2 lg:px-0">
+      {serverError && (
+        <div className="px-4 lg:col-span-2 xl:col-span-3 lg:px-0">
+          <p role="alert" className="text-xs text-destructive">
+            {serverError}
+          </p>
+        </div>
+      )}
+
+      <div className="flex gap-3 px-4 lg:col-span-2 xl:col-span-3 lg:px-0">
         {onCancel && (
           <Button
             type="button"
             variant="ghost"
             onClick={onCancel}
-            className="min-h-12 flex-1 text-xs"
+            className="min-h-12 w-auto px-6 text-xs"
           >
             Cancel
           </Button>
@@ -470,10 +642,10 @@ export function SessionTemplateForm({ initial, onSave, onCancel }: SessionTempla
           type="button"
           variant="default"
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSaving || !isFormValid}
           className="min-h-12 flex-1 text-xs"
         >
-          {isSaving ? 'Saving...' : 'Save template'}
+          {isSaving ? 'Saving...' : !isFormValid ? 'Resolve errors' : 'Save template'}
         </Button>
       </div>
     </div>

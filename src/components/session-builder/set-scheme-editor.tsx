@@ -199,7 +199,7 @@ export function SetSchemeEditor({
                 <ToggleGroupItem
                   key={group.label}
                   value={group.label}
-                  className="min-h-8 flex-1 px-2 py-1 text-[11px] font-medium uppercase tracking-wider"
+                  className="min-h-12 flex-1 px-2 text-[11px] font-medium uppercase tracking-wider"
                 >
                   {group.label}
                 </ToggleGroupItem>
@@ -223,7 +223,7 @@ export function SetSchemeEditor({
                     <ToggleGroupItem
                       key={t.value}
                       value={t.value}
-                      className="min-h-8 flex-1 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider"
+                      className="min-h-12 flex-1 px-2.5 text-[11px] font-medium uppercase tracking-wider"
                     >
                       {t.label}
                     </ToggleGroupItem>
@@ -236,7 +236,7 @@ export function SetSchemeEditor({
               <button
                 type="button"
                 onClick={() => onShowAllTypesChange(true)}
-                className="mt-1 text-warm-ash font-body text-xs uppercase tracking-wider hover:text-bone-white"
+                className="mt-1 bg-surface-charcoal/60 px-2 py-1 font-body text-xs uppercase tracking-wider text-warm-ash/90 hover:text-bone-white"
               >
                 Show all types
               </button>
@@ -245,7 +245,7 @@ export function SetSchemeEditor({
         </CollapsibleContent>
       </Collapsible>
 
-      <div className="border-t border-warm-ash/10 pt-4">
+      <div className="pt-4">
         {value.type === 'fixedSets' && (
           <FixedSetsFields
             value={value}

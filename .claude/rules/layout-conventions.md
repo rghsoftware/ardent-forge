@@ -13,6 +13,13 @@ Apply `mx-auto max-w-5xl` to the main content wrapper on every authenticated pag
 </div>
 ```
 
+**Exception -- multi-column editor layouts:** Pages whose primary layout is a
+wide fixed-column grid (e.g., `xl:grid-cols-[280px_1fr_260px]`) may omit
+`max-w-5xl` when the column widths themselves constrain content density and a
+fixed-positioned side panel (such as `ExercisePickerDrawer`) must dock flush
+against the grid at xl/2xl breakpoints. Document the intentional deviation with
+an inline comment in the component (see `TemplateEditorLayout`).
+
 ## Responsive Padding
 
 Use progressive horizontal padding across breakpoints:

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, waitFor, fireEvent } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '@/test/render-helpers'
 import type { Exercise } from '@/domain/types'
@@ -23,14 +23,6 @@ const testExercise: Exercise = {
   isPublic: true,
   createdAt: '2026-04-01T00:00:00.000Z',
   updatedAt: '2026-04-01T00:00:00.000Z',
-}
-
-const newExercise: Exercise = {
-  ...testExercise,
-  id: 'ex-new-1',
-  name: 'Hack Squat',
-  isCustom: true,
-  isPublic: false,
 }
 
 // ---------------------------------------------------------------------------
@@ -57,28 +49,8 @@ vi.mock('@/hooks/use-exercises', () => ({
   useRecentlyUsedExercises: () => mockRecentState,
 }))
 
-// CreateExerciseSheet test double: renders content when open so callbacks
-// can be triggered and props inspected
-vi.mock('@/components/exercises/create-exercise-sheet', () => ({
-  CreateExerciseSheet: vi.fn(),
-}))
-
-// Import components after mocks are registered (vi.mock is hoisted automatically)
+// Import after mocks are registered
 import { AddExerciseSheet } from '../add-exercise-sheet'
-import { CreateExerciseSheet } from '@/components/exercises/create-exercise-sheet'
-
-// Configures CreateExerciseSheet to render a minimal test surface when open
-function setupCreateSheetMock(exercise: Exercise = newExercise) {
-  vi.mocked(CreateExerciseSheet).mockImplementation(({ open, onCreated, defaultName }) => {
-    if (!open) return <></>
-    return (
-      <div data-testid="create-exercise-sheet">
-        <span data-testid="create-sheet-default-name">{defaultName}</span>
-        <button onClick={() => onCreated?.(exercise)}>submit-create</button>
-      </div>
-    )
-  })
-}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -100,120 +72,58 @@ describe('AddExerciseSheet', () => {
     mockExercisesState.isError = false
     mockRecentState.data = []
     mockRecentState.isError = false
-    setupCreateSheetMock()
   })
 
-  // -------------------------------------------------------------------------
-  // Search no-match → Create CTA
-  // -------------------------------------------------------------------------
+  it('renders the exercise search input', () => {
+    renderWithProviders(<AddExerciseSheet {...defaultProps} />)
+    expect(screen.getByPlaceholderText('Search exercises')).toBeInTheDocument()
+  })
 
-  it('renders "Create exercise" button when search has no matches', async () => {
+  it('renders "Add Exercise" heading', () => {
+    renderWithProviders(<AddExerciseSheet {...defaultProps} />)
+    expect(screen.getByText('Add Exercise')).toBeInTheDocument()
+  })
+
+  it('shows "No matches" when search has no results', async () => {
     const user = userEvent.setup()
     renderWithProviders(<AddExerciseSheet {...defaultProps} />)
 
     await user.type(screen.getByPlaceholderText('Search exercises'), 'zzz')
 
     expect(screen.getByText('No matches')).toBeInTheDocument()
-    expect(screen.getByText('Create exercise')).toBeInTheDocument()
   })
 
-  it('does not show "Create exercise" button when search has results', async () => {
+  it('shows matching exercise when search has results', async () => {
     const user = userEvent.setup()
     renderWithProviders(<AddExerciseSheet {...defaultProps} />)
 
-    // "goblet" matches testExercise by alias
     await user.type(screen.getByPlaceholderText('Search exercises'), 'goblet')
 
-    expect(screen.queryByText('No matches')).not.toBeInTheDocument()
-    expect(screen.queryByText('Create exercise')).not.toBeInTheDocument()
+    expect(screen.getByText('Goblet Squat')).toBeInTheDocument()
   })
 
-  // -------------------------------------------------------------------------
-  // Create CTA → CreateExerciseSheet opens
-  // -------------------------------------------------------------------------
-
-  it('opens CreateExerciseSheet when "Create exercise" is clicked', async () => {
+  it('calls onExerciseSelected and closes sheet when exercise is clicked', async () => {
     const user = userEvent.setup()
     renderWithProviders(<AddExerciseSheet {...defaultProps} />)
 
-    await user.type(screen.getByPlaceholderText('Search exercises'), 'zzz')
-    await user.click(screen.getByText('Create exercise'))
+    await user.type(screen.getByPlaceholderText('Search exercises'), 'goblet')
+    await user.click(screen.getByText('Goblet Squat'))
 
-    await waitFor(() => expect(screen.getByTestId('create-exercise-sheet')).toBeInTheDocument())
-  })
-
-  // -------------------------------------------------------------------------
-  // defaultName wiring
-  // -------------------------------------------------------------------------
-
-  it('passes the current search query as defaultName to CreateExerciseSheet', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<AddExerciseSheet {...defaultProps} />)
-
-    await user.type(screen.getByPlaceholderText('Search exercises'), 'Hack Sq')
-    await user.click(screen.getByText('Create exercise'))
-
-    await waitFor(() =>
-      expect(screen.getByTestId('create-sheet-default-name')).toHaveTextContent('Hack Sq'),
-    )
-  })
-
-  // -------------------------------------------------------------------------
-  // Post-create contract (handleSelect used as onCreated)
-  // -------------------------------------------------------------------------
-
-  it('calls onExerciseSelected with STRAIGHT_SETS after exercise is created', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<AddExerciseSheet {...defaultProps} />)
-
-    await user.type(screen.getByPlaceholderText('Search exercises'), 'Hack Squat')
-    await user.click(screen.getByText('Create exercise'))
-    fireEvent.click(await screen.findByText('submit-create'))
-
-    expect(onExerciseSelected).toHaveBeenCalledWith(newExercise, 'STRAIGHT_SETS')
-  })
-
-  it('calls onOpenChange(false) after exercise is created', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<AddExerciseSheet {...defaultProps} />)
-
-    await user.type(screen.getByPlaceholderText('Search exercises'), 'Hack Squat')
-    await user.click(screen.getByText('Create exercise'))
-    fireEvent.click(await screen.findByText('submit-create'))
-
+    expect(onExerciseSelected).toHaveBeenCalledWith(testExercise)
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it('clears the search query after exercise is created', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<AddExerciseSheet {...defaultProps} />)
-
-    await user.type(screen.getByPlaceholderText('Search exercises'), 'Hack Squat')
-    await user.click(screen.getByText('Create exercise'))
-    fireEvent.click(await screen.findByText('submit-create'))
-
-    await waitFor(() => expect(screen.getByPlaceholderText('Search exercises')).toHaveValue(''))
-  })
-
-  // -------------------------------------------------------------------------
-  // Error state
-  // -------------------------------------------------------------------------
-
-  it('shows error message when exercises query fails', () => {
+  it('shows error state when exercises query fails', () => {
     mockExercisesState.isError = true
     renderWithProviders(<AddExerciseSheet {...defaultProps} />)
 
-    expect(screen.getByText('Failed to load exercises. Please try again.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Could not load exercises. Check your connection and try again.'),
+    ).toBeInTheDocument()
   })
 
-  it('hides Create exercise CTA when exercises query fails', async () => {
-    const user = userEvent.setup()
-    mockExercisesState.isError = true
-    renderWithProviders(<AddExerciseSheet {...defaultProps} />)
-
-    // Type a query that would show no-match CTA under normal conditions
-    await user.type(screen.getByPlaceholderText('Search exercises'), 'zzz')
-
-    expect(screen.queryByText('Create exercise')).not.toBeInTheDocument()
+  it('does not render when open is false', () => {
+    renderWithProviders(<AddExerciseSheet {...defaultProps} open={false} />)
+    expect(screen.queryByPlaceholderText('Search exercises')).not.toBeInTheDocument()
   })
 })

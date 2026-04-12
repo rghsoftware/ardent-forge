@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Icon } from '@/components/icon'
 import { HelpTrigger } from '@/components/ui/help-trigger'
 import { GROUP_TYPE_HELP } from '@/components/builders/help-content'
 import { GROUP_FIELD_VISIBILITY } from '@/components/builders/visibility-maps'
-import { ActivityEditor, type ActivityData } from './activity-editor'
+import { ActivityEditor, type ActivityData, type PickerComponentProps } from './activity-editor'
+import type { ComponentType } from 'react'
 import { DurationInput } from './inputs/duration-input'
 import { defaultScheme } from './set-scheme-defaults'
 import type { GroupType, Duration, Exercise, SessionType } from '@/domain/types'
@@ -35,17 +37,23 @@ interface ActivityGroupEditorProps {
   onMoveDown?: () => void
   isFirst?: boolean
   isLast?: boolean
+  PickerComponent?: ComponentType<PickerComponentProps>
+  groupErrors?: { noType?: string; noActivities?: string }
+  activityErrors?: Record<string, string>
 }
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const GROUP_TYPES: Array<{ value: GroupType; label: string }> = [
+const STRENGTH_TYPES: Array<{ value: GroupType; label: string }> = [
   { value: 'STRAIGHT_SETS', label: 'STRAIGHT' },
   { value: 'SUPERSET', label: 'SUPERSET' },
   { value: 'CIRCUIT', label: 'CIRCUIT' },
   { value: 'COMPLEX', label: 'COMPLEX' },
+]
+
+const CONDITIONING_TYPES: Array<{ value: GroupType; label: string }> = [
   { value: 'EMOM', label: 'EMOM' },
   { value: 'AMRAP', label: 'AMRAP' },
   { value: 'COUPLET', label: 'COUPLET' },
@@ -82,7 +90,12 @@ export function ActivityGroupEditor({
   onMoveDown,
   isFirst,
   isLast,
+  PickerComponent,
+  groupErrors,
+  activityErrors,
 }: ActivityGroupEditorProps) {
+  const [pendingPickerClientId, setPendingPickerClientId] = useState<string | null>(null)
+
   const isStage1 = group.groupType === null
   const visibility = group.groupType ? GROUP_FIELD_VISIBILITY[group.groupType] : null
 
@@ -112,6 +125,7 @@ export function ActivityGroupEditor({
       setScheme: defaultScheme('fixedSets'),
       ordinal: group.activities.length + 1,
     }
+    setPendingPickerClientId(newActivity.clientId)
     onChange({ ...group, activities: [...group.activities, newActivity] })
   }
 
@@ -130,6 +144,8 @@ export function ActivityGroupEditor({
 
   const handleMoveActivity = (fromIndex: number, toIndex: number) => {
     if (toIndex < 0 || toIndex >= group.activities.length) {
+      // Guard is only reachable if state desynchronizes -- the Move up/down
+      // controls are disabled at bounds, so no user-facing error state is needed.
       console.warn('[activity-group-editor] handleMoveActivity: target index out of bounds')
       return
     }
@@ -150,13 +166,15 @@ export function ActivityGroupEditor({
               type="button"
               onClick={onMoveUp}
               disabled={isFirst}
-              className="flex h-5 w-8 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
+              className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
               aria-label="Move group up"
             >
               <Icon name="keyboard_arrow_up" size={16} />
             </button>
           )}
-          <span className="flex h-8 w-8 items-center justify-center bg-forge font-display text-xs font-medium tabular-nums text-on-forge">
+          {/* surface-steel intentional: ordinal is a positional index, not a primary action.
+              Position already communicates order; ember here would dilute the accent. */}
+          <span className="flex h-10 w-10 items-center justify-center bg-surface-steel font-display text-xs font-medium tabular-nums text-bone-white">
             {group.ordinal}
           </span>
           {onMoveDown && (
@@ -164,7 +182,7 @@ export function ActivityGroupEditor({
               type="button"
               onClick={onMoveDown}
               disabled={isLast}
-              className="flex h-5 w-8 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
+              className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
               aria-label="Move group down"
             >
               <Icon name="keyboard_arrow_down" size={16} />
@@ -172,34 +190,69 @@ export function ActivityGroupEditor({
           )}
         </div>
 
-        {/* Group type selector */}
-        <ToggleGroup
-          type="single"
-          value={group.groupType ?? ''}
-          onValueChange={handleTypeChange}
-          className="flex flex-1 flex-wrap gap-1"
-        >
-          {GROUP_TYPES.map((gt) => (
-            <ToggleGroupItem
-              key={gt.value}
-              value={gt.value}
-              className="min-h-8 px-2 py-1 text-xs font-medium uppercase tracking-wider"
-            >
-              {gt.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-
         <HelpTrigger title="Group types" content={groupTypeHelpContent} />
+
+        <div className="flex-1" />
 
         <button
           type="button"
           onClick={onDelete}
-          className="flex min-h-10 min-w-10 items-center justify-center text-warm-ash/60 hover:text-warning-flare"
+          className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-warning-flare"
           aria-label="Delete group"
         >
           <Icon name="delete" size={20} />
         </button>
+      </div>
+
+      {/* Group type selector (own block below header) */}
+      <div className="px-4 pb-3">
+        <ToggleGroup
+          id={`field-group-${group.clientId}-type`}
+          type="single"
+          value={group.groupType ?? ''}
+          onValueChange={handleTypeChange}
+          className="flex w-full flex-col items-stretch gap-3"
+          aria-invalid={groupErrors?.noType ? true : undefined}
+        >
+          <div className="flex flex-col gap-1">
+            <p className="text-[11px] uppercase tracking-wider text-warm-ash/60">Strength</p>
+            <div className="grid grid-cols-4 gap-1">
+              {STRENGTH_TYPES.map((gt) => (
+                <ToggleGroupItem
+                  key={gt.value}
+                  value={gt.value}
+                  className="min-h-12 px-2 text-xs font-medium uppercase tracking-wider"
+                >
+                  {gt.label}
+                </ToggleGroupItem>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-[11px] uppercase tracking-wider text-warm-ash/60">Conditioning</p>
+            <div className="grid grid-cols-4 gap-1">
+              {CONDITIONING_TYPES.map((gt) => (
+                <ToggleGroupItem
+                  key={gt.value}
+                  value={gt.value}
+                  className="min-h-12 px-2 text-xs font-medium uppercase tracking-wider"
+                >
+                  {gt.label}
+                </ToggleGroupItem>
+              ))}
+            </div>
+          </div>
+        </ToggleGroup>
+        {groupErrors?.noType && (
+          <p role="alert" className="mt-1 text-xs text-destructive">
+            {groupErrors.noType}
+          </p>
+        )}
+        {group.groupType && (
+          <p className="mt-2 text-[11px] text-warm-ash/60">
+            {GROUP_TYPE_HELP[group.groupType].description}
+          </p>
+        )}
       </div>
 
       {/* Stage 2: group settings and exercises (only after type is selected) */}
@@ -225,7 +278,7 @@ export function ActivityGroupEditor({
                     }}
                     placeholder="--"
                     min={1}
-                    className="min-h-10 w-16 border-0 border-b border-warm-ash/30 bg-transparent py-1 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
+                    className="min-h-12 w-16 border-0 border-b border-warm-ash/30 bg-transparent py-1 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none"
                     aria-label="Rounds"
                   />
                 </div>
@@ -269,13 +322,22 @@ export function ActivityGroupEditor({
                 onMoveDown={() => handleMoveActivity(index, index + 1)}
                 isFirst={index === 0}
                 isLast={index === group.activities.length - 1}
+                PickerComponent={PickerComponent}
+                exerciseError={activityErrors?.[activity.clientId]}
+                autoOpenPicker={activity.clientId === pendingPickerClientId}
               />
             ))}
           </div>
 
           {/* Add exercise button */}
           <div className="px-4 pb-4">
+            {group.activities.length === 0 && (
+              <p className="pb-2 text-[11px] uppercase tracking-wider text-warm-ash/40">
+                No exercises
+              </p>
+            )}
             <Button
+              id={`field-group-${group.clientId}-add-activity`}
               type="button"
               variant="secondary"
               size="sm"
@@ -285,6 +347,11 @@ export function ActivityGroupEditor({
               <Icon name="add" size={16} />
               Select exercise
             </Button>
+            {groupErrors?.noActivities && (
+              <p role="alert" className="mt-1 text-center text-xs text-destructive">
+                {groupErrors.noActivities}
+              </p>
+            )}
           </div>
         </>
       )}

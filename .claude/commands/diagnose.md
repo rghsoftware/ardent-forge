@@ -3,70 +3,62 @@ description: Check project structure and Cortex health
 model: sonnet
 ---
 
-# Doctor: Context Engine Configuration
+# Diagnose: Cortex Project Health Check
 
-Display effective Context Engine configuration, showing model resolution and feature flags.
+Run a structured health check on the current project's Cortex configuration.
 
-## Output
+## Checks
 
-### Configuration Hierarchy
+### 1. Directory Structure
+Verify required directories exist:
+- [ ] `Context/Features/`
+- [ ] `Context/Decisions/`
+- [ ] `Context/Reviews/`
+- [ ] `Context/Backlog/`
+- [ ] `.cortex/`
+- [ ] `.claude/hooks/`
+- [ ] `.claude/agents/`
+- [ ] `.claude/commands/`
+- [ ] `.claude/skills/`
 
-Show the config resolution order:
+### 2. Configuration Files
+Verify required files exist and are valid JSON/markdown:
+- [ ] `CLAUDE.md` exists and has `## Active Work` section
+- [ ] `.claude/settings.json` exists and has hooks configured
+- [ ] `.claude/hooks/skill-activation/skill-rules.json` exists
+- [ ] `.claude/hooks/skill-activation/agent-rules.json` exists
 
-1. **Adapter defaults** — Built-in defaults from the adapter
-2. **User config** — `~/.config/opencode/context-engine.jsonc` (OpenCode)
-3. **Project config** — `.opencode/context-engine.jsonc` (current project)
+### 3. Hook Health
+For each hook in `.claude/settings.json`:
+- [ ] Script file exists at the declared path
+- [ ] Script is valid TypeScript (run `bun check` or parse for syntax errors)
+- [ ] No hardcoded secrets (scan for `sk-`, `ghp_`, `AKIA`, password patterns)
 
-Each level overrides the previous. The output should show which values come from which level.
+### 4. MCP Context Budget
+Check MCP server count and tool count:
+- Count enabled MCP servers in `.claude/settings.json` and `.mcp.json`
+- Count total tools across all servers
+- **WARN** if >10 servers enabled
+- **WARN** if >80 tools active
+- Display estimated context consumption
 
-### Model Routing
+### 5. Session State
+- [ ] `.cortex/session.md` -- report if active session exists
+- [ ] `.cortex/backups/` -- report backup count and most recent
+- [ ] `.cortex/patterns.md` -- report if pattern log exists and entry count
 
-Show effective model assignment for all agents:
+### 6. Active Work Consistency
+- If CLAUDE.md lists an active feature, verify the corresponding
+  `Context/Features/NNN-Name/` directory exists
+- Check for orphaned Steps.md files without matching Spec.md
 
-| Agent | Model | Source |
-|---|---|---|
-| build | `provider/model` | project/user/adapter |
-| plan | `provider/model` | project/user/adapter |
-| qa-python | `provider/model` | project/user/adapter |
-| ... | ... | ... |
+## Output Format
 
-And categories:
-
-| Category | Model | Source |
-|---|---|---|
-| quick | `provider/model` | project/user/adapter |
-| planning | `provider/model` | project/user/adapter |
-| ... | ... | ... |
-
-### Feature Flags
-
-| Feature | State | Source |
-|---|---|---|
-| parallel_qa | true/false | project/user/adapter |
-| context_aware_compaction | true/false | project/user/adapter |
-| notifications | true/false | project/user/adapter |
-
-### Background Task Concurrency
-
-```
-Default concurrency: N
-Provider limits:
-  - provider-name: M
-```
-
-### Disabled Components
-
-```
-Disabled agents: [list or "none"]
-Disabled skills: [list or "none"]
-```
-
-## Implementation
-
-1. Read and merge configs in priority order: adapter → user → project
-2. For each agent and category, show the resolved value and its source
-3. For each feature flag, show state and source
-4. Display background task concurrency settings
-5. Show any disabled agents/skills
-
-Use the same config loading logic as the OpenCode plugin (`adapters/opencode/config.ts`).
+| Check | Status | Details |
+|-------|--------|---------|
+| Directory structure | PASS/WARN/FAIL | Missing: [...] |
+| Config files | PASS/WARN/FAIL | Invalid: [...] |
+| Hook health | PASS/WARN/FAIL | Issues: [...] |
+| MCP budget | PASS/WARN | Servers: N, Tools: N |
+| Session state | INFO | Active/None, N backups |
+| Active work | PASS/WARN | Consistency issues: [...] |

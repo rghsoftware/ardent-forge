@@ -1,0 +1,5 @@
+# Session Patterns
+
+## 2026-04-11T18:59:41.493Z (session 49862042)
+- ADR: ADR-021-01, ADR-021-02, ADR-021-03, ADR-021-04, ADR-021-05
+

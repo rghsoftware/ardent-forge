@@ -243,7 +243,7 @@ function TodayPage() {
       } else {
         configureDisplayPublisher({ gymId: choice, intent: 'broadcasting' })
       }
-      // P15-014: surface localStorage write failures so the sticky-default loss
+      // P15-014: surface localStorage write failures so sticky-default loss
       // is not silent (see handleStartWorkout above for rationale).
       if (!writeLastGymChoice(choice)) {
         console.warn('[today-page] Failed to persist last gym choice (programmed)')

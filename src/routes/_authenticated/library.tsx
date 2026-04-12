@@ -16,9 +16,7 @@ import { ShareDialog } from '@/components/sharing/share-dialog'
 import { TimeTravelSheet } from '@/components/program/time-travel-sheet'
 import { SOURCE_LABELS } from '@/components/program-builder/constants'
 import { SessionTemplateCard } from '@/components/session-builder/session-template-card'
-import { SessionTemplateDialog } from '@/components/session-builder/session-template-dialog'
 import { EventCard } from '@/components/event-builder/event-card'
-import { EventTemplateDialog } from '@/components/event-builder/event-template-dialog'
 import { ExerciseSearchInput } from '@/components/exercises/exercise-search-input'
 import { ExerciseFilterBar } from '@/components/exercises/exercise-filter-bar'
 import { ExerciseListItem } from '@/components/exercises/exercise-list-item'
@@ -66,16 +64,29 @@ import type {
   SessionType,
 } from '@/domain/types'
 
+type LibraryTab = 'templates' | 'programs' | 'exercises'
+
+function isLibraryTab(v: unknown): v is LibraryTab {
+  return v === 'templates' || v === 'programs' || v === 'exercises'
+}
+
 export const Route = createFileRoute('/_authenticated/library')({
+  validateSearch: (search: Record<string, unknown>): { tab?: LibraryTab } => ({
+    tab: isLibraryTab(search['tab']) ? search['tab'] : undefined,
+  }),
   component: LibraryPage,
 })
-
-type LibraryTab = 'templates' | 'programs' | 'exercises'
 
 function LibraryPage() {
   const { user } = useAuth()
   const userId = user?.id ?? ''
   const navigate = useNavigate()
+  const { tab } = Route.useSearch()
+  const activeTab: LibraryTab = tab ?? 'templates'
+
+  const setActiveTab = (tab: LibraryTab) => {
+    void navigate({ to: '/library', search: { tab }, replace: true })
+  }
 
   const { markRouteVisited } = useOnboarding()
   const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
@@ -83,8 +94,6 @@ function LibraryPage() {
   useEffect(() => {
     markRouteVisited('/library')
   }, [markRouteVisited])
-
-  const [activeTab, setActiveTab] = useState<LibraryTab>('templates')
 
   // Template state
   const [templateSearchQuery, setTemplateSearchQuery] = useState('')
@@ -118,30 +127,22 @@ function LibraryPage() {
     name: string
   } | null>(null)
 
-  const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
-  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
-  const [eventDialogOpen, setEventDialogOpen] = useState(false)
-  const [editingEventId, setEditingEventId] = useState<string | null>(null)
   const [showCreateExercise, setShowCreateExercise] = useState(false)
 
   const handleCreate = () => {
-    setEditingTemplateId(null)
-    setTemplateDialogOpen(true)
+    void navigate({ to: '/templates/new', search: { mode: 'session' } })
   }
 
   const handleCreateEvent = () => {
-    setEditingEventId(null)
-    setEventDialogOpen(true)
+    void navigate({ to: '/templates/new', search: { mode: 'event' } })
   }
 
   const handleEdit = (id: string) => {
-    setEditingTemplateId(id)
-    setTemplateDialogOpen(true)
+    void navigate({ to: '/templates/$templateId/edit', params: { templateId: id } })
   }
 
   const handleEditEvent = (id: string) => {
-    setEditingEventId(id)
-    setEventDialogOpen(true)
+    void navigate({ to: '/templates/$templateId/edit', params: { templateId: id } })
   }
 
   const handleDelete = async (id: string) => {
@@ -199,26 +200,6 @@ function LibraryPage() {
     }
   }
 
-  const handleTemplateDialogChange = (open: boolean) => {
-    setTemplateDialogOpen(open)
-    if (!open) setEditingTemplateId(null)
-  }
-
-  const handleEventDialogChange = (open: boolean) => {
-    setEventDialogOpen(open)
-    if (!open) setEditingEventId(null)
-  }
-
-  const handleTemplateSaved = () => {
-    setTemplateDialogOpen(false)
-    setEditingTemplateId(null)
-  }
-
-  const handleEventSaved = () => {
-    setEventDialogOpen(false)
-    setEditingEventId(null)
-  }
-
   return (
     <div className="min-h-[100dvh] bg-surface-anvil pb-20">
       {/* Header */}
@@ -233,12 +214,8 @@ function LibraryPage() {
               <Icon name="add" size={16} />
               New session
             </Button>
-            <Button
-              variant="default"
-              onClick={handleCreateEvent}
-              className="min-h-12 border-l-2 border-ember bg-surface-iron text-xs text-bone-white hover:bg-surface-gunmetal"
-            >
-              <Icon name="flag" size={16} className="text-ember" />
+            <Button variant="secondary" onClick={handleCreateEvent} className="min-h-12 text-xs">
+              <Icon name="flag" size={16} />
               New event
             </Button>
           </div>
@@ -247,7 +224,7 @@ function LibraryPage() {
           <Button
             variant="default"
             onClick={() => navigate({ to: '/builder', search: { programId: undefined } })}
-            className="min-h-12 bg-forge text-on-forge text-xs hover:brightness-110"
+            className="min-h-12 text-xs"
           >
             <Icon name="add" size={16} />
             Create program
@@ -274,7 +251,7 @@ function LibraryPage() {
 
       {/* Tab navigation */}
       <div
-        className="mx-auto max-w-5xl flex border-b border-warm-ash/10 px-4 md:px-6 lg:px-8"
+        className="mx-auto max-w-5xl flex bg-surface-gunmetal/20 px-4 md:px-6 lg:px-8"
         role="tablist"
       >
         <button
@@ -396,7 +373,7 @@ function LibraryPage() {
                     </p>
                     <p className="text-xs text-warm-ash/50 leading-relaxed">
                       Session templates are reusable workout blueprints. Design a Push Day, a Tempo
-                      Run, or an EMOM -- then snap them into any program.
+                      Run, or an EMOM -- then wire them into any program.
                     </p>
                     <Button
                       variant="default"
@@ -453,6 +430,7 @@ function LibraryPage() {
                   <div key={template.id} className="flex flex-col gap-0">
                     <SessionTemplateCard
                       template={template}
+                      lastAssignedAt={template.lastAssignedAt}
                       onEdit={() => handleEdit(template.id)}
                       onDelete={() => handleDelete(template.id)}
                       onClone={() => cloneMutation.mutate({ id: template.id, userId })}
@@ -528,20 +506,6 @@ function LibraryPage() {
           <ExerciseList userId={userId || undefined} />
         </div>
       )}
-
-      {/* Template / event create + edit dialogs */}
-      <SessionTemplateDialog
-        open={templateDialogOpen}
-        onOpenChange={handleTemplateDialogChange}
-        onSaved={handleTemplateSaved}
-        editingId={editingTemplateId}
-      />
-      <EventTemplateDialog
-        open={eventDialogOpen}
-        onOpenChange={handleEventDialogChange}
-        onSaved={handleEventSaved}
-        editingId={editingEventId}
-      />
 
       <CreateExerciseSheet open={showCreateExercise} onOpenChange={setShowCreateExercise} />
 
@@ -768,7 +732,9 @@ function ProgramList({ userId }: { userId: string | undefined }) {
       <Dialog open={!!confirmDeleteId} onOpenChange={() => setConfirmDeleteId(null)}>
         <DialogContent className="bg-surface-iron">
           <DialogHeader>
-            <DialogTitle className="text-xs text-ember">Delete Program</DialogTitle>
+            <DialogTitle className="text-sm font-medium text-bone-white">
+              Delete Program
+            </DialogTitle>
             <DialogDescription className="text-sm text-warm-ash">
               Are you sure you want to delete &quot;{programToDelete?.name}&quot;? This cannot be
               undone.

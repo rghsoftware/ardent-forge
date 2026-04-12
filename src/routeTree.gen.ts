@@ -30,6 +30,7 @@ import { Route as AuthenticatedBuilderRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedHistoryIndexRouteImport } from './routes/_authenticated/history/index'
 import { Route as AuthenticatedExercisesIndexRouteImport } from './routes/_authenticated/exercises/index'
 import { Route as DisplayGymGymIdRouteImport } from './routes/display/gym/$gymId'
+import { Route as AuthenticatedTemplatesNewRouteImport } from './routes/_authenticated/templates.new'
 import { Route as AuthenticatedLogNewRouteImport } from './routes/_authenticated/log.new'
 import { Route as AuthenticatedLogWorkoutIdRouteImport } from './routes/_authenticated/log.$workoutId'
 import { Route as AuthenticatedHistoryWorkoutIdRouteImport } from './routes/_authenticated/history/$workoutId'
@@ -37,6 +38,7 @@ import { Route as AuthenticatedGroupsGroupIdRouteImport } from './routes/_authen
 import { Route as AuthenticatedExercisesExerciseIdRouteImport } from './routes/_authenticated/exercises/$exerciseId'
 import { Route as AuthenticatedEventsTemplateIdRouteImport } from './routes/_authenticated/events.$templateId'
 import { Route as AuthenticatedCommsConversationIdRouteImport } from './routes/_authenticated/comms.$conversationId'
+import { Route as AuthenticatedTemplatesTemplateIdEditRouteImport } from './routes/_authenticated/templates.$templateId.edit'
 import { Route as AuthenticatedProfileGymsGymIdRouteImport } from './routes/_authenticated/profile.gyms.$gymId'
 import { Route as AuthenticatedLogWorkoutIdEditRouteImport } from './routes/_authenticated/log.$workoutId.edit'
 
@@ -147,6 +149,12 @@ const DisplayGymGymIdRoute = DisplayGymGymIdRouteImport.update({
   path: '/display/gym/$gymId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedTemplatesNewRoute =
+  AuthenticatedTemplatesNewRouteImport.update({
+    id: '/templates/new',
+    path: '/templates/new',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedLogNewRoute = AuthenticatedLogNewRouteImport.update({
   id: '/log/new',
   path: '/log/new',
@@ -188,6 +196,12 @@ const AuthenticatedCommsConversationIdRoute =
     path: '/$conversationId',
     getParentRoute: () => AuthenticatedCommsRoute,
   } as any)
+const AuthenticatedTemplatesTemplateIdEditRoute =
+  AuthenticatedTemplatesTemplateIdEditRouteImport.update({
+    id: '/templates/$templateId/edit',
+    path: '/templates/$templateId/edit',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedProfileGymsGymIdRoute =
   AuthenticatedProfileGymsGymIdRouteImport.update({
     id: '/gyms/$gymId',
@@ -226,11 +240,13 @@ export interface FileRoutesByFullPath {
   '/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
   '/log/$workoutId': typeof AuthenticatedLogWorkoutIdRouteWithChildren
   '/log/new': typeof AuthenticatedLogNewRoute
+  '/templates/new': typeof AuthenticatedTemplatesNewRoute
   '/display/gym/$gymId': typeof DisplayGymGymIdRoute
   '/exercises/': typeof AuthenticatedExercisesIndexRoute
   '/history/': typeof AuthenticatedHistoryIndexRoute
   '/log/$workoutId/edit': typeof AuthenticatedLogWorkoutIdEditRoute
   '/profile/gyms/$gymId': typeof AuthenticatedProfileGymsGymIdRoute
+  '/templates/$templateId/edit': typeof AuthenticatedTemplatesTemplateIdEditRoute
 }
 export interface FileRoutesByTo {
   '/connect': typeof ConnectRoute
@@ -257,11 +273,13 @@ export interface FileRoutesByTo {
   '/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
   '/log/$workoutId': typeof AuthenticatedLogWorkoutIdRouteWithChildren
   '/log/new': typeof AuthenticatedLogNewRoute
+  '/templates/new': typeof AuthenticatedTemplatesNewRoute
   '/display/gym/$gymId': typeof DisplayGymGymIdRoute
   '/exercises': typeof AuthenticatedExercisesIndexRoute
   '/history': typeof AuthenticatedHistoryIndexRoute
   '/log/$workoutId/edit': typeof AuthenticatedLogWorkoutIdEditRoute
   '/profile/gyms/$gymId': typeof AuthenticatedProfileGymsGymIdRoute
+  '/templates/$templateId/edit': typeof AuthenticatedTemplatesTemplateIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -290,11 +308,13 @@ export interface FileRoutesById {
   '/_authenticated/history/$workoutId': typeof AuthenticatedHistoryWorkoutIdRoute
   '/_authenticated/log/$workoutId': typeof AuthenticatedLogWorkoutIdRouteWithChildren
   '/_authenticated/log/new': typeof AuthenticatedLogNewRoute
+  '/_authenticated/templates/new': typeof AuthenticatedTemplatesNewRoute
   '/display/gym/$gymId': typeof DisplayGymGymIdRoute
   '/_authenticated/exercises/': typeof AuthenticatedExercisesIndexRoute
   '/_authenticated/history/': typeof AuthenticatedHistoryIndexRoute
   '/_authenticated/log/$workoutId/edit': typeof AuthenticatedLogWorkoutIdEditRoute
   '/_authenticated/profile/gyms/$gymId': typeof AuthenticatedProfileGymsGymIdRoute
+  '/_authenticated/templates/$templateId/edit': typeof AuthenticatedTemplatesTemplateIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -323,11 +343,13 @@ export interface FileRouteTypes {
     | '/history/$workoutId'
     | '/log/$workoutId'
     | '/log/new'
+    | '/templates/new'
     | '/display/gym/$gymId'
     | '/exercises/'
     | '/history/'
     | '/log/$workoutId/edit'
     | '/profile/gyms/$gymId'
+    | '/templates/$templateId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/connect'
@@ -354,11 +376,13 @@ export interface FileRouteTypes {
     | '/history/$workoutId'
     | '/log/$workoutId'
     | '/log/new'
+    | '/templates/new'
     | '/display/gym/$gymId'
     | '/exercises'
     | '/history'
     | '/log/$workoutId/edit'
     | '/profile/gyms/$gymId'
+    | '/templates/$templateId/edit'
   id:
     | '__root__'
     | '/_authenticated'
@@ -386,11 +410,13 @@ export interface FileRouteTypes {
     | '/_authenticated/history/$workoutId'
     | '/_authenticated/log/$workoutId'
     | '/_authenticated/log/new'
+    | '/_authenticated/templates/new'
     | '/display/gym/$gymId'
     | '/_authenticated/exercises/'
     | '/_authenticated/history/'
     | '/_authenticated/log/$workoutId/edit'
     | '/_authenticated/profile/gyms/$gymId'
+    | '/_authenticated/templates/$templateId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -556,6 +582,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DisplayGymGymIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/templates/new': {
+      id: '/_authenticated/templates/new'
+      path: '/templates/new'
+      fullPath: '/templates/new'
+      preLoaderRoute: typeof AuthenticatedTemplatesNewRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/log/new': {
       id: '/_authenticated/log/new'
       path: '/log/new'
@@ -604,6 +637,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/comms/$conversationId'
       preLoaderRoute: typeof AuthenticatedCommsConversationIdRouteImport
       parentRoute: typeof AuthenticatedCommsRoute
+    }
+    '/_authenticated/templates/$templateId/edit': {
+      id: '/_authenticated/templates/$templateId/edit'
+      path: '/templates/$templateId/edit'
+      fullPath: '/templates/$templateId/edit'
+      preLoaderRoute: typeof AuthenticatedTemplatesTemplateIdEditRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/profile/gyms/$gymId': {
       id: '/_authenticated/profile/gyms/$gymId'
@@ -683,8 +723,10 @@ interface AuthenticatedRouteChildren {
   AuthenticatedHistoryWorkoutIdRoute: typeof AuthenticatedHistoryWorkoutIdRoute
   AuthenticatedLogWorkoutIdRoute: typeof AuthenticatedLogWorkoutIdRouteWithChildren
   AuthenticatedLogNewRoute: typeof AuthenticatedLogNewRoute
+  AuthenticatedTemplatesNewRoute: typeof AuthenticatedTemplatesNewRoute
   AuthenticatedExercisesIndexRoute: typeof AuthenticatedExercisesIndexRoute
   AuthenticatedHistoryIndexRoute: typeof AuthenticatedHistoryIndexRoute
+  AuthenticatedTemplatesTemplateIdEditRoute: typeof AuthenticatedTemplatesTemplateIdEditRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -701,8 +743,11 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedHistoryWorkoutIdRoute: AuthenticatedHistoryWorkoutIdRoute,
   AuthenticatedLogWorkoutIdRoute: AuthenticatedLogWorkoutIdRouteWithChildren,
   AuthenticatedLogNewRoute: AuthenticatedLogNewRoute,
+  AuthenticatedTemplatesNewRoute: AuthenticatedTemplatesNewRoute,
   AuthenticatedExercisesIndexRoute: AuthenticatedExercisesIndexRoute,
   AuthenticatedHistoryIndexRoute: AuthenticatedHistoryIndexRoute,
+  AuthenticatedTemplatesTemplateIdEditRoute:
+    AuthenticatedTemplatesTemplateIdEditRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

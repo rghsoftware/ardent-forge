@@ -1,0 +1,19 @@
+# Cortex Session: Template Builder UX Polish
+
+**Plan:** Context/QuickPlans/2026-04-11-template-builder-ux-polish.md
+**Started:** 2026-04-11
+**Status:** Complete
+
+## Team
+- frontend-specialist (single agent, all 4 phases)
+
+## Task Tracker
+- [x] Phase 1: Typography & copy fixes
+- [x] Phase 2: Button hierarchy corrections
+- [x] Phase 3: Group type layout -- two labeled rows
+- [x] Phase 4: SessionTemplateCard density
+
+## Notes
+- Draft persistence (item 4 from audit) intentionally deferred
+- All changes are isolated frontend CSS/copy/layout -- no backend or schema changes
+- library.tsx lines ~79-530 contain the "New event" button and sheet title; agent must read to locate exact JSX before editing

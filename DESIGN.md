@@ -307,6 +307,7 @@ Narrow, utilitarian, with a molten-orange hover state.
 - **Default to dark** -- `surface` (#131313) is always the baseline. The system is built for low-light gym environments.
 - **Use tonal layering for depth** -- shift background colors to create perceived elevation, not shadows.
 - **Use the molten gradient sparingly** -- reserve for hero CTAs and high-priority action triggers.
+- **Use the ember accent sparingly** -- reserve for primary CTAs, active/selected states, and key metrics. Applying ember to every item in a list (ordinals, row numbers, index chips) cancels the signal. Positional index elements use `surface-steel`.
 - **Maintain the vocabulary** -- COMMANDS, EXECUTE, LOGGED, VARIANCE, METRIC_LOAD. The copy is a readout, not a conversation.
 
 ### Don't

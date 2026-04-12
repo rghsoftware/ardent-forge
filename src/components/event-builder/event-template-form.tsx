@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { useCreateSessionTemplate, useUpdateSessionTemplate } from '@/hooks/use-session-templates'
@@ -19,6 +19,7 @@ interface EventTemplateFormProps {
   initial?: SessionTemplateFull
   onSave?: (template: SessionTemplate) => void
   onCancel?: () => void
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -52,7 +53,12 @@ function hydrateDraftItems(initial?: SessionTemplateFull): DraftEventItem[] {
 // Main form component
 // ---------------------------------------------------------------------------
 
-export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFormProps) {
+export function EventTemplateForm({
+  initial,
+  onSave,
+  onCancel,
+  onDirtyChange,
+}: EventTemplateFormProps) {
   const { user } = useAuth()
   const userId = user?.id ?? ''
   const createMutation = useCreateSessionTemplate()
@@ -85,6 +91,55 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
   const [draftItems, setDraftItems] = useState<DraftEventItem[]>(initialDraftItems)
   const [errors, setErrors] = useState<string[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
+
+  // -- Dirty tracking ------------------------------------------------------
+  // Snapshot the initial form state, compare to current on every render.
+  // After successful save, snapshot is reset so navigating away is unblocked.
+  const [baselineSnapshot, setBaselineSnapshot] = useState(() =>
+    JSON.stringify({
+      name: initial?.template.name ?? '',
+      description: initial?.template.description ?? '',
+      eventDate: initDate,
+      eventTime: initTime,
+      location: initial?.template.eventMetadata?.location ?? '',
+      latitude: initial?.template.eventMetadata?.latitude?.toString() ?? '',
+      longitude: initial?.template.eventMetadata?.longitude?.toString() ?? '',
+      eventUrl: initial?.template.eventMetadata?.eventUrl ?? '',
+      requirements: initialRequirements,
+      draftItems: initialDraftItems,
+    }),
+  )
+  const currentSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        name,
+        description,
+        eventDate,
+        eventTime,
+        location,
+        latitude,
+        longitude,
+        eventUrl,
+        requirements,
+        draftItems,
+      }),
+    [
+      name,
+      description,
+      eventDate,
+      eventTime,
+      location,
+      latitude,
+      longitude,
+      eventUrl,
+      requirements,
+      draftItems,
+    ],
+  )
+  const dirty = currentSnapshot !== baselineSnapshot
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
 
   // -- Expandable sections -------------------------------------------------
   const [requirementsExpanded, setRequirementsExpanded] = useState(
@@ -316,6 +371,7 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
         // Reconcile event items: delete removed, update existing, create new
         await reconcileEventItems(result.template.id, initial)
 
+        setBaselineSnapshot(currentSnapshot)
         onSave?.(result.template)
       } else {
         // -- Create new template --
@@ -335,11 +391,12 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
         // Create event items for the new template
         await createDraftItems(result.template.id)
 
+        setBaselineSnapshot(currentSnapshot)
         onSave?.(result.template)
       }
-    } catch (err) {
+    } catch {
       const action = isEditing ? 'update' : 'create'
-      console.error(`[event-template-form] Failed to ${action} event "${name.trim()}":`, err)
+      // Hook's onError already logged. Render error state for the user.
       setErrors([`Failed to ${action} event. Please try again.`])
     }
   }, [
@@ -359,6 +416,7 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
     createMutation,
     updateMutation,
     onSave,
+    currentSnapshot,
     createDraftItems,
     reconcileEventItems,
   ])
@@ -366,226 +424,234 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
   // -- Render --------------------------------------------------------------
 
   return (
-    <div className="space-y-6 p-4 pb-8">
-      {/* Header */}
-      <h2 className="font-display text-xl tracking-wide text-bone-white">
+    <div className="flex flex-col gap-6 p-4 pb-8 lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:p-0 lg:pb-8 xl:grid-cols-[340px_1fr]">
+      {/* Header -- mobile only; TemplateEditorLayout already titles the page on lg+ */}
+      <h2 className="font-display text-xl tracking-wide text-bone-white lg:hidden">
         {isEditing ? 'EDIT EVENT' : 'NEW EVENT'}
       </h2>
 
-      {/* Name field */}
-      <div>
-        <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
-          NAME
-        </label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Event name"
-          className={cn(underlineInput, 'font-display text-lg font-medium')}
-          aria-label="Event name"
-        />
-      </div>
-
-      {/* Description */}
-      <div>
-        <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
-          DESCRIPTION (OPTIONAL)
-        </label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Brief description of this event"
-          rows={2}
-          className={cn(underlineInput, 'min-h-12 resize-none font-body text-sm')}
-          aria-label="Event description"
-        />
-      </div>
-
-      {/* Date / Time row */}
-      <div className="flex gap-4">
-        <div className="flex-1">
+      {/* ---- Left column: event metadata ---- */}
+      <div className="flex flex-col gap-6 lg:sticky lg:top-0 lg:self-start">
+        {/* Name field */}
+        <div>
           <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
-            DATE
+            NAME
           </label>
           <input
-            type="date"
-            value={eventDate}
-            onChange={(e) => setEventDate(e.target.value)}
-            placeholder="TBD"
-            className={cn(underlineInput, 'min-h-12 text-sm')}
-            aria-label="Event date"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Event name"
+            className={cn(underlineInput, 'font-display text-lg font-medium')}
+            aria-label="Event name"
           />
         </div>
-        <div className="w-32">
+
+        {/* Description */}
+        <div>
           <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
-            TIME
+            DESCRIPTION (OPTIONAL)
+          </label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Brief description of this event"
+            rows={2}
+            className={cn(underlineInput, 'min-h-12 resize-none font-body text-sm')}
+            aria-label="Event description"
+          />
+        </div>
+
+        {/* Date / Time row */}
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
+              DATE
+            </label>
+            <input
+              type="date"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+              placeholder="TBD"
+              className={cn(underlineInput, 'min-h-12 text-sm')}
+              aria-label="Event date"
+            />
+          </div>
+          <div className="w-32">
+            <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
+              TIME
+            </label>
+            <input
+              type="time"
+              value={eventTime}
+              onChange={(e) => setEventTime(e.target.value)}
+              placeholder="TBD"
+              className={cn(underlineInput, 'min-h-12 text-sm')}
+              aria-label="Event time"
+            />
+          </div>
+        </div>
+
+        {/* Location */}
+        <div>
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
+            LOCATION
           </label>
           <input
-            type="time"
-            value={eventTime}
-            onChange={(e) => setEventTime(e.target.value)}
-            placeholder="TBD"
-            className={cn(underlineInput, 'min-h-12 text-sm')}
-            aria-label="Event time"
+            type="text"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder="Event location"
+            className={cn(underlineInput, 'text-sm')}
+            aria-label="Event location"
+          />
+
+          {/* Coordinates toggle */}
+          <button
+            type="button"
+            onClick={() => setShowCoordinates((prev) => !prev)}
+            className="mt-2 flex min-h-12 items-center gap-1 text-[11px] font-medium uppercase tracking-widest text-ember hover:text-ember/80"
+          >
+            <Icon name={showCoordinates ? 'expand_less' : 'add'} size={16} />
+            {showCoordinates ? 'HIDE COORDINATES' : 'ADD COORDINATES'}
+          </button>
+
+          {showCoordinates && (
+            <div className="mt-2 flex gap-4">
+              <div className="flex-1">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
+                  LATITUDE
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={latitude}
+                  onChange={(e) => setLatitude(e.target.value)}
+                  placeholder="e.g. 34.0522"
+                  className={cn(underlineInput, 'text-sm')}
+                  aria-label="Latitude"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
+                  LONGITUDE
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={longitude}
+                  onChange={(e) => setLongitude(e.target.value)}
+                  placeholder="e.g. -118.2437"
+                  className={cn(underlineInput, 'text-sm')}
+                  aria-label="Longitude"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Event URL */}
+        <div>
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
+            EVENT URL (OPTIONAL)
+          </label>
+          <input
+            type="url"
+            value={eventUrl}
+            onChange={(e) => setEventUrl(e.target.value)}
+            placeholder="https://..."
+            className={cn(underlineInput, 'text-sm')}
+            aria-label="Event URL"
           />
         </div>
       </div>
 
-      {/* Location */}
-      <div>
-        <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
-          LOCATION
-        </label>
-        <input
-          type="text"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder="Event location"
-          className={cn(underlineInput, 'text-sm')}
-          aria-label="Event location"
-        />
+      {/* ---- Right column: operational content ---- */}
+      <div className="flex flex-col gap-6">
+        {/* Requirements section */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setRequirementsExpanded((prev) => !prev)}
+            className="flex min-h-12 w-full items-center justify-between text-left"
+          >
+            <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash">
+              REQUIREMENTS ({requirements.length})
+            </span>
+            <Icon
+              name={requirementsExpanded ? 'expand_less' : 'expand_more'}
+              size={20}
+              className="text-warm-ash"
+            />
+          </button>
 
-        {/* Coordinates toggle */}
-        <button
-          type="button"
-          onClick={() => setShowCoordinates((prev) => !prev)}
-          className="mt-2 flex min-h-12 items-center gap-1 text-[11px] font-medium uppercase tracking-widest text-ember hover:text-ember/80"
-        >
-          <Icon name={showCoordinates ? 'expand_less' : 'add'} size={16} />
-          {showCoordinates ? 'HIDE COORDINATES' : 'ADD COORDINATES'}
-        </button>
-
-        {showCoordinates && (
-          <div className="mt-2 flex gap-4">
-            <div className="flex-1">
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
-                LATITUDE
-              </label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={latitude}
-                onChange={(e) => setLatitude(e.target.value)}
-                placeholder="e.g. 34.0522"
-                className={cn(underlineInput, 'text-sm')}
-                aria-label="Latitude"
-              />
+          {requirementsExpanded && (
+            <div className="mt-2 flex flex-col gap-4">
+              {requirements.map((req, index) => (
+                <RequirementEditor
+                  key={req._clientId}
+                  requirement={req}
+                  onChange={(updated) => handleUpdateRequirement(index, updated)}
+                  onDelete={() => handleDeleteRequirement(index)}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={handleAddRequirement}
+                className="flex min-h-12 items-center gap-1 text-[11px] font-medium uppercase tracking-widest text-ember hover:text-ember/80"
+              >
+                <Icon name="add" size={16} />
+                ADD REQUIREMENT
+              </button>
             </div>
-            <div className="flex-1">
-              <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
-                LONGITUDE
-              </label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={longitude}
-                onChange={(e) => setLongitude(e.target.value)}
-                placeholder="e.g. -118.2437"
-                className={cn(underlineInput, 'text-sm')}
-                aria-label="Longitude"
-              />
+          )}
+        </div>
+
+        {/* Packing list section */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setPackingExpanded((prev) => !prev)}
+            className="flex min-h-12 w-full items-center justify-between text-left"
+          >
+            <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash">
+              PACKING LIST ({draftItems.length})
+            </span>
+            <Icon
+              name={packingExpanded ? 'expand_less' : 'expand_more'}
+              size={20}
+              className="text-warm-ash"
+            />
+          </button>
+
+          {packingExpanded && (
+            <div className="mt-2 flex flex-col gap-4">
+              {draftItems.map((item, index) => (
+                <EventItemEditor
+                  key={item._clientId}
+                  item={item}
+                  onChange={(updated) => handleUpdateItem(index, updated)}
+                  onDelete={() => handleDeleteItem(index)}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={handleAddItem}
+                className="flex min-h-12 items-center gap-1 text-[11px] font-medium uppercase tracking-widest text-ember hover:text-ember/80"
+              >
+                <Icon name="add" size={16} />
+                ADD ITEM
+              </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      {/* Event URL */}
-      <div>
-        <label className="mb-1 block text-[11px] font-medium uppercase tracking-widest text-warm-ash">
-          EVENT URL (OPTIONAL)
-        </label>
-        <input
-          type="url"
-          value={eventUrl}
-          onChange={(e) => setEventUrl(e.target.value)}
-          placeholder="https://..."
-          className={cn(underlineInput, 'text-sm')}
-          aria-label="Event URL"
-        />
-      </div>
-
-      {/* Requirements section */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setRequirementsExpanded((prev) => !prev)}
-          className="flex min-h-12 w-full items-center justify-between text-left"
-        >
-          <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash">
-            REQUIREMENTS ({requirements.length})
-          </span>
-          <Icon
-            name={requirementsExpanded ? 'expand_less' : 'expand_more'}
-            size={20}
-            className="text-warm-ash"
-          />
-        </button>
-
-        {requirementsExpanded && (
-          <div className="mt-2 flex flex-col gap-4">
-            {requirements.map((req, index) => (
-              <RequirementEditor
-                key={req._clientId}
-                requirement={req}
-                onChange={(updated) => handleUpdateRequirement(index, updated)}
-                onDelete={() => handleDeleteRequirement(index)}
-              />
-            ))}
-            <button
-              type="button"
-              onClick={handleAddRequirement}
-              className="flex min-h-12 items-center gap-1 text-[11px] font-medium uppercase tracking-widest text-ember hover:text-ember/80"
-            >
-              <Icon name="add" size={16} />
-              ADD REQUIREMENT
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Packing list section */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setPackingExpanded((prev) => !prev)}
-          className="flex min-h-12 w-full items-center justify-between text-left"
-        >
-          <span className="text-[11px] font-medium uppercase tracking-widest text-warm-ash">
-            PACKING LIST ({draftItems.length})
-          </span>
-          <Icon
-            name={packingExpanded ? 'expand_less' : 'expand_more'}
-            size={20}
-            className="text-warm-ash"
-          />
-        </button>
-
-        {packingExpanded && (
-          <div className="mt-2 flex flex-col gap-4">
-            {draftItems.map((item, index) => (
-              <EventItemEditor
-                key={item._clientId}
-                item={item}
-                onChange={(updated) => handleUpdateItem(index, updated)}
-                onDelete={() => handleDeleteItem(index)}
-              />
-            ))}
-            <button
-              type="button"
-              onClick={handleAddItem}
-              className="flex min-h-12 items-center gap-1 text-[11px] font-medium uppercase tracking-widest text-ember hover:text-ember/80"
-            >
-              <Icon name="add" size={16} />
-              ADD ITEM
-            </button>
-          </div>
-        )}
-      </div>
+      {/* ---- Full-width footer: warnings, errors, actions ---- */}
 
       {/* Warnings (EV-8) */}
       {warnings.length > 0 && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 lg:col-span-2">
           {warnings.map((warn, i) => (
             <p key={i} className="text-xs text-amber-400">
               {warn}
@@ -596,7 +662,7 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
 
       {/* Validation errors */}
       {errors.length > 0 && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 lg:col-span-2">
           {errors.map((err, i) => (
             <p key={i} className="text-xs text-destructive">
               {err}
@@ -606,7 +672,7 @@ export function EventTemplateForm({ initial, onSave, onCancel }: EventTemplateFo
       )}
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 lg:col-span-2">
         {onCancel && (
           <Button
             type="button"

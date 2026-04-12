@@ -1,8 +1,4 @@
 {
-  "statusLine": {
-    "type": "command",
-    "command": "bun run .claude/hooks/context-recovery/statusline-monitor.ts"
-  },
   "permissions": {
     "allow": [
       "Edit",
@@ -54,6 +50,10 @@
           {
             "type": "command",
             "command": "bun run .claude/hooks/skill-activation/skill-activation.ts"
+          },
+          {
+            "type": "command",
+            "command": "bun run .claude/hooks/validators/secret-detector.ts"
           }
         ]
       }
@@ -90,5 +90,9 @@
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bun run .claude/hooks/context-recovery/statusline-monitor.ts"
   }
 }
