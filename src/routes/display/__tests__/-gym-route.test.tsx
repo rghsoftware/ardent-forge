@@ -98,7 +98,7 @@ vi.mock('@/lib/config-store', () => ({
   resolveConfig: mockResolveConfig,
 }))
 
-vi.mock('@/lib/display-subscriber', () => ({
+vi.mock('@/lib/display-realtime', () => ({
   initDisplaySubscriber: mockInitDisplaySubscriber,
   subscribeToDisplay: mockSubscribeToDisplay,
   destroyDisplaySubscriber: mockDestroyDisplaySubscriber,

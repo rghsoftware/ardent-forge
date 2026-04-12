@@ -127,7 +127,7 @@ vi.mock('@/hooks/use-gym-picker', () => ({
   }),
 }))
 
-vi.mock('@/lib/display-publisher', () => ({
+vi.mock('@/lib/display-realtime', () => ({
   configureDisplayPublisher: mockConfigureDisplayPublisher,
 }))
 

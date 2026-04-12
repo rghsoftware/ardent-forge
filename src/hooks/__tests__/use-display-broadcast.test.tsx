@@ -53,7 +53,7 @@ vi.mock('@/lib/supabase', () => ({
   getSupabaseClient: mockGetSupabaseClient,
 }))
 
-vi.mock('@/lib/display-publisher', () => ({
+vi.mock('@/lib/display-realtime', () => ({
   initDisplayPublisher: mockInitDisplayPublisher,
   configureDisplayPublisher: mockConfigureDisplayPublisher,
   isPublisherReady: mockIsPublisherReady,
