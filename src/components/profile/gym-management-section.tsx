@@ -288,7 +288,12 @@ function MyGymRow({
       className="flex flex-col bg-surface-charcoal/40 px-3 py-2"
     >
       <div className="flex min-h-12 items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-1 flex-col">
+        <Link
+          to="/profile/gyms/$gymId"
+          params={{ gymId: gym.id }}
+          className="flex min-w-0 flex-1 flex-col hover:bg-surface-gunmetal/20"
+          data-testid={`my-gym-row-${gym.id}-link`}
+        >
           <span className="truncate font-sans text-sm font-medium uppercase tracking-wider text-bone-white">
             {gym.name}
           </span>
@@ -296,7 +301,7 @@ function MyGymRow({
             <span data-testid={`my-gym-row-${gym.id}-member-count`}>{memberCountLabel}</span>{' '}
             members
           </span>
-        </div>
+        </Link>
         <div className="flex shrink-0 items-center gap-2">
           <Button
             variant="ghost"
@@ -308,16 +313,18 @@ function MyGymRow({
           >
             {isDisplayOpen ? 'Hide display' : 'Show display'}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            data-testid={`my-gym-row-${gym.id}-leave`}
-            className="min-h-[48px] text-xs text-warm-ash hover:text-bone-white"
-            onClick={onLeave}
-            disabled={leavePending}
-          >
-            {leavePending ? 'Leaving...' : 'Leave'}
-          </Button>
+          {!isOwner && (
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid={`my-gym-row-${gym.id}-leave`}
+              className="min-h-[48px] text-xs text-warm-ash hover:text-bone-white"
+              onClick={onLeave}
+              disabled={leavePending}
+            >
+              {leavePending ? 'Leaving...' : 'Leave'}
+            </Button>
+          )}
           {isOwner && (
             <Button
               variant="ghost"

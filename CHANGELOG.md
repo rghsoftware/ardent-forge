@@ -2,6 +2,12 @@
 
 All notable changes to Ardent Forge are documented in this file.
 
+## [1.0.0-beta.12] - 2026-04-12
+
+### Bug Fixes
+
+- **Startup crash on fresh install** -- duplicate migration version number (two `013_*` files) and invalid `DROP COLUMN IF EXISTS` syntax in SQLite caused the app to panic during database initialization
+
 ## [1.0.0-beta.11] - 2026-04-11
 
 ### Features

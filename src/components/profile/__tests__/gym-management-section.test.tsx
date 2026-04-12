@@ -176,7 +176,7 @@ describe('GymManagementSection', () => {
   // -------------------------------------------------------------------------
   // (a) My gyms list renders with leave + delete affordances appropriately
   // -------------------------------------------------------------------------
-  it('renders My gyms rows with Leave on all rows and Delete only on owned rows', () => {
+  it('renders My gyms rows with correct affordances per ownership', () => {
     stubUseGyms({
       data: [
         makeGym({ id: 'gym-owned', name: 'My Garage', ownerUserId: ME }),
@@ -198,8 +198,12 @@ describe('GymManagementSection', () => {
     expect(screen.getByTestId('my-gym-row-gym-owned')).toBeInTheDocument()
     expect(screen.getByTestId('my-gym-row-gym-joined')).toBeInTheDocument()
 
-    // Leave button on both rows
-    expect(screen.getByTestId('my-gym-row-gym-owned-leave')).toBeInTheDocument()
+    // Both rows link to the gym detail page
+    expect(screen.getByTestId('my-gym-row-gym-owned-link')).toBeInTheDocument()
+    expect(screen.getByTestId('my-gym-row-gym-joined-link')).toBeInTheDocument()
+
+    // Leave button on non-owner row only (owners use the detail page to manage)
+    expect(screen.queryByTestId('my-gym-row-gym-owned-leave')).not.toBeInTheDocument()
     expect(screen.getByTestId('my-gym-row-gym-joined-leave')).toBeInTheDocument()
 
     // Delete button ONLY on the owned row
