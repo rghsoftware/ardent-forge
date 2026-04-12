@@ -2,6 +2,26 @@
 
 All notable changes to Ardent Forge are documented in this file.
 
+## [1.0.0-beta.11] - 2026-04-11
+
+### Features
+
+- **Explicit gym membership (F021)** -- invites, roster management, transfer flows, and membership-scoped permissions (#94)
+- **Duplicate session templates** -- copy existing templates from the library with one tap (#96)
+- **Start workout from template** -- launch a session directly from any session template in the Library (#95)
+- **Inline exercise creation from picker** -- create new exercises without leaving the workout flow (#98)
+- **Full-page template builder** -- template and event creation moved out of the sidebar into a dedicated full-page editor with 3-column layout (#100)
+
+### Improvements
+
+- Template builder UX polish -- touch targets, ember conservation, validation, and layout fixes (#100, #101)
+
+### Bug Fixes
+
+- Workflow and CI updates (#99)
+
+---
+
 ## [1.0.0-beta.10] - 2026-04-07
 
 ### Features
