@@ -236,7 +236,7 @@ export function SetSchemeEditor({
               <button
                 type="button"
                 onClick={() => onShowAllTypesChange(true)}
-                className="mt-1 text-warm-ash font-body text-xs uppercase tracking-wider hover:text-bone-white"
+                className="mt-1 bg-surface-charcoal/60 px-2 py-1 font-body text-xs uppercase tracking-wider text-warm-ash/90 hover:text-bone-white"
               >
                 Show all types
               </button>

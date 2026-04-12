@@ -40,7 +40,7 @@ export function TemplateEditorLayout({ title, children, onBack }: TemplateEditor
               <span>Library</span>
             </Link>
           )}
-          <h1 className="font-display text-base text-bone-white md:text-lg">{title}</h1>
+          <h1 className="font-display text-xl text-bone-white md:text-2xl">{title}</h1>
         </header>
 
         <div className="pb-8">{children}</div>
