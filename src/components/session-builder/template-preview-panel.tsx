@@ -58,10 +58,10 @@ export function TemplatePreviewPanel({
     <div className="hidden xl:flex xl:flex-col xl:sticky xl:top-6 xl:self-start xl:max-h-[calc(100dvh-3rem)] xl:overflow-y-auto 2xl:top-8 2xl:max-h-[calc(100dvh-4rem)]">
       {/* Panel header */}
       <div className="flex items-center gap-3 bg-surface-steel px-4 py-2">
-        <span className="font-display text-[10px] font-semibold uppercase tracking-widest text-warm-ash/80">
+        <span className="font-display text-[11px] font-semibold uppercase tracking-widest text-bone-white">
           Preview
         </span>
-        <span className="font-display text-[10px] uppercase tracking-wider text-warm-ash/40">
+        <span className="font-display text-[11px] uppercase tracking-wider text-warm-ash/50">
           as seen on gym floor
         </span>
       </div>
@@ -102,13 +102,23 @@ export function TemplatePreviewPanel({
 
             return (
               <section key={group.clientId}>
-                <header className="flex items-center gap-2 bg-surface-charcoal px-4 py-2">
+                <header className="flex flex-wrap items-center gap-2 bg-surface-charcoal px-4 py-2">
                   <span className="font-display text-[11px] font-medium uppercase tracking-wider text-ember">
                     {group.groupType ? group.groupType.replace(/_/g, ' ') : '--'}
                   </span>
                   {group.rounds && group.rounds > 1 && (
                     <span className="font-display text-[11px] uppercase tracking-wider text-warm-ash/70">
                       {group.rounds} Rounds
+                    </span>
+                  )}
+                  {group.restBetweenRounds && (
+                    <span className="font-display text-[10px] uppercase tracking-wider text-warm-ash/50">
+                      {formatSeconds(group.restBetweenRounds.seconds)} rest/rnd
+                    </span>
+                  )}
+                  {group.restBetweenActivities && (
+                    <span className="font-display text-[10px] uppercase tracking-wider text-warm-ash/50">
+                      {formatSeconds(group.restBetweenActivities.seconds)} rest/ex
                     </span>
                   )}
                 </header>

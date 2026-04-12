@@ -72,10 +72,11 @@ export function ExercisePickerDrawer({
           // Mobile: bottom panel slide-up, full width, 80vh cap
           'inset-x-0 bottom-0 max-h-[80vh] translate-y-0',
           // Desktop: right-docked drawer, full height, fixed width
-          // At xl the live-preview column occupies the rightmost 260px --
-          // offset the drawer so it docks to the left of the preview column
-          // rather than covering it. Both panels stay visible simultaneously.
-          'lg:inset-y-0 lg:right-0 lg:left-auto lg:top-0 lg:h-[100dvh] lg:max-h-none lg:w-[400px] xl:right-[260px]',
+          // At xl/2xl the live-preview column occupies the rightmost 280px/320px.
+          // The outer layout applies lg:px-8 (32px). Total offset = padding + column
+          // width so the drawer docks flush to the preview column's left edge without
+          // overlap: xl = 32+280 = 312px, 2xl = 32+320 = 352px.
+          'lg:inset-y-0 lg:right-0 lg:left-auto lg:top-0 lg:h-[100dvh] lg:max-h-none lg:w-[400px] xl:right-[312px] 2xl:right-[352px]',
           // Slide transitions (respect reduced-motion)
           'motion-safe:animate-in motion-safe:slide-in-from-bottom motion-safe:duration-200',
           'lg:motion-safe:slide-in-from-right',
