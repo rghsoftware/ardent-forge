@@ -306,6 +306,49 @@ Wave 2, 3, and 4 have linear dependencies because each consumes the previous wav
 
 **Milestone M3 -- Feature accepted** (maps to Spec A7-A10)
 
+#### S019-T -- Test: onSave callback fires with saved template (P16-010)
+
+**Owner:** test-engineer
+**Parallel:** yes
+**Dependencies:** S016
+**Blocks:** none
+**Acceptance:**
+
+- `session-template-form.test.tsx` includes a test that renders with `validInitial`, clicks "Save template", and asserts `onSave` was called with `expect.objectContaining({ id: 'st-1' })`.
+
+#### S020-T -- Tests: save-button state machine (P16-012)
+
+**Owner:** test-engineer
+**Parallel:** yes
+**Dependencies:** S016
+**Blocks:** none
+**Acceptance:**
+
+- Test: renders enabled "Save template" button when `validInitial` is provided and form is valid.
+- Test: renders disabled "Saving..." button when `updateMutation.isPending` is true.
+
+#### S021-T -- Tests: onDirtyChange callbacks and mutation failure (P16-013)
+
+**Owner:** test-engineer
+**Parallel:** yes
+**Dependencies:** S016
+**Blocks:** none
+**Acceptance:**
+
+- Test: `onDirtyChange(true)` fired after user edits the form.
+- Test: `onDirtyChange(false)` fired as the last call after a successful save.
+- Test: server error `<p role="alert">` rendered when mutation rejects.
+
+#### S022-T -- Unit tests: computeErrors pure validation function (P16-011)
+
+**Owner:** test-engineer
+**Parallel:** yes
+**Dependencies:** S016
+**Blocks:** none
+**Acceptance:**
+
+- Dedicated `describe('computeErrors')` block with 7 unit tests covering: valid state (no errors), blank name, whitespace-only name, empty groups array, null groupType, empty activities, and null exerciseId.
+
 ## Contract Declarations
 
 At milestone boundaries, the following contracts are locked:

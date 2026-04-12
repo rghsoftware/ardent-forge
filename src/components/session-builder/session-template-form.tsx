@@ -118,7 +118,7 @@ function hydrateGroups(initial: SessionTemplateFull): ActivityGroupData[] {
   })
 }
 
-function computeErrors(name: string, groups: ActivityGroupData[]): ValidationErrors {
+export function computeErrors(name: string, groups: ActivityGroupData[]): ValidationErrors {
   const errs: ValidationErrors = { groups: {}, activities: {} }
   if (!name.trim()) errs.name = 'Give your template a name'
   if (groups.length === 0) errs.noGroups = 'Add at least one group to continue'
@@ -141,6 +141,14 @@ function hasValidationErrors(e: ValidationErrors): boolean {
     Object.keys(e.groups).length > 0 ||
     Object.keys(e.activities).length > 0
   )
+}
+
+function scrollToAnchor(id: string): void {
+  const el = document.getElementById(id)
+  if (!el) return
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
+  el.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'center' })
+  if (el instanceof HTMLElement) el.focus()
 }
 
 function scrollToFirstError(e: ValidationErrors, orderedGroups: ActivityGroupData[]): void {
@@ -170,11 +178,7 @@ function scrollToFirstError(e: ValidationErrors, orderedGroups: ActivityGroupDat
   }
 
   if (!id) return
-  const el = document.getElementById(id)
-  if (!el) return
-  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
-  el.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'center' })
-  if (el instanceof HTMLElement) el.focus()
+  scrollToAnchor(id)
 }
 
 // ---------------------------------------------------------------------------
@@ -190,7 +194,7 @@ export function SessionTemplateForm({
 }: SessionTemplateFormProps) {
   const { user } = useAuth()
   const userId = user?.id ?? ''
-  const { data: exercises = [] } = useExercises()
+  const { data: exercises = [], isError: exercisesFailed } = useExercises()
   const createMutation = useCreateSessionTemplate()
   const updateMutation = useUpdateSessionTemplate()
 
@@ -287,6 +291,11 @@ export function SessionTemplateForm({
   useEffect(() => {
     onDirtyChange?.(dirty)
   }, [dirty, onDirtyChange])
+  useEffect(() => {
+    if (exercisesFailed) {
+      console.error('[session-template-form] Failed to load exercises')
+    }
+  }, [exercisesFailed])
 
   const isSaving = createMutation.isPending || updateMutation.isPending
 
@@ -317,6 +326,8 @@ export function SessionTemplateForm({
   const handleMoveGroup = useCallback((fromIndex: number, toIndex: number) => {
     setGroups((prev) => {
       if (toIndex < 0 || toIndex >= prev.length) {
+        // Guard is only reachable if state desynchronizes -- the Move up/down
+        // controls are disabled at bounds, so no user-facing error state is needed.
         console.warn('[session-template-form] handleMoveGroup: target index out of bounds')
         return prev
       }
@@ -383,9 +394,9 @@ export function SessionTemplateForm({
         setBaselineSnapshot(currentSnapshot)
         onSave?.(result.template)
       }
-    } catch (err) {
+    } catch (_err) {
       const action = isEditing ? 'update' : 'create'
-      console.error(`[session-template-form] Failed to ${action} template "${name.trim()}":`, err)
+      // Hook's onError already logged. Render error state for the user.
       setServerError(`Failed to ${action} session template. Please try again.`)
     }
   }, [
@@ -627,17 +638,7 @@ export function SessionTemplateForm({
               key={item.anchorId}
               type="button"
               className="text-left text-xs text-destructive underline-offset-2 hover:underline"
-              onClick={() => {
-                const el = document.getElementById(item.anchorId)
-                if (!el) return
-                const reducedMotion =
-                  window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
-                el.scrollIntoView({
-                  behavior: reducedMotion ? 'instant' : 'smooth',
-                  block: 'center',
-                })
-                if (el instanceof HTMLElement) el.focus()
-              }}
+              onClick={() => scrollToAnchor(item.anchorId)}
             >
               {item.label}
             </button>

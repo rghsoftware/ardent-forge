@@ -394,9 +394,9 @@ export function EventTemplateForm({
         setBaselineSnapshot(currentSnapshot)
         onSave?.(result.template)
       }
-    } catch (err) {
+    } catch (_err) {
       const action = isEditing ? 'update' : 'create'
-      console.error(`[event-template-form] Failed to ${action} event "${name.trim()}":`, err)
+      // Hook's onError already logged. Render error state for the user.
       setErrors([`Failed to ${action} event. Please try again.`])
     }
   }, [

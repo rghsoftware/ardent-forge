@@ -87,7 +87,7 @@ export function ExercisePickerDrawer({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="flex min-h-10 min-w-10 items-center justify-center text-warm-ash/60 hover:text-bone-white"
+            className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white"
             aria-label="Close exercise picker"
           >
             <Icon name="close" size={20} />

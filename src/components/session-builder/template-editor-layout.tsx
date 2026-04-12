@@ -13,6 +13,11 @@ interface TemplateEditorLayoutProps {
  * provides the full-width wrapper, header with back link + title, and hosts
  * the form body as children. Save/cancel remain inside the form itself
  * (ADR-021-02).
+ *
+ * Intentionally omits `max-w-5xl`: the session-template form's 3-column grid
+ * (xl:grid-cols-[280px_1fr_260px]) and the xl/2xl picker drawer docking both
+ * require unrestricted viewport width. Content density is managed by the
+ * form's own column widths, not a page-level cap.
  */
 export function TemplateEditorLayout({ title, children, onBack }: TemplateEditorLayoutProps) {
   return (
@@ -23,7 +28,7 @@ export function TemplateEditorLayout({ title, children, onBack }: TemplateEditor
             <button
               type="button"
               onClick={onBack}
-              className="flex min-h-10 items-center gap-1 bg-transparent px-2 text-xs text-warm-ash/60 hover:text-bone-white"
+              className="flex min-h-12 items-center gap-1 bg-transparent px-2 text-xs text-warm-ash/60 hover:text-bone-white"
               aria-label="Back to library"
             >
               <Icon name="arrow_back" size={18} />
@@ -33,7 +38,7 @@ export function TemplateEditorLayout({ title, children, onBack }: TemplateEditor
             <Link
               to="/library"
               search={{ tab: 'templates' }}
-              className="flex min-h-10 items-center gap-1 px-2 text-xs text-warm-ash/60 hover:text-bone-white"
+              className="flex min-h-12 items-center gap-1 px-2 text-xs text-warm-ash/60 hover:text-bone-white"
               aria-label="Back to library"
             >
               <Icon name="arrow_back" size={18} />

@@ -97,6 +97,9 @@ export function useTouchSessionTemplateLastAssigned() {
 
   return useMutation({
     mutationFn: (id: string) => getAdapter().touchSessionTemplateLastAssigned(id),
+    onError: (err) => {
+      console.warn('[session-templates] touchLastAssigned failed:', err)
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['session-templates'] })
     },

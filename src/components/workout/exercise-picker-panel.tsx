@@ -24,7 +24,7 @@ export function ExercisePickerPanel({
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedQuery = useDebouncedValue(searchQuery, 200)
 
-  const { data: allExercises = [] } = useExercises()
+  const { data: allExercises = [], isError: exercisesFailed } = useExercises()
   const { data: recentExercises = [] } = useRecentlyUsedExercises(userId)
 
   const filteredExercises =
@@ -53,7 +53,13 @@ export function ExercisePickerPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        {showRecent && (
+        {exercisesFailed && (
+          <p className="py-8 text-center text-xs text-destructive">
+            Could not load exercises. Check your connection and try again.
+          </p>
+        )}
+
+        {!exercisesFailed && showRecent && (
           <div className="mb-4">
             <span className="mb-2 block text-[11px] uppercase tracking-widest text-warm-ash/60">
               RECENTLY USED
@@ -66,7 +72,7 @@ export function ExercisePickerPanel({
           </div>
         )}
 
-        {debouncedQuery.length > 0 && (
+        {!exercisesFailed && debouncedQuery.length > 0 && (
           <div>
             {filteredExercises.length === 0 ? (
               <p className="py-8 text-center text-xs text-warm-ash/60">No matches</p>
@@ -80,7 +86,7 @@ export function ExercisePickerPanel({
           </div>
         )}
 
-        {debouncedQuery.length === 0 && recentExercises.length === 0 && (
+        {!exercisesFailed && debouncedQuery.length === 0 && recentExercises.length === 0 && (
           <p className="py-8 text-center text-xs text-warm-ash/60">Type to search exercises</p>
         )}
       </div>

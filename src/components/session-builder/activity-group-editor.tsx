@@ -144,6 +144,8 @@ export function ActivityGroupEditor({
 
   const handleMoveActivity = (fromIndex: number, toIndex: number) => {
     if (toIndex < 0 || toIndex >= group.activities.length) {
+      // Guard is only reachable if state desynchronizes -- the Move up/down
+      // controls are disabled at bounds, so no user-facing error state is needed.
       console.warn('[activity-group-editor] handleMoveActivity: target index out of bounds')
       return
     }
