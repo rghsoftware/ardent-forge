@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { DisplaySnapshot } from '@/domain/types/display-snapshot'
+import type { DisplaySnapshot, IdleSnapshot } from '@/domain/types/display-snapshot'
 import {
   initDisplayPublisher,
   configureDisplayPublisher,
@@ -11,10 +11,12 @@ import {
   setHelloResponder,
   destroyDisplayPublisher,
   isPublisherReady,
+  getActiveGymId,
   initDisplaySubscriber,
   subscribeToDisplay,
   publishHello,
   destroyDisplaySubscriber,
+  getSubscriberStatus,
   type DisplayEventHandlers,
 } from '@/lib/display-realtime'
 import { getGymChannelName } from '@/lib/gym-channel'
@@ -26,7 +28,7 @@ import { getGymChannelName } from '@/lib/gym-channel'
 type BroadcastCallback = (msg: { payload: unknown }) => void
 type SubscribeCallback = (status: string, err?: unknown) => void
 
-function createMockClient() {
+function createMockClient({ autoSubscribe = true }: { autoSubscribe?: boolean } = {}) {
   const mockSend = vi.fn().mockResolvedValue('ok')
   const broadcastHandlers = new Map<string, BroadcastCallback>()
   let subscribeCallback: SubscribeCallback | null = null
@@ -35,7 +37,7 @@ function createMockClient() {
     send: mockSend,
     subscribe: vi.fn().mockImplementation((cb: SubscribeCallback) => {
       subscribeCallback = cb
-      cb('SUBSCRIBED')
+      if (autoSubscribe) cb('SUBSCRIBED')
       return mockChannel
     }),
     unsubscribe: vi.fn(),
@@ -58,6 +60,7 @@ function createMockClient() {
     mockSend,
     broadcastHandlers,
     getSubscribeCallback: () => subscribeCallback,
+    fireSubscribeCallback: (status: string, err?: unknown) => subscribeCallback?.(status, err),
   }
 }
 
@@ -74,6 +77,7 @@ function createMockHandlers(): DisplayEventHandlers {
 
 // Test gym IDs
 const GYM_A = 'gym-a-0000-0000-000000000000'
+const GYM_B = 'gym-b-0000-0000-000000000000'
 
 // Minimal valid DisplaySnapshot fixture
 const SNAPSHOT_FIXTURE: DisplaySnapshot = {
@@ -94,6 +98,23 @@ const SNAPSHOT_FIXTURE: DisplaySnapshot = {
   rest_timer: { state: 'idle' },
   session_type: 'STRENGTH',
   is_visible: true,
+}
+
+// Minimal valid IdleSnapshot fixture
+const IDLE_SNAPSHOT_FIXTURE: IdleSnapshot = {
+  server_time: '2026-04-12T10:00:00Z',
+  scheduled_sessions: [
+    {
+      display_name: 'Test User',
+      session_name: 'Morning Strength',
+      session_type: 'STRENGTH',
+      day_label: 'Sunday',
+    },
+  ],
+  next_session: {
+    display_name: 'Test User',
+    session_name: 'Morning Strength',
+  },
 }
 
 const BC_OPTS = { config: { broadcast: { ack: false, self: false } } }
@@ -387,5 +408,317 @@ describe('Hello handshake', () => {
     helloCb!({ payload: {} })
 
     expect(responder).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ===========================================================================
+// S015-T: subscribeToDisplay throws when uninitialized
+// ===========================================================================
+
+describe('Subscriber (uninitialized guards)', () => {
+  it('throws when called before initDisplaySubscriber', () => {
+    // No initDisplaySubscriber — _client is null from afterEach cleanup
+    expect(() => subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })).toThrow(
+      /Cannot subscribe: no client/,
+    )
+  })
+
+  it('throws when gymId is an empty string', () => {
+    const { mockClient } = createMockClient()
+    initDisplaySubscriber(mockClient)
+
+    expect(() => subscribeToDisplay({ gymId: '', handlers: createMockHandlers() })).toThrow(
+      /gymId must be a non-empty string/,
+    )
+  })
+})
+
+// ===========================================================================
+// S016-T: auto-publishHello on reconnect
+// ===========================================================================
+
+describe('Reconnect', () => {
+  it('does not fire publishHello on the first connection', () => {
+    const { mockClient, mockSend } = createMockClient()
+    initDisplaySubscriber(mockClient)
+
+    subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })
+
+    expect(mockSend).not.toHaveBeenCalledWith(expect.objectContaining({ event: 'display_hello' }))
+  })
+
+  it('auto-fires publishHello on reconnect when previously connected', () => {
+    const { mockClient, mockSend, getSubscribeCallback } = createMockClient()
+    initDisplaySubscriber(mockClient)
+
+    subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })
+
+    // Clear sends from the initial connect
+    mockSend.mockClear()
+
+    // Trigger channel error — schedules retry
+    getSubscribeCallback()?.('CHANNEL_ERROR', new Error('network'))
+
+    // Advance past the first retry delay (2000ms for attempt 1)
+    vi.advanceTimersByTime(2_000)
+
+    // Retry fires subscribeToDisplay, mock auto-fires SUBSCRIBED,
+    // _subConnectedBefore=true → publishHello is called
+    expect(mockSend).toHaveBeenCalledWith({
+      type: 'broadcast',
+      event: 'display_hello',
+      payload: {},
+    })
+  })
+})
+
+// ===========================================================================
+// S017-T: onStatusChange assertions
+// ===========================================================================
+
+describe('Subscriber (onStatusChange)', () => {
+  it('calls onStatusChange("connected") on SUBSCRIBED', () => {
+    const { mockClient } = createMockClient()
+    initDisplaySubscriber(mockClient)
+    const handlers = createMockHandlers()
+
+    subscribeToDisplay({ gymId: GYM_A, handlers })
+
+    expect(handlers.onStatusChange).toHaveBeenCalledWith('connected')
+  })
+
+  it.each(['TIMED_OUT', 'CHANNEL_ERROR', 'CLOSED'])(
+    'calls onStatusChange("reconnecting") for %s',
+    (status) => {
+      const { mockClient, getSubscribeCallback } = createMockClient()
+      initDisplaySubscriber(mockClient)
+      const handlers = createMockHandlers()
+
+      subscribeToDisplay({ gymId: GYM_A, handlers })
+      ;(handlers.onStatusChange as ReturnType<typeof vi.fn>).mockClear()
+
+      getSubscribeCallback()?.(status, new Error('test'))
+
+      expect(handlers.onStatusChange).toHaveBeenCalledWith('reconnecting')
+    },
+  )
+})
+
+// ===========================================================================
+// S018-T: focus, unfocus, idle_snapshot broadcast handlers
+// ===========================================================================
+
+describe('Subscriber (extended event handlers)', () => {
+  describe('focus broadcast', () => {
+    it('fires onFocus when subscriber receives a focus broadcast', () => {
+      const { mockClient, broadcastHandlers } = createMockClient()
+      initDisplaySubscriber(mockClient)
+      const handlers = createMockHandlers()
+
+      subscribeToDisplay({ gymId: GYM_A, handlers })
+
+      const focusCb = broadcastHandlers.get('focus')
+      expect(focusCb).toBeDefined()
+      focusCb!({ payload: { user_id: 'user-123' } })
+
+      expect(handlers.onFocus).toHaveBeenCalledWith({ user_id: 'user-123' })
+    })
+  })
+
+  describe('unfocus broadcast', () => {
+    it('fires onUnfocus when subscriber receives an unfocus broadcast', () => {
+      const { mockClient, broadcastHandlers } = createMockClient()
+      initDisplaySubscriber(mockClient)
+      const handlers = createMockHandlers()
+
+      subscribeToDisplay({ gymId: GYM_A, handlers })
+
+      const unfocusCb = broadcastHandlers.get('unfocus')
+      expect(unfocusCb).toBeDefined()
+      unfocusCb!({ payload: {} })
+
+      expect(handlers.onUnfocus).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('idle_snapshot broadcast', () => {
+    it('fires onIdleSnapshot when subscriber receives a valid idle_snapshot broadcast', () => {
+      const { mockClient, broadcastHandlers } = createMockClient()
+      initDisplaySubscriber(mockClient)
+      const handlers = createMockHandlers()
+
+      subscribeToDisplay({ gymId: GYM_A, handlers })
+
+      const idleCb = broadcastHandlers.get('idle_snapshot')
+      expect(idleCb).toBeDefined()
+      idleCb!({ payload: IDLE_SNAPSHOT_FIXTURE })
+
+      expect(handlers.onIdleSnapshot).toHaveBeenCalledWith(IDLE_SNAPSHOT_FIXTURE)
+    })
+  })
+})
+
+// ===========================================================================
+// S019-T: gym-switch channel teardown
+// ===========================================================================
+
+describe('Publisher (gym switch)', () => {
+  it('tears down the old channel and creates a new one when gymId changes', () => {
+    const { mockClient } = createMockClient()
+    initDisplayPublisher(mockClient)
+    configureDisplayPublisher({ gymId: GYM_A, intent: 'broadcasting' })
+
+    // Force GYM_A channel creation
+    publishDisplaySnapshot(SNAPSHOT_FIXTURE)
+    expect(mockClient.channel).toHaveBeenCalledWith(getGymChannelName(GYM_A), BC_OPTS)
+
+    const removeChannelSpy = mockClient.removeChannel as ReturnType<typeof vi.fn>
+    const removeCallsBefore = removeChannelSpy.mock.calls.length
+
+    // Switch to GYM_B — should tear down GYM_A channel
+    configureDisplayPublisher({ gymId: GYM_B, intent: 'broadcasting' })
+
+    expect(mockClient.removeChannel).toHaveBeenCalledTimes(removeCallsBefore + 1)
+
+    // Next publish should create a GYM_B channel
+    publishDisplaySnapshot(SNAPSHOT_FIXTURE)
+    expect(mockClient.channel).toHaveBeenLastCalledWith(getGymChannelName(GYM_B), BC_OPTS)
+  })
+})
+
+// ===========================================================================
+// S020-T: exponential backoff sequencing
+// ===========================================================================
+
+describe('Backoff', () => {
+  it('schedules first retry after 2000ms on CHANNEL_ERROR', () => {
+    const { mockClient, getSubscribeCallback } = createMockClient()
+    initDisplaySubscriber(mockClient)
+
+    subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })
+    const channelCallsBefore = (mockClient.channel as ReturnType<typeof vi.fn>).mock.calls.length
+
+    getSubscribeCallback()?.('CHANNEL_ERROR', new Error('test'))
+
+    vi.advanceTimersByTime(1_999)
+    expect((mockClient.channel as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
+      channelCallsBefore,
+    )
+
+    vi.advanceTimersByTime(1)
+    expect((mockClient.channel as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
+      channelCallsBefore + 1,
+    )
+  })
+
+  it('resets retry attempt counter after successful reconnect', () => {
+    const { mockClient, getSubscribeCallback } = createMockClient()
+    initDisplaySubscriber(mockClient)
+
+    subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })
+
+    // First error: attempt 1, delay=2000ms; retry fires SUBSCRIBED → counter resets to 0
+    getSubscribeCallback()?.('CHANNEL_ERROR', new Error('test'))
+    vi.advanceTimersByTime(2_000)
+
+    // Second error after reset should also use 2000ms, not 4000ms
+    const channelCallsBefore = (mockClient.channel as ReturnType<typeof vi.fn>).mock.calls.length
+    getSubscribeCallback()?.('CHANNEL_ERROR', new Error('test'))
+
+    vi.advanceTimersByTime(1_999)
+    expect((mockClient.channel as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
+      channelCallsBefore,
+    )
+
+    vi.advanceTimersByTime(1)
+    expect((mockClient.channel as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
+      channelCallsBefore + 1,
+    )
+  })
+
+  it('caps retry delay at 30 seconds', () => {
+    // autoSubscribe=false prevents SUBSCRIBED from resetting _subRetryAttempt,
+    // allowing the counter to accumulate across consecutive errors.
+    const { mockClient, getSubscribeCallback } = createMockClient({ autoSubscribe: false })
+    initDisplaySubscriber(mockClient)
+
+    subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })
+
+    // Drive 4 errors + advance their delays so _subRetryAttempt reaches 4
+    // without a successful SUBSCRIBED resetting it.
+    const delays = [2_000, 4_000, 8_000, 16_000]
+    for (const delay of delays) {
+      getSubscribeCallback()?.('CHANNEL_ERROR', new Error('test'))
+      vi.advanceTimersByTime(delay)
+    }
+
+    // 5th error: attempt=4 → delay = min(2000 * 2^4, 30000) = min(32000, 30000) = 30000ms
+    const channelCallsBefore = (mockClient.channel as ReturnType<typeof vi.fn>).mock.calls.length
+    getSubscribeCallback()?.('CHANNEL_ERROR', new Error('test'))
+
+    vi.advanceTimersByTime(29_999)
+    expect((mockClient.channel as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
+      channelCallsBefore,
+    )
+
+    vi.advanceTimersByTime(1)
+    expect((mockClient.channel as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
+      channelCallsBefore + 1,
+    )
+  })
+})
+
+// ===========================================================================
+// S021-T: getActiveGymId and getSubscriberStatus state transitions
+// ===========================================================================
+
+describe('Getter state transitions', () => {
+  describe('getActiveGymId', () => {
+    it('returns null when publisher is not configured', () => {
+      expect(getActiveGymId()).toBeNull()
+    })
+
+    it('returns the configured gymId while broadcasting', () => {
+      const { mockClient } = createMockClient()
+      initDisplayPublisher(mockClient)
+      configureDisplayPublisher({ gymId: GYM_A, intent: 'broadcasting' })
+
+      expect(getActiveGymId()).toBe(GYM_A)
+    })
+
+    it('returns null after destroyDisplayPublisher', () => {
+      const { mockClient } = createMockClient()
+      initDisplayPublisher(mockClient)
+      configureDisplayPublisher({ gymId: GYM_A, intent: 'broadcasting' })
+
+      destroyDisplayPublisher()
+
+      expect(getActiveGymId()).toBeNull()
+    })
+  })
+
+  describe('getSubscriberStatus', () => {
+    it('returns "disconnected" before subscribing', () => {
+      expect(getSubscriberStatus()).toBe('disconnected')
+    })
+
+    it('returns "connected" after SUBSCRIBED', () => {
+      const { mockClient } = createMockClient()
+      initDisplaySubscriber(mockClient)
+
+      subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })
+
+      expect(getSubscriberStatus()).toBe('connected')
+    })
+
+    it('returns "reconnecting" after CHANNEL_ERROR', () => {
+      const { mockClient, getSubscribeCallback } = createMockClient()
+      initDisplaySubscriber(mockClient)
+
+      subscribeToDisplay({ gymId: GYM_A, handlers: createMockHandlers() })
+      getSubscribeCallback()?.('CHANNEL_ERROR', new Error('test'))
+
+      expect(getSubscriberStatus()).toBe('reconnecting')
+    })
   })
 })

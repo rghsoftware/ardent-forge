@@ -305,9 +305,9 @@ Add "Remote Display" section to the profile/settings page:
 **Depends on:** None (existing module)
 **Parallel:** Yes (all Wave 5 tasks parallel)
 
-- [ ] Add test: `'throws when subscribeToDisplay is called before initDisplaySubscriber'`
-- [ ] Verify the thrown `Error` message includes `'Call initDisplaySubscriber first'`
-- [ ] This contract is relied on by `src/routes/display/gym/$gymId.tsx` to render the Retry button via its outer `try/catch` → `BootError` mapping
+- [x] Add test: `'throws when subscribeToDisplay is called before initDisplaySubscriber'`
+- [x] Verify the thrown `Error` message includes `'Call initDisplaySubscriber first'`
+- [x] This contract is relied on by `src/routes/display/gym/$gymId.tsx` to render the Retry button via its outer `try/catch` → `BootError` mapping
 
 **Acceptance:** Test confirms the throw and message. (Ported from deleted `display-subscriber.test.ts`)
 
@@ -320,10 +320,10 @@ Add "Remote Display" section to the profile/settings page:
 **Depends on:** None
 **Parallel:** Yes
 
-- [ ] Add test: `'auto-fires publishHello on reconnect when previously connected'`
-- [ ] Sequence: `SUBSCRIBED` → `CHANNEL_ERROR` → timer fires → `SUBSCRIBED` again
-- [ ] Assert `channel.send` called with `{ type: 'broadcast', event: 'display_hello', payload: {} }` on the second `SUBSCRIBED`
-- [ ] Assert `channel.send` is NOT called with `display_hello` on the first `SUBSCRIBED` (first connect, not reconnect)
+- [x] Add test: `'auto-fires publishHello on reconnect when previously connected'`
+- [x] Sequence: `SUBSCRIBED` → `CHANNEL_ERROR` → timer fires → `SUBSCRIBED` again
+- [x] Assert `channel.send` called with `{ type: 'broadcast', event: 'display_hello', payload: {} }` on the second `SUBSCRIBED`
+- [x] Assert `channel.send` is NOT called with `display_hello` on the first `SUBSCRIBED` (first connect, not reconnect)
 
 **Acceptance:** Full reconnect cycle exercises the `_subConnectedBefore` flag correctly.
 
@@ -336,8 +336,8 @@ Add "Remote Display" section to the profile/settings page:
 **Depends on:** None
 **Parallel:** Yes
 
-- [ ] Add test: `'calls onStatusChange("connected") on SUBSCRIBED'`
-- [ ] Add parameterized tests: `onStatusChange("reconnecting")` fires for `TIMED_OUT`, `CHANNEL_ERROR`, and `CLOSED`
+- [x] Add test: `'calls onStatusChange("connected") on SUBSCRIBED'`
+- [x] Add parameterized tests: `onStatusChange("reconnecting")` fires for `TIMED_OUT`, `CHANNEL_ERROR`, and `CLOSED`
 
 **Acceptance:** `onStatusChange` is asserted in subscriber tests (it was mocked but never asserted).
 
@@ -350,10 +350,10 @@ Add "Remote Display" section to the profile/settings page:
 **Depends on:** None
 **Parallel:** Yes
 
-- [ ] Add test: `'fires onFocus when subscriber receives a focus broadcast'`
-- [ ] Add test: `'fires onUnfocus when subscriber receives an unfocus broadcast'`
-- [ ] Add test: `'fires onIdleSnapshot when subscriber receives a valid idle_snapshot broadcast'`
-- [ ] The `idle_snapshot` test must use a valid `idleSnapshotSchema` payload (distinct from `displaySnapshotSchema`)
+- [x] Add test: `'fires onFocus when subscriber receives a focus broadcast'`
+- [x] Add test: `'fires onUnfocus when subscriber receives an unfocus broadcast'`
+- [x] Add test: `'fires onIdleSnapshot when subscriber receives a valid idle_snapshot broadcast'`
+- [x] The `idle_snapshot` test must use a valid `idleSnapshotSchema` payload (distinct from `displaySnapshotSchema`)
 
 **Acceptance:** All five subscriber event handlers are covered (currently only `workout_snapshot` and `session_ended` are tested).
 
@@ -366,10 +366,10 @@ Add "Remote Display" section to the profile/settings page:
 **Depends on:** None
 **Parallel:** Yes
 
-- [ ] Add test: `'tears down the old channel and creates a new one when gymId changes via configureDisplayPublisher'`
-- [ ] Configure publisher with `GYM_A`, publish to force channel creation, then configure with `GYM_B`
-- [ ] Assert `removeChannel` was called for the `GYM_A` channel
-- [ ] Assert a new channel is created with `getGymChannelName(GYM_B)` on next publish
+- [x] Add test: `'tears down the old channel and creates a new one when gymId changes via configureDisplayPublisher'`
+- [x] Configure publisher with `GYM_A`, publish to force channel creation, then configure with `GYM_B`
+- [x] Assert `removeChannel` was called for the `GYM_A` channel
+- [x] Assert a new channel is created with `getGymChannelName(GYM_B)` on next publish
 
 **Acceptance:** Gym-switch path exercises `teardownPubChannel()` correctly. (Ported from deleted `display-publisher.test.ts`)
 
@@ -382,9 +382,9 @@ Add "Remote Display" section to the profile/settings page:
 **Depends on:** None
 **Parallel:** Yes
 
-- [ ] Add test: `'reconnects after CHANNEL_ERROR with exponential backoff delay'` — first failure uses 2000ms delay
-- [ ] Add test: `'resets retry attempt counter after successful reconnect'`
-- [ ] Add test: `'caps retry delay at 30 seconds'` — advance attempt counter high enough to hit the cap
+- [x] Add test: `'reconnects after CHANNEL_ERROR with exponential backoff delay'` — first failure uses 2000ms delay
+- [x] Add test: `'resets retry attempt counter after successful reconnect'`
+- [x] Add test: `'caps retry delay at 30 seconds'` — advance attempt counter high enough to hit the cap
 
 **Acceptance:** `scheduleRetry` delay math and `_subRetryAttempt` reset-on-reconnect are verified.
 
@@ -397,8 +397,8 @@ Add "Remote Display" section to the profile/settings page:
 **Depends on:** None
 **Parallel:** Yes
 
-- [ ] `getActiveGymId`: add tests — returns `null` when unconfigured, returns gym ID when broadcasting, returns `null` after `destroyDisplayPublisher`
-- [ ] `getSubscriberStatus`: add tests — returns `'disconnected'` when unsubscribed, `'connected'` after `SUBSCRIBED`, `'reconnecting'` after `CHANNEL_ERROR`
+- [x] `getActiveGymId`: add tests — returns `null` when unconfigured, returns gym ID when broadcasting, returns `null` after `destroyDisplayPublisher`
+- [x] `getSubscriberStatus`: add tests — returns `'disconnected'` when unsubscribed, `'connected'` after `SUBSCRIBED`, `'reconnecting'` after `CHANNEL_ERROR`
 
 **Acceptance:** Both exported getters have state-transition coverage. (Ported from deleted `display-publisher.test.ts`; `getSubscriberStatus` was never tested.)
 
