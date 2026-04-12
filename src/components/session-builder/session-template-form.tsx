@@ -2,13 +2,6 @@ import { useState, useCallback, useEffect, useMemo, type ComponentType } from 'r
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { ActivityGroupEditor, type ActivityGroupData } from './activity-group-editor'
 import type { PickerComponentProps } from './activity-editor'
 import { CollapsedFieldsRow } from './collapsed-fields-row'
@@ -487,19 +480,27 @@ export function SessionTemplateForm({
         {(() => {
           const scoringField = (
             <div className="px-4 lg:px-0">
-              <span className="mb-2 block text-xs font-medium text-warm-ash/60">Scoring</span>
-              <Select value={scoring} onValueChange={(v) => setScoring(v as ScoringType)}>
-                <SelectTrigger className="min-h-12 border-0 border-b border-warm-ash/30 bg-transparent text-xs uppercase tracking-wider text-bone-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-surface-gunmetal">
-                  {SCORING_TYPES.map((s) => (
-                    <SelectItem key={s.value} value={s.value} className="text-xs uppercase">
-                      {s.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-warm-ash/60">
+                Scoring
+              </span>
+              <ToggleGroup
+                type="single"
+                value={scoring}
+                onValueChange={(v) => {
+                  if (v) setScoring(v as ScoringType)
+                }}
+                className="flex flex-wrap gap-1"
+              >
+                {SCORING_TYPES.map((s) => (
+                  <ToggleGroupItem
+                    key={s.value}
+                    value={s.value}
+                    className="min-h-10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider"
+                  >
+                    {s.label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
             </div>
           )
 
@@ -561,9 +562,12 @@ export function SessionTemplateForm({
       {/* ---- Right column: activity groups ---- */}
       <div className="flex flex-col gap-3">
         <div className="px-4 lg:px-0">
-          <span className="text-xs font-medium uppercase tracking-wider text-warm-ash/60">
+          <h2 className="font-display text-sm uppercase tracking-wide text-bone-white">
             Activity Groups
-          </span>
+            {groups.length > 0 && (
+              <span className="ml-2 tabular-nums text-warm-ash/60">· {groups.length}</span>
+            )}
+          </h2>
         </div>
 
         {groups.map((group, index) => (
@@ -590,7 +594,7 @@ export function SessionTemplateForm({
           <Button
             id="field-add-group"
             type="button"
-            variant="outline"
+            variant="default"
             onClick={handleAddGroup}
             className="w-full min-h-12 text-xs"
           >
@@ -662,16 +666,12 @@ export function SessionTemplateForm({
         )}
         <Button
           type="button"
-          variant="molten"
+          variant="default"
           onClick={handleSave}
-          disabled={isSaving || (hasAttemptedSave && !isFormValid)}
+          disabled={isSaving || !isFormValid}
           className="min-h-12 flex-1 text-xs"
         >
-          {isSaving
-            ? 'Saving...'
-            : hasAttemptedSave && !isFormValid
-              ? 'Resolve issues above'
-              : 'Save template'}
+          {isSaving ? 'Saving...' : !isFormValid ? 'Resolve errors' : 'Save template'}
         </Button>
       </div>
     </div>

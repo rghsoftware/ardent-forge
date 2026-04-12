@@ -48,8 +48,9 @@ export function CollapsedFieldsRow({
         aria-expanded={expanded}
         aria-controls={contentId}
       >
-        <span className="font-body text-xs uppercase tracking-wider text-warm-ash">
-          {labels.join(', ')}
+        <span className="font-body text-xs uppercase tracking-wider">
+          {!expanded && <span className="text-warm-ash/80">Optional: </span>}
+          <span className="text-warm-ash/50">{labels.join(', ')}</span>
         </span>
         <Icon name={expanded ? 'expand_less' : 'expand_more'} size={20} />
       </button>

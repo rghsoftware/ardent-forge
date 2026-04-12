@@ -1,14 +1,20 @@
 import { useState, type ComponentType } from 'react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Icon } from '@/components/icon'
 import { SetSchemeEditor } from './set-scheme-editor'
 import { AddExerciseSheet } from '@/components/workout/add-exercise-sheet'
-import type { Exercise, GroupType, SessionType, SetScheme } from '@/domain/types'
+import type { Exercise, SessionType, SetScheme } from '@/domain/types'
 
 export interface PickerComponentProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onExerciseSelected: (exercise: Exercise, groupType: GroupType) => void
+  onExerciseSelected: (exercise: Exercise) => void
   userId?: string
 }
 
@@ -38,6 +44,7 @@ interface ActivityEditorProps {
   isLast?: boolean
   PickerComponent?: ComponentType<PickerComponentProps>
   exerciseError?: string
+  autoOpenPicker?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -58,8 +65,9 @@ export function ActivityEditor({
   isLast,
   PickerComponent = AddExerciseSheet,
   exerciseError,
+  autoOpenPicker,
 }: ActivityEditorProps) {
-  const [showExerciseSheet, setShowExerciseSheet] = useState(false)
+  const [showExerciseSheet, setShowExerciseSheet] = useState(autoOpenPicker ?? false)
   const [showNotes, setShowNotes] = useState(!!activity.notes)
 
   const exercise = activity.exerciseId ? exercises.find((e) => e.id === activity.exerciseId) : null
@@ -68,7 +76,7 @@ export function ActivityEditor({
     <div className="bg-surface-iron">
       {/* Header row: ordinal + exercise name + actions */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-2">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center bg-surface-steel font-display text-xs tabular-nums text-bone-white">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-surface-steel font-display text-xs tabular-nums text-bone-white">
           {activity.ordinal}
         </span>
 
@@ -90,15 +98,17 @@ export function ActivityEditor({
             <Button
               id={`field-activity-${activity.clientId}-exercise`}
               type="button"
-              variant="secondary"
-              size="sm"
+              variant="default"
               onClick={() => setShowExerciseSheet(true)}
-              className={`w-full text-xs${exerciseError ? ' ring-1 ring-destructive' : ''}`}
+              className={`min-h-12 w-full text-xs${
+                exerciseError ? ' ring-1 ring-destructive' : ''
+              }`}
               aria-invalid={exerciseError ? true : undefined}
               aria-describedby={
                 exerciseError ? `field-activity-${activity.clientId}-exercise-error` : undefined
               }
             >
+              <Icon name="add" size={16} />
               Select exercise
             </Button>
             {exerciseError && (
@@ -113,46 +123,45 @@ export function ActivityEditor({
           </div>
         )}
 
-        <div className="flex items-center gap-0.5">
-          {onMoveUp && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <button
               type="button"
-              onClick={onMoveUp}
-              disabled={isFirst}
-              className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
-              aria-label="Move activity up"
+              className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white"
+              aria-label="Activity actions"
             >
-              <Icon name="keyboard_arrow_up" size={18} />
+              <Icon name="more_vert" size={18} />
             </button>
-          )}
-          {onMoveDown && (
-            <button
-              type="button"
-              onClick={onMoveDown}
-              disabled={isLast}
-              className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white disabled:opacity-25 disabled:pointer-events-none"
-              aria-label="Move activity down"
-            >
-              <Icon name="keyboard_arrow_down" size={18} />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setShowNotes(!showNotes)}
-            className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white"
-            aria-label="Toggle notes"
-          >
-            <Icon name="notes" size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-warning-flare"
-            aria-label="Delete activity"
-          >
-            <Icon name="delete" size={18} />
-          </button>
-        </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-40">
+            {onMoveUp && (
+              <DropdownMenuItem
+                disabled={isFirst}
+                onSelect={() => onMoveUp()}
+              >
+                <Icon name="keyboard_arrow_up" size={16} />
+                Move up
+              </DropdownMenuItem>
+            )}
+            {onMoveDown && (
+              <DropdownMenuItem
+                disabled={isLast}
+                onSelect={() => onMoveDown()}
+              >
+                <Icon name="keyboard_arrow_down" size={16} />
+                Move down
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onSelect={() => setShowNotes((prev) => !prev)}>
+              <Icon name="notes" size={16} />
+              {showNotes ? 'Hide notes' : 'Add notes'}
+            </DropdownMenuItem>
+            <DropdownMenuItem variant="destructive" onSelect={() => onDelete()}>
+              <Icon name="delete" size={16} />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Set scheme editor */}

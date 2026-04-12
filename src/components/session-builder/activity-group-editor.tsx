@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Icon } from '@/components/icon'
@@ -93,6 +94,8 @@ export function ActivityGroupEditor({
   groupErrors,
   activityErrors,
 }: ActivityGroupEditorProps) {
+  const [pendingPickerClientId, setPendingPickerClientId] = useState<string | null>(null)
+
   const isStage1 = group.groupType === null
   const visibility = group.groupType ? GROUP_FIELD_VISIBILITY[group.groupType] : null
 
@@ -122,6 +125,7 @@ export function ActivityGroupEditor({
       setScheme: defaultScheme('fixedSets'),
       ordinal: group.activities.length + 1,
     }
+    setPendingPickerClientId(newActivity.clientId)
     onChange({ ...group, activities: [...group.activities, newActivity] })
   }
 
@@ -168,7 +172,7 @@ export function ActivityGroupEditor({
           )}
           {/* surface-steel intentional: ordinal is a positional index, not a primary action.
               Position already communicates order; ember here would dilute the accent. */}
-          <span className="flex h-8 w-8 items-center justify-center bg-surface-steel font-display text-xs font-medium tabular-nums text-bone-white">
+          <span className="flex h-10 w-10 items-center justify-center bg-surface-steel font-display text-xs font-medium tabular-nums text-bone-white">
             {group.ordinal}
           </span>
           {onMoveDown && (
@@ -184,62 +188,9 @@ export function ActivityGroupEditor({
           )}
         </div>
 
-        {/* Group type selector */}
-        <div className="flex flex-1 flex-col gap-1">
-          <ToggleGroup
-            id={`field-group-${group.clientId}-type`}
-            type="single"
-            value={group.groupType ?? ''}
-            onValueChange={handleTypeChange}
-            className="flex flex-col items-start gap-2"
-            aria-invalid={groupErrors?.noType ? true : undefined}
-          >
-            <div className="flex flex-col gap-0.5">
-              <p className="font-display text-[10px] uppercase tracking-widest text-warm-ash/40">
-                Strength
-              </p>
-              <div className="flex gap-1">
-                {STRENGTH_TYPES.map((gt) => (
-                  <ToggleGroupItem
-                    key={gt.value}
-                    value={gt.value}
-                    className="min-h-12 w-24 shrink-0 px-2 text-xs font-medium uppercase tracking-wider"
-                  >
-                    {gt.label}
-                  </ToggleGroupItem>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <p className="font-display text-[10px] uppercase tracking-widest text-warm-ash/40">
-                Conditioning
-              </p>
-              <div className="flex gap-1">
-                {CONDITIONING_TYPES.map((gt) => (
-                  <ToggleGroupItem
-                    key={gt.value}
-                    value={gt.value}
-                    className="min-h-12 w-24 shrink-0 px-2 text-xs font-medium uppercase tracking-wider"
-                  >
-                    {gt.label}
-                  </ToggleGroupItem>
-                ))}
-              </div>
-            </div>
-          </ToggleGroup>
-          {groupErrors?.noType && (
-            <p role="alert" className="text-xs text-destructive">
-              {groupErrors.noType}
-            </p>
-          )}
-          {group.groupType && (
-            <p className="font-body text-xs text-warm-ash">
-              {GROUP_TYPE_HELP[group.groupType].oneLiner}
-            </p>
-          )}
-        </div>
-
         <HelpTrigger title="Group types" content={groupTypeHelpContent} />
+
+        <div className="flex-1" />
 
         <button
           type="button"
@@ -249,6 +200,57 @@ export function ActivityGroupEditor({
         >
           <Icon name="delete" size={20} />
         </button>
+      </div>
+
+      {/* Group type selector (own block below header) */}
+      <div className="px-4 pb-3">
+        <ToggleGroup
+          id={`field-group-${group.clientId}-type`}
+          type="single"
+          value={group.groupType ?? ''}
+          onValueChange={handleTypeChange}
+          className="flex w-full flex-col items-stretch gap-3"
+          aria-invalid={groupErrors?.noType ? true : undefined}
+        >
+          <div className="flex flex-col gap-1">
+            <p className="text-[11px] uppercase tracking-wider text-warm-ash/60">Strength</p>
+            <div className="grid grid-cols-4 gap-1">
+              {STRENGTH_TYPES.map((gt) => (
+                <ToggleGroupItem
+                  key={gt.value}
+                  value={gt.value}
+                  className="min-h-12 px-2 text-xs font-medium uppercase tracking-wider"
+                >
+                  {gt.label}
+                </ToggleGroupItem>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-[11px] uppercase tracking-wider text-warm-ash/60">Conditioning</p>
+            <div className="grid grid-cols-4 gap-1">
+              {CONDITIONING_TYPES.map((gt) => (
+                <ToggleGroupItem
+                  key={gt.value}
+                  value={gt.value}
+                  className="min-h-12 px-2 text-xs font-medium uppercase tracking-wider"
+                >
+                  {gt.label}
+                </ToggleGroupItem>
+              ))}
+            </div>
+          </div>
+        </ToggleGroup>
+        {groupErrors?.noType && (
+          <p role="alert" className="mt-1 text-xs text-destructive">
+            {groupErrors.noType}
+          </p>
+        )}
+        {group.groupType && (
+          <p className="mt-2 text-[11px] text-warm-ash/60">
+            {GROUP_TYPE_HELP[group.groupType].description}
+          </p>
+        )}
       </div>
 
       {/* Stage 2: group settings and exercises (only after type is selected) */}
@@ -320,12 +322,18 @@ export function ActivityGroupEditor({
                 isLast={index === group.activities.length - 1}
                 PickerComponent={PickerComponent}
                 exerciseError={activityErrors?.[activity.clientId]}
+                autoOpenPicker={activity.clientId === pendingPickerClientId}
               />
             ))}
           </div>
 
           {/* Add exercise button */}
           <div className="px-4 pb-4">
+            {group.activities.length === 0 && (
+              <p className="pb-2 text-[11px] uppercase tracking-wider text-warm-ash/40">
+                No exercises
+              </p>
+            )}
             <Button
               id={`field-group-${group.clientId}-add-activity`}
               type="button"

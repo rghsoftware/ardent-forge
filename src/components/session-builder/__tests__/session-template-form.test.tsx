@@ -67,9 +67,11 @@ describe('SessionTemplateForm', () => {
     expect(screen.getByText('Scoring')).toBeInTheDocument()
   })
 
-  it('renders Save template button', () => {
+  it('renders disabled Save button with Resolve errors copy on initial load', () => {
     renderWithProviders(<SessionTemplateForm />)
-    expect(screen.getByText('Save template')).toBeInTheDocument()
+    const saveButton = screen.getByRole('button', { name: 'Resolve errors' })
+    expect(saveButton).toBeInTheDocument()
+    expect(saveButton).toBeDisabled()
   })
 
   it('renders Add group button', () => {
@@ -77,24 +79,25 @@ describe('SessionTemplateForm', () => {
     expect(screen.getByText('Add group')).toBeInTheDocument()
   })
 
-  it('shows validation error when saving with empty name', async () => {
+  it('shows name validation error when name field is blurred while empty', async () => {
     const user = userEvent.setup()
     renderWithProviders(<SessionTemplateForm />)
 
-    await user.click(screen.getByText('Save template'))
+    const nameInput = screen.getByLabelText('Template name')
+    await user.click(nameInput)
+    await user.tab()
 
     expect(screen.getByText('Give your template a name')).toBeInTheDocument()
   })
 
-  it('shows validation error when saving with no activity groups', async () => {
+  it('keeps Save button disabled when name is filled but no groups exist', async () => {
     const user = userEvent.setup()
     renderWithProviders(<SessionTemplateForm />)
 
-    // Fill in name but don't add groups
     await user.type(screen.getByLabelText('Template name'), 'My Session')
-    await user.click(screen.getByText('Save template'))
 
-    expect(screen.getByText('Add at least one group to continue')).toBeInTheDocument()
+    const saveButton = screen.getByRole('button', { name: 'Resolve errors' })
+    expect(saveButton).toBeDisabled()
   })
 
   it('renders Cancel button when onCancel prop is provided', () => {
