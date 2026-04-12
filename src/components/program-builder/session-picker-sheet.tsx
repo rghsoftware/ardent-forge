@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import {
   Sheet,
   SheetContent,
@@ -11,8 +10,6 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/icon'
 import { Skeleton } from '@/components/ui/skeleton'
-import { SessionTemplateForm } from '@/components/session-builder/session-template-form'
-import { EventTemplateForm } from '@/components/event-builder/event-template-form'
 import {
   useSessionTemplates,
   useTouchSessionTemplateLastAssigned,
@@ -42,6 +39,8 @@ interface SessionPickerSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSelect: (templateId: string, templateName: string, sessionType: SessionType) => void
+  onCreateTemplate: () => void
+  onCreateEvent: () => void
   userId: string
 }
 
@@ -49,15 +48,14 @@ export function SessionPickerSheet({
   open,
   onOpenChange,
   onSelect,
+  onCreateTemplate,
+  onCreateEvent,
   userId,
 }: SessionPickerSheetProps) {
-  const navigate = useNavigate()
   const { data: templates = [], isLoading } = useSessionTemplates(userId)
   const touchLastAssigned = useTouchSessionTemplateLastAssigned()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<SessionType | 'ALL'>('ALL')
-  const [showCreate, setShowCreate] = useState(false)
-  const [showCreateEvent, setShowCreateEvent] = useState(false)
 
   const isDefaultView = filter === 'ALL' && !search.trim()
 
@@ -98,44 +96,9 @@ export function SessionPickerSheet({
       onOpenChange(false)
       setSearch('')
       setFilter('ALL')
-      setShowCreate(false)
-      setShowCreateEvent(false)
     },
     [onSelect, onOpenChange, touchMutate],
   )
-
-  const handleCreated = useCallback(
-    (template: SessionTemplate) => {
-      // Auto-select the newly created template
-      onSelect(template.id, template.name, template.category)
-      onOpenChange(false)
-      setSearch('')
-      setFilter('ALL')
-      setShowCreate(false)
-      setShowCreateEvent(false)
-    },
-    [onSelect, onOpenChange],
-  )
-
-  const handleCancelCreate = useCallback(() => {
-    setShowCreate(false)
-  }, [])
-
-  const handleEventCreated = useCallback(
-    (template: SessionTemplate) => {
-      onSelect(template.id, template.name, template.category)
-      onOpenChange(false)
-      setSearch('')
-      setFilter('ALL')
-      setShowCreate(false)
-      setShowCreateEvent(false)
-    },
-    [onSelect, onOpenChange],
-  )
-
-  const handleCancelCreateEvent = useCallback(() => {
-    setShowCreateEvent(false)
-  }, [])
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -153,41 +116,6 @@ export function SessionPickerSheet({
           </SheetDescription>
         </SheetHeader>
 
-        {showCreate ? (
-          /* Inline template creation form */
-          <div className="flex flex-1 flex-col overflow-y-auto pt-2">
-            <SessionTemplateForm onSave={handleCreated} onCancel={handleCancelCreate} />
-            <div className="px-4 py-3">
-              <button
-                type="button"
-                onClick={() => {
-                  onOpenChange(false)
-                  navigate({ to: '/library' })
-                }}
-                className="text-[11px] text-warm-ash/50 transition-colors hover:text-ember"
-              >
-                Want more options? Create in the Library
-              </button>
-            </div>
-          </div>
-        ) : showCreateEvent ? (
-          /* Inline event creation form */
-          <div className="flex flex-1 flex-col overflow-y-auto pt-2">
-            <EventTemplateForm onSave={handleEventCreated} onCancel={handleCancelCreateEvent} />
-            <div className="px-4 py-3">
-              <button
-                type="button"
-                onClick={() => {
-                  onOpenChange(false)
-                  navigate({ to: '/library' })
-                }}
-                className="text-[11px] text-warm-ash/50 transition-colors hover:text-ember"
-              >
-                Want more options? Create in the Library
-              </button>
-            </div>
-          </div>
-        ) : (
           <>
             <div className="px-4 pt-3">
               <input
@@ -266,12 +194,12 @@ export function SessionPickerSheet({
               )}
             </div>
 
-            {/* Create new template / event -- opens inline form directly */}
+            {/* Create new template / event -- opens full-screen dialog */}
             <div className="flex flex-col gap-2 border-t border-warm-ash/10 px-4 py-3">
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => setShowCreate(true)}
+                onClick={onCreateTemplate}
                 className="min-h-12 w-full text-xs"
               >
                 <Icon name="add" size={16} />
@@ -280,7 +208,7 @@ export function SessionPickerSheet({
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => setShowCreateEvent(true)}
+                onClick={onCreateEvent}
                 className="min-h-12 w-full text-xs"
               >
                 <Icon name="flag" size={16} fill className="text-ember" />
@@ -288,7 +216,6 @@ export function SessionPickerSheet({
               </Button>
             </div>
           </>
-        )}
       </SheetContent>
     </Sheet>
   )

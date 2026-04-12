@@ -25,6 +25,7 @@ import {
   useCreateSessionTemplate,
   useUpdateSessionTemplate,
   useDeleteSessionTemplate,
+  useCloneSessionTemplate,
 } from '../use-session-templates'
 
 beforeEach(() => {
@@ -209,5 +210,26 @@ describe('useDeleteSessionTemplate', () => {
     await result.current.mutateAsync('st-1')
 
     expect(mockAdapter.deleteSessionTemplate).toHaveBeenCalledWith('st-1')
+  })
+})
+
+describe('useCloneSessionTemplate', () => {
+  it('calls adapter.cloneSessionTemplate and invalidates queries', async () => {
+    const group = buildActivityGroup()
+    const { activities: _, ...groupFlat } = group
+    const activity = buildActivity()
+    const full = {
+      template: buildSessionTemplate({ id: 'st-cloned', name: 'Original (Copy)' }),
+      groups: [groupFlat],
+      activities: [activity],
+      eventItems: [],
+    }
+    vi.mocked(mockAdapter.cloneSessionTemplate).mockResolvedValue(full)
+
+    const { result } = renderHook(() => useCloneSessionTemplate(), { wrapper: TestWrapper })
+
+    await result.current.mutateAsync({ id: 'st-1', userId: 'user-1' })
+
+    expect(mockAdapter.cloneSessionTemplate).toHaveBeenCalledWith('st-1', 'user-1')
   })
 })

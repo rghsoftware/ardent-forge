@@ -23,6 +23,10 @@ interface SessionTemplateCardProps {
   lastAssignedAt?: string | null
   onEdit: () => void
   onDelete: () => void
+  onClone?: () => void
+  isCloning?: boolean
+  onStartWorkout?: () => void
+  isStarting?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -66,6 +70,10 @@ export function SessionTemplateCard({
   lastAssignedAt,
   onEdit,
   onDelete,
+  onClone,
+  isCloning,
+  onStartWorkout,
+  isStarting,
 }: SessionTemplateCardProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const scoringLabel = SCORING_LABELS[template.scoring]
@@ -106,6 +114,50 @@ export function SessionTemplateCard({
             <span className="text-[11px] text-warm-ash/40">Last used {relativeDate}</span>
           )}
         </button>
+
+        {/* Start workout button */}
+        {onStartWorkout && (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (!isStarting) onStartWorkout()
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation()
+                if (!isStarting) onStartWorkout()
+              }
+            }}
+            className={`flex min-h-10 min-w-10 items-center justify-center text-warm-ash/60 hover:text-ember ${isStarting ? 'animate-pulse opacity-50' : ''}`}
+            aria-label={`Start workout from ${template.name}`}
+          >
+            <Icon name="play_arrow" size={18} />
+          </div>
+        )}
+
+        {/* Clone button */}
+        {onClone && (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (!isCloning) onClone()
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation()
+                if (!isCloning) onClone()
+              }
+            }}
+            className={`flex min-h-10 min-w-10 items-center justify-center text-warm-ash/60 hover:text-ember ${isCloning ? 'animate-pulse opacity-50' : ''}`}
+            aria-label={`Duplicate ${template.name}`}
+          >
+            <Icon name="content_copy" size={18} />
+          </div>
+        )}
 
         {/* Delete button */}
         <button

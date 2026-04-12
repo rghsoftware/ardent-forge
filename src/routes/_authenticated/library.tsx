@@ -47,9 +47,14 @@ import {
 import { useExercises, useRecentlyUsedExercises } from '@/hooks/use-exercises'
 import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useAuth } from '@/lib/auth'
+import { useActiveWorkout } from '@/hooks/use-active-workout'
+import { useGymPicker } from '@/hooks/use-gym-picker'
+import { configureDisplayPublisher } from '@/lib/display-publisher'
+import { writeLastGymChoice, readLastGymChoice } from '@/lib/gym-picker-storage'
 import { toast } from 'sonner'
 import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useOnboarding } from '@/hooks/use-onboarding'
+import { useOnboardingStore } from '@/stores/onboarding-store'
 import type {
   Program,
   ExerciseCategory,
@@ -84,6 +89,7 @@ function LibraryPage() {
   }
 
   const { markRouteVisited } = useOnboarding()
+  const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
 
   useEffect(() => {
     markRouteVisited('/library')
@@ -109,6 +115,12 @@ function LibraryPage() {
   const publishTemplateMutation = usePublishSessionTemplate()
   const unpublishTemplateMutation = useUnpublishSessionTemplate()
   const clonePublicTemplateMutation = useClonePublicSessionTemplate()
+
+  // Workout start hooks for starting from templates
+  const { startProgrammedWorkout, isStarting } = useActiveWorkout()
+  const { openGymPicker, GymPickerPortal } = useGymPicker()
+
+  const [startingTemplateId, setStartingTemplateId] = useState<string | null>(null)
 
   const [publishTemplateTarget, setPublishTemplateTarget] = useState<{
     id: string
@@ -139,6 +151,52 @@ function LibraryPage() {
     } catch (err) {
       console.error('[library] Failed to delete template:', err)
       toast('Failed to delete template. Please try again.')
+    }
+  }
+
+  const handleStartFromTemplate = async (templateId: string) => {
+    if (!userId) {
+      console.error('[library] Cannot start workout: no authenticated user')
+      toast('You must be signed in to start a workout.')
+      return
+    }
+
+    setStartingTemplateId(templateId)
+
+    // After first workout is completed, use saved gym choice without prompting
+    let choice: string | 'private' | null
+    if (firstWorkoutCompleted) {
+      choice = readLastGymChoice()
+      if (choice === null) {
+        // Fallback to picker if no saved choice exists
+        choice = await openGymPicker({ userId })
+      }
+    } else {
+      // First workout: prompt for gym selection
+      choice = await openGymPicker({ userId })
+    }
+    if (choice === null) {
+      setStartingTemplateId(null)
+      return
+    }
+
+    try {
+      const workoutLog = await startProgrammedWorkout(userId, templateId)
+      if (choice === 'private') {
+        configureDisplayPublisher({ gymId: null, intent: 'private' })
+      } else {
+        configureDisplayPublisher({ gymId: choice, intent: 'broadcasting' })
+      }
+      if (!writeLastGymChoice(choice)) {
+        console.warn('[library] Failed to persist last gym choice (template)')
+        toast('Could not save your last gym choice. Your preference will not persist.')
+      }
+      navigate({ to: '/log/$workoutId', params: { workoutId: workoutLog.id } })
+    } catch (err) {
+      console.error('[library] Failed to start workout from template:', err)
+      toast('Failed to start workout. Please try again.')
+    } finally {
+      setStartingTemplateId(null)
     }
   }
 
@@ -375,6 +433,16 @@ function LibraryPage() {
                       lastAssignedAt={template.lastAssignedAt}
                       onEdit={() => handleEdit(template.id)}
                       onDelete={() => handleDelete(template.id)}
+                      onClone={() => cloneMutation.mutate({ id: template.id, userId })}
+                      isCloning={
+                        cloneMutation.isPending && cloneMutation.variables?.id === template.id
+                      }
+                      onStartWorkout={
+                        isOwned && templateScope === 'mine'
+                          ? () => handleStartFromTemplate(template.id)
+                          : undefined
+                      }
+                      isStarting={isStarting && startingTemplateId === template.id}
                     />
                     {templateScope === 'public' && (
                       <TemplatePublicActions
@@ -440,6 +508,9 @@ function LibraryPage() {
       )}
 
       <CreateExerciseSheet open={showCreateExercise} onOpenChange={setShowCreateExercise} />
+
+      {/* Gym picker portal for starting workouts from templates */}
+      <GymPickerPortal />
     </div>
   )
 }
@@ -1029,3 +1100,4 @@ function ProgramCard({
     </div>
   )
 }
+

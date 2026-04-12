@@ -12,6 +12,8 @@ import { ProgramForm } from '@/components/program-builder/program-form'
 import { BlockList } from '@/components/program-builder/block-list'
 import { MobileBlockEditor } from '@/components/program-builder/mobile-block-editor'
 import { SessionPickerSheet } from '@/components/program-builder/session-picker-sheet'
+import { SessionTemplateDialog } from '@/components/session-builder/session-template-dialog'
+import { EventTemplateDialog } from '@/components/event-builder/event-template-dialog'
 import { WorkoutPreviewSheet } from '@/components/workout/workout-preview-sheet'
 import { CopyWeekDialog } from '@/components/program-builder/copy-week-dialog'
 import {
@@ -29,7 +31,7 @@ import type {
 } from '@/components/program-builder/builder-state'
 import type { DayOfWeek } from '@/components/program-builder/constants'
 import { BLOCK_TYPE_STYLES } from '@/components/program-builder/constants'
-import type { SessionType } from '@/domain/types'
+import type { SessionType, SessionTemplate } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // Route definition
@@ -76,6 +78,10 @@ function BuilderPage() {
   const [fieldErrors, setFieldErrors] = useState<ValidationError[]>([])
   const [error, setError] = useState<string | null>(null)
   const [showWeekends, setShowWeekends] = useState(false)
+
+  // Template / event creation dialogs
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false)
+  const [showCreateEvent, setShowCreateEvent] = useState(false)
 
   // Mutations
   const createMutation = useCreateProgram()
@@ -149,6 +155,48 @@ function BuilderPage() {
         ),
       )
       setPickerState(null)
+    },
+    [],
+  )
+
+  const handleTemplateCreated = useCallback(
+    (template: SessionTemplate) => {
+      const state = pickerStateRef.current
+      if (state) {
+        setDraft((prev) =>
+          assignSession(
+            prev,
+            state.weekClientId,
+            state.dayOfWeek,
+            template.id,
+            template.name,
+            template.category,
+          ),
+        )
+        setPickerState(null)
+      }
+      setShowCreateTemplate(false)
+    },
+    [],
+  )
+
+  const handleEventCreated = useCallback(
+    (template: SessionTemplate) => {
+      const state = pickerStateRef.current
+      if (state) {
+        setDraft((prev) =>
+          assignSession(
+            prev,
+            state.weekClientId,
+            state.dayOfWeek,
+            template.id,
+            template.name,
+            template.category,
+          ),
+        )
+        setPickerState(null)
+      }
+      setShowCreateEvent(false)
     },
     [],
   )
@@ -417,7 +465,21 @@ function BuilderPage() {
           if (!open) setPickerState(null)
         }}
         onSelect={handleSessionSelected}
+        onCreateTemplate={() => setShowCreateTemplate(true)}
+        onCreateEvent={() => setShowCreateEvent(true)}
         userId={userId}
+      />
+
+      {/* Template / event creation dialogs */}
+      <SessionTemplateDialog
+        open={showCreateTemplate}
+        onOpenChange={setShowCreateTemplate}
+        onSaved={handleTemplateCreated}
+      />
+      <EventTemplateDialog
+        open={showCreateEvent}
+        onOpenChange={setShowCreateEvent}
+        onSaved={handleEventCreated}
       />
 
       {/* Copy week dialog */}

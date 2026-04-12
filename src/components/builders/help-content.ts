@@ -17,6 +17,7 @@ export interface GroupTypeHelpEntry extends HelpEntry {
   oneLiner: string
 }
 
+
 // ---------------------------------------------------------------------------
 // Group Type Help
 // ---------------------------------------------------------------------------

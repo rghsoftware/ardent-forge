@@ -2,6 +2,22 @@
 
 All notable changes to Ardent Forge are documented in this file.
 
+## [1.0.0-beta.10] - 2026-04-07
+
+### Features
+
+- **Manual session entry & edit (F018-F020)** -- log and edit workouts outside the programmed flow (#92)
+- **Gym-scoped display broadcast partitioning (F018)** -- displays now subscribe to gym-specific channels (#91)
+- **Program time travel (F017)** -- edit start date and jump position with unified bidirectional controls (#89)
+- **Public library visibility (F016)** -- discover, publish, and clone programs/templates
+
+### Bug Fixes
+
+- Resolve email to UUID before inserting connection request
+- Disable delete-week button when block has only one week
+
+---
+
 ## [1.0.0-beta.9] - 2026-04-05
 
 ### Features

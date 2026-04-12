@@ -47,8 +47,15 @@ import type {
   MediaAttachment,
   Gym,
   GymMember,
+  GymInvitation,
+  GymMemberCount,
+  GymOwnershipTransfer,
+  RedeemInviteError,
 } from '@/domain/types'
 import type {
+  GymInvitationRow,
+  GymOwnershipTransferRow,
+  GymMemberCountRow,
   ExerciseRow,
   WorkoutLogRow,
   LoggedActivityGroupRow,
@@ -622,7 +629,6 @@ export class SupabaseAdapter implements DataAdapter {
     const row = fromGym({
       name: input.name,
       ownerUserId: userId,
-      isDefault: false,
     })
 
     const { data, error } = await this.client.from('gyms').insert(row).select().single()
@@ -694,6 +700,218 @@ export class SupabaseAdapter implements DataAdapter {
 
     if (error) throw error
     return (data ?? []).map((row) => toGymMember(row as GymMemberRow))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Gym membership explicit (F021)
+  //
+  // Member counts via the `gym_member_counts` view (kills the N+1 over the
+  // browse list); invite lifecycle (`create_gym_invite`, `redeem_gym_invite`)
+  // and ownership transfers (`propose_gym_transfer`, `accept_gym_transfer`,
+  // `cancel_or_decline_gym_transfer`) all routed through `security definer`
+  // RPCs. See ADR-015-invite-token-redemption-via-rpc and Tech.md.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns one (gymId, memberCount) row per gym visible to the caller, via
+   * the `gym_member_counts` view (security_invoker = true so RLS on the
+   * underlying `gyms` / `gym_members` tables carries through).
+   */
+  async listGymMemberCounts(): Promise<GymMemberCount[]> {
+    const { data, error } = await this.client.from('gym_member_counts').select('*')
+
+    if (error) {
+      console.error('[supabase-adapter] listGymMemberCounts failed:', error)
+      throw error
+    }
+
+    // The view exposes nullable columns because Postgres views are typed
+    // optimistically; in practice these are always populated.
+    const rows = (data ?? []) as GymMemberCountRow[]
+    return rows.flatMap((r) =>
+      r.gym_id == null || r.member_count == null
+        ? []
+        : [{ gymId: r.gym_id, memberCount: r.member_count }],
+    )
+  }
+
+  /**
+   * Owner-only. Creates an invite via the `create_gym_invite` RPC. The token
+   * is generated server-side from `pgcrypto` -- never log it on this path.
+   */
+  async createGymInvite(
+    gymId: string,
+    options: { expiresAt?: string; maxUses?: number } = {},
+  ): Promise<GymInvitation> {
+    const { data, error } = await this.client.rpc('create_gym_invite', {
+      p_gym_id: gymId,
+      p_expires_at: options.expiresAt,
+      p_max_uses: options.maxUses,
+    })
+
+    if (error) {
+      console.error('[supabase-adapter] createGymInvite failed:', { gymId, err: error })
+      throw error
+    }
+
+    const row = data as GymInvitationRow
+    return {
+      id: row.id,
+      gymId: row.gym_id,
+      token: row.token,
+      expiresAt: row.expires_at,
+      maxUses: row.max_uses,
+      usesCount: row.uses_count,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+    }
+  }
+
+  /**
+   * Owner-only. Lists active invites for a gym (RLS hides them from
+   * non-owners). Tokens are returned so the owner UI can render the share
+   * link, but they MUST NOT be logged from this layer.
+   */
+  async listGymInvites(gymId: string): Promise<GymInvitation[]> {
+    const { data, error } = await this.client
+      .from('gym_invitations')
+      .select('*')
+      .eq('gym_id', gymId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('[supabase-adapter] listGymInvites failed:', { gymId, err: error })
+      throw error
+    }
+
+    return (data ?? []).map((row) => {
+      const r = row as GymInvitationRow
+      return {
+        id: r.id,
+        gymId: r.gym_id,
+        token: r.token,
+        expiresAt: r.expires_at,
+        maxUses: r.max_uses,
+        usesCount: r.uses_count,
+        createdBy: r.created_by,
+        createdAt: r.created_at,
+      }
+    })
+  }
+
+  /**
+   * Redeems an invite token via the `redeem_gym_invite` RPC. Returns a
+   * discriminated result -- callers branch on `result.ok`. Distinct
+   * validation failures (`invalid` / `expired` / `exhausted`) are surfaced
+   * as a structured error so the UI can render targeted messaging without
+   * substring matching. Network / unexpected errors bubble up so the
+   * caller can render a generic "try again" state.
+   *
+   * NEVER log the raw token on any path. The thrown PostgrestError is
+   * logged with the invite-related context only (no token).
+   */
+  async redeemGymInvite(
+    token: string,
+  ): Promise<{ ok: true; gymId: string } | { ok: false; error: RedeemInviteError }> {
+    const { data, error } = await this.client.rpc('redeem_gym_invite', { p_token: token })
+
+    if (error) {
+      const message = error.message ?? ''
+      if (message.startsWith('INVITE_INVALID')) {
+        return { ok: false, error: { kind: 'invalid' } }
+      }
+      if (message.startsWith('INVITE_EXPIRED')) {
+        return { ok: false, error: { kind: 'expired' } }
+      }
+      if (message.startsWith('INVITE_EXHAUSTED')) {
+        return { ok: false, error: { kind: 'exhausted' } }
+      }
+      // Network / unexpected -- bubble up. Do NOT include the token in logs.
+      console.error('[supabase-adapter] redeemGymInvite failed:', error)
+      throw error
+    }
+
+    return { ok: true, gymId: data as string }
+  }
+
+  /**
+   * Owner-only. Proposes ownership transfer to a current gym member. The
+   * RPC enforces that the target is an existing `gym_members` row and is
+   * not the caller; conflicts on the single-pending invariant supersede
+   * the prior pending row inside the RPC.
+   */
+  async proposeGymTransfer(gymId: string, targetUserId: string): Promise<void> {
+    const { error } = await this.client.rpc('propose_gym_transfer', {
+      p_gym_id: gymId,
+      p_target_user_id: targetUserId,
+    })
+
+    if (error) {
+      console.error('[supabase-adapter] proposeGymTransfer failed:', {
+        gymId,
+        targetUserId,
+        err: error,
+      })
+      throw error
+    }
+  }
+
+  /**
+   * Target-only. Accepts a pending ownership transfer; the RPC flips
+   * `gyms.owner_user_id` and deletes the pending row in one transaction.
+   */
+  async acceptGymTransfer(gymId: string): Promise<void> {
+    const { error } = await this.client.rpc('accept_gym_transfer', { p_gym_id: gymId })
+
+    if (error) {
+      console.error('[supabase-adapter] acceptGymTransfer failed:', { gymId, err: error })
+      throw error
+    }
+  }
+
+  /**
+   * Owner OR target may call. Cancels (owner) or declines (target) the
+   * pending transfer. The RPC asserts caller party-membership before
+   * deleting the row.
+   */
+  async cancelOrDeclineGymTransfer(gymId: string): Promise<void> {
+    const { error } = await this.client.rpc('cancel_or_decline_gym_transfer', {
+      p_gym_id: gymId,
+    })
+
+    if (error) {
+      console.error('[supabase-adapter] cancelOrDeclineGymTransfer failed:', {
+        gymId,
+        err: error,
+      })
+      throw error
+    }
+  }
+
+  /**
+   * Returns the pending ownership transfer for a gym, or null if none.
+   * RLS scopes visibility to `proposed_by` and `proposed_to` only.
+   */
+  async getPendingTransfer(gymId: string): Promise<GymOwnershipTransfer | null> {
+    const { data, error } = await this.client
+      .from('gym_ownership_transfers')
+      .select('*')
+      .eq('gym_id', gymId)
+      .maybeSingle()
+
+    if (error) {
+      console.error('[supabase-adapter] getPendingTransfer failed:', { gymId, err: error })
+      throw error
+    }
+
+    if (!data) return null
+    const row = data as GymOwnershipTransferRow
+    return {
+      gymId: row.gym_id,
+      proposedBy: row.proposed_by,
+      proposedTo: row.proposed_to,
+      proposedAt: row.proposed_at,
+    }
   }
 
   // ---------------------------------------------------------------------------

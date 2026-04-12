@@ -55,6 +55,30 @@ export function useAllGyms() {
 }
 
 /**
+ * Lists every gym on the instance joined with member counts from the
+ * `gym_member_counts` view. Gyms missing from the counts view fall back
+ * to `memberCount: 0`. Used by the gym browse/management surfaces that
+ * need to show membership size alongside each row.
+ */
+export function useListAllGymsWithCounts() {
+  return useQuery({
+    queryKey: ['gyms', 'all', 'with-counts'],
+    queryFn: async (): Promise<(Gym & { memberCount: number })[]> => {
+      const adapter = getAdapter()
+      const [gyms, counts] = await Promise.all([
+        adapter.listAllGyms(),
+        adapter.listGymMemberCounts(),
+      ])
+      const countsByGymId = new Map(counts.map((c) => [c.gymId, c.memberCount]))
+      return gyms.map((gym) => ({
+        ...gym,
+        memberCount: countsByGymId.get(gym.id) ?? 0,
+      }))
+    },
+  })
+}
+
+/**
  * Returns a single gym by id, or null if it does not exist.
  * Disabled when `gymId` is null/undefined.
  */
