@@ -6,6 +6,7 @@ import {
   useRemoveConnection,
   useUpdateWriteAccess,
 } from '@/hooks/use-connections'
+import { useUserProfile } from '@/hooks/use-user-profile'
 import { ConnectionRequestDialog } from './connection-request-dialog'
 import { PendingRequests } from './pending-requests'
 import { Badge } from '@/components/ui/badge'
@@ -51,6 +52,8 @@ function ConnectionRow({
 
   const isRequester = connection.requesterId === currentUserId
   const otherId = isRequester ? connection.recipientId : connection.requesterId
+  const { data: otherProfile } = useUserProfile(otherId)
+  const displayName = otherProfile?.displayName ?? 'Connected Athlete'
   const iGrantWrite = isRequester
     ? connection.requesterGrantsWrite
     : connection.recipientGrantsWrite
@@ -79,7 +82,7 @@ function ConnectionRow({
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <span className="font-heading text-sm font-medium text-bone-white truncate">
-            {otherId}
+            {displayName}
           </span>
           <div className="flex items-center gap-2">
             <Badge variant="complete">Connected</Badge>
