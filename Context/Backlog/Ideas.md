@@ -5,6 +5,19 @@ skill. Prioritize via the backlog-prioritize skill.
 
 <!-- Add new ideas below this line -->
 
+## P17 Review: Adapter test coverage gaps (PR #107)
+
+**Added:** 2026-04-12
+**Source:** `Context/Reviews/0017-pr107-camelcase-conv-2026-04-12.md`
+**Priority:** Medium
+
+| #       | File                                          | Improvement                                                                                                                                     | Status |
+| ------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| P17-007 | `src/lib/__tests__/adapter-utils.test.ts`     | New file: unit tests for `camelizeKeys` and `parseJsonOrValue` -- already-camelCase passthrough, digit-adjacent keys, multiple/leading underscores, object passthrough, error on malformed JSON | Open   |
+| P17-008 | `src/lib/__tests__/supabase-adapter.test.ts`  | Add `mapScheduledSession` malformed-JSON fallback test: fixture with bad JSON in `overrides`, assert `result.overrides === undefined` and `console.warn` called | Open   |
+| P17-009 | `src/lib/__tests__/supabase-adapter.test.ts`  | Fix JSONB fixtures in `sessionTemplateRow` and `templateActivityRow` to pass pre-parsed objects (not `JSON.stringify`) to exercise the object-passthrough branch of `parseJsonOrValue` | Open   |
+| P17-010 | `src/lib/__tests__/supabase-adapter.test.ts`  | Add `supports1RM` assertion to `getExercises` happy-path test (line 301); add fixture value and assert it round-trips correctly | Open   |
+
 ## ~~Chat Data Layer Refinements (PR #33 review suggestions)~~ (Resolved 2026-04-05)
 
 **Added:** 2026-04-02
@@ -63,6 +76,21 @@ The `OneRmManagement` component was removed from the profile page during the res
 
 **Added:** 2026-04-05
 **Resolution:** Reordered sidebar nav into logical groups: core tools, reference, social. Commit `1b359d2`.
+
+### Exercise completion signal during active workout
+
+**Added:** 2026-04-12
+**Source:** User feedback
+**Priority:** Medium
+
+Two related UX gaps in the workout logger:
+
+1. **"Done with this exercise" affordance** -- No explicit way to mark an exercise block as finished mid-workout. Users who finish squats before the planned sets are complete (injury, RPE ceiling, time) have no way to signal they're moving on. Options: a "Mark complete" button per exercise block, a long-press gesture, or a swipe action that collapses the block and flags it as done.
+
+2. **Trailing auto-populated set ambiguity** -- When the logger auto-populates a new set row, it's unclear whether exiting the exercise (or ending the workout) will count that empty row as a logged set or discard it. Users are left guessing whether their volume is being over-counted. Need either: discard empty trailing sets on exit, or show explicit "incomplete set" vs "complete set" state that is visible before saving.
+
+**Related:** `src/routes/_authenticated/log.$workoutId.tsx`, workout logger state, set auto-population logic
+**Area:** Workout logger UX
 
 ### Split log.$workoutId route into three components
 **Added:** 2026-04-06
