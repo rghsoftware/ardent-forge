@@ -53,5 +53,10 @@ ALWAYS end by recommending the most appropriate execution command:
 
 Quick plans typically use `/impl` since they are smaller in scope.
 
-### Step 5: Clean up
-When task is complete, move quick plan to `Context/Backlog/Done/` for reference, or delete if not needed.
+### Step 5: Archive the QuickPlan
+When the task is complete, archive the plan so it does not accumulate in the active folder:
+1. Create `Context/QuickPlans/Done/` if it does not exist
+2. Move the plan file from `Context/QuickPlans/` to `Context/QuickPlans/Done/`
+3. Confirm the move to the user
+
+Do NOT skip this step or leave it as a suggestion. Perform the move directly.

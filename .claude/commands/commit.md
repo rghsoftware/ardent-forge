@@ -56,3 +56,10 @@ After commit is created:
   - Start testing
   - Update documentation
   - Review and verify
+
+### Step 4: Archive completed QuickPlans
+After a successful commit, check for active QuickPlans:
+1. Scan `Context/QuickPlans/` for `.md` files (ignore `Done/` subdirectory)
+2. If none found, skip this step silently
+3. If plans are found, list them and ask: "Archive these completed QuickPlans?"
+4. If confirmed, move each plan to `Context/QuickPlans/Done/` (create the directory if needed)
