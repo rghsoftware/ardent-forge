@@ -1,6 +1,7 @@
 ---
 description: Lightweight single-file plan for small tasks
 model: sonnet
+effort: medium
 ---
 
 # Quick Plan

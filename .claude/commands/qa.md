@@ -1,6 +1,7 @@
 ---
 description: Run stack-specific QA agents in parallel
 model: sonnet
+effort: medium
 ---
 
 # Parallel Quality Assurance

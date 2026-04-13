@@ -1,6 +1,7 @@
 ---
 description: Work through captured review findings with interactive triage
 model: sonnet
+effort: high
 ---
 
 # Review Resolution

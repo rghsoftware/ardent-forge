@@ -1,6 +1,7 @@
 ---
 description: Git commit with conventional format and task references
 model: sonnet
+effort: low
 ---
 
 # Commit Changes

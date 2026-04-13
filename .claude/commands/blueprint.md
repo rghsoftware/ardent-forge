@@ -1,6 +1,7 @@
 ---
 description: Full 4-phase planning: Spec, Tech, Steps with team orchestration
 model: sonnet
+effort: high
 ---
 
 # Full Planning Workflow

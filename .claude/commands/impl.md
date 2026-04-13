@@ -1,6 +1,7 @@
 ---
 description: Execute Steps.md via hub-and-spoke sub-agent orchestration
 model: sonnet
+effort: medium
 ---
 
 # Implementation Orchestrator
@@ -21,14 +22,14 @@ Execute a planned feature by reading Steps.md and delegating tasks to specialist
 3. Once identified, load Steps.md
 
 ### Step 2: Load planning context
-1. Read `Context/Features/NNN-FeatureName/Steps.md` -- tasks, team, milestones
-2. Read `Context/Features/NNN-FeatureName/Spec.md` -- requirements and assertions
-3. Read `Context/Features/NNN-FeatureName/Tech.md` -- architecture decisions
-4. Read `CLAUDE.md` for project conventions
-5. Parse Steps.md to extract:
+1. Read `Context/Features/NNN-FeatureName/Steps.md` -- this is the ONLY planning file the orchestrator reads
+2. Parse Steps.md to extract:
    - Team Members (names, agent types, resume behavior)
    - Task list with assignments, dependencies, parallel flags
    - Milestones with testable assertion references and contract declarations
+   - File ownership boundaries per agent
+
+**Context budget rule:** Do NOT read Spec.md, Tech.md, CLAUDE.md, or any source code into the orchestrator's context. Agents read these files themselves. The orchestrator's job is coordination, not comprehension -- if it compacts before wave 1 starts, the entire execution plan is lost.
 
 ### Step 3: Initialize execution session
 1. Create `.cortex/session.md` with plan reference and team roster
@@ -147,14 +148,16 @@ After all waves complete:
 
 ## Agent Prompt Template
 
-When rendering each agent's prompt file, use this template:
+When rendering each agent's prompt file, use this template. The orchestrator fills in task IDs, file paths, and milestone references from Steps.md -- it does NOT read Spec.md/Tech.md to paste content. Agents read those files themselves.
 
 ```
 You are [NAME], the [ROLE] on this team.
 
 FEATURE CONTEXT:
-[Paste relevant Spec.md sections -- requirements and testable assertions]
-[Paste relevant Tech.md sections -- architecture decisions for this domain]
+Read these files before starting work (focus on sections relevant to your tasks):
+- Context/Features/NNN-FeatureName/Spec.md -- requirements and testable assertions
+- Context/Features/NNN-FeatureName/Tech.md -- architecture decisions
+- CLAUDE.md -- project conventions
 
 YOUR TASKS:
 [List specific tasks from Steps.md assigned to this agent]
@@ -182,7 +185,6 @@ COORDINATION (event log):
 FILE OWNERSHIP RULES:
 - Mark your tasks complete via TaskUpdate when done
 - If you change an interface another agent depends on, note it clearly in `.cortex/session.md`
-- Read all relevant files and load skills before starting work
 
 Think hard and provide thorough implementation.
 ```
@@ -301,3 +303,5 @@ When to resume vs start fresh:
 - Contract files must exist before downstream agents are spawned
 - The quality-engineer always runs last in validation mode (read-only)
 - Advisor-cli exit code 2 means fall back to in-thread reasoning -- never fail the wave on advisor unavailability
+- **The orchestrator must NOT read source code, explore the codebase, or load files beyond Steps.md.** Codebase comprehension is the agents' job. The orchestrator reads Steps.md, builds prompt files, spawns agents, and monitors events. Any additional file reads risk compaction before wave 1.
+- **No pre-flight advisor consult.** The advisor is called at milestone boundaries (Step 5e), not before wave 1. Pre-flight exploration and advisor calls are the two largest sources of unnecessary orchestrator context.

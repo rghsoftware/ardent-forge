@@ -42,8 +42,7 @@ High-priority bugs should be addressed before starting new features.
 **Related:** `src/stores/active-workout-store.ts`, gym-picker-storage, workout start flow
 **Priority:** Medium
 
-### B007: Active workout only shows one exercise despite multiple being added
+### ~~B007: Active workout only shows one exercise despite multiple being added~~ (Resolved 2026-04-13)
+
 **Added:** 2026-04-12
-**Context:** When logging a workout with multiple exercises, only one exercise is visible in the active workout view. Additionally, exercises should support being repeated (same exercise appearing more than once) and deleted individually during an active workout session.
-**Related:** `src/routes/_authenticated/log.$workoutId.tsx`, `src/stores/active-workout-store.ts`, `src/components/workout/exercise-block.tsx`
-**Priority:** High
+**Resolution:** Fixed in `11ca616` -- show all exercises simultaneously in active workout view.

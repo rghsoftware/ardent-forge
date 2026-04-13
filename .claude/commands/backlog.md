@@ -1,6 +1,7 @@
 ---
 description: Add to or prioritize the backlog
 model: sonnet
+effort: low
 ---
 
 # Backlog Management
