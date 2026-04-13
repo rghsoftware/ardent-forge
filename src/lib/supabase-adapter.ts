@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   DataAdapter,
@@ -52,81 +53,43 @@ import type {
   GymOwnershipTransfer,
   RedeemInviteError,
 } from '@/domain/types'
-import type {
-  GymInvitationRow,
-  GymOwnershipTransferRow,
-  GymMemberCountRow,
-  ExerciseRow,
-  WorkoutLogRow,
-  LoggedActivityGroupRow,
-  LoggedActivityRow,
-  LoggedSetRow,
-  UserProfileRow,
-  OneRepMaxHistoryRow,
-  SessionTemplateRow,
-  ActivityGroupRow,
-  ActivityRow,
-  ProgramRow,
-  BlockRow,
-  BlockWeekRow,
-  ScheduledSessionRow,
-  ProgramActivationRow,
-  ProgramWeekStatusRow,
-  ShareLinkRow,
-  EventItemRow,
-  ConversationRow,
-  ConversationParticipantRow,
-  MessageRow,
-  MediaAttachmentRow,
-  GymRow,
-  GymMemberRow,
-} from './database.types'
 import {
-  toExercise,
-  fromExercise,
-  toWorkoutLog,
-  fromWorkoutLog,
-  toLoggedActivityGroup,
-  fromLoggedActivityGroup,
-  toLoggedActivity,
-  fromLoggedActivity,
-  toLoggedSet,
-  fromLoggedSet,
-  toUserProfile,
-  fromUserProfile,
-  toGym,
-  fromGym,
-  toGymMember,
-  toOneRepMaxHistory,
-  fromOneRepMaxHistory,
-  toSessionTemplate,
-  fromSessionTemplate,
-  toActivityGroupFlat,
-  fromActivityGroup,
-  toActivity,
-  fromActivity,
-  toProgram,
-  fromProgram,
-  toBlock,
-  fromBlock,
-  toBlockWeek,
-  fromBlockWeek,
-  toScheduledSession,
-  fromScheduledSession,
-  toProgramActivation,
-  toShareLink,
-  fromShareLink,
-  toEventItem,
-  fromEventItem,
-  toConversation,
-  fromConversation,
-  toConversationParticipant,
-  toMessage,
-  fromMessage,
-  toMediaAttachment,
-  fromMediaAttachment,
-  toWeekStatus,
-} from './data-mapper'
+  entityId,
+  exerciseCategorySchema,
+  movementPatternSchema,
+  muscleGroupSpecSchema,
+  equipmentSchema,
+  weightSchema,
+  durationSchema,
+  distanceSchema,
+  paceSchema,
+  programContextSchema,
+  prescriptionSchema,
+  groupTypeSchema,
+  setTypeSchema,
+  preferredUnitsSchema,
+  oneRepMaxSchema,
+  sessionTypeSchema,
+  scoringTypeSchema,
+  setSchemeSchema,
+  programSourceSchema,
+  blockTypeSchema,
+  sessionOverridesSchema,
+  weekStatusValueSchema,
+  shareableEntityTypeSchema,
+  shareTokenSchema,
+  eventMetadataSchema,
+  conversationSchema,
+  conversationParticipantSchema,
+  messageSchema,
+  mediaProviderSchema,
+  mediaTypeSchema,
+  mediaStatusSchema,
+  gymSchema,
+  gymMemberSchema,
+} from '@/domain/types'
+import type { WorkoutLogRow } from './database.types'
+import { camelizeKeys, parseJsonOrValue } from './adapter-utils'
 import {
   toAccountabilityGroup,
   toGroupMember,
@@ -150,6 +113,485 @@ export class SupabaseAdapter implements DataAdapter {
   }
 
   // ---------------------------------------------------------------------------
+  // Private read-path mappers (DB row -> domain type)
+  // ---------------------------------------------------------------------------
+
+  private mapExercise(raw: Record<string, unknown>): Exercise {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      createdAt: r.createdAt as string,
+      updatedAt: r.updatedAt as string,
+      name: r.name as string,
+      aliases: z.array(z.string()).parse(r.aliases),
+      category: exerciseCategorySchema.parse(r.category),
+      movementPattern: movementPatternSchema.parse(r.movementPattern),
+      muscleGroups: muscleGroupSpecSchema.parse(r.muscleGroups),
+      isBilateral: r.isBilateral as boolean,
+      supports1RM: r.supports1Rm as boolean,
+      equipmentRequired: z.array(equipmentSchema).parse(r.equipmentRequired),
+      isCustom: r.isCustom as boolean,
+      isPublic: r.isPublic as boolean,
+    }
+  }
+
+  private mapWorkoutLog(raw: Record<string, unknown>): WorkoutLog {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      createdAt: r.createdAt as string,
+      updatedAt: r.updatedAt as string,
+      userId: r.userId as string,
+      title: (r.title ?? undefined) as string | undefined,
+      startedAt: r.startedAt as string,
+      completedAt: (r.completedAt ?? undefined) as string | undefined,
+      sessionTemplateId: (r.sessionTemplateId ?? undefined) as string | undefined,
+      programContext:
+        r.programContext != null
+          ? programContextSchema.parse(r.programContext)
+          : undefined,
+      perceivedDifficulty: (r.perceivedDifficulty ?? undefined) as number | undefined,
+      bodyweightAtSession:
+        r.bodyweightAtSession != null
+          ? weightSchema.parse(r.bodyweightAtSession)
+          : undefined,
+      overallNotes: (r.overallNotes ?? undefined) as string | undefined,
+      noteTags:
+        Array.isArray(r.noteTags) && (r.noteTags as unknown[]).length > 0
+          ? (r.noteTags as string[])
+          : undefined,
+      eventMetadata:
+        r.eventMetadata != null
+          ? eventMetadataSchema.parse(r.eventMetadata)
+          : undefined,
+      pausedAt: (r.pausedAt ?? undefined) as string | undefined,
+      totalPausedMs: (r.totalPausedMs ?? 0) as number,
+    }
+  }
+
+  private mapLoggedActivityGroup(raw: Record<string, unknown>): LoggedActivityGroup {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      workoutLogId: r.workoutLogId as string,
+      groupType: groupTypeSchema.parse(r.groupType),
+      ordinal: r.ordinal as number,
+      actualRoundsCompleted: (r.actualRoundsCompleted ?? undefined) as number | undefined,
+      completionTime:
+        r.completionTime != null
+          ? durationSchema.parse(r.completionTime)
+          : undefined,
+    }
+  }
+
+  private mapLoggedActivity(raw: Record<string, unknown>): LoggedActivity {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      loggedGroupId: r.loggedGroupId as string,
+      exerciseId: r.exerciseId as string,
+      ordinal: r.ordinal as number,
+      notes: (r.notes ?? undefined) as string | undefined,
+      noteTags:
+        Array.isArray(r.noteTags) && (r.noteTags as unknown[]).length > 0
+          ? (r.noteTags as string[])
+          : undefined,
+    }
+  }
+
+  private mapLoggedSet(raw: Record<string, unknown>): LoggedSet {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      loggedActivityId: r.loggedActivityId as string,
+      setNumber: r.setNumber as number,
+      setType: setTypeSchema.parse(r.setType),
+      prescribed:
+        r.prescribed != null ? prescriptionSchema.parse(r.prescribed) : undefined,
+      actualReps: (r.actualReps ?? undefined) as number | undefined,
+      actualWeight:
+        r.actualWeight != null ? weightSchema.parse(r.actualWeight) : undefined,
+      actualDuration:
+        r.actualDuration != null ? durationSchema.parse(r.actualDuration) : undefined,
+      actualDistance:
+        r.actualDistance != null ? distanceSchema.parse(r.actualDistance) : undefined,
+      actualPace:
+        r.actualPace != null ? paceSchema.parse(r.actualPace) : undefined,
+      actualHeartRate: (r.actualHeartRate ?? undefined) as number | undefined,
+      rpe: (r.rpe ?? undefined) as number | undefined,
+      completed: r.completed as boolean,
+      notes: (r.notes ?? undefined) as string | undefined,
+      noteTags:
+        Array.isArray(r.noteTags) && (r.noteTags as unknown[]).length > 0
+          ? (r.noteTags as string[])
+          : undefined,
+      ruckLoad: r.ruckLoad != null ? weightSchema.parse(r.ruckLoad) : undefined,
+      elevationGain:
+        r.elevationGain != null ? distanceSchema.parse(r.elevationGain) : undefined,
+    }
+  }
+
+  private mapUserProfile(raw: Record<string, unknown>): UserProfile {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      createdAt: r.createdAt as string,
+      updatedAt: r.updatedAt as string,
+      displayName: (r.displayName ?? undefined) as string | undefined,
+      preferredUnits: preferredUnitsSchema.parse(r.preferredUnits),
+      bodyweight:
+        r.bodyweight != null ? weightSchema.parse(r.bodyweight) : undefined,
+      trainingAge:
+        r.trainingAge != null ? durationSchema.parse(r.trainingAge) : undefined,
+      exerciseMaxes:
+        r.exerciseMaxes != null
+          ? z.record(entityId, oneRepMaxSchema).parse(r.exerciseMaxes)
+          : {},
+      maxReps:
+        r.maxReps != null
+          ? z.record(entityId, z.number().int().positive()).parse(r.maxReps)
+          : {},
+    }
+  }
+
+  private mapGym(raw: Record<string, unknown>): Gym {
+    const r = camelizeKeys(raw)
+    if (r.id == null || r.name == null || r.ownerUserId == null) {
+      console.warn('[supabase-adapter] mapGym: missing required fields', raw)
+    }
+    try {
+      return gymSchema.parse({
+        id: r.id,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        name: r.name,
+        ownerUserId: r.ownerUserId,
+      })
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map gym row:', err, raw)
+      throw new Error(`Failed to map gym row (id=${r.id as string}): ${(err as Error).message}`)
+    }
+  }
+
+  private mapGymMember(raw: Record<string, unknown>): GymMember {
+    const r = camelizeKeys(raw)
+    if (r.gymId == null || r.userId == null) {
+      console.warn('[supabase-adapter] mapGymMember: missing required fields', raw)
+    }
+    try {
+      return gymMemberSchema.parse({
+        gymId: r.gymId,
+        userId: r.userId,
+        joinedAt: r.joinedAt,
+      })
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map gym_member row:', err, raw)
+      throw new Error(
+        `Failed to map gym_member row (gym=${r.gymId as string}, user=${r.userId as string}): ${(err as Error).message}`,
+      )
+    }
+  }
+
+
+  private mapOneRepMaxHistory(raw: Record<string, unknown>): OneRepMaxHistory {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      createdAt: r.createdAt as string,
+      userId: r.userId as string,
+      exerciseId: r.exerciseId as string,
+      weight: weightSchema.parse(r.weight),
+      estimated: r.estimated as boolean,
+      recordedAt: r.recordedAt as string,
+    }
+  }
+
+  private mapSessionTemplate(raw: Record<string, unknown>): SessionTemplate {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      createdAt: r.createdAt as string,
+      updatedAt: r.updatedAt as string,
+      userId: r.userId as string,
+      name: r.name as string,
+      description: (r.description ?? undefined) as string | undefined,
+      category: sessionTypeSchema.parse(r.category),
+      restBetweenGroups:
+        r.restBetweenGroups != null
+          ? durationSchema.parse(parseJsonOrValue(r.restBetweenGroups as string | object))
+          : undefined,
+      timeCap:
+        r.timeCap != null
+          ? durationSchema.parse(parseJsonOrValue(r.timeCap as string | object))
+          : undefined,
+      scoring: scoringTypeSchema.parse(r.scoring),
+      eventMetadata:
+        r.eventMetadata != null
+          ? eventMetadataSchema.parse(parseJsonOrValue(r.eventMetadata as string | object))
+          : undefined,
+      lastAssignedAt: (r.lastAssignedAt ?? undefined) as string | undefined,
+      isPublic: r.isPublic as boolean,
+    }
+  }
+
+  private mapActivityGroupFlat(raw: Record<string, unknown>): Omit<ActivityGroup, 'activities'> {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      sessionTemplateId: r.sessionTemplateId as string,
+      groupType: groupTypeSchema.parse(r.groupType),
+      ordinal: r.ordinal as number,
+      rounds: (r.rounds ?? undefined) as number | undefined,
+      restBetweenRounds:
+        r.restBetweenRounds != null
+          ? durationSchema.parse(parseJsonOrValue(r.restBetweenRounds as string | object))
+          : undefined,
+      restBetweenActivities:
+        r.restBetweenActivities != null
+          ? durationSchema.parse(parseJsonOrValue(r.restBetweenActivities as string | object))
+          : undefined,
+    }
+  }
+
+  private mapActivity(raw: Record<string, unknown>): Activity {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      activityGroupId: r.activityGroupId as string,
+      exerciseId: r.exerciseId as string,
+      ordinal: r.ordinal as number,
+      setScheme: setSchemeSchema.parse(parseJsonOrValue(r.setScheme as string | object)),
+      notes: (r.notes ?? undefined) as string | undefined,
+    }
+  }
+
+  private mapProgram(raw: Record<string, unknown>): Program {
+    const r = camelizeKeys(raw)
+    try {
+      return {
+        id: r.id as string,
+        createdAt: r.createdAt as string,
+        updatedAt: r.updatedAt as string,
+        userId: r.userId as string,
+        name: r.name as string,
+        description: (r.description ?? undefined) as string | undefined,
+        source: programSourceSchema.parse(r.source),
+        durationWeeks: (r.durationWeeks ?? undefined) as number | undefined,
+        isPublic: r.isPublic as boolean,
+        createdBy: (r.createdBy ?? r.userId) as string,
+      }
+    } catch (err) {
+      throw new Error(
+        `Failed to map program "${r.name as string}" (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
+  }
+
+  private mapBlock(raw: Record<string, unknown>): Block {
+    const r = camelizeKeys(raw)
+    try {
+      return {
+        id: r.id as string,
+        programId: r.programId as string,
+        name: r.name as string,
+        ordinal: r.ordinal as number,
+        durationWeeks: r.durationWeeks as number,
+        blockType: blockTypeSchema.parse(r.blockType),
+      }
+    } catch (err) {
+      throw new Error(
+        `Failed to map block "${r.name as string}" (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
+  }
+
+  private mapBlockWeek(raw: Record<string, unknown>): BlockWeek {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      blockId: r.blockId as string,
+      weekNumber: r.weekNumber as number,
+    }
+  }
+
+  private mapScheduledSession(raw: Record<string, unknown>): ScheduledSession {
+    const r = camelizeKeys(raw)
+    try {
+      let overrides: ScheduledSession['overrides']
+      if (r.overrides != null) {
+        try {
+          const parsed =
+            typeof r.overrides === 'string' ? JSON.parse(r.overrides) : r.overrides
+          overrides = sessionOverridesSchema.parse(parsed)
+        } catch (err) {
+          console.warn(
+            `[supabase-adapter] Failed to parse overrides for scheduled session ${r.id as string}, falling back to undefined:`,
+            err,
+          )
+          overrides = undefined
+        }
+      }
+      return {
+        id: r.id as string,
+        blockWeekId: r.blockWeekId as string,
+        dayOfWeek: (r.dayOfWeek ?? undefined) as number | undefined,
+        dayLabel: r.dayLabel as string,
+        sessionType: sessionTypeSchema.parse(r.sessionType),
+        sessionTemplateId: r.sessionTemplateId as string,
+        notes: (r.notes ?? undefined) as string | undefined,
+        overrides,
+      }
+    } catch (err) {
+      throw new Error(
+        `Failed to map scheduled session (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
+  }
+
+  private mapProgramActivation(raw: Record<string, unknown>): ProgramActivation {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      createdAt: r.createdAt as string,
+      updatedAt: r.updatedAt as string,
+      userId: r.userId as string,
+      programId: r.programId as string,
+      currentBlockOrdinal: r.currentBlockOrdinal as number,
+      currentWeekNumber: r.currentWeekNumber as number,
+      startDate: r.startDate as string,
+    }
+  }
+
+  private mapWeekStatus(raw: Record<string, unknown>): WeekStatus {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      activationId: r.activationId as string,
+      blockOrdinal: r.blockOrdinal as number,
+      weekNumber: r.weekNumber as number,
+      status: weekStatusValueSchema.parse(r.status),
+      createdAt: r.createdAt as string,
+    }
+  }
+
+  private mapShareLink(raw: Record<string, unknown>): ShareLink {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      token: shareTokenSchema.parse(r.token),
+      entityType: shareableEntityTypeSchema.parse(r.entityType),
+      entityId: r.entityId as string,
+      createdBy: r.createdBy as string,
+      isActive: r.isActive as boolean,
+      createdAt: r.createdAt as string,
+      updatedAt: r.updatedAt as string,
+    }
+  }
+
+  private mapEventItem(raw: Record<string, unknown>): EventItem {
+    const r = camelizeKeys(raw)
+    return {
+      id: r.id as string,
+      createdAt: r.createdAt as string,
+      updatedAt: r.updatedAt as string,
+      sessionTemplateId: (r.sessionTemplateId ?? undefined) as string | undefined,
+      workoutLogId: (r.workoutLogId ?? undefined) as string | undefined,
+      userId: r.userId as string,
+      name: r.name as string,
+      category: (r.category ?? undefined) as string | undefined,
+      quantity: r.quantity as number,
+      isPacked: r.isPacked as boolean,
+      sortOrder: r.sortOrder as number,
+      notes: (r.notes ?? undefined) as string | undefined,
+    }
+  }
+
+  private mapConversation(raw: Record<string, unknown>, participantUserIds: string[] = []): Conversation {
+    const r = camelizeKeys(raw)
+    try {
+      return conversationSchema.parse({
+        id: r.id,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        type: r.type,
+        title: r.title ?? undefined,
+        groupId: r.groupId ?? undefined,
+        participantUserIds,
+      })
+    } catch (err) {
+      throw new Error(
+        `Failed to map conversation (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
+  }
+
+  private mapConversationParticipant(raw: Record<string, unknown>): ConversationParticipant {
+    const r = camelizeKeys(raw)
+    try {
+      return conversationParticipantSchema.parse({
+        id: r.id,
+        createdAt: r.joinedAt,
+        updatedAt: r.lastReadAt ?? r.joinedAt,
+        conversationId: r.conversationId,
+        userId: r.userId,
+        lastReadAt: r.lastReadAt ?? undefined,
+        isArchived: r.isArchived,
+        joinedAt: r.joinedAt,
+        leftAt: r.leftAt ?? undefined,
+      })
+    } catch (err) {
+      throw new Error(
+        `Failed to map conversation participant (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
+  }
+
+  private mapMessage(raw: Record<string, unknown>): Message {
+    const r = camelizeKeys(raw)
+    try {
+      return messageSchema.parse({
+        id: r.id,
+        createdAt: r.createdAt,
+        conversationId: r.conversationId,
+        senderId: r.senderId ?? undefined,
+        messageType: r.messageType,
+        content: r.content ?? undefined,
+        syncStatus: r.syncStatus ?? undefined,
+      })
+    } catch (err) {
+      throw new Error(
+        `Failed to map message (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
+  }
+
+  private mapMediaAttachment(raw: Record<string, unknown>): MediaAttachment {
+    const r = camelizeKeys(raw)
+    try {
+      return {
+        id: r.id as string,
+        createdAt: r.createdAt as string,
+        updatedAt: r.updatedAt as string,
+        messageId: r.messageId as string,
+        provider: mediaProviderSchema.parse(r.provider),
+        providerAssetId: (r.providerAssetId ?? undefined) as string | undefined,
+        mediaType: mediaTypeSchema.parse(r.mediaType),
+        originalFilename: (r.originalFilename ?? undefined) as string | undefined,
+        mimeType: (r.mimeType ?? undefined) as string | undefined,
+        thumbnailUrl: (r.thumbnailUrl ?? undefined) as string | undefined,
+        playbackUrl: (r.playbackUrl ?? undefined) as string | undefined,
+        durationSeconds: (r.durationSeconds ?? undefined) as number | undefined,
+        fileSizeBytes: (r.fileSizeBytes ?? undefined) as number | undefined,
+        status: mediaStatusSchema.parse(r.status),
+      }
+    } catch (err) {
+      throw new Error(
+        `Failed to map media attachment (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Exercise operations
   // ---------------------------------------------------------------------------
 
@@ -164,7 +606,7 @@ export class SupabaseAdapter implements DataAdapter {
       })
       if (error) throw error
 
-      let exercises = (data as ExerciseRow[]).map(toExercise)
+      let exercises = (data as unknown as Record<string, unknown>[]).map((r) => this.mapExercise(r))
 
       if (filters.category) {
         exercises = exercises.filter((e) => e.category === filters.category)
@@ -208,7 +650,7 @@ export class SupabaseAdapter implements DataAdapter {
 
     const { data, error } = await query.order('name')
     if (error) throw error
-    return (data as ExerciseRow[]).map(toExercise)
+    return (data as unknown as Record<string, unknown>[]).map((r) => this.mapExercise(r))
   }
 
   async getExercise(id: string): Promise<Exercise | null> {
@@ -218,7 +660,7 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('id', id)
       .maybeSingle()
     if (error) throw error
-    return data ? toExercise(data as ExerciseRow) : null
+    return data ? this.mapExercise(data as unknown as Record<string, unknown>) : null
   }
 
   async createExercise(
@@ -227,14 +669,22 @@ export class SupabaseAdapter implements DataAdapter {
     const userId = await this.getCurrentUserId()
     // RLS policy blocks non-custom inserts from client; force is_custom: true as defense-in-depth
     const row = {
-      ...fromExercise(exercise),
+      name: exercise.name,
+      aliases: exercise.aliases,
+      category: exercise.category,
+      movement_pattern: exercise.movementPattern,
+      muscle_groups: exercise.muscleGroups,
+      is_bilateral: exercise.isBilateral,
+      supports_1rm: exercise.supports1RM,
+      equipment_required: exercise.equipmentRequired,
       is_custom: true,
+      is_public: exercise.isPublic,
       user_id: userId,
     }
 
     const { data, error } = await this.client.from('exercises').insert(row).select().single()
     if (error) throw error
-    return toExercise(data as ExerciseRow)
+    return this.mapExercise(data as unknown as Record<string, unknown>)
   }
 
   // ---------------------------------------------------------------------------
@@ -254,7 +704,7 @@ export class SupabaseAdapter implements DataAdapter {
 
     const { data, error } = await query
     if (error) throw error
-    return (data as WorkoutLogRow[]).map(toWorkoutLog)
+    return (data as unknown as Record<string, unknown>[]).map((r) => this.mapWorkoutLog(r))
   }
 
   async getWorkoutLogsSummary(
@@ -309,7 +759,7 @@ export class SupabaseAdapter implements DataAdapter {
       }
 
       return {
-        log: toWorkoutLog(row as unknown as WorkoutLogRow),
+        log: this.mapWorkoutLog(row as unknown as Record<string, unknown>),
         exerciseNames: Array.from(exerciseNameSet),
         setCount,
         exerciseCount: exerciseNameSet.size,
@@ -324,7 +774,7 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('id', id)
       .maybeSingle()
     if (error) throw error
-    return data ? toWorkoutLog(data as WorkoutLogRow) : null
+    return data ? this.mapWorkoutLog(data as unknown as Record<string, unknown>) : null
   }
 
   async getWorkoutLogFull(id: string): Promise<{
@@ -347,11 +797,11 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('workout_log_id', id)
       .order('ordinal')
     if (groupError) throw groupError
-    const groups = (groupData as LoggedActivityGroupRow[]).map(toLoggedActivityGroup)
+    const groups = (groupData as unknown as Record<string, unknown>[]).map((r) => this.mapLoggedActivityGroup(r))
     const groupIds = groups.map((g) => g.id)
 
     if (groupIds.length === 0) {
-      return { log: toWorkoutLog(logData as WorkoutLogRow), groups, activities: [], sets: [] }
+      return { log: this.mapWorkoutLog(logData as unknown as Record<string, unknown>), groups, activities: [], sets: [] }
     }
 
     const { data: actData, error: actError } = await this.client
@@ -360,11 +810,11 @@ export class SupabaseAdapter implements DataAdapter {
       .in('logged_group_id', groupIds)
       .order('ordinal')
     if (actError) throw actError
-    const activities = (actData as LoggedActivityRow[]).map(toLoggedActivity)
+    const activities = (actData as unknown as Record<string, unknown>[]).map((r) => this.mapLoggedActivity(r))
     const activityIds = activities.map((a) => a.id)
 
     if (activityIds.length === 0) {
-      return { log: toWorkoutLog(logData as WorkoutLogRow), groups, activities, sets: [] }
+      return { log: this.mapWorkoutLog(logData as unknown as Record<string, unknown>), groups, activities, sets: [] }
     }
 
     const { data: setData, error: setError } = await this.client
@@ -373,10 +823,10 @@ export class SupabaseAdapter implements DataAdapter {
       .in('logged_activity_id', activityIds)
       .order('set_number')
     if (setError) throw setError
-    const sets = (setData as LoggedSetRow[]).map(toLoggedSet)
+    const sets = (setData as unknown as Record<string, unknown>[]).map((r) => this.mapLoggedSet(r))
 
     return {
-      log: toWorkoutLog(logData as WorkoutLogRow),
+      log: this.mapWorkoutLog(logData as unknown as Record<string, unknown>),
       groups,
       activities,
       sets,
@@ -386,15 +836,43 @@ export class SupabaseAdapter implements DataAdapter {
   async createWorkoutLog(
     log: Omit<WorkoutLog, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<WorkoutLog> {
-    const row = fromWorkoutLog(log)
+    const row = {
+      user_id: log.userId,
+      title: log.title ?? null,
+      started_at: log.startedAt,
+      completed_at: log.completedAt ?? null,
+      session_template_id: log.sessionTemplateId ?? null,
+      program_context: log.programContext ?? null,
+      perceived_difficulty: log.perceivedDifficulty ?? null,
+      bodyweight_at_session: log.bodyweightAtSession ?? null,
+      overall_notes: log.overallNotes ?? null,
+      note_tags: log.noteTags ?? [],
+      event_metadata: log.eventMetadata ?? null,
+      paused_at: log.pausedAt ?? null,
+      total_paused_ms: log.totalPausedMs ?? 0,
+    }
 
     const { data, error } = await this.client.from('workout_logs').insert(row).select().single()
     if (error) throw error
-    return toWorkoutLog(data as WorkoutLogRow)
+    return this.mapWorkoutLog(data as unknown as Record<string, unknown>)
   }
 
   async updateWorkoutLog(log: WorkoutLog): Promise<WorkoutLog> {
-    const row = fromWorkoutLog(log)
+    const row = {
+      user_id: log.userId,
+      title: log.title ?? null,
+      started_at: log.startedAt,
+      completed_at: log.completedAt ?? null,
+      session_template_id: log.sessionTemplateId ?? null,
+      program_context: log.programContext ?? null,
+      perceived_difficulty: log.perceivedDifficulty ?? null,
+      bodyweight_at_session: log.bodyweightAtSession ?? null,
+      overall_notes: log.overallNotes ?? null,
+      note_tags: log.noteTags ?? [],
+      event_metadata: log.eventMetadata ?? null,
+      paused_at: log.pausedAt ?? null,
+      total_paused_ms: log.totalPausedMs ?? 0,
+    }
 
     const { data, error } = await this.client
       .from('workout_logs')
@@ -403,7 +881,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toWorkoutLog(data as WorkoutLogRow)
+    return this.mapWorkoutLog(data as unknown as Record<string, unknown>)
   }
 
   async deleteWorkoutLog(id: string): Promise<void> {
@@ -419,7 +897,14 @@ export class SupabaseAdapter implements DataAdapter {
     group: Omit<LoggedActivityGroup, 'id'>,
     userId: string,
   ): Promise<LoggedActivityGroup> {
-    const row = fromLoggedActivityGroup(group, userId)
+    const row = {
+      workout_log_id: group.workoutLogId,
+      user_id: userId,
+      group_type: group.groupType,
+      ordinal: group.ordinal,
+      actual_rounds_completed: group.actualRoundsCompleted ?? null,
+      completion_time: group.completionTime ?? null,
+    }
 
     const { data, error } = await this.client
       .from('logged_activity_groups')
@@ -427,7 +912,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toLoggedActivityGroup(data as LoggedActivityGroupRow)
+    return this.mapLoggedActivityGroup(data as unknown as Record<string, unknown>)
   }
 
   // ---------------------------------------------------------------------------
@@ -438,7 +923,14 @@ export class SupabaseAdapter implements DataAdapter {
     activity: Omit<LoggedActivity, 'id'>,
     userId: string,
   ): Promise<LoggedActivity> {
-    const row = fromLoggedActivity(activity, userId)
+    const row = {
+      logged_group_id: activity.loggedGroupId,
+      user_id: userId,
+      exercise_id: activity.exerciseId,
+      ordinal: activity.ordinal,
+      notes: activity.notes ?? null,
+      note_tags: activity.noteTags ?? [],
+    }
 
     const { data, error } = await this.client
       .from('logged_activities')
@@ -446,7 +938,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toLoggedActivity(data as LoggedActivityRow)
+    return this.mapLoggedActivity(data as unknown as Record<string, unknown>)
   }
 
   // ---------------------------------------------------------------------------
@@ -454,15 +946,51 @@ export class SupabaseAdapter implements DataAdapter {
   // ---------------------------------------------------------------------------
 
   async createLoggedSet(set: Omit<LoggedSet, 'id'>, userId: string): Promise<LoggedSet> {
-    const row = fromLoggedSet(set, userId)
+    const row = {
+      logged_activity_id: set.loggedActivityId,
+      user_id: userId,
+      set_number: set.setNumber,
+      set_type: set.setType,
+      prescribed: set.prescribed ?? null,
+      actual_reps: set.actualReps ?? null,
+      actual_weight: set.actualWeight ?? null,
+      actual_duration: set.actualDuration ?? null,
+      actual_distance: set.actualDistance ?? null,
+      actual_pace: set.actualPace ?? null,
+      actual_heart_rate: set.actualHeartRate ?? null,
+      ruck_load: set.ruckLoad ?? null,
+      elevation_gain: set.elevationGain ?? null,
+      rpe: set.rpe ?? null,
+      completed: set.completed,
+      notes: set.notes ?? null,
+      note_tags: set.noteTags ?? [],
+    }
 
     const { data, error } = await this.client.from('logged_sets').insert(row).select().single()
     if (error) throw error
-    return toLoggedSet(data as LoggedSetRow)
+    return this.mapLoggedSet(data as unknown as Record<string, unknown>)
   }
 
   async updateLoggedSet(set: LoggedSet, userId: string): Promise<LoggedSet> {
-    const row = fromLoggedSet(set, userId)
+    const row = {
+      logged_activity_id: set.loggedActivityId,
+      user_id: userId,
+      set_number: set.setNumber,
+      set_type: set.setType,
+      prescribed: set.prescribed ?? null,
+      actual_reps: set.actualReps ?? null,
+      actual_weight: set.actualWeight ?? null,
+      actual_duration: set.actualDuration ?? null,
+      actual_distance: set.actualDistance ?? null,
+      actual_pace: set.actualPace ?? null,
+      actual_heart_rate: set.actualHeartRate ?? null,
+      ruck_load: set.ruckLoad ?? null,
+      elevation_gain: set.elevationGain ?? null,
+      rpe: set.rpe ?? null,
+      completed: set.completed,
+      notes: set.notes ?? null,
+      note_tags: set.noteTags ?? [],
+    }
 
     const { data, error } = await this.client
       .from('logged_sets')
@@ -471,7 +999,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toLoggedSet(data as LoggedSetRow)
+    return this.mapLoggedSet(data as unknown as Record<string, unknown>)
   }
 
   async deleteLoggedSet(id: string): Promise<void> {
@@ -485,7 +1013,14 @@ export class SupabaseAdapter implements DataAdapter {
   }
 
   async updateLoggedActivity(activity: LoggedActivity, userId: string): Promise<LoggedActivity> {
-    const row = fromLoggedActivity(activity, userId)
+    const row = {
+      logged_group_id: activity.loggedGroupId,
+      user_id: userId,
+      exercise_id: activity.exerciseId,
+      ordinal: activity.ordinal,
+      notes: activity.notes ?? null,
+      note_tags: activity.noteTags ?? [],
+    }
 
     const { data, error } = await this.client
       .from('logged_activities')
@@ -494,7 +1029,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toLoggedActivity(data as LoggedActivityRow)
+    return this.mapLoggedActivity(data as unknown as Record<string, unknown>)
   }
 
   async deleteLoggedActivity(id: string): Promise<void> {
@@ -511,7 +1046,14 @@ export class SupabaseAdapter implements DataAdapter {
     group: LoggedActivityGroup,
     userId: string,
   ): Promise<LoggedActivityGroup> {
-    const row = fromLoggedActivityGroup(group, userId)
+    const row = {
+      workout_log_id: group.workoutLogId,
+      user_id: userId,
+      group_type: group.groupType,
+      ordinal: group.ordinal,
+      actual_rounds_completed: group.actualRoundsCompleted ?? null,
+      completion_time: group.completionTime ?? null,
+    }
 
     const { data, error } = await this.client
       .from('logged_activity_groups')
@@ -520,7 +1062,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toLoggedActivityGroup(data as LoggedActivityGroupRow)
+    return this.mapLoggedActivityGroup(data as unknown as Record<string, unknown>)
   }
 
   async deleteLoggedActivityGroup(id: string): Promise<void> {
@@ -544,11 +1086,17 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('id', userId)
       .maybeSingle()
     if (error) throw error
-    return data ? toUserProfile(data as UserProfileRow) : null
+    return data ? this.mapUserProfile(data as unknown as Record<string, unknown>) : null
   }
 
   async updateUserProfile(profile: Partial<UserProfile> & { id: string }): Promise<UserProfile> {
-    const row = fromUserProfile(profile)
+    const row: Record<string, unknown> = { id: profile.id }
+    if (profile.displayName !== undefined) row.display_name = profile.displayName ?? null
+    if (profile.preferredUnits !== undefined) row.preferred_units = profile.preferredUnits
+    if (profile.bodyweight !== undefined) row.bodyweight = profile.bodyweight ?? null
+    if (profile.trainingAge !== undefined) row.training_age = profile.trainingAge ?? null
+    if (profile.exerciseMaxes !== undefined) row.exercise_maxes = profile.exerciseMaxes
+    if (profile.maxReps !== undefined) row.max_reps = profile.maxReps
 
     const { data, error } = await this.client
       .from('user_profiles')
@@ -556,13 +1104,19 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toUserProfile(data as UserProfileRow)
+    return this.mapUserProfile(data as unknown as Record<string, unknown>)
   }
 
   async saveOneRepMax(
     entry: Omit<OneRepMaxHistory, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<OneRepMaxHistory> {
-    const row = fromOneRepMaxHistory(entry)
+    const row = {
+      user_id: entry.userId,
+      exercise_id: entry.exerciseId,
+      weight: entry.weight,
+      estimated: entry.estimated,
+      recorded_at: entry.recordedAt,
+    }
 
     const { data, error } = await this.client
       .from('one_rep_max_history')
@@ -570,7 +1124,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toOneRepMaxHistory(data as OneRepMaxHistoryRow)
+    return this.mapOneRepMaxHistory(data as unknown as Record<string, unknown>)
   }
 
   // ---------------------------------------------------------------------------
@@ -599,8 +1153,8 @@ export class SupabaseAdapter implements DataAdapter {
 
     if (error) throw error
 
-    const rows = (data ?? []) as unknown as Array<{ gyms: GymRow | null }>
-    return rows.flatMap((r) => (r.gyms ? [toGym(r.gyms)] : []))
+    const rows = (data ?? []) as unknown as Array<{ gyms: Record<string, unknown> | null }>
+    return rows.flatMap((r) => (r.gyms ? [this.mapGym(r.gyms)] : []))
   }
 
   async listAllGyms(): Promise<Gym[]> {
@@ -610,14 +1164,14 @@ export class SupabaseAdapter implements DataAdapter {
       .order('name', { ascending: true })
 
     if (error) throw error
-    return (data ?? []).map((row) => toGym(row as GymRow))
+    return (data ?? []).map((row) => this.mapGym(row as unknown as Record<string, unknown>))
   }
 
   async getGym(gymId: string): Promise<Gym | null> {
     const { data, error } = await this.client.from('gyms').select('*').eq('id', gymId).maybeSingle()
 
     if (error) throw error
-    return data ? toGym(data as GymRow) : null
+    return data ? this.mapGym(data as unknown as Record<string, unknown>) : null
   }
 
   async createGym(input: { name: string }): Promise<Gym> {
@@ -626,21 +1180,23 @@ export class SupabaseAdapter implements DataAdapter {
     // The RLS insert policy enforces owner_user_id = auth.uid(); we set it
     // explicitly here as defense in depth and to match the existing
     // createGroup convention.
-    const row = fromGym({
+    const row = {
       name: input.name,
-      ownerUserId: userId,
-    })
+      owner_user_id: userId,
+    }
 
     const { data, error } = await this.client.from('gyms').insert(row).select().single()
     if (error) throw error
-    return toGym(data as GymRow)
+    return this.mapGym(data as unknown as Record<string, unknown>)
   }
 
   async updateGym(input: Partial<Gym> & { id: string }): Promise<Gym> {
     // Strip id from the update payload (Postgres enforces primary key) but
     // use it for the WHERE clause. Owner-only enforcement is RLS-side.
     const { id, ...rest } = input
-    const patch = fromGym(rest)
+    const patch: Record<string, unknown> = {}
+    if (rest.name !== undefined) patch.name = rest.name
+    if (rest.ownerUserId !== undefined) patch.owner_user_id = rest.ownerUserId
 
     const { data, error } = await this.client
       .from('gyms')
@@ -650,7 +1206,7 @@ export class SupabaseAdapter implements DataAdapter {
       .single()
 
     if (error) throw error
-    return toGym(data as GymRow)
+    return this.mapGym(data as unknown as Record<string, unknown>)
   }
 
   async deleteGym(gymId: string): Promise<void> {
@@ -699,7 +1255,7 @@ export class SupabaseAdapter implements DataAdapter {
       .order('joined_at', { ascending: true })
 
     if (error) throw error
-    return (data ?? []).map((row) => toGymMember(row as GymMemberRow))
+    return (data ?? []).map((row) => this.mapGymMember(row as unknown as Record<string, unknown>))
   }
 
   // ---------------------------------------------------------------------------
@@ -727,7 +1283,7 @@ export class SupabaseAdapter implements DataAdapter {
 
     // The view exposes nullable columns because Postgres views are typed
     // optimistically; in practice these are always populated.
-    const rows = (data ?? []) as GymMemberCountRow[]
+    const rows = (data ?? []) as unknown as Array<{ gym_id: string | null; member_count: number | null }>
     return rows.flatMap((r) =>
       r.gym_id == null || r.member_count == null
         ? []
@@ -754,16 +1310,16 @@ export class SupabaseAdapter implements DataAdapter {
       throw error
     }
 
-    const row = data as GymInvitationRow
+    const r = camelizeKeys(data as unknown as Record<string, unknown>)
     return {
-      id: row.id,
-      gymId: row.gym_id,
-      token: row.token,
-      expiresAt: row.expires_at,
-      maxUses: row.max_uses,
-      usesCount: row.uses_count,
-      createdBy: row.created_by,
-      createdAt: row.created_at,
+      id: r.id as string,
+      gymId: r.gymId as string,
+      token: r.token as string,
+      expiresAt: r.expiresAt as string,
+      maxUses: r.maxUses as number,
+      usesCount: r.usesCount as number,
+      createdBy: r.createdBy as string,
+      createdAt: r.createdAt as string,
     }
   }
 
@@ -785,16 +1341,16 @@ export class SupabaseAdapter implements DataAdapter {
     }
 
     return (data ?? []).map((row) => {
-      const r = row as GymInvitationRow
+      const r = camelizeKeys(row as unknown as Record<string, unknown>)
       return {
-        id: r.id,
-        gymId: r.gym_id,
-        token: r.token,
-        expiresAt: r.expires_at,
-        maxUses: r.max_uses,
-        usesCount: r.uses_count,
-        createdBy: r.created_by,
-        createdAt: r.created_at,
+        id: r.id as string,
+        gymId: r.gymId as string,
+        token: r.token as string,
+        expiresAt: r.expiresAt as string,
+        maxUses: r.maxUses as number,
+        usesCount: r.usesCount as number,
+        createdBy: r.createdBy as string,
+        createdAt: r.createdAt as string,
       }
     })
   }
@@ -905,12 +1461,12 @@ export class SupabaseAdapter implements DataAdapter {
     }
 
     if (!data) return null
-    const row = data as GymOwnershipTransferRow
+    const r = camelizeKeys(data as unknown as Record<string, unknown>)
     return {
-      gymId: row.gym_id,
-      proposedBy: row.proposed_by,
-      proposedTo: row.proposed_to,
-      proposedAt: row.proposed_at,
+      gymId: r.gymId as string,
+      proposedBy: r.proposedBy as string,
+      proposedTo: r.proposedTo as string,
+      proposedAt: r.proposedAt as string,
     }
   }
 
@@ -926,7 +1482,7 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('exercise_id', exerciseId)
       .order('recorded_at', { ascending: true })
     if (error) throw error
-    return (data as OneRepMaxHistoryRow[]).map(toOneRepMaxHistory)
+    return (data as unknown as Record<string, unknown>[]).map((r) => this.mapOneRepMaxHistory(r))
   }
 
   async getRecentlyUsedExerciseIds(userId: string, limit = 10): Promise<string[]> {
@@ -985,9 +1541,9 @@ export class SupabaseAdapter implements DataAdapter {
       logged_group_id: string
       logged_activity_groups: {
         workout_log_id: string
-        workout_logs: WorkoutLogRow
+        workout_logs: Record<string, unknown>
       }
-      logged_sets: LoggedSetRow[]
+      logged_sets: Record<string, unknown>[]
     }
     const rows = data as unknown as ActivityWithJoins[]
 
@@ -998,13 +1554,13 @@ export class SupabaseAdapter implements DataAdapter {
       const logId = row.logged_activity_groups.workout_log_id
       if (!grouped.has(logId)) {
         grouped.set(logId, {
-          log: toWorkoutLog(row.logged_activity_groups.workout_logs),
+          log: this.mapWorkoutLog(row.logged_activity_groups.workout_logs),
           sets: [],
         })
       }
       const entry = grouped.get(logId)!
       for (const setRow of row.logged_sets) {
-        entry.sets.push(toLoggedSet(setRow))
+        entry.sets.push(this.mapLoggedSet(setRow))
       }
     }
 
@@ -1036,7 +1592,7 @@ export class SupabaseAdapter implements DataAdapter {
 
     const { data, error } = await query.order('created_at', { ascending: false })
     if (error) throw error
-    return (data as SessionTemplateRow[]).map(toSessionTemplate)
+    return (data as unknown as Record<string, unknown>[]).map((r) => this.mapSessionTemplate(r))
   }
 
   async getSessionTemplate(id: string): Promise<SessionTemplate | null> {
@@ -1046,7 +1602,7 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('id', id)
       .maybeSingle()
     if (error) throw error
-    return data ? toSessionTemplate(data as SessionTemplateRow) : null
+    return data ? this.mapSessionTemplate(data as unknown as Record<string, unknown>) : null
   }
 
   async getSessionTemplateFull(id: string): Promise<SessionTemplateFull | null> {
@@ -1064,10 +1620,10 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('session_template_id', id)
       .order('ordinal')
     if (groupError) throw groupError
-    const groups = (groupData as ActivityGroupRow[]).map(toActivityGroupFlat)
+    const groups = (groupData as unknown as Record<string, unknown>[]).map((r) => this.mapActivityGroupFlat(r))
     const groupIds = groups.map((g) => g.id)
 
-    const template = toSessionTemplate(templateData as SessionTemplateRow)
+    const template = this.mapSessionTemplate(templateData as unknown as Record<string, unknown>)
 
     if (groupIds.length === 0) {
       const eventItems =
@@ -1086,7 +1642,7 @@ export class SupabaseAdapter implements DataAdapter {
       .in('activity_group_id', groupIds)
       .order('ordinal')
     if (actError) throw actError
-    const activities = (actData as ActivityRow[]).map(toActivity)
+    const activities = (actData as unknown as Record<string, unknown>[]).map((r) => this.mapActivity(r))
 
     const eventItems = template.category === 'EVENT' ? await this.getEventItems(id, 'template') : []
 
@@ -1106,7 +1662,19 @@ export class SupabaseAdapter implements DataAdapter {
       activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
     }>,
   ): Promise<SessionTemplateFull> {
-    const templateRow = fromSessionTemplate(template)
+    const templateRow = {
+      user_id: template.userId,
+      name: template.name,
+      description: template.description ?? null,
+      category: template.category,
+      rest_between_groups: template.restBetweenGroups
+        ? JSON.stringify(template.restBetweenGroups)
+        : null,
+      time_cap: template.timeCap ? JSON.stringify(template.timeCap) : null,
+      scoring: template.scoring,
+      event_metadata: template.eventMetadata ? JSON.stringify(template.eventMetadata) : null,
+      is_public: template.isPublic,
+    }
 
     const { data: tData, error: tError } = await this.client
       .from('session_templates')
@@ -1114,13 +1682,24 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (tError) throw tError
-    const createdTemplate = toSessionTemplate(tData as SessionTemplateRow)
+    const createdTemplate = this.mapSessionTemplate(tData as unknown as Record<string, unknown>)
 
     const allGroups: Array<Omit<ActivityGroup, 'activities'>> = []
     const allActivities: Activity[] = []
 
     for (const groupInput of groups) {
-      const groupRow = fromActivityGroup(groupInput.group, createdTemplate.id)
+      const groupRow = {
+        session_template_id: createdTemplate.id,
+        group_type: groupInput.group.groupType,
+        ordinal: groupInput.group.ordinal,
+        rounds: groupInput.group.rounds ?? null,
+        rest_between_rounds: groupInput.group.restBetweenRounds
+          ? JSON.stringify(groupInput.group.restBetweenRounds)
+          : null,
+        rest_between_activities: groupInput.group.restBetweenActivities
+          ? JSON.stringify(groupInput.group.restBetweenActivities)
+          : null,
+      }
 
       const { data: gData, error: gError } = await this.client
         .from('activity_groups')
@@ -1128,11 +1707,17 @@ export class SupabaseAdapter implements DataAdapter {
         .select()
         .single()
       if (gError) throw gError
-      const createdGroup = toActivityGroupFlat(gData as ActivityGroupRow)
+      const createdGroup = this.mapActivityGroupFlat(gData as unknown as Record<string, unknown>)
       allGroups.push(createdGroup)
 
       for (const actInput of groupInput.activities) {
-        const actRow = fromActivity(actInput, createdGroup.id)
+        const actRow = {
+          activity_group_id: createdGroup.id,
+          exercise_id: actInput.exerciseId,
+          ordinal: actInput.ordinal,
+          set_scheme: JSON.stringify(actInput.setScheme),
+          notes: actInput.notes ?? null,
+        }
 
         const { data: aData, error: aError } = await this.client
           .from('activities')
@@ -1140,7 +1725,7 @@ export class SupabaseAdapter implements DataAdapter {
           .select()
           .single()
         if (aError) throw aError
-        allActivities.push(toActivity(aData as ActivityRow))
+        allActivities.push(this.mapActivity(aData as unknown as Record<string, unknown>))
       }
     }
 
@@ -1160,7 +1745,19 @@ export class SupabaseAdapter implements DataAdapter {
       activities: Array<Omit<Activity, 'id' | 'activityGroupId'>>
     }>,
   ): Promise<SessionTemplateFull> {
-    const templateRow = fromSessionTemplate(template)
+    const templateRow = {
+      user_id: template.userId,
+      name: template.name,
+      description: template.description ?? null,
+      category: template.category,
+      rest_between_groups: template.restBetweenGroups
+        ? JSON.stringify(template.restBetweenGroups)
+        : null,
+      time_cap: template.timeCap ? JSON.stringify(template.timeCap) : null,
+      scoring: template.scoring,
+      event_metadata: template.eventMetadata ? JSON.stringify(template.eventMetadata) : null,
+      is_public: template.isPublic,
+    }
 
     const { data: tData, error: tError } = await this.client
       .from('session_templates')
@@ -1169,7 +1766,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (tError) throw tError
-    const updatedTemplate = toSessionTemplate(tData as SessionTemplateRow)
+    const updatedTemplate = this.mapSessionTemplate(tData as unknown as Record<string, unknown>)
 
     // Delete existing groups (cascade handles activities)
     const { error: delError } = await this.client
@@ -1182,7 +1779,18 @@ export class SupabaseAdapter implements DataAdapter {
     const allActivities: Activity[] = []
 
     for (const groupInput of groups) {
-      const groupRow = fromActivityGroup(groupInput.group, template.id)
+      const groupRow = {
+        session_template_id: template.id,
+        group_type: groupInput.group.groupType,
+        ordinal: groupInput.group.ordinal,
+        rounds: groupInput.group.rounds ?? null,
+        rest_between_rounds: groupInput.group.restBetweenRounds
+          ? JSON.stringify(groupInput.group.restBetweenRounds)
+          : null,
+        rest_between_activities: groupInput.group.restBetweenActivities
+          ? JSON.stringify(groupInput.group.restBetweenActivities)
+          : null,
+      }
 
       const { data: gData, error: gError } = await this.client
         .from('activity_groups')
@@ -1190,11 +1798,17 @@ export class SupabaseAdapter implements DataAdapter {
         .select()
         .single()
       if (gError) throw gError
-      const createdGroup = toActivityGroupFlat(gData as ActivityGroupRow)
+      const createdGroup = this.mapActivityGroupFlat(gData as unknown as Record<string, unknown>)
       allGroups.push(createdGroup)
 
       for (const actInput of groupInput.activities) {
-        const actRow = fromActivity(actInput, createdGroup.id)
+        const actRow = {
+          activity_group_id: createdGroup.id,
+          exercise_id: actInput.exerciseId,
+          ordinal: actInput.ordinal,
+          set_scheme: JSON.stringify(actInput.setScheme),
+          notes: actInput.notes ?? null,
+        }
 
         const { data: aData, error: aError } = await this.client
           .from('activities')
@@ -1202,7 +1816,7 @@ export class SupabaseAdapter implements DataAdapter {
           .select()
           .single()
         if (aError) throw aError
-        allActivities.push(toActivity(aData as ActivityRow))
+        allActivities.push(this.mapActivity(aData as unknown as Record<string, unknown>))
       }
     }
 
@@ -1277,7 +1891,7 @@ export class SupabaseAdapter implements DataAdapter {
       .order('category')
       .order('sort_order')
     if (error) throw error
-    return (data as EventItemRow[]).map(toEventItem)
+    return (data as unknown as Record<string, unknown>[]).map((r) => this.mapEventItem(r))
   }
 
   async saveEventItem(
@@ -1285,10 +1899,20 @@ export class SupabaseAdapter implements DataAdapter {
     parentId: string,
     parentType: 'template' | 'log',
   ): Promise<EventItem> {
-    const row = fromEventItem(item, parentId, parentType)
+    const row = {
+      session_template_id: parentType === 'template' ? parentId : null,
+      workout_log_id: parentType === 'log' ? parentId : null,
+      user_id: item.userId,
+      name: item.name,
+      category: item.category ?? null,
+      quantity: item.quantity,
+      is_packed: item.isPacked,
+      sort_order: item.sortOrder,
+      notes: item.notes ?? null,
+    }
     const { data, error } = await this.client.from('event_items').insert(row).select().single()
     if (error) throw error
-    return toEventItem(data as EventItemRow)
+    return this.mapEventItem(data as unknown as Record<string, unknown>)
   }
 
   async updateEventItem(item: EventItem): Promise<EventItem> {
@@ -1306,7 +1930,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toEventItem(data as EventItemRow)
+    return this.mapEventItem(data as unknown as Record<string, unknown>)
   }
 
   async deleteEventItem(itemId: string): Promise<void> {
@@ -1322,7 +1946,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toEventItem(data as EventItemRow)
+    return this.mapEventItem(data as unknown as Record<string, unknown>)
   }
 
   async reorderEventItems(items: Array<{ id: string; sortOrder: number }>): Promise<void> {
@@ -1357,7 +1981,7 @@ export class SupabaseAdapter implements DataAdapter {
 
     const { data, error } = await query.order('created_at', { ascending: false })
     if (error) throw error
-    return (data as ProgramRow[]).map(toProgram)
+    return (data as unknown as Record<string, unknown>[]).map((r) => this.mapProgram(r))
   }
 
   async getProgramFull(id: string): Promise<ProgramFull | null> {
@@ -1375,12 +1999,12 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('program_id', id)
       .order('ordinal', { ascending: true })
     if (blockError) throw blockError
-    const blocks = (blockData as BlockRow[]).map(toBlock)
+    const blocks = (blockData as unknown as Record<string, unknown>[]).map((r) => this.mapBlock(r))
     const blockIds = blocks.map((b) => b.id)
 
     if (blockIds.length === 0) {
       return {
-        program: toProgram(programData as ProgramRow),
+        program: this.mapProgram(programData as unknown as Record<string, unknown>),
         blocks: [],
         blockWeeks: [],
         scheduledSessions: [],
@@ -1393,12 +2017,12 @@ export class SupabaseAdapter implements DataAdapter {
       .in('block_id', blockIds)
       .order('week_number', { ascending: true })
     if (weekError) throw weekError
-    const blockWeeks = (weekData as BlockWeekRow[]).map(toBlockWeek)
+    const blockWeeks = (weekData as unknown as Record<string, unknown>[]).map((r) => this.mapBlockWeek(r))
     const weekIds = blockWeeks.map((w) => w.id)
 
     if (weekIds.length === 0) {
       return {
-        program: toProgram(programData as ProgramRow),
+        program: this.mapProgram(programData as unknown as Record<string, unknown>),
         blocks,
         blockWeeks: [],
         scheduledSessions: [],
@@ -1410,10 +2034,10 @@ export class SupabaseAdapter implements DataAdapter {
       .select('*')
       .in('block_week_id', weekIds)
     if (sessionError) throw sessionError
-    const scheduledSessions = (sessionData as ScheduledSessionRow[]).map(toScheduledSession)
+    const scheduledSessions = (sessionData as unknown as Record<string, unknown>[]).map((r) => this.mapScheduledSession(r))
 
     return {
-      program: toProgram(programData as ProgramRow),
+      program: this.mapProgram(programData as unknown as Record<string, unknown>),
       blocks,
       blockWeeks,
       scheduledSessions,
@@ -1434,7 +2058,13 @@ export class SupabaseAdapter implements DataAdapter {
     const programId = crypto.randomUUID()
     const programRow = {
       id: programId,
-      ...fromProgram(program),
+      user_id: program.userId,
+      name: program.name,
+      description: program.description ?? null,
+      source: program.source,
+      duration_weeks: program.durationWeeks ?? null,
+      is_public: program.isPublic,
+      created_by: program.createdBy ?? null,
     }
 
     const { error: pError } = await this.client
@@ -1448,7 +2078,11 @@ export class SupabaseAdapter implements DataAdapter {
       const blockId = crypto.randomUUID()
       const blockRow = {
         id: blockId,
-        ...fromBlock(blockEntry.block, programId),
+        program_id: programId,
+        name: blockEntry.block.name,
+        ordinal: blockEntry.block.ordinal,
+        duration_weeks: blockEntry.block.durationWeeks,
+        block_type: blockEntry.block.blockType,
       }
 
       const { error: bError } = await this.client.from('blocks').insert(blockRow).select().single()
@@ -1458,7 +2092,8 @@ export class SupabaseAdapter implements DataAdapter {
         const weekId = crypto.randomUUID()
         const weekRow = {
           id: weekId,
-          ...fromBlockWeek(weekEntry.week, blockId),
+          block_id: blockId,
+          week_number: weekEntry.week.weekNumber,
         }
 
         const { error: wError } = await this.client
@@ -1472,7 +2107,13 @@ export class SupabaseAdapter implements DataAdapter {
           const sessionId = crypto.randomUUID()
           const sessionRow = {
             id: sessionId,
-            ...fromScheduledSession(sessionInput, weekId),
+            block_week_id: weekId,
+            day_of_week: sessionInput.dayOfWeek ?? null,
+            day_label: sessionInput.dayLabel,
+            session_type: sessionInput.sessionType,
+            session_template_id: sessionInput.sessionTemplateId,
+            notes: sessionInput.notes ?? null,
+            overrides: sessionInput.overrides ?? null,
           }
 
           const { error: sError } = await this.client
@@ -1501,7 +2142,14 @@ export class SupabaseAdapter implements DataAdapter {
       }>
     }>,
   ): Promise<ProgramFull> {
-    const { user_id: _, ...updateFields } = fromProgram(program)
+    const updateFields = {
+      name: program.name,
+      description: program.description ?? null,
+      source: program.source,
+      duration_weeks: program.durationWeeks ?? null,
+      is_public: program.isPublic,
+      created_by: program.createdBy ?? null,
+    }
     const { error: pError } = await this.client
       .from('programs')
       .update(updateFields)
@@ -1520,7 +2168,11 @@ export class SupabaseAdapter implements DataAdapter {
       const blockId = blockEntry.block.id ?? crypto.randomUUID()
       const blockRow = {
         id: blockId,
-        ...fromBlock(blockEntry.block, program.id),
+        program_id: program.id,
+        name: blockEntry.block.name,
+        ordinal: blockEntry.block.ordinal,
+        duration_weeks: blockEntry.block.durationWeeks,
+        block_type: blockEntry.block.blockType,
       }
 
       const { error: bError } = await this.client.from('blocks').insert(blockRow).select().single()
@@ -1530,7 +2182,8 @@ export class SupabaseAdapter implements DataAdapter {
         const weekId = weekEntry.week.id ?? crypto.randomUUID()
         const weekRow = {
           id: weekId,
-          ...fromBlockWeek(weekEntry.week, blockId),
+          block_id: blockId,
+          week_number: weekEntry.week.weekNumber,
         }
 
         const { error: wError } = await this.client
@@ -1544,7 +2197,13 @@ export class SupabaseAdapter implements DataAdapter {
           const sessionId = crypto.randomUUID()
           const sessionRow = {
             id: sessionId,
-            ...fromScheduledSession(sessionInput, weekId),
+            block_week_id: weekId,
+            day_of_week: sessionInput.dayOfWeek ?? null,
+            day_label: sessionInput.dayLabel,
+            session_type: sessionInput.sessionType,
+            session_template_id: sessionInput.sessionTemplateId,
+            notes: sessionInput.notes ?? null,
+            overrides: sessionInput.overrides ?? null,
           }
 
           const { error: sError } = await this.client
@@ -1578,7 +2237,7 @@ export class SupabaseAdapter implements DataAdapter {
       p_group_id: groupId,
     })
     if (error) throw error
-    return toProgram(data)
+    return this.mapProgram(data as unknown as Record<string, unknown>)
   }
 
   // ---------------------------------------------------------------------------
@@ -1685,7 +2344,7 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('user_id', userId)
       .maybeSingle()
     if (error) throw error
-    return data ? toProgramActivation(data as ProgramActivationRow) : null
+    return data ? this.mapProgramActivation(data as unknown as Record<string, unknown>) : null
   }
 
   async setActiveProgram(
@@ -1710,7 +2369,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toProgramActivation(data as ProgramActivationRow)
+    return this.mapProgramActivation(data as unknown as Record<string, unknown>)
   }
 
   async updateActiveProgram(
@@ -1737,7 +2396,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toProgramActivation(data as ProgramActivationRow)
+    return this.mapProgramActivation(data as unknown as Record<string, unknown>)
   }
 
   async clearActiveProgram(userId: string): Promise<void> {
@@ -1757,7 +2416,7 @@ export class SupabaseAdapter implements DataAdapter {
       .order('block_ordinal', { ascending: true })
       .order('week_number', { ascending: true })
     if (error) throw error
-    return (data as ProgramWeekStatusRow[]).map(toWeekStatus)
+    return (data as unknown as Record<string, unknown>[]).map((row) => this.mapWeekStatus(row))
   }
 
   async upsertWeekStatuses(
@@ -1809,7 +2468,7 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('created_by', userId)
       .order('created_at', { ascending: false })
     if (error) throw error
-    return (data as ShareLinkRow[]).map(toShareLink)
+    return (data as unknown as Record<string, unknown>[]).map((row) => this.mapShareLink(row))
   }
 
   async getShareLinksForEntity(
@@ -1823,7 +2482,7 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('entity_id', entityId)
       .order('created_at', { ascending: false })
     if (error) throw error
-    return (data as ShareLinkRow[]).map(toShareLink)
+    return (data as unknown as Record<string, unknown>[]).map((row) => this.mapShareLink(row))
   }
 
   async createShareLink(
@@ -1831,11 +2490,16 @@ export class SupabaseAdapter implements DataAdapter {
   ): Promise<ShareLink> {
     const { data, error } = await this.client
       .from('share_links')
-      .insert(fromShareLink(link))
+      .insert({
+        token: link.token,
+        entity_type: link.entityType,
+        entity_id: link.entityId,
+        created_by: link.createdBy,
+      })
       .select()
       .single()
     if (error) throw error
-    return toShareLink(data as ShareLinkRow)
+    return this.mapShareLink(data as unknown as Record<string, unknown>)
   }
 
   async revokeShareLink(id: string): Promise<void> {
@@ -2498,14 +3162,13 @@ export class SupabaseAdapter implements DataAdapter {
     const userId = await this.getCurrentUserId()
 
     // 1. Insert the conversation row
-    const conversationRow = fromConversation({
-      type,
-      title,
-      groupId,
-    })
     const { data: convData, error: convError } = await this.client
       .from('conversations')
-      .insert(conversationRow)
+      .insert({
+        type,
+        title: title ?? null,
+        group_id: groupId ?? null,
+      })
       .select()
       .single()
     if (convError) throw convError
@@ -2514,13 +3177,13 @@ export class SupabaseAdapter implements DataAdapter {
     const allParticipantIds = [...new Set([userId, ...participantIds])]
     for (const pid of allParticipantIds) {
       const { error: pError } = await this.client.from('conversation_participants').insert({
-        conversation_id: (convData as ConversationRow).id,
+        conversation_id: (convData as { id: string }).id,
         user_id: pid,
       })
       if (pError) throw pError
     }
 
-    return toConversation(convData as ConversationRow, allParticipantIds)
+    return this.mapConversation(convData as unknown as Record<string, unknown>, allParticipantIds)
   }
 
   async getConversations(): Promise<Conversation[]> {
@@ -2559,8 +3222,8 @@ export class SupabaseAdapter implements DataAdapter {
       participantsByConv.set(p.conversation_id, list)
     }
 
-    return (data as ConversationRow[]).map((row) =>
-      toConversation(row, participantsByConv.get(row.id) ?? []),
+    return (data as unknown as Record<string, unknown>[]).map((row) =>
+      this.mapConversation(row, participantsByConv.get(row.id as string) ?? []),
     )
   }
 
@@ -2580,8 +3243,8 @@ export class SupabaseAdapter implements DataAdapter {
       .is('left_at', null)
     if (pError) throw pError
 
-    return toConversation(
-      data as ConversationRow,
+    return this.mapConversation(
+      data as unknown as Record<string, unknown>,
       (participants ?? []).map((p) => p.user_id),
     )
   }
@@ -2635,18 +3298,19 @@ export class SupabaseAdapter implements DataAdapter {
   ): Promise<Message> {
     const userId = await this.getCurrentUserId()
 
-    const row = fromMessage({
-      conversationId,
-      senderId: userId,
-      messageType,
-      content,
-    })
-    // Remove sync_status -- it is SQLite-only and not a column in the Supabase table
-    delete row.sync_status
-
-    const { data, error } = await this.client.from('messages').insert(row).select().single()
+    // sync_status is SQLite-only and not a column in the Supabase table
+    const { data, error } = await this.client
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: userId,
+        message_type: messageType,
+        content: content ?? null,
+      })
+      .select()
+      .single()
     if (error) throw error
-    return toMessage(data as MessageRow)
+    return this.mapMessage(data as unknown as Record<string, unknown>)
   }
 
   async getMessages(
@@ -2666,7 +3330,7 @@ export class SupabaseAdapter implements DataAdapter {
 
     const { data, error } = await query
     if (error) throw error
-    return (data as MessageRow[]).map(toMessage).reverse()
+    return (data as unknown as Record<string, unknown>[]).map((row) => this.mapMessage(row)).reverse()
   }
 
   async getMessagesSince(conversationId: string, since: string): Promise<Message[]> {
@@ -2677,7 +3341,7 @@ export class SupabaseAdapter implements DataAdapter {
       .gt('created_at', since)
       .order('created_at', { ascending: true })
     if (error) throw error
-    return (data as MessageRow[]).map(toMessage)
+    return (data as unknown as Record<string, unknown>[]).map((row) => this.mapMessage(row))
   }
 
   async updateLastRead(conversationId: string): Promise<void> {
@@ -2752,7 +3416,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toConversationParticipant(data as ConversationParticipantRow)
+    return this.mapConversationParticipant(data as unknown as Record<string, unknown>)
   }
 
   async leaveConversation(conversationId: string): Promise<void> {
@@ -2791,14 +3455,25 @@ export class SupabaseAdapter implements DataAdapter {
     messageId: string,
     attachment: Omit<MediaAttachment, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<MediaAttachment> {
-    const row = fromMediaAttachment({ ...attachment, messageId })
     const { data, error } = await this.client
       .from('media_attachments')
-      .insert(row)
+      .insert({
+        message_id: messageId,
+        provider: attachment.provider,
+        provider_asset_id: attachment.providerAssetId ?? null,
+        media_type: attachment.mediaType,
+        original_filename: attachment.originalFilename ?? null,
+        mime_type: attachment.mimeType ?? null,
+        thumbnail_url: attachment.thumbnailUrl ?? null,
+        playback_url: attachment.playbackUrl ?? null,
+        duration_seconds: attachment.durationSeconds ?? null,
+        file_size_bytes: attachment.fileSizeBytes ?? null,
+        status: attachment.status,
+      })
       .select()
       .single()
     if (error) throw error
-    return toMediaAttachment(data as MediaAttachmentRow)
+    return this.mapMediaAttachment(data as unknown as Record<string, unknown>)
   }
 
   async getMediaAttachments(messageIds: string[]): Promise<MediaAttachment[]> {
@@ -2809,7 +3484,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select('*')
       .in('message_id', messageIds)
     if (error) throw error
-    return (data as MediaAttachmentRow[]).map(toMediaAttachment)
+    return (data as unknown as Record<string, unknown>[]).map((row) => this.mapMediaAttachment(row))
   }
 
   async updateMediaAttachment(
@@ -2831,7 +3506,7 @@ export class SupabaseAdapter implements DataAdapter {
       .select()
       .single()
     if (error) throw error
-    return toMediaAttachment(data as MediaAttachmentRow)
+    return this.mapMediaAttachment(data as unknown as Record<string, unknown>)
   }
 }
 

@@ -53,62 +53,37 @@ import type {
   GymOwnershipTransfer,
   RedeemInviteError,
 } from '@/domain/types'
-import type {
-  ExerciseRow,
-  WorkoutLogRow,
-  LoggedActivityGroupRow,
-  LoggedActivityRow,
-  LoggedSetRow,
-  UserProfileRow,
-  OneRepMaxHistoryRow,
-  SessionTemplateRow,
-  ActivityGroupRow,
-  ActivityRow,
-  ProgramRow,
-  BlockRow,
-  BlockWeekRow,
-  ScheduledSessionRow,
-  ProgramActivationRow,
-  ProgramWeekStatusRow,
-  AccountabilityGroupRow,
-  GroupMemberRow,
-  GroupInviteRow,
-  DirectConnectionRow,
-  ConversationRow,
-  MessageRow,
-  MediaAttachmentRow,
-} from './database.types'
+import { z } from 'zod'
 import {
-  toExercise,
-  fromExercise,
-  toWorkoutLog,
-  fromWorkoutLog,
-  toLoggedActivityGroup,
-  fromLoggedActivityGroup,
-  toLoggedActivity,
-  fromLoggedActivity,
-  toLoggedSet,
-  fromLoggedSet,
-  toUserProfile,
-  fromUserProfile,
-  toOneRepMaxHistory,
-  fromOneRepMaxHistory,
-  toSessionTemplate,
-  fromSessionTemplate,
-  toActivityGroupFlat,
-  fromActivityGroup,
-  toActivity,
-  fromActivity,
-  toProgram,
-  toBlock,
-  toBlockWeek,
-  toScheduledSession,
-  toProgramActivation,
-  toWeekStatus,
-  toConversation,
-  toMessage,
-  toMediaAttachment,
-} from './data-mapper'
+  exerciseCategorySchema,
+  movementPatternSchema,
+  muscleGroupSpecSchema,
+  equipmentSchema,
+  weightSchema,
+  durationSchema,
+  distanceSchema,
+  paceSchema,
+  programContextSchema,
+  prescriptionSchema,
+  groupTypeSchema,
+  setTypeSchema,
+  preferredUnitsSchema,
+  oneRepMaxSchema,
+  sessionTypeSchema,
+  scoringTypeSchema,
+  setSchemeSchema,
+  programSourceSchema,
+  blockTypeSchema,
+  sessionOverridesSchema,
+  weekStatusValueSchema,
+  conversationSchema,
+  messageSchema,
+  mediaProviderSchema,
+  mediaTypeSchema,
+  mediaStatusSchema,
+  entityId,
+} from '@/domain/types'
+import { parseJsonOrValue } from './adapter-utils'
 import {
   toAccountabilityGroup,
   toGroupMember,
@@ -571,13 +546,7 @@ async function invokeCommand<T>(cmd: string, args: Record<string, unknown>): Pro
 }
 
 // ---------------------------------------------------------------------------
-// Conversion helpers: Tauri Response -> TS Row types
-//
-// The existing mapper functions (toExercise, toWorkoutLog, etc.) expect the
-// database.types.ts Row shapes. Tauri commands return slightly different shapes:
-//   - booleans as 0/1 integers
-//   - JSON columns as raw strings instead of parsed objects
-// These helpers bridge that gap.
+// Low-level conversion utilities
 // ---------------------------------------------------------------------------
 
 /** Convert an ISO 8601 date string to Unix seconds for Rust commands. */
@@ -641,30 +610,6 @@ function intToBool(value: number | null | undefined, fallback = false): boolean 
   return value !== 0
 }
 
-function toExerciseRow(r: TauriExerciseResponse): ExerciseRow {
-  if (!r.movement_pattern) {
-    throw new Error(
-      `Exercise "${r.name}" (${r.id}) has no movement_pattern -- this field is required by the domain model`,
-    )
-  }
-  return {
-    id: r.id,
-    name: r.name,
-    aliases: parseJson(r.aliases, 'aliases'),
-    category: r.category,
-    movement_pattern: r.movement_pattern,
-    muscle_groups: parseJson(r.muscle_groups, 'muscle_groups'),
-    is_bilateral: intToBool(r.is_bilateral),
-    supports_1rm: intToBool(r.supports_1rm),
-    equipment_required: parseJson(r.equipment_required, 'equipment_required'),
-    is_custom: intToBool(r.is_custom),
-    is_public: intToBool(r.is_public),
-    user_id: null,
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
-  }
-}
-
 // One-shot warning when pause state is dropped on the Tauri adapter.
 // Per ADR-013, pause-state persistence to local SQLite is deferred (F018).
 // The interim behavior is to silently coerce paused_at/total_paused_ms to
@@ -677,251 +622,486 @@ function _warnPauseFieldsDroppedOnce(): void {
   console.warn('[tauri-adapter] Pause state not persisted on mobile (F018/ADR-013 deferred)')
 }
 
-function toWorkoutLogRow(r: TauriWorkoutLogResponse): WorkoutLogRow {
+// ---------------------------------------------------------------------------
+// Inline domain mappers: Tauri Response -> Domain types
+//
+// These functions replace the two-step pipeline (toXxxRow + data-mapper toXxx)
+// with a single pass. Each function handles the Tauri-specific concerns
+// (int->bool, JSON string parsing) and then maps directly to the domain type.
+// ---------------------------------------------------------------------------
+
+function toExercise(r: TauriExerciseResponse): Exercise {
+  if (!r.movement_pattern) {
+    throw new Error(
+      `Exercise "${r.name}" (${r.id}) has no movement_pattern -- this field is required by the domain model`,
+    )
+  }
   return {
     id: r.id,
-    user_id: requireString(r.user_id, 'user_id'),
-    title: r.title,
-    started_at: r.started_at,
-    completed_at: r.completed_at,
-    session_template_id: r.session_template_id,
-    program_context: parseJson(r.program_context, 'program_context'),
-    perceived_difficulty: r.perceived_difficulty,
-    bodyweight_at_session: parseJson(r.bodyweight_at_session, 'bodyweight_at_session'),
-    overall_notes: r.overall_notes,
-    note_tags: parseNoteTags(r.note_tags, 'workout_logs.note_tags'),
-    event_metadata: null, // Event features deferred for Tauri offline mode (W-8)
-    paused_at: null, // Pause state deferred for Tauri offline mode (F018)
-    total_paused_ms: 0,
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+    createdAt: r.created_at ?? new Date().toISOString(),
+    updatedAt: r.updated_at ?? new Date().toISOString(),
+    name: r.name,
+    aliases: z.array(z.string()).parse(parseJson(r.aliases, 'aliases')),
+    category: exerciseCategorySchema.parse(r.category),
+    movementPattern: movementPatternSchema.parse(r.movement_pattern),
+    muscleGroups: muscleGroupSpecSchema.parse(parseJson(r.muscle_groups, 'muscle_groups')),
+    isBilateral: intToBool(r.is_bilateral),
+    supports1RM: intToBool(r.supports_1rm),
+    equipmentRequired: z
+      .array(equipmentSchema)
+      .parse(parseJson(r.equipment_required, 'equipment_required')),
+    isCustom: intToBool(r.is_custom),
+    isPublic: intToBool(r.is_public),
   }
 }
 
-function toLoggedActivityGroupRow(r: TauriLoggedActivityGroupResponse): LoggedActivityGroupRow {
+function fromExercise(
+  exercise: Omit<Exercise, 'id' | 'createdAt' | 'updatedAt'>,
+): Record<string, unknown> {
+  return {
+    name: exercise.name,
+    aliases: exercise.aliases,
+    category: exercise.category,
+    movement_pattern: exercise.movementPattern,
+    muscle_groups: exercise.muscleGroups,
+    is_bilateral: exercise.isBilateral,
+    supports_1rm: exercise.supports1RM,
+    equipment_required: exercise.equipmentRequired,
+    is_custom: exercise.isCustom,
+    is_public: exercise.isPublic,
+  }
+}
+
+function toWorkoutLog(r: TauriWorkoutLogResponse): WorkoutLog {
+  const programContext = parseJson(r.program_context, 'program_context')
+  const bodyweightAtSession = parseJson(r.bodyweight_at_session, 'bodyweight_at_session')
   return {
     id: r.id,
-    workout_log_id: r.workout_log_id,
-    user_id: requireString(r.user_id, 'user_id'),
-    group_type: r.group_type,
+    createdAt: r.created_at ?? new Date().toISOString(),
+    updatedAt: r.updated_at ?? new Date().toISOString(),
+    userId: requireString(r.user_id, 'user_id'),
+    title: r.title ?? undefined,
+    startedAt: r.started_at,
+    completedAt: r.completed_at ?? undefined,
+    sessionTemplateId: r.session_template_id ?? undefined,
+    programContext: programContext != null ? programContextSchema.parse(programContext) : undefined,
+    perceivedDifficulty: r.perceived_difficulty ?? undefined,
+    bodyweightAtSession:
+      bodyweightAtSession != null ? weightSchema.parse(bodyweightAtSession) : undefined,
+    overallNotes: r.overall_notes ?? undefined,
+    noteTags: (() => {
+      const tags = parseNoteTags(r.note_tags, 'workout_logs.note_tags')
+      return tags.length > 0 ? tags : undefined
+    })(),
+    eventMetadata: undefined, // Event features deferred for Tauri offline mode (W-8)
+    pausedAt: undefined, // Pause state deferred for Tauri offline mode (F018)
+    totalPausedMs: 0,
+  }
+}
+
+function fromWorkoutLog(
+  log: Omit<WorkoutLog, 'id' | 'createdAt' | 'updatedAt'>,
+): Record<string, unknown> {
+  return {
+    user_id: log.userId,
+    title: log.title ?? null,
+    started_at: log.startedAt,
+    completed_at: log.completedAt ?? null,
+    session_template_id: log.sessionTemplateId ?? null,
+    program_context: log.programContext ?? null,
+    perceived_difficulty: log.perceivedDifficulty ?? null,
+    bodyweight_at_session: log.bodyweightAtSession ?? null,
+    overall_notes: log.overallNotes ?? null,
+    note_tags: log.noteTags ?? [],
+    event_metadata: null,
+    paused_at: log.pausedAt ?? null,
+    total_paused_ms: log.totalPausedMs ?? 0,
+  }
+}
+
+function toLoggedActivityGroup(r: TauriLoggedActivityGroupResponse): LoggedActivityGroup {
+  const completionTime = parseJson(r.completion_time, 'completion_time')
+  return {
+    id: r.id,
+    workoutLogId: r.workout_log_id,
+    groupType: groupTypeSchema.parse(r.group_type),
     ordinal: r.ordinal,
-    actual_rounds_completed: r.actual_rounds_completed,
-    completion_time: parseJson(r.completion_time, 'completion_time'),
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+    actualRoundsCompleted: r.actual_rounds_completed ?? undefined,
+    completionTime: completionTime != null ? durationSchema.parse(completionTime) : undefined,
   }
 }
 
-function toLoggedActivityRow(r: TauriLoggedActivityResponse): LoggedActivityRow {
+function fromLoggedActivityGroup(
+  group: Omit<LoggedActivityGroup, 'id'>,
+  userId: string,
+): Record<string, unknown> {
+  return {
+    workout_log_id: group.workoutLogId,
+    user_id: userId,
+    group_type: group.groupType,
+    ordinal: group.ordinal,
+    actual_rounds_completed: group.actualRoundsCompleted ?? null,
+    completion_time: group.completionTime ?? null,
+  }
+}
+
+function toLoggedActivity(r: TauriLoggedActivityResponse): LoggedActivity {
+  const noteTags = parseNoteTags(r.note_tags, 'logged_activities.note_tags')
   return {
     id: r.id,
-    logged_group_id: r.logged_group_id,
-    user_id: requireString(r.user_id, 'user_id'),
-    exercise_id: r.exercise_id,
+    loggedGroupId: r.logged_group_id,
+    exerciseId: r.exercise_id,
     ordinal: r.ordinal,
-    notes: r.notes,
-    note_tags: parseNoteTags(r.note_tags, 'logged_activities.note_tags'),
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+    notes: r.notes ?? undefined,
+    noteTags: noteTags.length > 0 ? noteTags : undefined,
   }
 }
 
-function toLoggedSetRow(r: TauriLoggedSetResponse): LoggedSetRow {
+function fromLoggedActivity(
+  activity: Omit<LoggedActivity, 'id'>,
+  userId: string,
+): Record<string, unknown> {
+  return {
+    logged_group_id: activity.loggedGroupId,
+    user_id: userId,
+    exercise_id: activity.exerciseId,
+    ordinal: activity.ordinal,
+    notes: activity.notes ?? null,
+    note_tags: activity.noteTags ?? [],
+  }
+}
+
+function toLoggedSet(r: TauriLoggedSetResponse): LoggedSet {
+  const prescribed = parseJson(r.prescribed, 'prescribed')
+  const actualWeight = parseJson(r.actual_weight, 'actual_weight')
+  const actualDuration = parseJson(r.actual_duration, 'actual_duration')
+  const actualDistance = parseJson(r.actual_distance, 'actual_distance')
+  const actualPace = parseJson(r.actual_pace, 'actual_pace')
+  const ruckLoad = parseJson(r.ruck_load, 'ruck_load')
+  const elevationGain = parseJson(r.elevation_gain, 'elevation_gain')
+  const noteTags = parseNoteTags(r.note_tags, 'logged_sets.note_tags')
   return {
     id: r.id,
-    logged_activity_id: r.logged_activity_id,
-    user_id: requireString(r.user_id, 'user_id'),
-    set_number: r.set_number,
-    set_type: r.set_type,
-    prescribed: parseJson(r.prescribed, 'prescribed'),
-    actual_reps: r.actual_reps,
-    actual_weight: parseJson(r.actual_weight, 'actual_weight'),
-    actual_duration: parseJson(r.actual_duration, 'actual_duration'),
-    actual_distance: parseJson(r.actual_distance, 'actual_distance'),
-    actual_pace: parseJson(r.actual_pace, 'actual_pace'),
-    actual_heart_rate: r.actual_heart_rate,
-    ruck_load: parseJson(r.ruck_load, 'ruck_load'),
-    elevation_gain: parseJson(r.elevation_gain, 'elevation_gain'),
-    rpe: r.rpe,
+    loggedActivityId: r.logged_activity_id,
+    setNumber: r.set_number,
+    setType: setTypeSchema.parse(r.set_type),
+    prescribed: prescribed != null ? prescriptionSchema.parse(prescribed) : undefined,
+    actualReps: r.actual_reps ?? undefined,
+    actualWeight: actualWeight != null ? weightSchema.parse(actualWeight) : undefined,
+    actualDuration: actualDuration != null ? durationSchema.parse(actualDuration) : undefined,
+    actualDistance: actualDistance != null ? distanceSchema.parse(actualDistance) : undefined,
+    actualPace: actualPace != null ? paceSchema.parse(actualPace) : undefined,
+    actualHeartRate: r.actual_heart_rate ?? undefined,
+    rpe: r.rpe ?? undefined,
     completed: intToBool(r.completed),
-    notes: r.notes,
-    note_tags: parseNoteTags(r.note_tags, 'logged_sets.note_tags'),
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+    notes: r.notes ?? undefined,
+    noteTags: noteTags.length > 0 ? noteTags : undefined,
+    ruckLoad: ruckLoad != null ? weightSchema.parse(ruckLoad) : undefined,
+    elevationGain: elevationGain != null ? distanceSchema.parse(elevationGain) : undefined,
   }
 }
 
-function toUserProfileRow(r: TauriUserProfileResponse): UserProfileRow {
+function fromLoggedSet(set: Omit<LoggedSet, 'id'>, userId: string): Record<string, unknown> {
   return {
-    id: r.id,
-    display_name: r.display_name,
-    preferred_units: r.preferred_units ?? 'IMPERIAL',
-    bodyweight: parseJson(r.bodyweight, 'bodyweight'),
-    training_age: parseJson(r.training_age, 'training_age'),
-    exercise_maxes: parseJson(r.exercise_maxes, 'exercise_maxes'),
-    max_reps: parseJson(r.max_reps, 'max_reps'),
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+    logged_activity_id: set.loggedActivityId,
+    user_id: userId,
+    set_number: set.setNumber,
+    set_type: set.setType,
+    prescribed: set.prescribed ?? null,
+    actual_reps: set.actualReps ?? null,
+    actual_weight: set.actualWeight ?? null,
+    actual_duration: set.actualDuration ?? null,
+    actual_distance: set.actualDistance ?? null,
+    actual_pace: set.actualPace ?? null,
+    actual_heart_rate: set.actualHeartRate ?? null,
+    ruck_load: set.ruckLoad ?? null,
+    elevation_gain: set.elevationGain ?? null,
+    rpe: set.rpe ?? null,
+    completed: set.completed,
+    notes: set.notes ?? null,
+    note_tags: set.noteTags ?? [],
   }
 }
 
-function toOneRepMaxHistoryRow(r: TauriOneRepMaxHistoryResponse): OneRepMaxHistoryRow {
+function toUserProfile(r: TauriUserProfileResponse): UserProfile {
+  const bodyweight = parseJson(r.bodyweight, 'bodyweight')
+  const trainingAge = parseJson(r.training_age, 'training_age')
+  const exerciseMaxes = parseJson(r.exercise_maxes, 'exercise_maxes')
+  const maxReps = parseJson(r.max_reps, 'max_reps')
   return {
     id: r.id,
-    user_id: r.user_id,
-    exercise_id: r.exercise_id,
-    weight: parseJson(r.weight, 'weight'),
+    createdAt: r.created_at ?? new Date().toISOString(),
+    updatedAt: r.updated_at ?? new Date().toISOString(),
+    displayName: r.display_name ?? undefined,
+    preferredUnits: preferredUnitsSchema.parse(r.preferred_units ?? 'IMPERIAL'),
+    bodyweight: bodyweight != null ? weightSchema.parse(bodyweight) : undefined,
+    trainingAge: trainingAge != null ? durationSchema.parse(trainingAge) : undefined,
+    exerciseMaxes:
+      exerciseMaxes != null ? z.record(entityId, oneRepMaxSchema).parse(exerciseMaxes) : {},
+    maxReps: maxReps != null ? z.record(entityId, z.number().int().positive()).parse(maxReps) : {},
+  }
+}
+
+function fromUserProfile(
+  profile: Partial<UserProfile> & { id: string },
+): Record<string, unknown> {
+  const row: Record<string, unknown> = { id: profile.id }
+
+  if (profile.displayName !== undefined) row.display_name = profile.displayName ?? null
+  if (profile.preferredUnits !== undefined) row.preferred_units = profile.preferredUnits
+  if (profile.bodyweight !== undefined) row.bodyweight = profile.bodyweight ?? null
+  if (profile.trainingAge !== undefined) row.training_age = profile.trainingAge ?? null
+  if (profile.exerciseMaxes !== undefined) row.exercise_maxes = profile.exerciseMaxes
+  if (profile.maxReps !== undefined) row.max_reps = profile.maxReps
+
+  return row
+}
+
+function toOneRepMaxHistory(r: TauriOneRepMaxHistoryResponse): OneRepMaxHistory {
+  return {
+    id: r.id,
+    createdAt: r.created_at ?? new Date().toISOString(),
+    userId: r.user_id,
+    exerciseId: r.exercise_id,
+    weight: weightSchema.parse(parseJson(r.weight, 'weight')),
     estimated: intToBool(r.estimated),
-    recorded_at: r.recorded_at,
-    created_at: r.created_at ?? new Date().toISOString(),
+    recordedAt: r.recorded_at,
   }
 }
 
-function toSessionTemplateRowFromTauri(r: TauriSessionTemplateResponse): SessionTemplateRow {
+function fromOneRepMaxHistory(
+  entry: Omit<OneRepMaxHistory, 'id' | 'createdAt'>,
+): Record<string, unknown> {
+  return {
+    user_id: entry.userId,
+    exercise_id: entry.exerciseId,
+    weight: entry.weight,
+    estimated: entry.estimated,
+    recorded_at: entry.recordedAt,
+  }
+}
+
+function toSessionTemplate(r: TauriSessionTemplateResponse): SessionTemplate {
   if (!r.created_at) console.warn('tauri-adapter: null created_at on session template row', r)
   if (!r.updated_at) console.warn('tauri-adapter: null updated_at on session template row', r)
   return {
     id: r.id,
-    user_id: r.user_id,
+    createdAt: r.created_at ?? new Date().toISOString(),
+    updatedAt: r.updated_at ?? new Date().toISOString(),
+    userId: r.user_id,
     name: r.name,
-    description: r.description,
-    category: r.category,
-    rest_between_groups: r.rest_between_groups,
-    time_cap: r.time_cap,
-    scoring: r.scoring,
-    is_public: r.is_public !== 0,
-    event_metadata: null, // Event features deferred for Tauri offline mode (W-8)
-    last_assigned_at: r.last_assigned_at ?? null,
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+    description: r.description ?? undefined,
+    category: sessionTypeSchema.parse(r.category),
+    restBetweenGroups:
+      r.rest_between_groups != null
+        ? durationSchema.parse(parseJsonOrValue(r.rest_between_groups))
+        : undefined,
+    timeCap: r.time_cap != null ? durationSchema.parse(parseJsonOrValue(r.time_cap)) : undefined,
+    scoring: scoringTypeSchema.parse(r.scoring),
+    eventMetadata: undefined, // Event features deferred for Tauri offline mode (W-8)
+    lastAssignedAt: r.last_assigned_at ?? undefined,
+    isPublic: r.is_public !== 0,
   }
 }
 
-function toActivityGroupRowFromTauri(r: TauriActivityGroupResponse): ActivityGroupRow {
+function fromSessionTemplate(
+  template: Omit<SessionTemplate, 'id' | 'createdAt' | 'updatedAt'>,
+): Record<string, unknown> {
+  return {
+    user_id: template.userId,
+    name: template.name,
+    description: template.description ?? null,
+    category: template.category,
+    rest_between_groups: template.restBetweenGroups
+      ? JSON.stringify(template.restBetweenGroups)
+      : null,
+    time_cap: template.timeCap ? JSON.stringify(template.timeCap) : null,
+    scoring: template.scoring,
+    event_metadata: template.eventMetadata ? JSON.stringify(template.eventMetadata) : null,
+    is_public: template.isPublic,
+  }
+}
+
+function toActivityGroupFlat(r: TauriActivityGroupResponse): Omit<ActivityGroup, 'activities'> {
   if (!r.created_at) console.warn('tauri-adapter: null created_at on activity group row', r)
   if (!r.updated_at) console.warn('tauri-adapter: null updated_at on activity group row', r)
   return {
     id: r.id,
-    session_template_id: r.session_template_id,
-    group_type: r.group_type,
+    sessionTemplateId: r.session_template_id,
+    groupType: groupTypeSchema.parse(r.group_type),
     ordinal: r.ordinal,
-    rounds: r.rounds,
-    rest_between_rounds: r.rest_between_rounds,
-    rest_between_activities: r.rest_between_activities,
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+    rounds: r.rounds ?? undefined,
+    restBetweenRounds:
+      r.rest_between_rounds != null
+        ? durationSchema.parse(parseJsonOrValue(r.rest_between_rounds))
+        : undefined,
+    restBetweenActivities:
+      r.rest_between_activities != null
+        ? durationSchema.parse(parseJsonOrValue(r.rest_between_activities))
+        : undefined,
   }
 }
 
-function toActivityRowFromTauri(r: TauriActivityResponse): ActivityRow {
+function fromActivityGroup(
+  group: Omit<ActivityGroup, 'activities'> | Omit<ActivityGroup, 'id' | 'activities'>,
+  templateId?: string,
+): Record<string, unknown> {
+  return {
+    session_template_id: templateId ?? group.sessionTemplateId,
+    group_type: group.groupType,
+    ordinal: group.ordinal,
+    rounds: group.rounds ?? null,
+    rest_between_rounds: group.restBetweenRounds ? JSON.stringify(group.restBetweenRounds) : null,
+    rest_between_activities: group.restBetweenActivities
+      ? JSON.stringify(group.restBetweenActivities)
+      : null,
+  }
+}
+
+function toActivity(r: TauriActivityResponse): Activity {
   if (!r.created_at) console.warn('tauri-adapter: null created_at on activity row', r)
   if (!r.updated_at) console.warn('tauri-adapter: null updated_at on activity row', r)
   return {
     id: r.id,
-    activity_group_id: r.activity_group_id,
-    exercise_id: r.exercise_id,
+    activityGroupId: r.activity_group_id,
+    exerciseId: r.exercise_id,
     ordinal: r.ordinal,
-    set_scheme: r.set_scheme,
-    notes: r.notes,
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+    setScheme: setSchemeSchema.parse(parseJsonOrValue(r.set_scheme)),
+    notes: r.notes ?? undefined,
   }
 }
 
-function toProgramRowFromTauri(r: TauriProgramResponse): ProgramRow {
+function fromActivity(
+  activity: Omit<Activity, 'id'> | Omit<Activity, 'id' | 'activityGroupId'>,
+  groupId?: string,
+): Record<string, unknown> {
+  return {
+    activity_group_id:
+      groupId ?? ('activityGroupId' in activity ? activity.activityGroupId : undefined),
+    exercise_id: activity.exerciseId,
+    ordinal: activity.ordinal,
+    set_scheme: JSON.stringify(activity.setScheme),
+    notes: activity.notes ?? null,
+  }
+}
+
+function toProgram(r: TauriProgramResponse): Program {
   if (!r.created_at) console.warn('tauri-adapter: null created_at on program row', r)
   if (!r.updated_at) console.warn('tauri-adapter: null updated_at on program row', r)
-  return {
-    id: r.id,
-    user_id: r.user_id,
-    name: r.name,
-    description: r.description,
-    source: r.source,
-    duration_weeks: r.duration_weeks,
-    is_public: r.is_public !== 0,
-    created_by: r.created_by,
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+  try {
+    return {
+      id: r.id,
+      createdAt: r.created_at ?? new Date().toISOString(),
+      updatedAt: r.updated_at ?? new Date().toISOString(),
+      userId: r.user_id,
+      name: r.name,
+      description: r.description ?? undefined,
+      source: programSourceSchema.parse(r.source),
+      durationWeeks: r.duration_weeks ?? undefined,
+      isPublic: r.is_public !== 0,
+      createdBy: r.created_by ?? r.user_id,
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map program "${r.name}" (${r.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
   }
 }
 
-function toBlockRowFromTauri(r: TauriBlockResponse): BlockRow {
+function toBlock(r: TauriBlockResponse): Block {
   if (!r.created_at) console.warn('tauri-adapter: null created_at on block row', r)
   if (!r.updated_at) console.warn('tauri-adapter: null updated_at on block row', r)
-  return {
-    id: r.id,
-    program_id: r.program_id,
-    name: r.name,
-    ordinal: r.ordinal,
-    duration_weeks: r.duration_weeks,
-    block_type: r.block_type,
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+  try {
+    return {
+      id: r.id,
+      programId: r.program_id,
+      name: r.name,
+      ordinal: r.ordinal,
+      durationWeeks: r.duration_weeks,
+      blockType: blockTypeSchema.parse(r.block_type),
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map block "${r.name}" (${r.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
   }
 }
 
-function toBlockWeekRowFromTauri(r: TauriBlockWeekResponse): BlockWeekRow {
+function toBlockWeek(r: TauriBlockWeekResponse): BlockWeek {
   if (!r.created_at) console.warn('tauri-adapter: null created_at on block_week row', r)
   if (!r.updated_at) console.warn('tauri-adapter: null updated_at on block_week row', r)
   return {
     id: r.id,
-    block_id: r.block_id,
-    week_number: r.week_number,
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+    blockId: r.block_id,
+    weekNumber: r.week_number,
   }
 }
 
-function toScheduledSessionRowFromTauri(r: TauriScheduledSessionResponse): ScheduledSessionRow {
+function toScheduledSession(r: TauriScheduledSessionResponse): ScheduledSession {
   if (!r.created_at) console.warn('tauri-adapter: null created_at on scheduled_session row', r)
   if (!r.updated_at) console.warn('tauri-adapter: null updated_at on scheduled_session row', r)
-  return {
-    id: r.id,
-    block_week_id: r.block_week_id,
-    day_of_week: r.day_of_week,
-    day_label: r.day_label,
-    session_type: r.session_type,
-    session_template_id: r.session_template_id,
-    notes: r.notes,
-    overrides: parseJson(r.overrides, 'overrides'),
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+  try {
+    let overrides: ScheduledSession['overrides']
+    if (r.overrides != null) {
+      try {
+        const parsed = parseJson(r.overrides, 'overrides')
+        overrides = sessionOverridesSchema.parse(parsed)
+      } catch (err) {
+        console.warn(
+          `[tauri-adapter] Failed to parse overrides for scheduled session ${r.id}, falling back to undefined:`,
+          err,
+        )
+        overrides = undefined
+      }
+    }
+    return {
+      id: r.id,
+      blockWeekId: r.block_week_id,
+      dayOfWeek: r.day_of_week ?? undefined,
+      dayLabel: r.day_label,
+      sessionType: sessionTypeSchema.parse(r.session_type),
+      sessionTemplateId: r.session_template_id,
+      notes: r.notes ?? undefined,
+      overrides,
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map scheduled session (${r.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
   }
 }
 
-function toProgramActivationRowFromTauri(r: TauriProgramActivationResponse): ProgramActivationRow {
+function toProgramActivation(r: TauriProgramActivationResponse): ProgramActivation {
   if (!r.created_at) console.warn('tauri-adapter: null created_at on program_activation row', r)
   if (!r.updated_at) console.warn('tauri-adapter: null updated_at on program_activation row', r)
   return {
     id: r.id,
-    user_id: r.user_id,
-    program_id: r.program_id,
-    current_block_ordinal: r.current_block_ordinal,
-    current_week_number: r.current_week_number,
-    start_date: r.start_date,
-    created_at: r.created_at ?? new Date().toISOString(),
-    updated_at: r.updated_at ?? new Date().toISOString(),
+    createdAt: r.created_at ?? new Date().toISOString(),
+    updatedAt: r.updated_at ?? new Date().toISOString(),
+    userId: r.user_id,
+    programId: r.program_id,
+    currentBlockOrdinal: r.current_block_ordinal,
+    currentWeekNumber: r.current_week_number,
+    startDate: r.start_date,
   }
 }
 
-function toWeekStatusRowFromTauri(r: TauriWeekStatusResponse): ProgramWeekStatusRow {
+function toWeekStatus(r: TauriWeekStatusResponse): WeekStatus {
   return {
     id: r.id,
-    activation_id: r.activation_id,
-    block_ordinal: r.block_ordinal,
-    week_number: r.week_number,
-    status: r.status,
-    created_at: r.created_at,
+    activationId: r.activation_id,
+    blockOrdinal: r.block_ordinal,
+    weekNumber: r.week_number,
+    status: weekStatusValueSchema.parse(r.status),
+    createdAt: r.created_at,
   }
 }
 
 // ---------------------------------------------------------------------------
-// Sharing row converters: Tauri Response -> TS Row types
+// Sharing domain mappers: Tauri Response -> Domain types (via sharing-mappers)
 // ---------------------------------------------------------------------------
 
-function toAccountabilityGroupRowFromTauri(
-  r: TauriAccountabilityGroupResponse,
-): AccountabilityGroupRow {
+function toAccountabilityGroupRowFromTauri(r: TauriAccountabilityGroupResponse) {
   if (!r.created_at || !r.updated_at)
     console.warn(`[tauri-adapter] Null timestamp in AccountabilityGroup ${r.id}`)
   return {
@@ -936,7 +1116,7 @@ function toAccountabilityGroupRowFromTauri(
   }
 }
 
-function toGroupMemberRowFromTauri(r: TauriGroupMemberResponse): GroupMemberRow {
+function toGroupMemberRowFromTauri(r: TauriGroupMemberResponse) {
   if (!r.created_at || !r.updated_at)
     console.warn(`[tauri-adapter] Null timestamp in GroupMember ${r.id}`)
   return {
@@ -951,7 +1131,7 @@ function toGroupMemberRowFromTauri(r: TauriGroupMemberResponse): GroupMemberRow 
   }
 }
 
-function toGroupInviteRowFromTauri(r: TauriGroupInviteResponse): GroupInviteRow {
+function toGroupInviteRowFromTauri(r: TauriGroupInviteResponse) {
   if (!r.created_at || !r.updated_at)
     console.warn(`[tauri-adapter] Null timestamp in GroupInvite ${r.id}`)
   return {
@@ -966,7 +1146,7 @@ function toGroupInviteRowFromTauri(r: TauriGroupInviteResponse): GroupInviteRow 
   }
 }
 
-function toDirectConnectionRowFromTauri(r: TauriDirectConnectionResponse): DirectConnectionRow {
+function toDirectConnectionRowFromTauri(r: TauriDirectConnectionResponse) {
   if (!r.created_at || !r.updated_at)
     console.warn(`[tauri-adapter] Null timestamp in DirectConnection ${r.id}`)
   return {
@@ -983,49 +1163,67 @@ function toDirectConnectionRowFromTauri(r: TauriDirectConnectionResponse): Direc
 }
 
 // ---------------------------------------------------------------------------
-// Chat row converters: Tauri Response -> TS Row types
+// Chat domain mappers: Tauri Response -> Domain types
 // ---------------------------------------------------------------------------
 
-function toConversationRowFromTauri(r: TauriConversationResponse): ConversationRow {
-  return {
-    id: r.id,
-    type: r.type,
-    title: r.title,
-    group_id: r.group_id,
-    created_at: r.created_at,
-    updated_at: r.updated_at,
+function toConversation(r: TauriConversationResponse, participantUserIds: string[] = []): Conversation {
+  try {
+    return conversationSchema.parse({
+      id: r.id,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      type: r.type,
+      title: r.title ?? undefined,
+      groupId: r.group_id ?? undefined,
+      participantUserIds,
+    })
+  } catch (err) {
+    throw new Error(
+      `Failed to map conversation (${r.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
   }
 }
 
-function toMessageRowFromTauri(r: TauriMessageResponse): MessageRow {
-  return {
-    id: r.id,
-    conversation_id: r.conversation_id,
-    sender_id: r.sender_id,
-    message_type: r.message_type,
-    content: r.content,
-    created_at: r.created_at,
-    updated_at: r.updated_at,
-    sync_status: r.sync_status ?? undefined,
+function toMessage(r: TauriMessageResponse): Message {
+  try {
+    return messageSchema.parse({
+      id: r.id,
+      createdAt: r.created_at,
+      conversationId: r.conversation_id,
+      senderId: r.sender_id ?? undefined,
+      messageType: r.message_type,
+      content: r.content ?? undefined,
+      syncStatus: r.sync_status ?? undefined,
+    })
+  } catch (err) {
+    throw new Error(
+      `Failed to map message (${r.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
   }
 }
 
-function toMediaAttachmentRowFromTauri(r: TauriMediaAttachmentResponse): MediaAttachmentRow {
-  return {
-    id: r.id,
-    message_id: r.message_id,
-    provider: r.provider,
-    provider_asset_id: r.provider_asset_id,
-    media_type: r.media_type,
-    original_filename: r.original_filename,
-    mime_type: r.mime_type,
-    thumbnail_url: r.thumbnail_url,
-    playback_url: r.playback_url,
-    duration_seconds: r.duration_seconds,
-    file_size_bytes: r.file_size_bytes,
-    status: r.status,
-    created_at: r.created_at,
-    updated_at: r.updated_at,
+function toMediaAttachment(r: TauriMediaAttachmentResponse): MediaAttachment {
+  try {
+    return {
+      id: r.id,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      messageId: r.message_id,
+      provider: mediaProviderSchema.parse(r.provider),
+      providerAssetId: r.provider_asset_id ?? undefined,
+      mediaType: mediaTypeSchema.parse(r.media_type),
+      originalFilename: r.original_filename ?? undefined,
+      mimeType: r.mime_type ?? undefined,
+      thumbnailUrl: r.thumbnail_url ?? undefined,
+      playbackUrl: r.playback_url ?? undefined,
+      durationSeconds: r.duration_seconds ?? undefined,
+      fileSizeBytes: r.file_size_bytes ?? undefined,
+      status: mediaStatusSchema.parse(r.status),
+    }
+  } catch (err) {
+    throw new Error(
+      `Failed to map media attachment (${r.id}): ${err instanceof Error ? err.message : String(err)}`,
+    )
   }
 }
 
@@ -1065,7 +1263,7 @@ export class TauriAdapter implements DataAdapter {
       filters: rustFilters,
     })
 
-    let exercises = rows.map((r) => toExercise(toExerciseRow(r)))
+    let exercises = rows.map((r) => toExercise(r))
 
     // The Rust command does not filter by muscleGroup, so apply client-side
     // (mirrors SupabaseAdapter's behavior for search queries)
@@ -1078,7 +1276,7 @@ export class TauriAdapter implements DataAdapter {
 
   async getExercise(id: string): Promise<Exercise | null> {
     const row = await invokeCommand<TauriExerciseResponse | null>('get_exercise', { id })
-    return row ? toExercise(toExerciseRow(row)) : null
+    return row ? toExercise(row) : null
   }
 
   async createExercise(
@@ -1086,19 +1284,19 @@ export class TauriAdapter implements DataAdapter {
   ): Promise<Exercise> {
     const partial = fromExercise(exercise)
     const input = {
-      name: partial.name!,
+      name: partial.name as string,
       aliases: partial.aliases != null ? JSON.stringify(partial.aliases) : null,
-      category: partial.category!,
-      movement_pattern: partial.movement_pattern ?? null,
+      category: partial.category as string,
+      movement_pattern: (partial.movement_pattern as string | undefined) ?? null,
       muscle_groups: partial.muscle_groups != null ? JSON.stringify(partial.muscle_groups) : null,
-      is_bilateral: partial.is_bilateral ?? null,
-      supports_1rm: partial.supports_1rm ?? null,
+      is_bilateral: (partial.is_bilateral as boolean | undefined) ?? null,
+      supports_1rm: (partial.supports_1rm as boolean | undefined) ?? null,
       equipment_required:
         partial.equipment_required != null ? JSON.stringify(partial.equipment_required) : null,
     }
 
     const row = await invokeCommand<TauriExerciseResponse>('create_exercise', { exercise: input })
-    return toExercise(toExerciseRow(row))
+    return toExercise(row)
   }
 
   // ---------------------------------------------------------------------------
@@ -1110,7 +1308,7 @@ export class TauriAdapter implements DataAdapter {
       user_id: userId,
       limit: limit ?? null,
     })
-    return rows.map((r) => toWorkoutLog(toWorkoutLogRow(r)))
+    return rows.map((r) => toWorkoutLog(r))
   }
 
   async getWorkoutLogsSummary(
@@ -1124,7 +1322,7 @@ export class TauriAdapter implements DataAdapter {
     })
 
     return summaries.map((s) => ({
-      log: toWorkoutLog(toWorkoutLogRow(s.log)),
+      log: toWorkoutLog(s.log),
       exerciseNames: s.exercise_names,
       setCount: s.set_count,
       exerciseCount: s.exercise_count,
@@ -1133,7 +1331,7 @@ export class TauriAdapter implements DataAdapter {
 
   async getWorkoutLog(id: string): Promise<WorkoutLog | null> {
     const row = await invokeCommand<TauriWorkoutLogResponse | null>('get_workout_log', { id })
-    return row ? toWorkoutLog(toWorkoutLogRow(row)) : null
+    return row ? toWorkoutLog(row) : null
   }
 
   async getWorkoutLogFull(id: string): Promise<{
@@ -1146,10 +1344,10 @@ export class TauriAdapter implements DataAdapter {
     if (!full) return null
 
     return {
-      log: toWorkoutLog(toWorkoutLogRow(full.log)),
-      groups: full.groups.map((g) => toLoggedActivityGroup(toLoggedActivityGroupRow(g))),
-      activities: full.activities.map((a) => toLoggedActivity(toLoggedActivityRow(a))),
-      sets: full.sets.map((s) => toLoggedSet(toLoggedSetRow(s))),
+      log: toWorkoutLog(full.log),
+      groups: full.groups.map((g) => toLoggedActivityGroup(g)),
+      activities: full.activities.map((a) => toLoggedActivity(a)),
+      sets: full.sets.map((s) => toLoggedSet(s)),
     }
   }
 
@@ -1161,16 +1359,16 @@ export class TauriAdapter implements DataAdapter {
     }
     const partial = fromWorkoutLog(log)
     const input = {
-      user_id: partial.user_id!,
-      title: partial.title ?? null,
-      started_at: isoToUnixSeconds(partial.started_at!),
-      completed_at: partial.completed_at ? isoToUnixSeconds(partial.completed_at) : null,
-      session_template_id: partial.session_template_id ?? null,
+      user_id: partial.user_id as string,
+      title: (partial.title as string | undefined) ?? null,
+      started_at: isoToUnixSeconds(partial.started_at as string),
+      completed_at: partial.completed_at ? isoToUnixSeconds(partial.completed_at as string) : null,
+      session_template_id: (partial.session_template_id as string | undefined) ?? null,
       program_context:
         partial.program_context != null ? JSON.stringify(partial.program_context) : null,
-      overall_notes: partial.overall_notes ?? null,
+      overall_notes: (partial.overall_notes as string | undefined) ?? null,
       note_tags: JSON.stringify(partial.note_tags ?? []),
-      perceived_difficulty: partial.perceived_difficulty ?? null,
+      perceived_difficulty: (partial.perceived_difficulty as number | undefined) ?? null,
       bodyweight_at_session:
         partial.bodyweight_at_session != null
           ? JSON.stringify(partial.bodyweight_at_session)
@@ -1178,7 +1376,7 @@ export class TauriAdapter implements DataAdapter {
     }
 
     const row = await invokeCommand<TauriWorkoutLogResponse>('create_workout_log', { log: input })
-    return toWorkoutLog(toWorkoutLogRow(row))
+    return toWorkoutLog(row)
   }
 
   async updateWorkoutLog(log: WorkoutLog): Promise<WorkoutLog> {
@@ -1193,7 +1391,7 @@ export class TauriAdapter implements DataAdapter {
       note_tags: JSON.stringify(log.noteTags ?? []),
       perceived_difficulty: log.perceivedDifficulty ?? null,
     })
-    return toWorkoutLog(toWorkoutLogRow(row))
+    return toWorkoutLog(row)
   }
 
   async deleteWorkoutLog(id: string): Promise<void> {
@@ -1210,10 +1408,10 @@ export class TauriAdapter implements DataAdapter {
   ): Promise<LoggedActivityGroup> {
     const partial = fromLoggedActivityGroup(group, userId)
     const input = {
-      workout_log_id: partial.workout_log_id!,
-      group_type: partial.group_type!,
-      ordinal: partial.ordinal!,
-      actual_rounds_completed: partial.actual_rounds_completed ?? null,
+      workout_log_id: partial.workout_log_id as string,
+      group_type: partial.group_type as string,
+      ordinal: partial.ordinal as number,
+      actual_rounds_completed: (partial.actual_rounds_completed as number | undefined) ?? null,
       completion_time:
         partial.completion_time != null ? JSON.stringify(partial.completion_time) : null,
     }
@@ -1225,7 +1423,7 @@ export class TauriAdapter implements DataAdapter {
         user_id: userId,
       },
     )
-    return toLoggedActivityGroup(toLoggedActivityGroupRow(row))
+    return toLoggedActivityGroup(row)
   }
 
   async updateLoggedActivityGroup(
@@ -1235,10 +1433,10 @@ export class TauriAdapter implements DataAdapter {
     const partial = fromLoggedActivityGroup(group, userId)
     const input = {
       id: group.id,
-      workout_log_id: partial.workout_log_id!,
-      group_type: partial.group_type!,
-      ordinal: partial.ordinal!,
-      actual_rounds_completed: partial.actual_rounds_completed ?? null,
+      workout_log_id: partial.workout_log_id as string,
+      group_type: partial.group_type as string,
+      ordinal: partial.ordinal as number,
+      actual_rounds_completed: (partial.actual_rounds_completed as number | undefined) ?? null,
       completion_time:
         partial.completion_time != null ? JSON.stringify(partial.completion_time) : null,
     }
@@ -1250,7 +1448,7 @@ export class TauriAdapter implements DataAdapter {
         user_id: userId,
       },
     )
-    return toLoggedActivityGroup(toLoggedActivityGroupRow(row))
+    return toLoggedActivityGroup(row)
   }
 
   async deleteLoggedActivityGroup(id: string): Promise<void> {
@@ -1267,10 +1465,10 @@ export class TauriAdapter implements DataAdapter {
   ): Promise<LoggedActivity> {
     const partial = fromLoggedActivity(activity, userId)
     const input = {
-      logged_group_id: partial.logged_group_id!,
-      exercise_id: partial.exercise_id!,
-      ordinal: partial.ordinal!,
-      notes: partial.notes ?? null,
+      logged_group_id: partial.logged_group_id as string,
+      exercise_id: partial.exercise_id as string,
+      ordinal: partial.ordinal as number,
+      notes: (partial.notes as string | undefined) ?? null,
       note_tags: JSON.stringify(partial.note_tags ?? []),
     }
 
@@ -1278,17 +1476,17 @@ export class TauriAdapter implements DataAdapter {
       activity: input,
       user_id: userId,
     })
-    return toLoggedActivity(toLoggedActivityRow(row))
+    return toLoggedActivity(row)
   }
 
   async updateLoggedActivity(activity: LoggedActivity, userId: string): Promise<LoggedActivity> {
     const partial = fromLoggedActivity(activity, userId)
     const input = {
       id: activity.id,
-      logged_group_id: partial.logged_group_id!,
-      exercise_id: partial.exercise_id!,
-      ordinal: partial.ordinal!,
-      notes: partial.notes ?? null,
+      logged_group_id: partial.logged_group_id as string,
+      exercise_id: partial.exercise_id as string,
+      ordinal: partial.ordinal as number,
+      notes: (partial.notes as string | undefined) ?? null,
       note_tags: JSON.stringify(partial.note_tags ?? []),
     }
 
@@ -1296,7 +1494,7 @@ export class TauriAdapter implements DataAdapter {
       activity: input,
       user_id: userId,
     })
-    return toLoggedActivity(toLoggedActivityRow(row))
+    return toLoggedActivity(row)
   }
 
   async deleteLoggedActivity(id: string): Promise<void> {
@@ -1310,24 +1508,24 @@ export class TauriAdapter implements DataAdapter {
   async createLoggedSet(set: Omit<LoggedSet, 'id'>, userId: string): Promise<LoggedSet> {
     const partial = fromLoggedSet(set, userId)
     const input = {
-      logged_activity_id: partial.logged_activity_id!,
-      set_number: partial.set_number!,
-      set_type: partial.set_type!,
+      logged_activity_id: partial.logged_activity_id as string,
+      set_number: partial.set_number as number,
+      set_type: partial.set_type as string,
       prescribed: partial.prescribed != null ? JSON.stringify(partial.prescribed) : null,
-      actual_reps: partial.actual_reps ?? null,
+      actual_reps: (partial.actual_reps as number | undefined) ?? null,
       actual_weight: partial.actual_weight != null ? JSON.stringify(partial.actual_weight) : null,
       actual_duration:
         partial.actual_duration != null ? JSON.stringify(partial.actual_duration) : null,
       actual_distance:
         partial.actual_distance != null ? JSON.stringify(partial.actual_distance) : null,
       actual_pace: partial.actual_pace != null ? JSON.stringify(partial.actual_pace) : null,
-      actual_heart_rate: partial.actual_heart_rate ?? null,
+      actual_heart_rate: (partial.actual_heart_rate as number | undefined) ?? null,
       ruck_load: partial.ruck_load != null ? JSON.stringify(partial.ruck_load) : null,
       elevation_gain:
         partial.elevation_gain != null ? JSON.stringify(partial.elevation_gain) : null,
-      rpe: partial.rpe ?? null,
-      completed: partial.completed ?? null,
-      notes: partial.notes ?? null,
+      rpe: (partial.rpe as number | undefined) ?? null,
+      completed: (partial.completed as boolean | undefined) ?? null,
+      notes: (partial.notes as string | undefined) ?? null,
       note_tags: JSON.stringify(partial.note_tags ?? []),
     }
 
@@ -1335,31 +1533,31 @@ export class TauriAdapter implements DataAdapter {
       set: input,
       user_id: userId,
     })
-    return toLoggedSet(toLoggedSetRow(row))
+    return toLoggedSet(row)
   }
 
   async updateLoggedSet(set: LoggedSet, userId: string): Promise<LoggedSet> {
     const partial = fromLoggedSet(set, userId)
     const input = {
       id: set.id,
-      logged_activity_id: partial.logged_activity_id!,
-      set_number: partial.set_number!,
-      set_type: partial.set_type!,
+      logged_activity_id: partial.logged_activity_id as string,
+      set_number: partial.set_number as number,
+      set_type: partial.set_type as string,
       prescribed: partial.prescribed != null ? JSON.stringify(partial.prescribed) : null,
-      actual_reps: partial.actual_reps ?? null,
+      actual_reps: (partial.actual_reps as number | undefined) ?? null,
       actual_weight: partial.actual_weight != null ? JSON.stringify(partial.actual_weight) : null,
       actual_duration:
         partial.actual_duration != null ? JSON.stringify(partial.actual_duration) : null,
       actual_distance:
         partial.actual_distance != null ? JSON.stringify(partial.actual_distance) : null,
       actual_pace: partial.actual_pace != null ? JSON.stringify(partial.actual_pace) : null,
-      actual_heart_rate: partial.actual_heart_rate ?? null,
+      actual_heart_rate: (partial.actual_heart_rate as number | undefined) ?? null,
       ruck_load: partial.ruck_load != null ? JSON.stringify(partial.ruck_load) : null,
       elevation_gain:
         partial.elevation_gain != null ? JSON.stringify(partial.elevation_gain) : null,
-      rpe: partial.rpe ?? null,
-      completed: partial.completed ?? null,
-      notes: partial.notes ?? null,
+      rpe: (partial.rpe as number | undefined) ?? null,
+      completed: (partial.completed as boolean | undefined) ?? null,
+      notes: (partial.notes as string | undefined) ?? null,
       note_tags: JSON.stringify(partial.note_tags ?? []),
     }
 
@@ -1367,7 +1565,7 @@ export class TauriAdapter implements DataAdapter {
       set: input,
       user_id: userId,
     })
-    return toLoggedSet(toLoggedSetRow(row))
+    return toLoggedSet(row)
   }
 
   async deleteLoggedSet(id: string): Promise<void> {
@@ -1382,7 +1580,7 @@ export class TauriAdapter implements DataAdapter {
     const row = await invokeCommand<TauriUserProfileResponse | null>('get_user_profile', {
       user_id: userId,
     })
-    return row ? toUserProfile(toUserProfileRow(row)) : null
+    return row ? toUserProfile(row) : null
   }
 
   async updateUserProfile(profile: Partial<UserProfile> & { id: string }): Promise<UserProfile> {
@@ -1391,9 +1589,9 @@ export class TauriAdapter implements DataAdapter {
     // command and the SQLite migration on the Tauri side drop it in lockstep
     // (Wave 3b). We do not pass it here.
     const input = {
-      id: partial.id!,
-      display_name: partial.display_name ?? null,
-      preferred_units: partial.preferred_units ?? null,
+      id: partial.id as string,
+      display_name: (partial.display_name as string | undefined) ?? null,
+      preferred_units: (partial.preferred_units as string | undefined) ?? null,
       bodyweight: partial.bodyweight != null ? JSON.stringify(partial.bodyweight) : null,
       training_age: partial.training_age != null ? JSON.stringify(partial.training_age) : null,
       exercise_maxes:
@@ -1404,7 +1602,7 @@ export class TauriAdapter implements DataAdapter {
     const row = await invokeCommand<TauriUserProfileResponse>('update_user_profile', {
       profile: input,
     })
-    return toUserProfile(toUserProfileRow(row))
+    return toUserProfile(row)
   }
 
   async saveOneRepMax(
@@ -1412,13 +1610,13 @@ export class TauriAdapter implements DataAdapter {
   ): Promise<OneRepMaxHistory> {
     const partial = fromOneRepMaxHistory(entry)
     const row = await invokeCommand<TauriOneRepMaxHistoryResponse>('save_one_rep_max', {
-      user_id: partial.user_id!,
-      exercise_id: partial.exercise_id!,
+      user_id: partial.user_id as string,
+      exercise_id: partial.exercise_id as string,
       weight: JSON.stringify(partial.weight),
-      estimated: partial.estimated ?? null,
-      recorded_at: isoToUnixSeconds(partial.recorded_at!),
+      estimated: (partial.estimated as boolean | undefined) ?? null,
+      recorded_at: isoToUnixSeconds(partial.recorded_at as string),
     })
-    return toOneRepMaxHistory(toOneRepMaxHistoryRow(row))
+    return toOneRepMaxHistory(row)
   }
 
   // ---------------------------------------------------------------------------
@@ -1430,7 +1628,7 @@ export class TauriAdapter implements DataAdapter {
       user_id: userId,
       exercise_id: exerciseId,
     })
-    return rows.map((r) => toOneRepMaxHistory(toOneRepMaxHistoryRow(r)))
+    return rows.map((r) => toOneRepMaxHistory(r))
   }
 
   async getRecentlyUsedExerciseIds(userId: string, limit = 10): Promise<string[]> {
@@ -1452,8 +1650,8 @@ export class TauriAdapter implements DataAdapter {
     })
 
     return results.map((r) => ({
-      log: toWorkoutLog(toWorkoutLogRow(r.log)),
-      sets: r.sets.map((s) => toLoggedSet(toLoggedSetRow(s))),
+      log: toWorkoutLog(r.log),
+      sets: r.sets.map((s) => toLoggedSet(s)),
     }))
   }
 
@@ -1538,10 +1736,10 @@ export class TauriAdapter implements DataAdapter {
     }>('create_workout_log_full', { input, user_id: userId })
 
     return {
-      log: toWorkoutLog(toWorkoutLogRow(result.log)),
-      groups: result.groups.map((g) => toLoggedActivityGroup(toLoggedActivityGroupRow(g))),
-      activities: result.activities.map((a) => toLoggedActivity(toLoggedActivityRow(a))),
-      sets: result.sets.map((s) => toLoggedSet(toLoggedSetRow(s))),
+      log: toWorkoutLog(result.log),
+      groups: result.groups.map((g) => toLoggedActivityGroup(g)),
+      activities: result.activities.map((a) => toLoggedActivity(a)),
+      sets: result.sets.map((s) => toLoggedSet(s)),
     }
   }
 
@@ -1565,7 +1763,7 @@ export class TauriAdapter implements DataAdapter {
       user_id: userId,
     })
 
-    let templates = rows.map((r) => toSessionTemplate(toSessionTemplateRowFromTauri(r)))
+    let templates = rows.map((r) => toSessionTemplate(r))
 
     // Apply client-side filters for searchQuery and category
     if (filters?.searchQuery) {
@@ -1587,7 +1785,7 @@ export class TauriAdapter implements DataAdapter {
     const row = await invokeCommand<TauriSessionTemplateResponse | null>('get_session_template', {
       id,
     })
-    return row ? toSessionTemplate(toSessionTemplateRowFromTauri(row)) : null
+    return row ? toSessionTemplate(row) : null
   }
 
   async getSessionTemplateFull(id: string): Promise<SessionTemplateFull | null> {
@@ -1597,9 +1795,9 @@ export class TauriAdapter implements DataAdapter {
     if (!full) return null
 
     return {
-      template: toSessionTemplate(toSessionTemplateRowFromTauri(full.template)),
-      groups: full.groups.map((g) => toActivityGroupFlat(toActivityGroupRowFromTauri(g))),
-      activities: full.activities.map((a) => toActivity(toActivityRowFromTauri(a))),
+      template: toSessionTemplate(full.template),
+      groups: full.groups.map((g) => toActivityGroupFlat(g)),
+      activities: full.activities.map((a) => toActivity(a)),
       eventItems: [],
     }
   }
@@ -1613,33 +1811,33 @@ export class TauriAdapter implements DataAdapter {
   ): Promise<SessionTemplateFull> {
     const partial = fromSessionTemplate(template)
     const input = {
-      user_id: partial.user_id ?? null,
-      name: partial.name!,
-      description: partial.description ?? null,
-      category: partial.category!,
-      rest_between_groups: partial.rest_between_groups ?? null,
-      time_cap: partial.time_cap ?? null,
-      scoring: partial.scoring ?? null,
-      is_public: partial.is_public ?? false,
+      user_id: (partial.user_id as string | undefined) ?? null,
+      name: partial.name as string,
+      description: (partial.description as string | undefined) ?? null,
+      category: partial.category as string,
+      rest_between_groups: (partial.rest_between_groups as string | undefined) ?? null,
+      time_cap: (partial.time_cap as string | undefined) ?? null,
+      scoring: (partial.scoring as string | undefined) ?? null,
+      is_public: (partial.is_public as boolean | undefined) ?? false,
     }
 
     const groupsInput = groups.map((g) => {
       const gPartial = fromActivityGroup(g.group)
       return {
         group: {
-          group_type: gPartial.group_type!,
-          ordinal: gPartial.ordinal!,
-          rounds: gPartial.rounds ?? null,
-          rest_between_rounds: gPartial.rest_between_rounds ?? null,
-          rest_between_activities: gPartial.rest_between_activities ?? null,
+          group_type: gPartial.group_type as string,
+          ordinal: gPartial.ordinal as number,
+          rounds: (gPartial.rounds as number | undefined) ?? null,
+          rest_between_rounds: (gPartial.rest_between_rounds as string | undefined) ?? null,
+          rest_between_activities: (gPartial.rest_between_activities as string | undefined) ?? null,
         },
         activities: g.activities.map((a) => {
           const aPartial = fromActivity(a)
           return {
-            exercise_id: aPartial.exercise_id!,
-            ordinal: aPartial.ordinal!,
-            set_scheme: aPartial.set_scheme!,
-            notes: aPartial.notes ?? null,
+            exercise_id: aPartial.exercise_id as string,
+            ordinal: aPartial.ordinal as number,
+            set_scheme: aPartial.set_scheme as string,
+            notes: (aPartial.notes as string | undefined) ?? null,
           }
         }),
       }
@@ -1651,9 +1849,9 @@ export class TauriAdapter implements DataAdapter {
     })
 
     return {
-      template: toSessionTemplate(toSessionTemplateRowFromTauri(result.template)),
-      groups: result.groups.map((g) => toActivityGroupFlat(toActivityGroupRowFromTauri(g))),
-      activities: result.activities.map((a) => toActivity(toActivityRowFromTauri(a))),
+      template: toSessionTemplate(result.template),
+      groups: result.groups.map((g) => toActivityGroupFlat(g)),
+      activities: result.activities.map((a) => toActivity(a)),
       eventItems: [],
     }
   }
@@ -1668,14 +1866,14 @@ export class TauriAdapter implements DataAdapter {
     const partial = fromSessionTemplate(template)
     const input = {
       id: template.id,
-      user_id: partial.user_id ?? null,
-      name: partial.name!,
-      description: partial.description ?? null,
-      category: partial.category!,
-      rest_between_groups: partial.rest_between_groups ?? null,
-      time_cap: partial.time_cap ?? null,
-      scoring: partial.scoring ?? null,
-      is_public: partial.is_public ?? false,
+      user_id: (partial.user_id as string | undefined) ?? null,
+      name: partial.name as string,
+      description: (partial.description as string | undefined) ?? null,
+      category: partial.category as string,
+      rest_between_groups: (partial.rest_between_groups as string | undefined) ?? null,
+      time_cap: (partial.time_cap as string | undefined) ?? null,
+      scoring: (partial.scoring as string | undefined) ?? null,
+      is_public: (partial.is_public as boolean | undefined) ?? false,
     }
 
     const groupsInput = groups.map((g) => {
@@ -1683,19 +1881,19 @@ export class TauriAdapter implements DataAdapter {
       return {
         group: {
           id: g.group.id || null,
-          group_type: gPartial.group_type!,
-          ordinal: gPartial.ordinal!,
-          rounds: gPartial.rounds ?? null,
-          rest_between_rounds: gPartial.rest_between_rounds ?? null,
-          rest_between_activities: gPartial.rest_between_activities ?? null,
+          group_type: gPartial.group_type as string,
+          ordinal: gPartial.ordinal as number,
+          rounds: (gPartial.rounds as number | undefined) ?? null,
+          rest_between_rounds: (gPartial.rest_between_rounds as string | undefined) ?? null,
+          rest_between_activities: (gPartial.rest_between_activities as string | undefined) ?? null,
         },
         activities: g.activities.map((a) => {
           const aPartial = fromActivity(a)
           return {
-            exercise_id: aPartial.exercise_id!,
-            ordinal: aPartial.ordinal!,
-            set_scheme: aPartial.set_scheme!,
-            notes: aPartial.notes ?? null,
+            exercise_id: aPartial.exercise_id as string,
+            ordinal: aPartial.ordinal as number,
+            set_scheme: aPartial.set_scheme as string,
+            notes: (aPartial.notes as string | undefined) ?? null,
           }
         }),
       }
@@ -1707,9 +1905,9 @@ export class TauriAdapter implements DataAdapter {
     })
 
     return {
-      template: toSessionTemplate(toSessionTemplateRowFromTauri(result.template)),
-      groups: result.groups.map((g) => toActivityGroupFlat(toActivityGroupRowFromTauri(g))),
-      activities: result.activities.map((a) => toActivity(toActivityRowFromTauri(a))),
+      template: toSessionTemplate(result.template),
+      groups: result.groups.map((g) => toActivityGroupFlat(g)),
+      activities: result.activities.map((a) => toActivity(a)),
       eventItems: [],
     }
   }
@@ -1805,7 +2003,7 @@ export class TauriAdapter implements DataAdapter {
       user_id: userId,
     })
 
-    let programs = rows.map((r) => toProgram(toProgramRowFromTauri(r)))
+    let programs = rows.map((r) => toProgram(r))
 
     // Apply client-side filters for searchQuery and source
     if (filters?.searchQuery) {
@@ -1827,12 +2025,10 @@ export class TauriAdapter implements DataAdapter {
     const result = await invokeCommand<TauriProgramFullResponse | null>('get_program_full', { id })
     if (!result) return null
     return {
-      program: toProgram(toProgramRowFromTauri(result.program)),
-      blocks: result.blocks.map((r) => toBlock(toBlockRowFromTauri(r))),
-      blockWeeks: result.block_weeks.map((r) => toBlockWeek(toBlockWeekRowFromTauri(r))),
-      scheduledSessions: result.scheduled_sessions.map((r) =>
-        toScheduledSession(toScheduledSessionRowFromTauri(r)),
-      ),
+      program: toProgram(result.program),
+      blocks: result.blocks.map((r) => toBlock(r)),
+      blockWeeks: result.block_weeks.map((r) => toBlockWeek(r)),
+      scheduledSessions: result.scheduled_sessions.map((r) => toScheduledSession(r)),
     }
   }
 
@@ -1885,12 +2081,10 @@ export class TauriAdapter implements DataAdapter {
 
     const result = await invokeCommand<TauriProgramFullResponse>('create_program_full', input)
     return {
-      program: toProgram(toProgramRowFromTauri(result.program)),
-      blocks: result.blocks.map((r) => toBlock(toBlockRowFromTauri(r))),
-      blockWeeks: result.block_weeks.map((r) => toBlockWeek(toBlockWeekRowFromTauri(r))),
-      scheduledSessions: result.scheduled_sessions.map((r) =>
-        toScheduledSession(toScheduledSessionRowFromTauri(r)),
-      ),
+      program: toProgram(result.program),
+      blocks: result.blocks.map((r) => toBlock(r)),
+      blockWeeks: result.block_weeks.map((r) => toBlockWeek(r)),
+      scheduledSessions: result.scheduled_sessions.map((r) => toScheduledSession(r)),
     }
   }
 
@@ -1943,12 +2137,10 @@ export class TauriAdapter implements DataAdapter {
 
     const result = await invokeCommand<TauriProgramFullResponse>('update_program_full', input)
     return {
-      program: toProgram(toProgramRowFromTauri(result.program)),
-      blocks: result.blocks.map((r) => toBlock(toBlockRowFromTauri(r))),
-      blockWeeks: result.block_weeks.map((r) => toBlockWeek(toBlockWeekRowFromTauri(r))),
-      scheduledSessions: result.scheduled_sessions.map((r) =>
-        toScheduledSession(toScheduledSessionRowFromTauri(r)),
-      ),
+      program: toProgram(result.program),
+      blocks: result.blocks.map((r) => toBlock(r)),
+      blockWeeks: result.block_weeks.map((r) => toBlockWeek(r)),
+      scheduledSessions: result.scheduled_sessions.map((r) => toScheduledSession(r)),
     }
   }
 
@@ -1967,7 +2159,7 @@ export class TauriAdapter implements DataAdapter {
       member_id: memberId,
       group_id: groupId,
     })
-    return toProgram(toProgramRowFromTauri(row))
+    return toProgram(row)
   }
 
   // ---------------------------------------------------------------------------
@@ -1978,7 +2170,7 @@ export class TauriAdapter implements DataAdapter {
     const row = await invokeCommand<TauriProgramActivationResponse | null>('get_active_program', {
       user_id: userId,
     })
-    return row ? toProgramActivation(toProgramActivationRowFromTauri(row)) : null
+    return row ? toProgramActivation(row) : null
   }
 
   async setActiveProgram(
@@ -1991,7 +2183,7 @@ export class TauriAdapter implements DataAdapter {
       program_id: programId,
       start_date: startDate ?? null,
     })
-    return toProgramActivation(toProgramActivationRowFromTauri(row))
+    return toProgramActivation(row)
   }
 
   async updateActiveProgram(
@@ -2004,7 +2196,7 @@ export class TauriAdapter implements DataAdapter {
       current_week_number: updates.currentWeekNumber ?? null,
       start_date: updates.startDate ?? null,
     })
-    return toProgramActivation(toProgramActivationRowFromTauri(row))
+    return toProgramActivation(row)
   }
 
   async clearActiveProgram(userId: string): Promise<void> {
@@ -2019,7 +2211,7 @@ export class TauriAdapter implements DataAdapter {
     const rows = await invokeCommand<TauriWeekStatusResponse[]>('get_week_statuses', {
       activation_id: activationId,
     })
-    return rows.map((r) => toWeekStatus(toWeekStatusRowFromTauri(r)))
+    return rows.map((r) => toWeekStatus(r))
   }
 
   async upsertWeekStatuses(
@@ -2030,7 +2222,7 @@ export class TauriAdapter implements DataAdapter {
       activation_id: activationId,
       statuses,
     })
-    return rows.map((r) => toWeekStatus(toWeekStatusRowFromTauri(r)))
+    return rows.map((r) => toWeekStatus(r))
   }
 
   async deleteWeekStatuses(
@@ -2523,7 +2715,7 @@ export class TauriAdapter implements DataAdapter {
       },
     })
     const createUserIds = result.participants.filter((p) => p.left_at == null).map((p) => p.user_id)
-    return toConversation(toConversationRowFromTauri(result.conversation), createUserIds)
+    return toConversation(result.conversation, createUserIds)
   }
 
   async getConversations(): Promise<Conversation[]> {
@@ -2532,7 +2724,7 @@ export class TauriAdapter implements DataAdapter {
     })
     return results.map((r) => {
       const userIds = r.participants.filter((p) => p.left_at == null).map((p) => p.user_id)
-      return toConversation(toConversationRowFromTauri(r.conversation), userIds)
+      return toConversation(r.conversation, userIds)
     })
   }
 
@@ -2543,7 +2735,7 @@ export class TauriAdapter implements DataAdapter {
     )
     if (!result) return null
     const userIds = result.participants.filter((p) => p.left_at == null).map((p) => p.user_id)
-    return toConversation(toConversationRowFromTauri(result.conversation), userIds)
+    return toConversation(result.conversation, userIds)
   }
 
   async findDirectConversation(otherUserId: string): Promise<Conversation | null> {
@@ -2553,7 +2745,7 @@ export class TauriAdapter implements DataAdapter {
     )
     if (!result) return null
     const userIds = result.participants.filter((p) => p.left_at == null).map((p) => p.user_id)
-    return toConversation(toConversationRowFromTauri(result.conversation), userIds)
+    return toConversation(result.conversation, userIds)
   }
 
   async sendMessage(
@@ -2569,7 +2761,7 @@ export class TauriAdapter implements DataAdapter {
         content: content ?? null,
       },
     })
-    return toMessage(toMessageRowFromTauri(row))
+    return toMessage(row)
   }
 
   async getMessages(
@@ -2584,7 +2776,7 @@ export class TauriAdapter implements DataAdapter {
       before,
       limit: options.limit,
     })
-    return rows.map((r) => toMessage(toMessageRowFromTauri(r)))
+    return rows.map((r) => toMessage(r))
   }
 
   async getMessagesSince(conversationId: string, since: string): Promise<Message[]> {
@@ -2593,7 +2785,7 @@ export class TauriAdapter implements DataAdapter {
       conversation_id: conversationId,
       since: sinceEpoch,
     })
-    return rows.map((r) => toMessage(toMessageRowFromTauri(r)))
+    return rows.map((r) => toMessage(r))
   }
 
   async updateLastRead(conversationId: string): Promise<void> {
@@ -2658,7 +2850,7 @@ export class TauriAdapter implements DataAdapter {
         status: attachment.status,
       },
     })
-    return toMediaAttachment(toMediaAttachmentRowFromTauri(row))
+    return toMediaAttachment(row)
   }
 
   async getMediaAttachments(messageIds: string[]): Promise<MediaAttachment[]> {
@@ -2667,7 +2859,7 @@ export class TauriAdapter implements DataAdapter {
     const rows = await invokeCommand<TauriMediaAttachmentResponse[]>('get_media_attachments', {
       message_ids: messageIds,
     })
-    return rows.map((r) => toMediaAttachment(toMediaAttachmentRowFromTauri(r)))
+    return rows.map((r) => toMediaAttachment(r))
   }
 
   async updateMediaAttachment(
