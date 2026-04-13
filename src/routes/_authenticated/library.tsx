@@ -54,7 +54,6 @@ import { writeLastGymChoice, readLastGymChoice } from '@/lib/gym-picker-storage'
 import { toast } from 'sonner'
 import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useOnboarding } from '@/hooks/use-onboarding'
-import { useOnboardingStore } from '@/stores/onboarding-store'
 import type {
   Program,
   ExerciseCategory,
@@ -89,7 +88,6 @@ function LibraryPage() {
   }
 
   const { markRouteVisited } = useOnboarding()
-  const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
 
   useEffect(() => {
     markRouteVisited('/library')
@@ -163,18 +161,7 @@ function LibraryPage() {
 
     setStartingTemplateId(templateId)
 
-    // After first workout is completed, use saved gym choice without prompting
-    let choice: string | 'private' | null
-    if (firstWorkoutCompleted) {
-      choice = readLastGymChoice()
-      if (choice === null) {
-        // Fallback to picker if no saved choice exists
-        choice = await openGymPicker({ userId })
-      }
-    } else {
-      // First workout: prompt for gym selection
-      choice = await openGymPicker({ userId })
-    }
+    const choice = readLastGymChoice() ?? (await openGymPicker({ userId }))
     if (choice === null) {
       setStartingTemplateId(null)
       return

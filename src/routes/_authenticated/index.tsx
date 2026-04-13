@@ -159,18 +159,7 @@ function TodayPage() {
     }
     setStartError(null)
 
-    // After first workout is completed, use saved gym choice without prompting
-    let choice: string | 'private' | null
-    if (firstWorkoutCompleted) {
-      choice = readLastGymChoice()
-      if (choice === null) {
-        // Fallback to picker if no saved choice exists
-        choice = await openGymPicker({ userId })
-      }
-    } else {
-      // First workout: prompt for gym selection
-      choice = await openGymPicker({ userId })
-    }
+    const choice = readLastGymChoice() ?? (await openGymPicker({ userId }))
     if (choice === null) return
 
     try {
@@ -212,18 +201,7 @@ function TodayPage() {
     }
     setStartError(null)
 
-    // After first workout is completed, use saved gym choice without prompting
-    let choice: string | 'private' | null
-    if (firstWorkoutCompleted) {
-      choice = readLastGymChoice()
-      if (choice === null) {
-        // Fallback to picker if no saved choice exists
-        choice = await openGymPicker({ userId })
-      }
-    } else {
-      // First workout: prompt for gym selection
-      choice = await openGymPicker({ userId })
-    }
+    const choice = readLastGymChoice() ?? (await openGymPicker({ userId }))
     if (choice === null) return
 
     try {
