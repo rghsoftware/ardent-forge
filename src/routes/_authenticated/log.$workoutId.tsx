@@ -74,6 +74,8 @@ function ActiveWorkoutPage() {
   } = useActiveWorkout()
 
   const skipActivity = useActiveWorkoutStore((s) => s.skipActivity)
+  const deleteSet = useActiveWorkoutStore((s) => s.deleteSet)
+  const removeActivity = useActiveWorkoutStore((s) => s.removeActivity)
   const skippedActivityIds = useActiveWorkoutStore((s) => s.skippedActivityIds)
 
   const { markFirstWorkoutCompleted } = useOnboarding()
@@ -133,6 +135,8 @@ function ActiveWorkoutPage() {
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [showSummary, setShowSummary] = useState(false)
   const [pageError, setPageError] = useState<string | null>(null)
+  // pendingInputs[activityId] = true means "show one input row for this activity"
+  const [pendingInputs, setPendingInputs] = useState<Record<string, boolean>>({})
 
   // Pause/resume derived state and handlers.
   // Pause UI is hidden on the Tauri (mobile) adapter because pause-state
@@ -261,8 +265,8 @@ function ActiveWorkoutPage() {
         if (incomplete) return group.id
       } else {
         for (const activity of group.activities) {
-          lastId = activity.id
           if (skippedActivityIds.has(activity.id)) continue // treat as done
+          lastId = activity.id
           if (activity.sets.length === 0 || activity.sets.some((s) => !s.completed)) {
             return activity.id
           }
@@ -383,6 +387,7 @@ function ActiveWorkoutPage() {
           actualWeight: weightValue ? { value: weightValue, unit } : undefined,
           actualReps: repsValue ? Math.round(repsValue) : undefined,
         })
+        setPendingInputs((prev) => ({ ...prev, [loggedActivityId]: false }))
       } catch (err) {
         console.error('[workout-page] handleConfirmSet:', err)
         setPageError('Failed to save set.')
@@ -598,8 +603,6 @@ function ActiveWorkoutPage() {
               return group.activities.map((activity) => {
                 // Guard: skipped activities never render
                 if (skippedActivityIds.has(activity.id)) return null
-                // Hard focus: only render the active activity in SET mode.
-                if (activity.id !== activeFocusId) return null
                 const exercise = exerciseMap[activity.exerciseId]
                 const modality = getExerciseModality(exercise, group.groupType)
 
@@ -685,9 +688,7 @@ function ActiveWorkoutPage() {
                   })),
                 ]
 
-                // Add an empty row for the next set to log.
-                // If this is a programmed workout, inherit prescribed values from the
-                // last set so the user sees the same prescription on the input row.
+                // Carry-forward prescribed values for the pending input row.
                 const lastSetWithPrescription = [...activity.sets]
                   .reverse()
                   .find((s) => s.prescribed != null)
@@ -695,21 +696,25 @@ function ActiveWorkoutPage() {
                   lastSetWithPrescription?.prescribed?.weight ?? undefined
                 const nextPrescribedReps = lastSetWithPrescription?.prescribed?.reps ?? undefined
 
-                const nextSetNumber = setRows.length + 1
-                setRows.push({
-                  id: `pending-${activity.id}-${nextSetNumber}`,
-                  setNumber: nextSetNumber,
-                  weight:
-                    lastConfirmedSet?.actualWeight?.value?.toString() ??
-                    nextPrescribedWeight?.value?.toString(),
-                  reps:
-                    lastConfirmedSet?.actualReps?.toString() ??
-                    (nextPrescribedReps != null ? String(nextPrescribedReps) : undefined),
-                  confirmed: false,
-                  prescribedWeight: nextPrescribedWeight,
-                  prescribedReps: nextPrescribedReps,
-                  isPending: true,
-                })
+                // Show a pending input row by default for the first set; subsequent
+                // rows require an explicit ADD SET tap.
+                if (confirmedSets.length === 0 || pendingInputs[activity.id]) {
+                  const nextSetNumber = setRows.length + 1
+                  setRows.push({
+                    id: `pending-${activity.id}-${nextSetNumber}`,
+                    setNumber: nextSetNumber,
+                    weight:
+                      lastConfirmedSet?.actualWeight?.value?.toString() ??
+                      nextPrescribedWeight?.value?.toString(),
+                    reps:
+                      lastConfirmedSet?.actualReps?.toString() ??
+                      (nextPrescribedReps != null ? String(nextPrescribedReps) : undefined),
+                    confirmed: false,
+                    prescribedWeight: nextPrescribedWeight,
+                    prescribedReps: nextPrescribedReps,
+                    isPending: true,
+                  })
+                }
 
                 return (
                   <div key={activity.id}>
@@ -720,10 +725,21 @@ function ActiveWorkoutPage() {
                       onConfirmSet={handleConfirmSet}
                       isConfirming={isConfirmingSet}
                       isBodyweight={exercise?.category === 'BODYWEIGHT'}
-                      isActive={true}
+                      isActive={activity.id === activeFocusId}
+                      onAddSet={() =>
+                        setPendingInputs((prev) => ({ ...prev, [activity.id]: true }))
+                      }
+                      onDeleteSet={(setId) => {
+                        if (setId.startsWith('pending-')) {
+                          setPendingInputs((prev) => ({ ...prev, [activity.id]: false }))
+                        } else {
+                          deleteSet(activity.id, setId)
+                        }
+                      }}
                       onSkipExercise={
                         confirmedSets.length > 0 ? () => skipActivity(activity.id) : undefined
                       }
+                      onRemoveExercise={() => removeActivity(activity.id)}
                     />
                   </div>
                 )
