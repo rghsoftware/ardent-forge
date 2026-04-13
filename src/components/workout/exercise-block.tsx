@@ -36,6 +36,7 @@ interface ExerciseBlockProps {
   onSkipExercise?: () => void
   onAddSet?: () => void
   onDeleteSet?: (setId: string) => void
+  onUnconfirmSet?: (loggedActivityId: string, setId: string) => void
   onRemoveExercise?: () => void
 }
 
@@ -50,6 +51,7 @@ export function ExerciseBlock({
   onSkipExercise,
   onAddSet,
   onDeleteSet,
+  onUnconfirmSet,
   onRemoveExercise,
 }: ExerciseBlockProps) {
   const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
@@ -164,6 +166,11 @@ export function ExerciseBlock({
               onConfirmSet(loggedActivityId, set.setNumber, weight, reps, setType)
             }
             onDelete={onDeleteSet ? () => onDeleteSet(set.id) : undefined}
+            onUnconfirm={
+              set.confirmed && onUnconfirmSet
+                ? () => onUnconfirmSet(loggedActivityId, set.id)
+                : undefined
+            }
           />
         ))}
       </div>

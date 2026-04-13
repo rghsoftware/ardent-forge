@@ -60,6 +60,7 @@ function ActiveWorkoutPage() {
     restTimer,
     undoAction,
     confirmSet,
+    unconfirmSet,
     undoSet,
     finishWorkout,
     discardWorkout,
@@ -405,6 +406,18 @@ function ActiveWorkoutPage() {
     }
   }, [undoSet])
 
+  const handleUnconfirmSet = useCallback(
+    async (loggedActivityId: string, setId: string) => {
+      try {
+        await unconfirmSet(loggedActivityId, setId)
+      } catch (err) {
+        console.error('[workout-page] handleUnconfirmSet:', err)
+        setPageError('Failed to undo set.')
+      }
+    },
+    [unconfirmSet],
+  )
+
   const handleSummaryDone = useCallback(() => {
     setShowSummary(false)
     setSummaryData(null)
@@ -736,6 +749,7 @@ function ActiveWorkoutPage() {
                           deleteSet(activity.id, setId)
                         }
                       }}
+                      onUnconfirmSet={handleUnconfirmSet}
                       onSkipExercise={
                         confirmedSets.length > 0 ? () => skipActivity(activity.id) : undefined
                       }

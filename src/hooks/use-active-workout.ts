@@ -56,6 +56,7 @@ export function useActiveWorkout() {
   const storeAddExercise = useActiveWorkoutStore((s) => s.addExerciseToWorkout)
   const storeConfirmSet = useActiveWorkoutStore((s) => s.confirmSet)
   const storeUpdateSetInPlace = useActiveWorkoutStore((s) => s.updateSetInPlace)
+  const storeUnconfirmSet = useActiveWorkoutStore((s) => s.unconfirmSet)
   const storeUndoLastSet = useActiveWorkoutStore((s) => s.undoLastSet)
   const storeClearUndo = useActiveWorkoutStore((s) => s.clearUndo)
   const storeFinishWorkout = useActiveWorkoutStore((s) => s.finishWorkout)
@@ -451,6 +452,43 @@ export function useActiveWorkout() {
   }, [workoutLog, undoAction, updateLoggedSetMutation, storeUndoLastSet])
 
   /**
+   * Unconfirm a previously confirmed set. Marks completed=false in the DB so
+   * actual weight/reps are preserved for re-editing, then reflects that in the
+   * store without removing the set.
+   */
+  const unconfirmSet = useCallback(
+    async (loggedActivityId: string, setId: string) => {
+      try {
+        if (!workoutLog) {
+          throw new Error('No active workout to unconfirm set in')
+        }
+        const currentGroups = useActiveWorkoutStore.getState().loggedGroups
+        const targetSet = findSetById(currentGroups, setId)
+        if (!targetSet) {
+          console.error('[workout] unconfirmSet: set not found in store', { setId })
+          return
+        }
+        await updateLoggedSetMutation.mutateAsync({
+          ...targetSet,
+          completed: false,
+          workoutLogId: workoutLog.id,
+          userId: workoutLog.userId,
+        })
+        storeUnconfirmSet(loggedActivityId, setId)
+      } catch (err) {
+        console.error('[workout] Failed to unconfirm set:', {
+          workoutId: workoutLog?.id,
+          loggedActivityId,
+          setId,
+          err,
+        })
+        throw err
+      }
+    },
+    [workoutLog, updateLoggedSetMutation, storeUnconfirmSet],
+  )
+
+  /**
    * Finish the active workout. Updates WorkoutLog.completedAt in DB,
    * advances program position if this was a programmed workout, then clears store.
    *
@@ -659,6 +697,7 @@ export function useActiveWorkout() {
     startProgrammedWorkout,
     addExercise,
     confirmSet,
+    unconfirmSet,
     undoSet,
     finishWorkout,
     resumeWorkout,

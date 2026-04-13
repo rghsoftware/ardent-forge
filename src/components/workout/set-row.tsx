@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Badge } from '@/components/ui/badge'
 import { Icon } from '@/components/icon'
 import { computeVariance } from '@/lib/set-variance'
 import type { SetType } from '@/domain/types'
@@ -27,6 +26,11 @@ interface SetRowProps {
    * button calls this handler.
    */
   onDelete?: () => void
+  /**
+   * When provided, tapping the done indicator on a confirmed set calls this
+   * handler, allowing the user to un-confirm (remove) the set.
+   */
+  onUnconfirm?: () => void
 }
 
 const SWIPE_THRESHOLD = 64 // px -- full reveal width
@@ -43,6 +47,7 @@ export function SetRow({
   isBodyweight = false,
   isPending = false,
   onDelete,
+  onUnconfirm,
 }: SetRowProps) {
   const hasPrescription = prescribedWeight != null || prescribedReps != null
 
@@ -270,13 +275,20 @@ export function SetRow({
         {/* Confirm / Status */}
         <div className="flex w-14 shrink-0 items-center justify-center">
           {confirmed ? (
-            variance === 'met' ? (
-              <Icon name="check_circle" size={22} className="text-green-500" />
-            ) : variance === 'under' ? (
-              <Icon name="arrow_downward" size={22} className="text-amber-500" />
-            ) : (
-              <Badge variant="complete">DONE</Badge>
-            )
+            <button
+              type="button"
+              onClick={onUnconfirm}
+              className={`flex min-h-12 min-w-12 items-center justify-center transition-colors ${
+                variance === 'met'
+                  ? 'text-green-500 hover:text-green-400'
+                  : variance === 'under'
+                    ? 'text-amber-500 hover:text-amber-400'
+                    : 'text-bone-white/70 hover:text-bone-white'
+              }`}
+              aria-label={`Undo set ${setNumber}`}
+            >
+              <Icon name="check_box" size={24} fill />
+            </button>
           ) : (
             <button
               type="button"
@@ -292,7 +304,7 @@ export function SetRow({
               {isConfirming ? (
                 <span className="text-xs uppercase tracking-wider text-warm-ash">...</span>
               ) : (
-                <Icon name="check" size={24} />
+                <Icon name="check_box_outline_blank" size={24} />
               )}
             </button>
           )}

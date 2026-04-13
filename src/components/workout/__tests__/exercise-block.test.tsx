@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ExerciseBlock, type SetRowData } from '@/components/workout/exercise-block'
 
 // Mock onboarding store to avoid AuthProvider dependency
@@ -17,15 +18,22 @@ vi.mock('@/components/workout/set-row', () => ({
     setNumber,
     prescribedWeight,
     prescribedReps,
+    onUnconfirm,
   }: {
     setNumber: number
     prescribedWeight?: { value: number; unit: string }
     prescribedReps?: number
+    onUnconfirm?: () => void
   }) => (
     <div data-testid={`set-row-${setNumber}`}>
       Set {setNumber}
       {prescribedWeight && <span>Rx: {prescribedWeight.value}</span>}
       {prescribedReps != null && <span>Rx reps: {prescribedReps}</span>}
+      {onUnconfirm && (
+        <button onClick={onUnconfirm} aria-label={`Undo set ${setNumber}`}>
+          Undo
+        </button>
+      )}
     </div>
   ),
 }))
@@ -88,5 +96,29 @@ describe('ExerciseBlock', () => {
     render(<ExerciseBlock {...defaultProps} />)
     expect(screen.getByText('SET')).toBeInTheDocument()
     expect(screen.getByText('STATUS')).toBeInTheDocument()
+  })
+
+  it('passes onUnconfirm to confirmed set rows when onUnconfirmSet is provided', async () => {
+    const user = userEvent.setup()
+    const onUnconfirmSet = vi.fn()
+    const confirmedSets: SetRowData[] = [
+      { id: 's1', setNumber: 1, confirmed: true },
+      { id: 's2', setNumber: 2, confirmed: false },
+    ]
+    render(
+      <ExerciseBlock
+        {...defaultProps}
+        sets={confirmedSets}
+        onUnconfirmSet={onUnconfirmSet}
+      />,
+    )
+
+    // Only the confirmed set (s1) should have an undo button
+    const undoBtn = screen.getByLabelText('Undo set 1')
+    await user.click(undoBtn)
+
+    expect(onUnconfirmSet).toHaveBeenCalledWith('la-1', 's1')
+    // Unconfirmed set should not have an undo button
+    expect(screen.queryByLabelText('Undo set 2')).not.toBeInTheDocument()
   })
 })

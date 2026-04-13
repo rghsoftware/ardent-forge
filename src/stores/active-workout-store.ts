@@ -152,6 +152,7 @@ interface ActiveWorkoutActions {
   confirmSet(loggedActivityId: string, newSet: LoggedSet): void
   updateSetInPlace(loggedActivityId: string, updatedSet: LoggedSet): void
   deleteSet(loggedActivityId: string, setId: string): void
+  unconfirmSet(loggedActivityId: string, setId: string): void
   undoLastSet(): void
   clearUndo(): void
 
@@ -447,6 +448,29 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         })),
         undoAction: state.undoAction?.setId === setId ? null : state.undoAction,
       }))
+    },
+
+    unconfirmSet(loggedActivityId: string, setId: string) {
+      if (!loggedActivityId || !setId) {
+        console.warn('[active-workout] unconfirmSet called with missing ids')
+        return
+      }
+      set((prev) => ({
+        loggedGroups: prev.loggedGroups.map((group) => ({
+          ...group,
+          activities: group.activities.map((activity) => {
+            if (activity.id !== loggedActivityId) return activity
+            return {
+              ...activity,
+              sets: activity.sets.map((s) =>
+                s.id === setId ? { ...s, completed: false } : s,
+              ),
+            }
+          }),
+        })),
+        undoAction: prev.undoAction?.setId === setId ? null : prev.undoAction,
+      }))
+      _publishCurrentState()
     },
 
     clearUndo() {

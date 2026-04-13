@@ -87,6 +87,22 @@ describe('SetRow', () => {
     expect(onConfirm).not.toHaveBeenCalled()
   })
 
+  it('tapping the done indicator calls onUnconfirm when provided', async () => {
+    const user = userEvent.setup()
+    const onUnconfirm = vi.fn()
+    render(<SetRow {...defaultProps} confirmed={true} onUnconfirm={onUnconfirm} />)
+
+    const undoBtn = screen.getByLabelText('Undo set 1')
+    await user.click(undoBtn)
+
+    expect(onUnconfirm).toHaveBeenCalledOnce()
+  })
+
+  it('renders undo button for confirmed set with correct aria-label', () => {
+    render(<SetRow {...defaultProps} confirmed={true} onUnconfirm={vi.fn()} />)
+    expect(screen.getByLabelText('Undo set 1')).toBeInTheDocument()
+  })
+
   it('pre-fills initialWeight and initialReps', () => {
     render(<SetRow {...defaultProps} initialWeight="200" initialReps="8" />)
     const weightInput = screen.getByLabelText('Weight for set 1') as HTMLInputElement
