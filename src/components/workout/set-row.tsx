@@ -293,11 +293,7 @@ export function SetRow({
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={
-                isConfirming ||
-                confirmed ||
-                (isBodyweight ? !reps.trim() : !weight.trim() && !reps.trim())
-              }
+              disabled={isConfirming || confirmed || !reps.trim()}
               className="flex min-h-12 min-w-12 items-center justify-center text-ember transition-colors hover:text-forge disabled:opacity-40"
               aria-label={`Confirm set ${setNumber}`}
             >

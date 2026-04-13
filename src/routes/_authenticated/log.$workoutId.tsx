@@ -370,7 +370,11 @@ function ActiveWorkoutPage() {
       if (!workoutLog) return
 
       const weightValue = parseNumericInput(weight)
-      const repsValue = parseNumericInput(reps)
+      // Reps support 0 (failed sets), so use >= 0 check rather than the > 0
+      // guard inside parseNumericInput. A falsy check on repsValue would coerce
+      // reps=0 to null, violating the DB completed_check constraint.
+      const repsRaw = parseFloat(reps)
+      const repsValue = !isNaN(repsRaw) && repsRaw >= 0 ? Math.round(repsRaw) : undefined
 
       // Determine unit from prescription or default
       const existingSet = loggedGroups
@@ -386,7 +390,7 @@ function ActiveWorkoutPage() {
           setType,
           completed: true,
           actualWeight: weightValue ? { value: weightValue, unit } : undefined,
-          actualReps: repsValue ? Math.round(repsValue) : undefined,
+          actualReps: repsValue != null ? repsValue : undefined,
         })
         setPendingInputs((prev) => ({ ...prev, [loggedActivityId]: false }))
       } catch (err) {
@@ -710,8 +714,11 @@ function ActiveWorkoutPage() {
                 const nextPrescribedReps = lastSetWithPrescription?.prescribed?.reps ?? undefined
 
                 // Show a pending input row by default for the first set; subsequent
-                // rows require an explicit ADD SET tap.
-                if (confirmedSets.length === 0 || pendingInputs[activity.id]) {
+                // rows require an explicit ADD SET tap. Don't add a pending row if
+                // there's already an unconfirmed (completed: false) set in the list --
+                // that happens when the user un-confirms a set.
+                const hasUncompletedSets = activity.sets.some((s) => !s.completed)
+                if ((confirmedSets.length === 0 && !hasUncompletedSets) || pendingInputs[activity.id]) {
                   const nextSetNumber = setRows.length + 1
                   setRows.push({
                     id: `pending-${activity.id}-${nextSetNumber}`,
