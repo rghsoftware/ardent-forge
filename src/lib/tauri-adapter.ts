@@ -83,7 +83,6 @@ import {
   mediaStatusSchema,
   entityId,
 } from '@/domain/types'
-import { parseJsonOrValue } from './adapter-utils'
 import {
   toAccountabilityGroup,
   toGroupMember,
@@ -604,9 +603,13 @@ function requireString(value: string | null | undefined, field: string): string 
  * parameter is a safety net for fields where null genuinely means "unset"
  * (e.g. is_bilateral, supports_1rm, is_custom).
  */
-// TODO(P14-021): pass field name and log on fallback
-function intToBool(value: number | null | undefined, fallback = false): boolean {
-  if (value == null) return fallback
+function intToBool(value: number | null | undefined, field: string, fallback = false): boolean {
+  if (value == null) {
+    console.warn(
+      `[tauri-adapter] ${field}: expected int (0/1), got null -- using fallback ${String(fallback)}`,
+    )
+    return fallback
+  }
   return value !== 0
 }
 
@@ -645,13 +648,13 @@ function toExercise(r: TauriExerciseResponse): Exercise {
     category: exerciseCategorySchema.parse(r.category),
     movementPattern: movementPatternSchema.parse(r.movement_pattern),
     muscleGroups: muscleGroupSpecSchema.parse(parseJson(r.muscle_groups, 'muscle_groups')),
-    isBilateral: intToBool(r.is_bilateral),
-    supports1RM: intToBool(r.supports_1rm),
+    isBilateral: intToBool(r.is_bilateral, 'is_bilateral'),
+    supports1RM: intToBool(r.supports_1rm, 'supports_1rm'),
     equipmentRequired: z
       .array(equipmentSchema)
       .parse(parseJson(r.equipment_required, 'equipment_required')),
-    isCustom: intToBool(r.is_custom),
-    isPublic: intToBool(r.is_public),
+    isCustom: intToBool(r.is_custom, 'is_custom'),
+    isPublic: intToBool(r.is_public, 'is_public'),
   }
 }
 
@@ -793,7 +796,7 @@ function toLoggedSet(r: TauriLoggedSetResponse): LoggedSet {
     actualPace: actualPace != null ? paceSchema.parse(actualPace) : undefined,
     actualHeartRate: r.actual_heart_rate ?? undefined,
     rpe: r.rpe ?? undefined,
-    completed: intToBool(r.completed),
+    completed: intToBool(r.completed, 'completed'),
     notes: r.notes ?? undefined,
     noteTags: noteTags.length > 0 ? noteTags : undefined,
     ruckLoad: ruckLoad != null ? weightSchema.parse(ruckLoad) : undefined,
@@ -842,9 +845,7 @@ function toUserProfile(r: TauriUserProfileResponse): UserProfile {
   }
 }
 
-function fromUserProfile(
-  profile: Partial<UserProfile> & { id: string },
-): Record<string, unknown> {
+function fromUserProfile(profile: Partial<UserProfile> & { id: string }): Record<string, unknown> {
   const row: Record<string, unknown> = { id: profile.id }
 
   if (profile.displayName !== undefined) row.display_name = profile.displayName ?? null
@@ -864,7 +865,7 @@ function toOneRepMaxHistory(r: TauriOneRepMaxHistoryResponse): OneRepMaxHistory 
     userId: r.user_id,
     exerciseId: r.exercise_id,
     weight: weightSchema.parse(parseJson(r.weight, 'weight')),
-    estimated: intToBool(r.estimated),
+    estimated: intToBool(r.estimated, 'estimated'),
     recordedAt: r.recorded_at,
   }
 }
@@ -882,8 +883,8 @@ function fromOneRepMaxHistory(
 }
 
 function toSessionTemplate(r: TauriSessionTemplateResponse): SessionTemplate {
-  if (!r.created_at) console.warn('tauri-adapter: null created_at on session template row', r)
-  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on session template row', r)
+  if (!r.created_at) console.warn('[tauri-adapter] null created_at on session template row', r)
+  if (!r.updated_at) console.warn('[tauri-adapter] null updated_at on session template row', r)
   return {
     id: r.id,
     createdAt: r.created_at ?? new Date().toISOString(),
@@ -894,9 +895,10 @@ function toSessionTemplate(r: TauriSessionTemplateResponse): SessionTemplate {
     category: sessionTypeSchema.parse(r.category),
     restBetweenGroups:
       r.rest_between_groups != null
-        ? durationSchema.parse(parseJsonOrValue(r.rest_between_groups))
+        ? durationSchema.parse(parseJson(r.rest_between_groups, 'rest_between_groups'))
         : undefined,
-    timeCap: r.time_cap != null ? durationSchema.parse(parseJsonOrValue(r.time_cap)) : undefined,
+    timeCap:
+      r.time_cap != null ? durationSchema.parse(parseJson(r.time_cap, 'time_cap')) : undefined,
     scoring: scoringTypeSchema.parse(r.scoring),
     eventMetadata: undefined, // Event features deferred for Tauri offline mode (W-8)
     lastAssignedAt: r.last_assigned_at ?? undefined,
@@ -923,8 +925,8 @@ function fromSessionTemplate(
 }
 
 function toActivityGroupFlat(r: TauriActivityGroupResponse): Omit<ActivityGroup, 'activities'> {
-  if (!r.created_at) console.warn('tauri-adapter: null created_at on activity group row', r)
-  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on activity group row', r)
+  if (!r.created_at) console.warn('[tauri-adapter] null created_at on activity group row', r)
+  if (!r.updated_at) console.warn('[tauri-adapter] null updated_at on activity group row', r)
   return {
     id: r.id,
     sessionTemplateId: r.session_template_id,
@@ -933,11 +935,11 @@ function toActivityGroupFlat(r: TauriActivityGroupResponse): Omit<ActivityGroup,
     rounds: r.rounds ?? undefined,
     restBetweenRounds:
       r.rest_between_rounds != null
-        ? durationSchema.parse(parseJsonOrValue(r.rest_between_rounds))
+        ? durationSchema.parse(parseJson(r.rest_between_rounds, 'rest_between_rounds'))
         : undefined,
     restBetweenActivities:
       r.rest_between_activities != null
-        ? durationSchema.parse(parseJsonOrValue(r.rest_between_activities))
+        ? durationSchema.parse(parseJson(r.rest_between_activities, 'rest_between_activities'))
         : undefined,
   }
 }
@@ -959,14 +961,14 @@ function fromActivityGroup(
 }
 
 function toActivity(r: TauriActivityResponse): Activity {
-  if (!r.created_at) console.warn('tauri-adapter: null created_at on activity row', r)
-  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on activity row', r)
+  if (!r.created_at) console.warn('[tauri-adapter] null created_at on activity row', r)
+  if (!r.updated_at) console.warn('[tauri-adapter] null updated_at on activity row', r)
   return {
     id: r.id,
     activityGroupId: r.activity_group_id,
     exerciseId: r.exercise_id,
     ordinal: r.ordinal,
-    setScheme: setSchemeSchema.parse(parseJsonOrValue(r.set_scheme)),
+    setScheme: setSchemeSchema.parse(parseJson(r.set_scheme, 'set_scheme')),
     notes: r.notes ?? undefined,
   }
 }
@@ -986,8 +988,8 @@ function fromActivity(
 }
 
 function toProgram(r: TauriProgramResponse): Program {
-  if (!r.created_at) console.warn('tauri-adapter: null created_at on program row', r)
-  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on program row', r)
+  if (!r.created_at) console.warn('[tauri-adapter] null created_at on program row', r)
+  if (!r.updated_at) console.warn('[tauri-adapter] null updated_at on program row', r)
   try {
     return {
       id: r.id,
@@ -1009,8 +1011,8 @@ function toProgram(r: TauriProgramResponse): Program {
 }
 
 function toBlock(r: TauriBlockResponse): Block {
-  if (!r.created_at) console.warn('tauri-adapter: null created_at on block row', r)
-  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on block row', r)
+  if (!r.created_at) console.warn('[tauri-adapter] null created_at on block row', r)
+  if (!r.updated_at) console.warn('[tauri-adapter] null updated_at on block row', r)
   try {
     return {
       id: r.id,
@@ -1028,8 +1030,8 @@ function toBlock(r: TauriBlockResponse): Block {
 }
 
 function toBlockWeek(r: TauriBlockWeekResponse): BlockWeek {
-  if (!r.created_at) console.warn('tauri-adapter: null created_at on block_week row', r)
-  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on block_week row', r)
+  if (!r.created_at) console.warn('[tauri-adapter] null created_at on block_week row', r)
+  if (!r.updated_at) console.warn('[tauri-adapter] null updated_at on block_week row', r)
   return {
     id: r.id,
     blockId: r.block_id,
@@ -1038,8 +1040,8 @@ function toBlockWeek(r: TauriBlockWeekResponse): BlockWeek {
 }
 
 function toScheduledSession(r: TauriScheduledSessionResponse): ScheduledSession {
-  if (!r.created_at) console.warn('tauri-adapter: null created_at on scheduled_session row', r)
-  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on scheduled_session row', r)
+  if (!r.created_at) console.warn('[tauri-adapter] null created_at on scheduled_session row', r)
+  if (!r.updated_at) console.warn('[tauri-adapter] null updated_at on scheduled_session row', r)
   try {
     let overrides: ScheduledSession['overrides']
     if (r.overrides != null) {
@@ -1072,8 +1074,8 @@ function toScheduledSession(r: TauriScheduledSessionResponse): ScheduledSession 
 }
 
 function toProgramActivation(r: TauriProgramActivationResponse): ProgramActivation {
-  if (!r.created_at) console.warn('tauri-adapter: null created_at on program_activation row', r)
-  if (!r.updated_at) console.warn('tauri-adapter: null updated_at on program_activation row', r)
+  if (!r.created_at) console.warn('[tauri-adapter] null created_at on program_activation row', r)
+  if (!r.updated_at) console.warn('[tauri-adapter] null updated_at on program_activation row', r)
   return {
     id: r.id,
     createdAt: r.created_at ?? new Date().toISOString(),
@@ -1124,7 +1126,7 @@ function toGroupMemberRowFromTauri(r: TauriGroupMemberResponse) {
     group_id: r.group_id,
     user_id: r.user_id,
     role: r.role as 'COACH' | 'MEMBER',
-    share_history_before_join: intToBool(r.share_history_before_join),
+    share_history_before_join: intToBool(r.share_history_before_join, 'share_history_before_join'),
     joined_at: r.joined_at ?? new Date().toISOString(),
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
@@ -1140,7 +1142,7 @@ function toGroupInviteRowFromTauri(r: TauriGroupInviteResponse) {
     code: r.code,
     created_by: r.created_by,
     expires_at: r.expires_at ?? new Date().toISOString(),
-    is_active: intToBool(r.is_active),
+    is_active: intToBool(r.is_active, 'is_active'),
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
   }
@@ -1154,8 +1156,8 @@ function toDirectConnectionRowFromTauri(r: TauriDirectConnectionResponse) {
     requester_id: r.requester_id,
     recipient_id: r.recipient_id,
     status: r.status as 'PENDING' | 'ACTIVE' | 'DECLINED',
-    requester_grants_write: intToBool(r.requester_grants_write),
-    recipient_grants_write: intToBool(r.recipient_grants_write),
+    requester_grants_write: intToBool(r.requester_grants_write, 'requester_grants_write'),
+    recipient_grants_write: intToBool(r.recipient_grants_write, 'recipient_grants_write'),
     accepted_at: r.accepted_at,
     created_at: r.created_at ?? new Date().toISOString(),
     updated_at: r.updated_at ?? new Date().toISOString(),
@@ -1166,7 +1168,10 @@ function toDirectConnectionRowFromTauri(r: TauriDirectConnectionResponse) {
 // Chat domain mappers: Tauri Response -> Domain types
 // ---------------------------------------------------------------------------
 
-function toConversation(r: TauriConversationResponse, participantUserIds: string[] = []): Conversation {
+function toConversation(
+  r: TauriConversationResponse,
+  participantUserIds: string[] = [],
+): Conversation {
   try {
     return conversationSchema.parse({
       id: r.id,

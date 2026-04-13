@@ -118,147 +118,168 @@ export class SupabaseAdapter implements DataAdapter {
 
   private mapExercise(raw: Record<string, unknown>): Exercise {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      createdAt: r.createdAt as string,
-      updatedAt: r.updatedAt as string,
-      name: r.name as string,
-      aliases: z.array(z.string()).parse(r.aliases),
-      category: exerciseCategorySchema.parse(r.category),
-      movementPattern: movementPatternSchema.parse(r.movementPattern),
-      muscleGroups: muscleGroupSpecSchema.parse(r.muscleGroups),
-      isBilateral: r.isBilateral as boolean,
-      supports1RM: r.supports1Rm as boolean,
-      equipmentRequired: z.array(equipmentSchema).parse(r.equipmentRequired),
-      isCustom: r.isCustom as boolean,
-      isPublic: r.isPublic as boolean,
+    try {
+      return {
+        id: r.id as string,
+        createdAt: r.createdAt as string,
+        updatedAt: r.updatedAt as string,
+        name: r.name as string,
+        aliases: z.array(z.string()).parse(r.aliases),
+        category: exerciseCategorySchema.parse(r.category),
+        movementPattern: movementPatternSchema.parse(r.movementPattern),
+        muscleGroups: muscleGroupSpecSchema.parse(r.muscleGroups),
+        isBilateral: r.isBilateral as boolean,
+        supports1RM: raw['supports_1rm'] as boolean,
+        equipmentRequired: z.array(equipmentSchema).parse(r.equipmentRequired),
+        isCustom: r.isCustom as boolean,
+        isPublic: r.isPublic as boolean,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map exercise:', err, raw)
+      throw new Error(
+        `Failed to map exercise (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapWorkoutLog(raw: Record<string, unknown>): WorkoutLog {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      createdAt: r.createdAt as string,
-      updatedAt: r.updatedAt as string,
-      userId: r.userId as string,
-      title: (r.title ?? undefined) as string | undefined,
-      startedAt: r.startedAt as string,
-      completedAt: (r.completedAt ?? undefined) as string | undefined,
-      sessionTemplateId: (r.sessionTemplateId ?? undefined) as string | undefined,
-      programContext:
-        r.programContext != null
-          ? programContextSchema.parse(r.programContext)
-          : undefined,
-      perceivedDifficulty: (r.perceivedDifficulty ?? undefined) as number | undefined,
-      bodyweightAtSession:
-        r.bodyweightAtSession != null
-          ? weightSchema.parse(r.bodyweightAtSession)
-          : undefined,
-      overallNotes: (r.overallNotes ?? undefined) as string | undefined,
-      noteTags:
-        Array.isArray(r.noteTags) && (r.noteTags as unknown[]).length > 0
-          ? (r.noteTags as string[])
-          : undefined,
-      eventMetadata:
-        r.eventMetadata != null
-          ? eventMetadataSchema.parse(r.eventMetadata)
-          : undefined,
-      pausedAt: (r.pausedAt ?? undefined) as string | undefined,
-      totalPausedMs: (r.totalPausedMs ?? 0) as number,
+    try {
+      return {
+        id: r.id as string,
+        createdAt: r.createdAt as string,
+        updatedAt: r.updatedAt as string,
+        userId: r.userId as string,
+        title: (r.title ?? undefined) as string | undefined,
+        startedAt: r.startedAt as string,
+        completedAt: (r.completedAt ?? undefined) as string | undefined,
+        sessionTemplateId: (r.sessionTemplateId ?? undefined) as string | undefined,
+        programContext:
+          r.programContext != null ? programContextSchema.parse(r.programContext) : undefined,
+        perceivedDifficulty: (r.perceivedDifficulty ?? undefined) as number | undefined,
+        bodyweightAtSession:
+          r.bodyweightAtSession != null ? weightSchema.parse(r.bodyweightAtSession) : undefined,
+        overallNotes: (r.overallNotes ?? undefined) as string | undefined,
+        noteTags:
+          Array.isArray(r.noteTags) && (r.noteTags as unknown[]).length > 0
+            ? (r.noteTags as string[])
+            : undefined,
+        eventMetadata:
+          r.eventMetadata != null ? eventMetadataSchema.parse(r.eventMetadata) : undefined,
+        pausedAt: (r.pausedAt ?? undefined) as string | undefined,
+        totalPausedMs: (r.totalPausedMs ?? 0) as number,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map workout_log:', err, raw)
+      throw new Error(
+        `Failed to map workout_log (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapLoggedActivityGroup(raw: Record<string, unknown>): LoggedActivityGroup {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      workoutLogId: r.workoutLogId as string,
-      groupType: groupTypeSchema.parse(r.groupType),
-      ordinal: r.ordinal as number,
-      actualRoundsCompleted: (r.actualRoundsCompleted ?? undefined) as number | undefined,
-      completionTime:
-        r.completionTime != null
-          ? durationSchema.parse(r.completionTime)
-          : undefined,
+    try {
+      return {
+        id: r.id as string,
+        workoutLogId: r.workoutLogId as string,
+        groupType: groupTypeSchema.parse(r.groupType),
+        ordinal: r.ordinal as number,
+        actualRoundsCompleted: (r.actualRoundsCompleted ?? undefined) as number | undefined,
+        completionTime:
+          r.completionTime != null ? durationSchema.parse(r.completionTime) : undefined,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map logged_activity_group:', err, raw)
+      throw new Error(
+        `Failed to map logged_activity_group (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapLoggedActivity(raw: Record<string, unknown>): LoggedActivity {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      loggedGroupId: r.loggedGroupId as string,
-      exerciseId: r.exerciseId as string,
-      ordinal: r.ordinal as number,
-      notes: (r.notes ?? undefined) as string | undefined,
-      noteTags:
-        Array.isArray(r.noteTags) && (r.noteTags as unknown[]).length > 0
-          ? (r.noteTags as string[])
-          : undefined,
+    try {
+      return {
+        id: r.id as string,
+        loggedGroupId: r.loggedGroupId as string,
+        exerciseId: r.exerciseId as string,
+        ordinal: r.ordinal as number,
+        notes: (r.notes ?? undefined) as string | undefined,
+        noteTags:
+          Array.isArray(r.noteTags) && (r.noteTags as unknown[]).length > 0
+            ? (r.noteTags as string[])
+            : undefined,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map logged_activity:', err, raw)
+      throw new Error(
+        `Failed to map logged_activity (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapLoggedSet(raw: Record<string, unknown>): LoggedSet {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      loggedActivityId: r.loggedActivityId as string,
-      setNumber: r.setNumber as number,
-      setType: setTypeSchema.parse(r.setType),
-      prescribed:
-        r.prescribed != null ? prescriptionSchema.parse(r.prescribed) : undefined,
-      actualReps: (r.actualReps ?? undefined) as number | undefined,
-      actualWeight:
-        r.actualWeight != null ? weightSchema.parse(r.actualWeight) : undefined,
-      actualDuration:
-        r.actualDuration != null ? durationSchema.parse(r.actualDuration) : undefined,
-      actualDistance:
-        r.actualDistance != null ? distanceSchema.parse(r.actualDistance) : undefined,
-      actualPace:
-        r.actualPace != null ? paceSchema.parse(r.actualPace) : undefined,
-      actualHeartRate: (r.actualHeartRate ?? undefined) as number | undefined,
-      rpe: (r.rpe ?? undefined) as number | undefined,
-      completed: r.completed as boolean,
-      notes: (r.notes ?? undefined) as string | undefined,
-      noteTags:
-        Array.isArray(r.noteTags) && (r.noteTags as unknown[]).length > 0
-          ? (r.noteTags as string[])
-          : undefined,
-      ruckLoad: r.ruckLoad != null ? weightSchema.parse(r.ruckLoad) : undefined,
-      elevationGain:
-        r.elevationGain != null ? distanceSchema.parse(r.elevationGain) : undefined,
+    try {
+      return {
+        id: r.id as string,
+        loggedActivityId: r.loggedActivityId as string,
+        setNumber: r.setNumber as number,
+        setType: setTypeSchema.parse(r.setType),
+        prescribed: r.prescribed != null ? prescriptionSchema.parse(r.prescribed) : undefined,
+        actualReps: (r.actualReps ?? undefined) as number | undefined,
+        actualWeight: r.actualWeight != null ? weightSchema.parse(r.actualWeight) : undefined,
+        actualDuration:
+          r.actualDuration != null ? durationSchema.parse(r.actualDuration) : undefined,
+        actualDistance:
+          r.actualDistance != null ? distanceSchema.parse(r.actualDistance) : undefined,
+        actualPace: r.actualPace != null ? paceSchema.parse(r.actualPace) : undefined,
+        actualHeartRate: (r.actualHeartRate ?? undefined) as number | undefined,
+        rpe: (r.rpe ?? undefined) as number | undefined,
+        completed: r.completed as boolean,
+        notes: (r.notes ?? undefined) as string | undefined,
+        noteTags:
+          Array.isArray(r.noteTags) && (r.noteTags as unknown[]).length > 0
+            ? (r.noteTags as string[])
+            : undefined,
+        ruckLoad: r.ruckLoad != null ? weightSchema.parse(r.ruckLoad) : undefined,
+        elevationGain: r.elevationGain != null ? distanceSchema.parse(r.elevationGain) : undefined,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map logged_set:', err, raw)
+      throw new Error(
+        `Failed to map logged_set (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapUserProfile(raw: Record<string, unknown>): UserProfile {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      createdAt: r.createdAt as string,
-      updatedAt: r.updatedAt as string,
-      displayName: (r.displayName ?? undefined) as string | undefined,
-      preferredUnits: preferredUnitsSchema.parse(r.preferredUnits),
-      bodyweight:
-        r.bodyweight != null ? weightSchema.parse(r.bodyweight) : undefined,
-      trainingAge:
-        r.trainingAge != null ? durationSchema.parse(r.trainingAge) : undefined,
-      exerciseMaxes:
-        r.exerciseMaxes != null
-          ? z.record(entityId, oneRepMaxSchema).parse(r.exerciseMaxes)
-          : {},
-      maxReps:
-        r.maxReps != null
-          ? z.record(entityId, z.number().int().positive()).parse(r.maxReps)
-          : {},
+    try {
+      return {
+        id: r.id as string,
+        createdAt: r.createdAt as string,
+        updatedAt: r.updatedAt as string,
+        displayName: (r.displayName ?? undefined) as string | undefined,
+        preferredUnits: preferredUnitsSchema.parse(r.preferredUnits),
+        bodyweight: r.bodyweight != null ? weightSchema.parse(r.bodyweight) : undefined,
+        trainingAge: r.trainingAge != null ? durationSchema.parse(r.trainingAge) : undefined,
+        exerciseMaxes:
+          r.exerciseMaxes != null ? z.record(entityId, oneRepMaxSchema).parse(r.exerciseMaxes) : {},
+        maxReps:
+          r.maxReps != null ? z.record(entityId, z.number().int().positive()).parse(r.maxReps) : {},
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map user_profile:', err, raw)
+      throw new Error(
+        `Failed to map user_profile (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapGym(raw: Record<string, unknown>): Gym {
     const r = camelizeKeys(raw)
-    if (r.id == null || r.name == null || r.ownerUserId == null) {
-      console.warn('[supabase-adapter] mapGym: missing required fields', raw)
-    }
     try {
       return gymSchema.parse({
         id: r.id,
@@ -269,15 +290,14 @@ export class SupabaseAdapter implements DataAdapter {
       })
     } catch (err) {
       console.error('[supabase-adapter] Failed to map gym row:', err, raw)
-      throw new Error(`Failed to map gym row (id=${r.id as string}): ${(err as Error).message}`)
+      throw new Error(
+        `Failed to map gym row (id=${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapGymMember(raw: Record<string, unknown>): GymMember {
     const r = camelizeKeys(raw)
-    if (r.gymId == null || r.userId == null) {
-      console.warn('[supabase-adapter] mapGymMember: missing required fields', raw)
-    }
     try {
       return gymMemberSchema.parse({
         gymId: r.gymId,
@@ -287,81 +307,121 @@ export class SupabaseAdapter implements DataAdapter {
     } catch (err) {
       console.error('[supabase-adapter] Failed to map gym_member row:', err, raw)
       throw new Error(
-        `Failed to map gym_member row (gym=${r.gymId as string}, user=${r.userId as string}): ${(err as Error).message}`,
+        `Failed to map gym_member row (gym=${r.gymId as string}, user=${r.userId as string}): ${err instanceof Error ? err.message : String(err)}`,
       )
     }
   }
 
-
   private mapOneRepMaxHistory(raw: Record<string, unknown>): OneRepMaxHistory {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      createdAt: r.createdAt as string,
-      userId: r.userId as string,
-      exerciseId: r.exerciseId as string,
-      weight: weightSchema.parse(r.weight),
-      estimated: r.estimated as boolean,
-      recordedAt: r.recordedAt as string,
+    try {
+      return {
+        id: r.id as string,
+        createdAt: r.createdAt as string,
+        userId: r.userId as string,
+        exerciseId: r.exerciseId as string,
+        weight: weightSchema.parse(r.weight),
+        estimated: r.estimated as boolean,
+        recordedAt: r.recordedAt as string,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map one_rep_max_history:', err, raw)
+      throw new Error(
+        `Failed to map one_rep_max_history (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapSessionTemplate(raw: Record<string, unknown>): SessionTemplate {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      createdAt: r.createdAt as string,
-      updatedAt: r.updatedAt as string,
-      userId: r.userId as string,
-      name: r.name as string,
-      description: (r.description ?? undefined) as string | undefined,
-      category: sessionTypeSchema.parse(r.category),
-      restBetweenGroups:
-        r.restBetweenGroups != null
-          ? durationSchema.parse(parseJsonOrValue(r.restBetweenGroups as string | object))
-          : undefined,
-      timeCap:
-        r.timeCap != null
-          ? durationSchema.parse(parseJsonOrValue(r.timeCap as string | object))
-          : undefined,
-      scoring: scoringTypeSchema.parse(r.scoring),
-      eventMetadata:
-        r.eventMetadata != null
-          ? eventMetadataSchema.parse(parseJsonOrValue(r.eventMetadata as string | object))
-          : undefined,
-      lastAssignedAt: (r.lastAssignedAt ?? undefined) as string | undefined,
-      isPublic: r.isPublic as boolean,
+    try {
+      return {
+        id: r.id as string,
+        createdAt: r.createdAt as string,
+        updatedAt: r.updatedAt as string,
+        userId: r.userId as string,
+        name: r.name as string,
+        description: (r.description ?? undefined) as string | undefined,
+        category: sessionTypeSchema.parse(r.category),
+        restBetweenGroups:
+          r.restBetweenGroups != null
+            ? durationSchema.parse(
+                parseJsonOrValue(r.restBetweenGroups as string | object, 'restBetweenGroups'),
+              )
+            : undefined,
+        timeCap:
+          r.timeCap != null
+            ? durationSchema.parse(parseJsonOrValue(r.timeCap as string | object, 'timeCap'))
+            : undefined,
+        scoring: scoringTypeSchema.parse(r.scoring),
+        eventMetadata:
+          r.eventMetadata != null
+            ? eventMetadataSchema.parse(
+                parseJsonOrValue(r.eventMetadata as string | object, 'eventMetadata'),
+              )
+            : undefined,
+        lastAssignedAt: (r.lastAssignedAt ?? undefined) as string | undefined,
+        isPublic: r.isPublic as boolean,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map session_template:', err, raw)
+      throw new Error(
+        `Failed to map session_template (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapActivityGroupFlat(raw: Record<string, unknown>): Omit<ActivityGroup, 'activities'> {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      sessionTemplateId: r.sessionTemplateId as string,
-      groupType: groupTypeSchema.parse(r.groupType),
-      ordinal: r.ordinal as number,
-      rounds: (r.rounds ?? undefined) as number | undefined,
-      restBetweenRounds:
-        r.restBetweenRounds != null
-          ? durationSchema.parse(parseJsonOrValue(r.restBetweenRounds as string | object))
-          : undefined,
-      restBetweenActivities:
-        r.restBetweenActivities != null
-          ? durationSchema.parse(parseJsonOrValue(r.restBetweenActivities as string | object))
-          : undefined,
+    try {
+      return {
+        id: r.id as string,
+        sessionTemplateId: r.sessionTemplateId as string,
+        groupType: groupTypeSchema.parse(r.groupType),
+        ordinal: r.ordinal as number,
+        rounds: (r.rounds ?? undefined) as number | undefined,
+        restBetweenRounds:
+          r.restBetweenRounds != null
+            ? durationSchema.parse(
+                parseJsonOrValue(r.restBetweenRounds as string | object, 'restBetweenRounds'),
+              )
+            : undefined,
+        restBetweenActivities:
+          r.restBetweenActivities != null
+            ? durationSchema.parse(
+                parseJsonOrValue(
+                  r.restBetweenActivities as string | object,
+                  'restBetweenActivities',
+                ),
+              )
+            : undefined,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map activity_group_flat:', err, raw)
+      throw new Error(
+        `Failed to map activity_group_flat (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapActivity(raw: Record<string, unknown>): Activity {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      activityGroupId: r.activityGroupId as string,
-      exerciseId: r.exerciseId as string,
-      ordinal: r.ordinal as number,
-      setScheme: setSchemeSchema.parse(parseJsonOrValue(r.setScheme as string | object)),
-      notes: (r.notes ?? undefined) as string | undefined,
+    try {
+      return {
+        id: r.id as string,
+        activityGroupId: r.activityGroupId as string,
+        exerciseId: r.exerciseId as string,
+        ordinal: r.ordinal as number,
+        setScheme: setSchemeSchema.parse(
+          parseJsonOrValue(r.setScheme as string | object, 'setScheme'),
+        ),
+        notes: (r.notes ?? undefined) as string | undefined,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map activity:', err, raw)
+      throw new Error(
+        `Failed to map activity (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
@@ -381,6 +441,7 @@ export class SupabaseAdapter implements DataAdapter {
         createdBy: (r.createdBy ?? r.userId) as string,
       }
     } catch (err) {
+      console.error('[supabase-adapter] Failed to map program:', err, raw)
       throw new Error(
         `Failed to map program "${r.name as string}" (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
       )
@@ -399,6 +460,7 @@ export class SupabaseAdapter implements DataAdapter {
         blockType: blockTypeSchema.parse(r.blockType),
       }
     } catch (err) {
+      console.error('[supabase-adapter] Failed to map block:', err, raw)
       throw new Error(
         `Failed to map block "${r.name as string}" (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
       )
@@ -407,10 +469,17 @@ export class SupabaseAdapter implements DataAdapter {
 
   private mapBlockWeek(raw: Record<string, unknown>): BlockWeek {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      blockId: r.blockId as string,
-      weekNumber: r.weekNumber as number,
+    try {
+      return {
+        id: r.id as string,
+        blockId: r.blockId as string,
+        weekNumber: r.weekNumber as number,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map block_week:', err, raw)
+      throw new Error(
+        `Failed to map block_week (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
@@ -420,8 +489,7 @@ export class SupabaseAdapter implements DataAdapter {
       let overrides: ScheduledSession['overrides']
       if (r.overrides != null) {
         try {
-          const parsed =
-            typeof r.overrides === 'string' ? JSON.parse(r.overrides) : r.overrides
+          const parsed = typeof r.overrides === 'string' ? JSON.parse(r.overrides) : r.overrides
           overrides = sessionOverridesSchema.parse(parsed)
         } catch (err) {
           console.warn(
@@ -450,63 +518,94 @@ export class SupabaseAdapter implements DataAdapter {
 
   private mapProgramActivation(raw: Record<string, unknown>): ProgramActivation {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      createdAt: r.createdAt as string,
-      updatedAt: r.updatedAt as string,
-      userId: r.userId as string,
-      programId: r.programId as string,
-      currentBlockOrdinal: r.currentBlockOrdinal as number,
-      currentWeekNumber: r.currentWeekNumber as number,
-      startDate: r.startDate as string,
+    try {
+      return {
+        id: r.id as string,
+        createdAt: r.createdAt as string,
+        updatedAt: r.updatedAt as string,
+        userId: r.userId as string,
+        programId: r.programId as string,
+        currentBlockOrdinal: r.currentBlockOrdinal as number,
+        currentWeekNumber: r.currentWeekNumber as number,
+        startDate: r.startDate as string,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map program_activation:', err, raw)
+      throw new Error(
+        `Failed to map program_activation (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapWeekStatus(raw: Record<string, unknown>): WeekStatus {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      activationId: r.activationId as string,
-      blockOrdinal: r.blockOrdinal as number,
-      weekNumber: r.weekNumber as number,
-      status: weekStatusValueSchema.parse(r.status),
-      createdAt: r.createdAt as string,
+    try {
+      return {
+        id: r.id as string,
+        activationId: r.activationId as string,
+        blockOrdinal: r.blockOrdinal as number,
+        weekNumber: r.weekNumber as number,
+        status: weekStatusValueSchema.parse(r.status),
+        createdAt: r.createdAt as string,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map week_status:', err, raw)
+      throw new Error(
+        `Failed to map week_status (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapShareLink(raw: Record<string, unknown>): ShareLink {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      token: shareTokenSchema.parse(r.token),
-      entityType: shareableEntityTypeSchema.parse(r.entityType),
-      entityId: r.entityId as string,
-      createdBy: r.createdBy as string,
-      isActive: r.isActive as boolean,
-      createdAt: r.createdAt as string,
-      updatedAt: r.updatedAt as string,
+    try {
+      return {
+        id: r.id as string,
+        token: shareTokenSchema.parse(r.token),
+        entityType: shareableEntityTypeSchema.parse(r.entityType),
+        entityId: r.entityId as string,
+        createdBy: r.createdBy as string,
+        isActive: r.isActive as boolean,
+        createdAt: r.createdAt as string,
+        updatedAt: r.updatedAt as string,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map share_link:', err, raw)
+      throw new Error(
+        `Failed to map share_link (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
   private mapEventItem(raw: Record<string, unknown>): EventItem {
     const r = camelizeKeys(raw)
-    return {
-      id: r.id as string,
-      createdAt: r.createdAt as string,
-      updatedAt: r.updatedAt as string,
-      sessionTemplateId: (r.sessionTemplateId ?? undefined) as string | undefined,
-      workoutLogId: (r.workoutLogId ?? undefined) as string | undefined,
-      userId: r.userId as string,
-      name: r.name as string,
-      category: (r.category ?? undefined) as string | undefined,
-      quantity: r.quantity as number,
-      isPacked: r.isPacked as boolean,
-      sortOrder: r.sortOrder as number,
-      notes: (r.notes ?? undefined) as string | undefined,
+    try {
+      return {
+        id: r.id as string,
+        createdAt: r.createdAt as string,
+        updatedAt: r.updatedAt as string,
+        sessionTemplateId: (r.sessionTemplateId ?? undefined) as string | undefined,
+        workoutLogId: (r.workoutLogId ?? undefined) as string | undefined,
+        userId: r.userId as string,
+        name: r.name as string,
+        category: (r.category ?? undefined) as string | undefined,
+        quantity: r.quantity as number,
+        isPacked: r.isPacked as boolean,
+        sortOrder: r.sortOrder as number,
+        notes: (r.notes ?? undefined) as string | undefined,
+      }
+    } catch (err) {
+      console.error('[supabase-adapter] Failed to map event_item:', err, raw)
+      throw new Error(
+        `Failed to map event_item (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
   }
 
-  private mapConversation(raw: Record<string, unknown>, participantUserIds: string[] = []): Conversation {
+  private mapConversation(
+    raw: Record<string, unknown>,
+    participantUserIds: string[] = [],
+  ): Conversation {
     const r = camelizeKeys(raw)
     try {
       return conversationSchema.parse({
@@ -797,11 +896,18 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('workout_log_id', id)
       .order('ordinal')
     if (groupError) throw groupError
-    const groups = (groupData as unknown as Record<string, unknown>[]).map((r) => this.mapLoggedActivityGroup(r))
+    const groups = (groupData as unknown as Record<string, unknown>[]).map((r) =>
+      this.mapLoggedActivityGroup(r),
+    )
     const groupIds = groups.map((g) => g.id)
 
     if (groupIds.length === 0) {
-      return { log: this.mapWorkoutLog(logData as unknown as Record<string, unknown>), groups, activities: [], sets: [] }
+      return {
+        log: this.mapWorkoutLog(logData as unknown as Record<string, unknown>),
+        groups,
+        activities: [],
+        sets: [],
+      }
     }
 
     const { data: actData, error: actError } = await this.client
@@ -810,11 +916,18 @@ export class SupabaseAdapter implements DataAdapter {
       .in('logged_group_id', groupIds)
       .order('ordinal')
     if (actError) throw actError
-    const activities = (actData as unknown as Record<string, unknown>[]).map((r) => this.mapLoggedActivity(r))
+    const activities = (actData as unknown as Record<string, unknown>[]).map((r) =>
+      this.mapLoggedActivity(r),
+    )
     const activityIds = activities.map((a) => a.id)
 
     if (activityIds.length === 0) {
-      return { log: this.mapWorkoutLog(logData as unknown as Record<string, unknown>), groups, activities, sets: [] }
+      return {
+        log: this.mapWorkoutLog(logData as unknown as Record<string, unknown>),
+        groups,
+        activities,
+        sets: [],
+      }
     }
 
     const { data: setData, error: setError } = await this.client
@@ -1283,7 +1396,10 @@ export class SupabaseAdapter implements DataAdapter {
 
     // The view exposes nullable columns because Postgres views are typed
     // optimistically; in practice these are always populated.
-    const rows = (data ?? []) as unknown as Array<{ gym_id: string | null; member_count: number | null }>
+    const rows = (data ?? []) as unknown as Array<{
+      gym_id: string | null
+      member_count: number | null
+    }>
     return rows.flatMap((r) =>
       r.gym_id == null || r.member_count == null
         ? []
@@ -1620,7 +1736,9 @@ export class SupabaseAdapter implements DataAdapter {
       .eq('session_template_id', id)
       .order('ordinal')
     if (groupError) throw groupError
-    const groups = (groupData as unknown as Record<string, unknown>[]).map((r) => this.mapActivityGroupFlat(r))
+    const groups = (groupData as unknown as Record<string, unknown>[]).map((r) =>
+      this.mapActivityGroupFlat(r),
+    )
     const groupIds = groups.map((g) => g.id)
 
     const template = this.mapSessionTemplate(templateData as unknown as Record<string, unknown>)
@@ -1642,7 +1760,9 @@ export class SupabaseAdapter implements DataAdapter {
       .in('activity_group_id', groupIds)
       .order('ordinal')
     if (actError) throw actError
-    const activities = (actData as unknown as Record<string, unknown>[]).map((r) => this.mapActivity(r))
+    const activities = (actData as unknown as Record<string, unknown>[]).map((r) =>
+      this.mapActivity(r),
+    )
 
     const eventItems = template.category === 'EVENT' ? await this.getEventItems(id, 'template') : []
 
@@ -2017,7 +2137,9 @@ export class SupabaseAdapter implements DataAdapter {
       .in('block_id', blockIds)
       .order('week_number', { ascending: true })
     if (weekError) throw weekError
-    const blockWeeks = (weekData as unknown as Record<string, unknown>[]).map((r) => this.mapBlockWeek(r))
+    const blockWeeks = (weekData as unknown as Record<string, unknown>[]).map((r) =>
+      this.mapBlockWeek(r),
+    )
     const weekIds = blockWeeks.map((w) => w.id)
 
     if (weekIds.length === 0) {
@@ -2034,7 +2156,9 @@ export class SupabaseAdapter implements DataAdapter {
       .select('*')
       .in('block_week_id', weekIds)
     if (sessionError) throw sessionError
-    const scheduledSessions = (sessionData as unknown as Record<string, unknown>[]).map((r) => this.mapScheduledSession(r))
+    const scheduledSessions = (sessionData as unknown as Record<string, unknown>[]).map((r) =>
+      this.mapScheduledSession(r),
+    )
 
     return {
       program: this.mapProgram(programData as unknown as Record<string, unknown>),
@@ -3330,7 +3454,9 @@ export class SupabaseAdapter implements DataAdapter {
 
     const { data, error } = await query
     if (error) throw error
-    return (data as unknown as Record<string, unknown>[]).map((row) => this.mapMessage(row)).reverse()
+    return (data as unknown as Record<string, unknown>[])
+      .map((row) => this.mapMessage(row))
+      .reverse()
   }
 
   async getMessagesSince(conversationId: string, since: string): Promise<Message[]> {
