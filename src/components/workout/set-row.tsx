@@ -5,6 +5,7 @@ import { computeVariance } from '@/lib/set-variance'
 import type { SetType, NoteContent } from '@/domain/types'
 import { NoteAffordance } from '@/components/workout/notes/note-affordance'
 import { useActiveWorkoutStore } from '@/stores/active-workout-store'
+import { cn } from '@/lib/utils'
 
 const SET_TYPES: SetType[] = ['WORKING', 'WARMUP', 'DROP', 'AMRAP', 'PEAK', 'BACKOFF']
 
@@ -24,6 +25,11 @@ interface SetRowProps {
    * action. Omitted for unsaved scaffolds.
    */
   loggedSetId?: string
+  /**
+   * When true, the row represents an unconfirmed placeholder (the auto-populated
+   * next-set row). Renders dimmed to distinguish it from confirmed sets.
+   */
+  isPending?: boolean
 }
 
 export function SetRow({
@@ -37,6 +43,7 @@ export function SetRow({
   prescribedReps,
   isBodyweight = false,
   loggedSetId,
+  isPending = false,
 }: SetRowProps) {
   const setSetNote = useActiveWorkoutStore((s) => s.setSetNote)
   const storedSet = useActiveWorkoutStore((s) => {
@@ -98,7 +105,7 @@ export function SetRow({
     : null
 
   return (
-    <div className="flex items-center gap-2 px-4 py-1">
+    <div className={cn('flex items-center gap-2 px-4 py-1', isPending && 'opacity-40')}>
       {/* Set number + type */}
       <div className="relative flex w-12 shrink-0 flex-col items-center">
         <button
@@ -242,7 +249,9 @@ export function SetRow({
 
       {/* Confirm / Status */}
       <div className="flex w-14 shrink-0 items-center justify-center">
-        {confirmed ? (
+        {isPending ? (
+          <span className="text-warm-ash/20 text-xs">--</span>
+        ) : confirmed ? (
           variance === 'met' ? (
             <Icon name="check_circle" size={22} className="text-green-500" />
           ) : variance === 'under' ? (

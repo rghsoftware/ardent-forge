@@ -73,6 +73,9 @@ function ActiveWorkoutPage() {
     isDiscarding,
   } = useActiveWorkout()
 
+  const skipActivity = useActiveWorkoutStore((s) => s.skipActivity)
+  const skippedActivityIds = useActiveWorkoutStore((s) => s.skippedActivityIds)
+
   const { markFirstWorkoutCompleted } = useOnboarding()
   const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
 
@@ -254,13 +257,12 @@ function ActiveWorkoutPage() {
         lastId = group.id
         const incomplete =
           group.activities.length === 0 ||
-          group.activities.some(
-            (a) => a.sets.length === 0 || a.sets.some((s) => !s.completed),
-          )
+          group.activities.some((a) => a.sets.length === 0 || a.sets.some((s) => !s.completed))
         if (incomplete) return group.id
       } else {
         for (const activity of group.activities) {
           lastId = activity.id
+          if (skippedActivityIds.has(activity.id)) continue // treat as done
           if (activity.sets.length === 0 || activity.sets.some((s) => !s.completed)) {
             return activity.id
           }
@@ -268,7 +270,7 @@ function ActiveWorkoutPage() {
       }
     }
     return lastId
-  }, [loggedGroups])
+  }, [loggedGroups, skippedActivityIds])
 
   // -----------------------------------------------------------------------
   // Handlers
@@ -312,15 +314,22 @@ function ActiveWorkoutPage() {
       }
 
       if (result?.advancementFailed) {
-        setPageError(
-          'Workout saved, but program position could not update. Check your connection.',
-        )
+        setPageError('Workout saved, but program position could not update. Check your connection.')
       }
     } catch (err) {
       console.error('[workout-page] handleFinish:', err)
       setPageError('Failed to save workout. Please try again.')
     }
-  }, [workoutLog, loggedGroups, finishWorkout, programBannerProps, userProfile, exerciseNames, firstWorkoutCompleted, markFirstWorkoutCompleted])
+  }, [
+    workoutLog,
+    loggedGroups,
+    finishWorkout,
+    programBannerProps,
+    userProfile,
+    exerciseNames,
+    firstWorkoutCompleted,
+    markFirstWorkoutCompleted,
+  ])
 
   const handleDiscard = useCallback(async () => {
     try {
@@ -540,202 +549,209 @@ function ActiveWorkoutPage() {
 
       {/* SET mode: only the active exercise block renders (hard focus). */}
       {!restTimer && (
-      <>
-      <div className="flex flex-1 flex-col gap-7 px-0 pt-2">
-        {loggedGroups.map((group) => {
-          // Group-level rendering: circuits render once per group
-          if (group.groupType === 'CIRCUIT') {
-            const circuitExercises = group.activities.map((a) => ({
-              name: exerciseNames[a.exerciseId] ?? 'Unknown',
-              targetReps: DEFAULT_CIRCUIT_REPS,
-            }))
-            // Hard focus: only render the active block in SET mode.
-            if (group.id !== activeFocusId) return null
-            return (
-              <div key={group.id} className="flex flex-1 flex-col">
-              <CircuitPanel
-                exercises={circuitExercises}
-                rounds={3}
-                onExerciseDone={async (exerciseIndex, round, actualReps) => {
-                  const activity = group.activities[exerciseIndex]
-                  if (!activity) return
-                  try {
-                    // Pass restSeconds: 0 -- CircuitPanel runs its own inter-exercise
-                    // and inter-round rest, so the global rest timer must not fire.
-                    await confirmSet(
-                      activity.id,
-                      {
-                        loggedActivityId: activity.id,
-                        setNumber: round,
-                        setType: 'WORKING',
-                        completed: true,
-                        actualReps,
-                      },
-                      0,
-                    )
-                  } catch (err) {
-                    console.error('[workout-log] Failed to log circuit set:', err)
-                    setPageError('Failed to save circuit set.')
-                  }
-                }}
-                onComplete={() => {
-                  // Per-set logging happens in onExerciseDone; nothing to do here.
-                }}
-              />
-              </div>
-            )
-          }
+        <>
+          <div className="flex flex-1 flex-col gap-7 px-0 pt-2">
+            {loggedGroups.map((group) => {
+              // Group-level rendering: circuits render once per group
+              if (group.groupType === 'CIRCUIT') {
+                const circuitExercises = group.activities.map((a) => ({
+                  name: exerciseNames[a.exerciseId] ?? 'Unknown',
+                  targetReps: DEFAULT_CIRCUIT_REPS,
+                }))
+                // Hard focus: only render the active block in SET mode.
+                if (group.id !== activeFocusId) return null
+                return (
+                  <div key={group.id} className="flex flex-1 flex-col">
+                    <CircuitPanel
+                      exercises={circuitExercises}
+                      rounds={3}
+                      onExerciseDone={async (exerciseIndex, round, actualReps) => {
+                        const activity = group.activities[exerciseIndex]
+                        if (!activity) return
+                        try {
+                          // Pass restSeconds: 0 -- CircuitPanel runs its own inter-exercise
+                          // and inter-round rest, so the global rest timer must not fire.
+                          await confirmSet(
+                            activity.id,
+                            {
+                              loggedActivityId: activity.id,
+                              setNumber: round,
+                              setType: 'WORKING',
+                              completed: true,
+                              actualReps,
+                            },
+                            0,
+                          )
+                        } catch (err) {
+                          console.error('[workout-log] Failed to log circuit set:', err)
+                          setPageError('Failed to save circuit set.')
+                        }
+                      }}
+                      onComplete={() => {
+                        // Per-set logging happens in onExerciseDone; nothing to do here.
+                      }}
+                    />
+                  </div>
+                )
+              }
 
-          return group.activities.map((activity) => {
-            // Hard focus: only render the active activity in SET mode.
-            if (activity.id !== activeFocusId) return null
-            const exercise = exerciseMap[activity.exerciseId]
-            const modality = getExerciseModality(exercise, group.groupType)
+              return group.activities.map((activity) => {
+                // Guard: skipped activities never render
+                if (skippedActivityIds.has(activity.id)) return null
+                // Hard focus: only render the active activity in SET mode.
+                if (activity.id !== activeFocusId) return null
+                const exercise = exerciseMap[activity.exerciseId]
+                const modality = getExerciseModality(exercise, group.groupType)
 
-            // Cardio panel
-            if (modality === 'cardio' && exercise) {
-              return (
-                <div key={activity.id}>
-                <CardioPanel
-                  exercise={exercise}
-                  onComplete={async (data) => {
-                    try {
-                      await confirmSet(activity.id, {
-                        loggedActivityId: activity.id,
-                        setNumber: 1,
-                        setType: 'WORKING',
-                        completed: true,
-                        actualDuration: { seconds: data.durationSeconds },
-                        actualDistance: data.distance
-                          ? { value: parseFloat(data.distance), unit: 'mi' }
-                          : undefined,
-                        actualHeartRate: data.heartRate ? parseInt(data.heartRate, 10) : undefined,
-                      })
-                    } catch (err) {
-                      console.error('[workout-page] cardio confirmSet:', err)
-                      setPageError('Failed to save cardio session.')
-                    }
-                  }}
-                />
-                </div>
-              )
-            }
+                // Cardio panel
+                if (modality === 'cardio' && exercise) {
+                  return (
+                    <div key={activity.id}>
+                      <CardioPanel
+                        exercise={exercise}
+                        onComplete={async (data) => {
+                          try {
+                            await confirmSet(activity.id, {
+                              loggedActivityId: activity.id,
+                              setNumber: 1,
+                              setType: 'WORKING',
+                              completed: true,
+                              actualDuration: { seconds: data.durationSeconds },
+                              actualDistance: data.distance
+                                ? { value: parseFloat(data.distance), unit: 'mi' }
+                                : undefined,
+                              actualHeartRate: data.heartRate
+                                ? parseInt(data.heartRate, 10)
+                                : undefined,
+                            })
+                          } catch (err) {
+                            console.error('[workout-page] cardio confirmSet:', err)
+                            setPageError('Failed to save cardio session.')
+                          }
+                        }}
+                      />
+                    </div>
+                  )
+                }
 
-            // Ruck panel
-            if (modality === 'ruck') {
-              return (
-                <div key={activity.id}>
-                <RuckPanel
-                  onComplete={async (data) => {
-                    try {
-                      await confirmSet(activity.id, {
-                        loggedActivityId: activity.id,
-                        setNumber: 1,
-                        setType: 'WORKING',
-                        completed: true,
-                        actualDuration: { seconds: data.durationSeconds },
-                        actualDistance: data.distance
-                          ? { value: parseFloat(data.distance), unit: 'mi' }
-                          : undefined,
-                        ruckLoad: data.loadWeight
-                          ? { value: parseFloat(data.loadWeight), unit: 'lb' }
-                          : undefined,
-                        elevationGain: data.elevation
-                          ? { value: parseFloat(data.elevation), unit: 'm' }
-                          : undefined,
-                      })
-                    } catch (err) {
-                      console.error('[workout-page] ruck confirmSet:', err)
-                      setPageError('Failed to save ruck session.')
-                    }
-                  }}
-                />
-                </div>
-              )
-            }
+                // Ruck panel
+                if (modality === 'ruck') {
+                  return (
+                    <div key={activity.id}>
+                      <RuckPanel
+                        onComplete={async (data) => {
+                          try {
+                            await confirmSet(activity.id, {
+                              loggedActivityId: activity.id,
+                              setNumber: 1,
+                              setType: 'WORKING',
+                              completed: true,
+                              actualDuration: { seconds: data.durationSeconds },
+                              actualDistance: data.distance
+                                ? { value: parseFloat(data.distance), unit: 'mi' }
+                                : undefined,
+                              ruckLoad: data.loadWeight
+                                ? { value: parseFloat(data.loadWeight), unit: 'lb' }
+                                : undefined,
+                              elevationGain: data.elevation
+                                ? { value: parseFloat(data.elevation), unit: 'm' }
+                                : undefined,
+                            })
+                          } catch (err) {
+                            console.error('[workout-page] ruck confirmSet:', err)
+                            setPageError('Failed to save ruck session.')
+                          }
+                        }}
+                      />
+                    </div>
+                  )
+                }
 
-            // Standard strength exercise block
-            const confirmedSets = activity.sets.filter((s) => s.completed)
-            const lastConfirmedSet =
-              confirmedSets.length > 0 ? confirmedSets[confirmedSets.length - 1] : undefined
+                // Standard strength exercise block
+                const confirmedSets = activity.sets.filter((s) => s.completed)
+                const lastConfirmedSet =
+                  confirmedSets.length > 0 ? confirmedSets[confirmedSets.length - 1] : undefined
 
-            // Build set row data: confirmed sets + one empty row for the next set
-            const setRows: SetRowData[] = [
-              ...activity.sets.map((set, idx) => ({
-                id: set.id,
-                setNumber: idx + 1,
-                weight: set.actualWeight?.value?.toString(),
-                reps: set.actualReps?.toString(),
-                confirmed: set.completed,
-                prescribedWeight: set.prescribed?.weight ?? undefined,
-                prescribedReps: set.prescribed?.reps ?? undefined,
-              })),
-            ]
+                // Build set row data: confirmed sets + one empty row for the next set
+                const setRows: SetRowData[] = [
+                  ...activity.sets.map((set, idx) => ({
+                    id: set.id,
+                    setNumber: idx + 1,
+                    weight: set.actualWeight?.value?.toString(),
+                    reps: set.actualReps?.toString(),
+                    confirmed: set.completed,
+                    prescribedWeight: set.prescribed?.weight ?? undefined,
+                    prescribedReps: set.prescribed?.reps ?? undefined,
+                  })),
+                ]
 
-            // Add an empty row for the next set to log.
-            // If this is a programmed workout, inherit prescribed values from the
-            // last set so the user sees the same prescription on the input row.
-            const lastSetWithPrescription = [...activity.sets]
-              .reverse()
-              .find((s) => s.prescribed != null)
-            const nextPrescribedWeight =
-              lastSetWithPrescription?.prescribed?.weight ?? undefined
-            const nextPrescribedReps =
-              lastSetWithPrescription?.prescribed?.reps ?? undefined
+                // Add an empty row for the next set to log.
+                // If this is a programmed workout, inherit prescribed values from the
+                // last set so the user sees the same prescription on the input row.
+                const lastSetWithPrescription = [...activity.sets]
+                  .reverse()
+                  .find((s) => s.prescribed != null)
+                const nextPrescribedWeight =
+                  lastSetWithPrescription?.prescribed?.weight ?? undefined
+                const nextPrescribedReps = lastSetWithPrescription?.prescribed?.reps ?? undefined
 
-            const nextSetNumber = setRows.length + 1
-            setRows.push({
-              id: `pending-${activity.id}-${nextSetNumber}`,
-              setNumber: nextSetNumber,
-              weight:
-                lastConfirmedSet?.actualWeight?.value?.toString()
-                ?? nextPrescribedWeight?.value?.toString(),
-              reps:
-                lastConfirmedSet?.actualReps?.toString()
-                ?? (nextPrescribedReps != null ? String(nextPrescribedReps) : undefined),
-              confirmed: false,
-              prescribedWeight: nextPrescribedWeight,
-              prescribedReps: nextPrescribedReps,
-            })
+                const nextSetNumber = setRows.length + 1
+                setRows.push({
+                  id: `pending-${activity.id}-${nextSetNumber}`,
+                  setNumber: nextSetNumber,
+                  weight:
+                    lastConfirmedSet?.actualWeight?.value?.toString() ??
+                    nextPrescribedWeight?.value?.toString(),
+                  reps:
+                    lastConfirmedSet?.actualReps?.toString() ??
+                    (nextPrescribedReps != null ? String(nextPrescribedReps) : undefined),
+                  confirmed: false,
+                  prescribedWeight: nextPrescribedWeight,
+                  prescribedReps: nextPrescribedReps,
+                  isPending: true,
+                })
 
-            return (
-              <div key={activity.id}>
-                <ExerciseBlock
-                  exerciseName={exercise?.name ?? 'Unknown Exercise'}
-                  sets={setRows}
-                  loggedActivityId={activity.id}
-                  onConfirmSet={handleConfirmSet}
-                  isConfirming={isConfirmingSet}
-                  isBodyweight={exercise?.category === 'BODYWEIGHT'}
-                  isActive={true}
-                />
-              </div>
-            )
-          })
-        })}
-      </div>
+                return (
+                  <div key={activity.id}>
+                    <ExerciseBlock
+                      exerciseName={exercise?.name ?? 'Unknown Exercise'}
+                      sets={setRows}
+                      loggedActivityId={activity.id}
+                      onConfirmSet={handleConfirmSet}
+                      isConfirming={isConfirmingSet}
+                      isBodyweight={exercise?.category === 'BODYWEIGHT'}
+                      isActive={true}
+                      onSkipExercise={
+                        confirmedSets.length > 0 ? () => skipActivity(activity.id) : undefined
+                      }
+                    />
+                  </div>
+                )
+              })
+            })}
+          </div>
 
-      {/* Sticky footer -- single forward action for free-form workouts.
+          {/* Sticky footer -- single forward action for free-form workouts.
           Programmed workouts render no footer (the flow is predetermined). */}
-      {!isProgrammedWorkout && (
-        <div className="sticky bottom-0 z-40 bg-surface-anvil px-4 pt-3 pb-4">
-          {loggedGroups.length === 0 && !firstWorkoutCompleted && (
-            <OnboardingHint hintKey="workout-add-exercise">
-              Tap below to add your first exercise.
-            </OnboardingHint>
+          {!isProgrammedWorkout && (
+            <div className="sticky bottom-0 z-40 bg-surface-anvil px-4 pt-3 pb-4">
+              {loggedGroups.length === 0 && !firstWorkoutCompleted && (
+                <OnboardingHint hintKey="workout-add-exercise">
+                  Tap below to add your first exercise.
+                </OnboardingHint>
+              )}
+              <Button
+                variant="molten"
+                size="lg"
+                onClick={() => setShowAddExercise(true)}
+                className="min-h-14 w-full text-sm font-bold uppercase tracking-widest"
+              >
+                <Plus className="h-4 w-4" />
+                Add exercise
+              </Button>
+            </div>
           )}
-          <Button
-            variant="molten"
-            size="lg"
-            onClick={() => setShowAddExercise(true)}
-            className="min-h-14 w-full text-sm font-bold uppercase tracking-widest"
-          >
-            <Plus className="h-4 w-4" />
-            Add exercise
-          </Button>
-        </div>
-      )}
-      </>
+        </>
       )}
 
       {/* Undo banner (shown when rest timer is NOT active) */}

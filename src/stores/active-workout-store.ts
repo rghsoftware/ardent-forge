@@ -68,6 +68,8 @@ interface ActiveWorkoutState {
   // store's unpauseWorkout action hits the invalid-pausedAt branch (the
   // store cannot render UI itself). Cleared on successful pause/unpause.
   pauseTimingError: string | null
+
+  skippedActivityIds: Set<string>
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +145,7 @@ interface ActiveWorkoutActions {
     newGroup: LoggedActivityGroup,
     newActivity: LoggedActivity,
   ): void
+  skipActivity(activityId: string): void
 
   // Set management
   confirmSet(loggedActivityId: string, newSet: LoggedSet): void
@@ -181,6 +184,7 @@ const initialState: ActiveWorkoutState = {
   restTimer: null,
   undoAction: null,
   pauseTimingError: null,
+  skippedActivityIds: new Set<string>(),
 }
 
 export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutActions>()(
@@ -325,6 +329,16 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         ],
       }))
       _publishCurrentState()
+    },
+
+    skipActivity(activityId: string) {
+      if (!activityId) {
+        console.warn('[active-workout] skipActivity called with empty activityId')
+        return
+      }
+      set((state) => ({
+        skippedActivityIds: new Set([...state.skippedActivityIds, activityId]),
+      }))
     },
 
     // ------------------------------------------------------------------

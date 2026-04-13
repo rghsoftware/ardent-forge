@@ -15,6 +15,7 @@ interface SetRowData {
   confirmed: boolean
   prescribedWeight?: { value: number; unit: string }
   prescribedReps?: number
+  isPending?: boolean
 }
 
 interface ExerciseBlockProps {
@@ -31,6 +32,7 @@ interface ExerciseBlockProps {
   isConfirming?: boolean
   isBodyweight?: boolean
   isActive?: boolean
+  onSkipExercise?: () => void
 }
 
 export function ExerciseBlock({
@@ -41,6 +43,7 @@ export function ExerciseBlock({
   isConfirming = false,
   isBodyweight = false,
   isActive = true,
+  onSkipExercise,
 }: ExerciseBlockProps) {
   const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
   const hasPrescribed = sets.some((s) => s.prescribedWeight != null || s.prescribedReps != null)
@@ -138,12 +141,24 @@ export function ExerciseBlock({
             prescribedReps={set.prescribedReps}
             isBodyweight={isBodyweight}
             loggedSetId={set.id}
+            isPending={!set.confirmed && set.id.startsWith('pending-')}
             onConfirm={(weight, reps, setType) =>
               onConfirmSet(loggedActivityId, set.setNumber, weight, reps, setType)
             }
           />
         ))}
       </div>
+      {onSkipExercise && isActive && (
+        <div className="px-4 pb-3 pt-1">
+          <button
+            type="button"
+            onClick={onSkipExercise}
+            className="w-full py-2 text-xs font-bold uppercase tracking-widest text-warm-ash/60 transition-colors hover:text-warm-ash active:text-ember"
+          >
+            Done with this exercise
+          </button>
+        </div>
+      )}
     </section>
   )
 }
