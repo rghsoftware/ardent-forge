@@ -49,7 +49,7 @@ import { useDebouncedValue } from '@/hooks/use-debounced-value'
 import { useAuth } from '@/lib/auth'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useGymPicker } from '@/hooks/use-gym-picker'
-import { configureDisplayPublisher } from '@/lib/display-publisher'
+import { configureDisplayPublisher } from '@/lib/display-realtime'
 import { writeLastGymChoice, readLastGymChoice } from '@/lib/gym-picker-storage'
 import { toast } from 'sonner'
 import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
@@ -1100,4 +1100,3 @@ function ProgramCard({
     </div>
   )
 }
-

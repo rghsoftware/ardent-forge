@@ -8,7 +8,7 @@ import {
   publishUnfocusEvent,
   destroyDisplayPublisher,
   setHelloResponder,
-} from '@/lib/display-publisher'
+} from '@/lib/display-realtime'
 import {
   setSnapshotContext,
   useActiveWorkoutStore,

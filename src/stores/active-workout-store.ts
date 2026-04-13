@@ -15,7 +15,7 @@ import { noteContentSchema } from '@/domain/types'
 import { UNDO_WINDOW_MS } from '@/lib/workout-utils'
 import type { SnapshotContext } from '@/lib/display-snapshot'
 import { buildDisplaySnapshot } from '@/lib/display-snapshot'
-import { publishDisplaySnapshot, publishSessionEnded } from '@/lib/display-publisher'
+import { publishDisplaySnapshot, publishSessionEnded } from '@/lib/display-realtime'
 
 // ---------------------------------------------------------------------------
 // Nested state: groups contain activities, activities contain sets

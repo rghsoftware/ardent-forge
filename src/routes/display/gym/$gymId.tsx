@@ -9,7 +9,7 @@ import {
   subscribeToDisplay,
   destroyDisplaySubscriber,
   type DisplayEventHandlers,
-} from '@/lib/display-subscriber'
+} from '@/lib/display-realtime'
 import { useDisplayStore, getDisplayMode } from '@/stores/display-store'
 import { IdleView } from '@/components/display/idle-view'
 import { BoardView } from '@/components/display/board-view'

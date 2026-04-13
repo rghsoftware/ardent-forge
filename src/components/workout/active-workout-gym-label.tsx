@@ -1,6 +1,6 @@
 import { useEffect, type ReactElement } from 'react'
 import { useGyms } from '@/hooks/use-gyms'
-import { getActiveGymId } from '@/lib/display-publisher'
+import { getActiveGymId } from '@/lib/display-realtime'
 
 // ---------------------------------------------------------------------------
 // ActiveWorkoutGymLabel -- workout header gym label (F018, Tech.md D12)

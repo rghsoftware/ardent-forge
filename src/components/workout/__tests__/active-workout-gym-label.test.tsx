@@ -18,7 +18,7 @@ vi.mock('@/hooks/use-gyms', () => ({
 }))
 
 const mockGetActiveGymId = vi.fn()
-vi.mock('@/lib/display-publisher', () => ({
+vi.mock('@/lib/display-realtime', () => ({
   getActiveGymId: () => mockGetActiveGymId(),
 }))
 
