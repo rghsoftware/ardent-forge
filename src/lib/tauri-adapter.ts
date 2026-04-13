@@ -169,8 +169,6 @@ interface TauriLoggedSetResponse {
   elevation_gain: string | null
   rpe: number | null
   completed: number | null
-  notes: string | null
-  note_tags: string
   created_at: string | null
   updated_at: string | null
 }
@@ -782,7 +780,6 @@ function toLoggedSet(r: TauriLoggedSetResponse): LoggedSet {
   const actualPace = parseJson(r.actual_pace, 'actual_pace')
   const ruckLoad = parseJson(r.ruck_load, 'ruck_load')
   const elevationGain = parseJson(r.elevation_gain, 'elevation_gain')
-  const noteTags = parseNoteTags(r.note_tags, 'logged_sets.note_tags')
   return {
     id: r.id,
     loggedActivityId: r.logged_activity_id,
@@ -797,8 +794,6 @@ function toLoggedSet(r: TauriLoggedSetResponse): LoggedSet {
     actualHeartRate: r.actual_heart_rate ?? undefined,
     rpe: r.rpe ?? undefined,
     completed: intToBool(r.completed, 'completed'),
-    notes: r.notes ?? undefined,
-    noteTags: noteTags.length > 0 ? noteTags : undefined,
     ruckLoad: ruckLoad != null ? weightSchema.parse(ruckLoad) : undefined,
     elevationGain: elevationGain != null ? distanceSchema.parse(elevationGain) : undefined,
   }
@@ -821,8 +816,6 @@ function fromLoggedSet(set: Omit<LoggedSet, 'id'>, userId: string): Record<strin
     elevation_gain: set.elevationGain ?? null,
     rpe: set.rpe ?? null,
     completed: set.completed,
-    notes: set.notes ?? null,
-    note_tags: set.noteTags ?? [],
   }
 }
 
@@ -1530,8 +1523,6 @@ export class TauriAdapter implements DataAdapter {
         partial.elevation_gain != null ? JSON.stringify(partial.elevation_gain) : null,
       rpe: (partial.rpe as number | undefined) ?? null,
       completed: (partial.completed as boolean | undefined) ?? null,
-      notes: (partial.notes as string | undefined) ?? null,
-      note_tags: JSON.stringify(partial.note_tags ?? []),
     }
 
     const row = await invokeCommand<TauriLoggedSetResponse>('create_logged_set', {
@@ -1562,8 +1553,6 @@ export class TauriAdapter implements DataAdapter {
         partial.elevation_gain != null ? JSON.stringify(partial.elevation_gain) : null,
       rpe: (partial.rpe as number | undefined) ?? null,
       completed: (partial.completed as boolean | undefined) ?? null,
-      notes: (partial.notes as string | undefined) ?? null,
-      note_tags: JSON.stringify(partial.note_tags ?? []),
     }
 
     const row = await invokeCommand<TauriLoggedSetResponse>('update_logged_set', {
@@ -1726,8 +1715,6 @@ export class TauriAdapter implements DataAdapter {
             elevation_gain: s.elevationGain ? JSON.stringify(s.elevationGain) : null,
             rpe: s.rpe ?? null,
             completed: s.completed ?? null,
-            notes: s.notes ?? null,
-            note_tags: JSON.stringify(s.noteTags ?? []),
           })),
         })),
       })),

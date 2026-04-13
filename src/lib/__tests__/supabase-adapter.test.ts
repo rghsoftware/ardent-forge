@@ -123,8 +123,6 @@ const setRow: LoggedSetRow = {
   elevation_gain: null,
   rpe: 8,
   completed: true,
-  notes: 'Solid set',
-  note_tags: [],
   created_at: now,
   updated_at: now,
 }

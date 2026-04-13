@@ -131,8 +131,6 @@ export const loggedSetSchema = z
     // L-7: RPE 1-10, half-values allowed (e.g. 7.5) per standard RPE scale
     rpe: z.number().min(1).max(10).multipleOf(0.5).optional(),
     completed: z.boolean(),
-    notes: z.string().optional(),
-    noteTags: z.array(noteTagSchema).max(16).optional(),
     ruckLoad: weightSchema.optional(),
     elevationGain: distanceSchema.optional(),
   })

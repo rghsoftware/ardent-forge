@@ -146,14 +146,6 @@ export function WorkoutDetailExercises({
                         )}
                       </div>
                     </div>
-
-                    {/* Set-level note (Spec assertion 9: null when empty) */}
-                    <NoteDisplay
-                      value={{ text: set.notes ?? '', tags: set.noteTags ?? [] }}
-                      className={`px-3 py-1.5 ${
-                        setIdx % 2 === 0 ? 'bg-surface-iron' : 'bg-surface-charcoal'
-                      }`}
-                    />
                   </div>
                 ))}
 

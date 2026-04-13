@@ -552,77 +552,6 @@ describe('notes (F020)', () => {
     expect(activity.noteTags).toBeUndefined()
   })
 
-  it('setSetNote updates notes and noteTags on the matching set deep in the tree', () => {
-    const wl = makeWorkoutLog()
-    getState().startWorkout('user-1', wl)
-    useActiveWorkoutStore.setState({
-      loggedGroups: [
-        {
-          ...makeLoggedActivityGroup(),
-          activities: [
-            {
-              ...makeLoggedActivity(),
-              sets: [makeLoggedSet()],
-            },
-          ],
-        },
-      ],
-    })
-
-    getState().setSetNote('ls-1', { text: 'grindy', tags: ['GRINDY'] })
-
-    const updatedSet = getState().loggedGroups[0].activities[0].sets[0]
-    expect(updatedSet.notes).toBe('grindy')
-    expect(updatedSet.noteTags).toEqual(['GRINDY'])
-  })
-
-  it('setSetNote is a no-op for an unknown setId', () => {
-    const wl = makeWorkoutLog()
-    getState().startWorkout('user-1', wl)
-    useActiveWorkoutStore.setState({
-      loggedGroups: [
-        {
-          ...makeLoggedActivityGroup(),
-          activities: [
-            {
-              ...makeLoggedActivity(),
-              sets: [makeLoggedSet()],
-            },
-          ],
-        },
-      ],
-    })
-
-    getState().setSetNote('missing', { text: 'x', tags: [] })
-
-    const s = getState().loggedGroups[0].activities[0].sets[0]
-    expect(s.notes).toBeUndefined()
-  })
-
-  it('setSetNote rejects over-limit tag array at the boundary', () => {
-    const wl = makeWorkoutLog()
-    getState().startWorkout('user-1', wl)
-    useActiveWorkoutStore.setState({
-      loggedGroups: [
-        {
-          ...makeLoggedActivityGroup(),
-          activities: [
-            {
-              ...makeLoggedActivity(),
-              sets: [{ ...makeLoggedSet(), notes: 'untouched' } as LoggedSet],
-            },
-          ],
-        },
-      ],
-    })
-
-    const tooMany = Array.from({ length: 17 }, (_, i) => `TAG${i}`)
-    getState().setSetNote('ls-1', { text: 'x', tags: tooMany })
-
-    // Unchanged
-    expect(getState().loggedGroups[0].activities[0].sets[0].notes).toBe('untouched')
-  })
-
   it('note state survives a crash-recovery snapshot round-trip (JSON serialize/deserialize)', () => {
     const wl = makeWorkoutLog()
     getState().startWorkout('user-1', wl)
@@ -641,7 +570,6 @@ describe('notes (F020)', () => {
     })
     getState().setSessionNote({ text: 'session level', tags: ['FAST'] })
     getState().setActivityNote('la-1', { text: 'activity level', tags: ['SCALED'] })
-    getState().setSetNote('ls-1', { text: 'set level', tags: ['GRINDY', 'PAUSED'] })
 
     // Capture the snapshot shape crash-recovery would serialize
     const snapshot = {
@@ -655,10 +583,5 @@ describe('notes (F020)', () => {
     expect(roundTripped.workoutLog?.noteTags).toEqual(['FAST'])
     expect(roundTripped.loggedGroups[0].activities[0].notes).toBe('activity level')
     expect(roundTripped.loggedGroups[0].activities[0].noteTags).toEqual(['SCALED'])
-    expect(roundTripped.loggedGroups[0].activities[0].sets[0].notes).toBe('set level')
-    expect(roundTripped.loggedGroups[0].activities[0].sets[0].noteTags).toEqual([
-      'GRINDY',
-      'PAUSED',
-    ])
   })
 })

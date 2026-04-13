@@ -244,7 +244,6 @@ function buildDefaults(initial: WorkoutLogFull | undefined): FormValues {
               actualHeartRate: s.actualHeartRate,
               rpe: s.rpe,
               completed: s.completed,
-              notes: s.notes ?? '',
               ruckLoad: fromWeight(s.ruckLoad),
               elevationGain: fromDistance(s.elevationGain),
             }))
@@ -654,7 +653,6 @@ export function ManualWorkoutForm({ mode, initialValue, userId, onSaved }: Manua
                   actualHeartRate: s.actualHeartRate,
                   rpe: s.rpe,
                   completed: s.completed,
-                  notes: s.notes || undefined,
                   ruckLoad: toWeight(s.ruckLoad, weightUnit),
                   elevationGain: toDistance(s.elevationGain, distanceUnit),
                 })
@@ -794,7 +792,6 @@ export function ManualWorkoutForm({ mode, initialValue, userId, onSaved }: Manua
                   actualHeartRate: s.actualHeartRate,
                   rpe: s.rpe,
                   completed: s.completed,
-                  notes: s.notes || undefined,
                   ruckLoad: toWeight(s.ruckLoad, weightUnit),
                   elevationGain: toDistance(s.elevationGain, distanceUnit),
                   workoutLogId,
@@ -814,7 +811,6 @@ export function ManualWorkoutForm({ mode, initialValue, userId, onSaved }: Manua
                   actualHeartRate: s.actualHeartRate,
                   rpe: s.rpe,
                   completed: s.completed,
-                  notes: s.notes || undefined,
                   ruckLoad: toWeight(s.ruckLoad, weightUnit),
                   elevationGain: toDistance(s.elevationGain, distanceUnit),
                 })
