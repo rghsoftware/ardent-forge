@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatCountdown } from '@/lib/format-duration'
 
@@ -22,6 +23,8 @@ export interface RestPanelProps {
   nextPrimary?: ReactNode
   /** Secondary "what's next" line, typically a prescription. */
   nextSecondary?: ReactNode
+  /** When provided, renders a minimize button that collapses the rest timer to a banner. */
+  onMinimize?: () => void
 }
 
 /**
@@ -40,6 +43,7 @@ export function RestPanel({
   nextLabel,
   nextPrimary,
   nextSecondary,
+  onMinimize,
 }: RestPanelProps) {
   const progress = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0
 
@@ -60,6 +64,18 @@ export function RestPanel({
           animation: `ember-pulse ${pulseDuration} ease-in-out infinite`,
         }}
       />
+
+      {/* Minimize button -- top-right, only when caller provides onMinimize */}
+      {onMinimize && (
+        <button
+          type="button"
+          onClick={onMinimize}
+          aria-label="Minimize rest timer"
+          className="absolute top-3 right-3 z-20 flex min-h-12 min-w-12 items-center justify-center text-warm-ash/60 hover:text-bone-white"
+        >
+          <ChevronDown className="h-5 w-5" />
+        </button>
+      )}
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-4 py-10">
         {topBadge}

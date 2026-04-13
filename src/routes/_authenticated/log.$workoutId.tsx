@@ -20,6 +20,7 @@ import { WorkoutHeaderMenu } from '@/components/workout/workout-header-menu'
 import { ExerciseBlock, type SetRowData } from '@/components/workout/exercise-block'
 import { ProgramContextBanner } from '@/components/workout/program-context-banner'
 import { RestView } from '@/components/workout/rest-view'
+import { RestTimerBanner } from '@/components/workout/rest-timer-banner'
 import { UndoBanner } from '@/components/workout/undo-banner'
 import { AddExerciseSheet } from '@/components/workout/add-exercise-sheet'
 import { CardioPanel } from '@/components/workout/cardio-panel'
@@ -138,6 +139,8 @@ function ActiveWorkoutPage() {
   const [pageError, setPageError] = useState<string | null>(null)
   // pendingInputs[activityId] = true means "show one input row for this activity"
   const [pendingInputs, setPendingInputs] = useState<Record<string, boolean>>({})
+  // restMinimized collapses the full-page rest view to the RestTimerBanner strip
+  const [restMinimized, setRestMinimized] = useState(false)
 
   // Pause/resume derived state and handlers.
   // Pause UI is hidden on the Tauri (mobile) adapter because pause-state
@@ -177,6 +180,11 @@ function ActiveWorkoutPage() {
       navigate({ to: '/' })
     }
   }, [isActive, showSummary, navigate])
+
+  // Reset minimize state when rest timer ends so the next rest starts expanded
+  useEffect(() => {
+    if (!restTimer) setRestMinimized(false)
+  }, [restTimer])
 
   // ---------------------------------------------------------------------------
   // Elapsed timer ownership (Tech.md D-1)
@@ -558,19 +566,30 @@ function ActiveWorkoutPage() {
         />
       )}
 
-      {/* REST mode: full-page rest view owns the screen between sets. */}
-      {restTimer && (
+      {/* REST mode (full-page): shown when rest is active and not minimized. */}
+      {restTimer && !restMinimized && (
         <RestView
           restTimer={restTimer}
           loggedGroups={loggedGroups}
           exerciseNames={exerciseNames}
           onSkip={skipRest}
           onAdjust={adjustRest}
+          onMinimize={() => setRestMinimized(true)}
+        />
+      )}
+
+      {/* REST mode (minimized): compact sticky banner with expand + skip. */}
+      {restTimer && restMinimized && (
+        <RestTimerBanner
+          remaining={restTimer.remaining}
+          total={restTimer.total}
+          onExpand={() => setRestMinimized(false)}
+          onSkip={skipRest}
         />
       )}
 
       {/* SET mode: only the active exercise block renders (hard focus). */}
-      {!restTimer && (
+      {(!restTimer || restMinimized) && (
         <>
           <div className="flex flex-1 flex-col gap-7 px-0 pt-2">
             {loggedGroups.map((group) => {

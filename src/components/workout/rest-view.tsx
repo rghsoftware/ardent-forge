@@ -8,6 +8,7 @@ interface RestViewProps {
   exerciseNames: Record<string, string>
   onSkip: () => void
   onAdjust: (delta: number) => void
+  onMinimize?: () => void
 }
 
 interface NextUpInfo {
@@ -37,6 +38,7 @@ export function RestView({
   exerciseNames,
   onSkip,
   onAdjust,
+  onMinimize,
 }: RestViewProps) {
   // Compute next-up (first activity with any incomplete set) and last-set
   // (most recently confirmed set, by iteration order).
@@ -84,6 +86,7 @@ export function RestView({
         total={restTimer.total}
         onSkip={onSkip}
         onAdjust={onAdjust}
+        onMinimize={onMinimize}
         nextLabel={nextUp ? 'Next up' : undefined}
         nextPrimary={
           nextUp ? (
