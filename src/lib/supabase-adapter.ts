@@ -238,11 +238,6 @@ export class SupabaseAdapter implements DataAdapter {
         actualHeartRate: (r.actualHeartRate ?? undefined) as number | undefined,
         rpe: (r.rpe ?? undefined) as number | undefined,
         completed: r.completed as boolean,
-        notes: (r.notes ?? undefined) as string | undefined,
-        noteTags:
-          Array.isArray(r.noteTags) && (r.noteTags as unknown[]).length > 0
-            ? (r.noteTags as string[])
-            : undefined,
         ruckLoad: r.ruckLoad != null ? weightSchema.parse(r.ruckLoad) : undefined,
         elevationGain: r.elevationGain != null ? distanceSchema.parse(r.elevationGain) : undefined,
       }
@@ -1075,8 +1070,6 @@ export class SupabaseAdapter implements DataAdapter {
       elevation_gain: set.elevationGain ?? null,
       rpe: set.rpe ?? null,
       completed: set.completed,
-      notes: set.notes ?? null,
-      note_tags: set.noteTags ?? [],
     }
 
     const { data, error } = await this.client.from('logged_sets').insert(row).select().single()
@@ -1101,8 +1094,6 @@ export class SupabaseAdapter implements DataAdapter {
       elevation_gain: set.elevationGain ?? null,
       rpe: set.rpe ?? null,
       completed: set.completed,
-      notes: set.notes ?? null,
-      note_tags: set.noteTags ?? [],
     }
 
     const { data, error } = await this.client

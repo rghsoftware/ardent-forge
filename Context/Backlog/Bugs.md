@@ -35,3 +35,14 @@ High-priority bugs should be addressed before starting new features.
 
 **Severity:** Medium
 **Resolution:** Fixed in `5d2335c` -- disable delete-week button when block has only one week.
+
+### B008: Gym selector shown every time a workout is started
+**Added:** 2026-04-12
+**Context:** The "select gym" modal/selector appears on every workout start, even when the user has already chosen a gym in a previous session. The last-selected gym should be persisted and pre-selected so the user only needs to intervene when changing gyms.
+**Related:** `src/stores/active-workout-store.ts`, gym-picker-storage, workout start flow
+**Priority:** Medium
+
+### ~~B007: Active workout only shows one exercise despite multiple being added~~ (Resolved 2026-04-13)
+
+**Added:** 2026-04-12
+**Resolution:** Fixed in `11ca616` -- show all exercises simultaneously in active workout view.

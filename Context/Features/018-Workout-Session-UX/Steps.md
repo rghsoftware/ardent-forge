@@ -402,11 +402,68 @@ Follow-up tasks captured from PR #92 review (`Context/Reviews/0014-pr92-workout-
 **Acceptance:** Pause/resume works on Tauri with full persistence parity; interim UI gate removed; round-trip tests pass.
 **Review finding:** ADR-013
 
+## Wave 7: PR #109 Review Follow-ups
+
+Follow-up tasks captured from PR #109 review (`Context/Reviews/0018-pr109-workout-set-ux-2026-04-13.md`).
+
+### S051 -- Tests for new store actions (P18-010, High)
+
+**Owner:** `quality-engineer`
+**Files:** `src/stores/__tests__/active-workout-store.test.ts`
+**Deliverable:** Tests for four new store actions added in PR #109: `deleteSet`, `unconfirmSet`, `removeActivity` (undo-clearing side effect), `skipActivity` (lifecycle reset). Must cover:
+
+- `deleteSet` and `removeActivity` null out `undoAction` when targeted set matches
+- `skipActivity` with `initialState` spread does not share `skippedActivityIds` Set reference
+
+**Acceptance:** All four actions covered; undo-clearing side effect and Set reference isolation tested.
+**Review finding:** P18-010
+
+### S052 -- Component test for swipe-to-delete DEL button (P18-011, High)
+
+**Owner:** `quality-engineer`
+**Files:** `src/components/workout/__tests__/set-row.test.tsx`
+**Deliverable:** Tests for DEL button path (swipe/touch simulation not required -- tap path only):
+
+1. DEL button renders when `onDelete` prop provided
+2. DEL button absent when `onDelete` is absent
+3. Clicking DEL calls `onDelete` and resets `swipeX` to 0
+
+**Acceptance:** All three cases pass.
+**Review finding:** P18-011
+
+### S053 -- Regression test for B008 gym picker fix (P18-012, High)
+
+**Owner:** `quality-engineer`
+**Files:** `src/routes/_authenticated/__tests__/` (new test file or existing)
+**Deliverable:** Two test cases for B008 behavioral contract:
+
+1. Mock `readLastGymChoice` to return a saved gym -- start workout -- assert `openGymPicker` is NOT called
+2. Mock `readLastGymChoice` to return null -- start workout -- assert `openGymPicker` IS called
+
+**Acceptance:** Both cases pass; regression is guarded.
+**Review finding:** P18-012
+
+### S054 -- Tests for `RestTimerBanner` component (P18-015, Medium)
+
+**Owner:** `quality-engineer`
+**Files:** New test file alongside `src/components/workout/rest-timer-banner.tsx`
+**Deliverable:** Unit tests covering:
+
+- Progress bar clamping (`Math.max(0, Math.min(100, ...))`) -- verify `remaining > total` does not produce >100%
+- `total > 0` guard -- verify nothing renders (or renders safely) when `total === 0`
+- Expand button calls `onExpand` callback
+- Skip button calls `onSkip` callback
+- Countdown text renders from `formatCountdown(remaining)`
+
+**Acceptance:** All cases covered and passing.
+**Review finding:** P18-015
+
 ---
 
 ## Revision History
 
-| Date       | Change                                          | ADR              |
-| ---------- | ----------------------------------------------- | ---------------- |
-| 2026-04-06 | Initial draft                                   | --               |
-| 2026-04-07 | Add Wave 6 PR #92 review follow-ups (S041-S050) | ADR-012, ADR-013 |
+| Date       | Change                                           | ADR              |
+| ---------- | ------------------------------------------------ | ---------------- |
+| 2026-04-06 | Initial draft                                    | --               |
+| 2026-04-07 | Add Wave 6 PR #92 review follow-ups (S041-S050)  | ADR-012, ADR-013 |
+| 2026-04-13 | Add Wave 7 PR #109 review follow-ups (S051-S054) | --               |

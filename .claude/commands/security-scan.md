@@ -1,6 +1,7 @@
 ---
 description: Scan Cortex and Claude Code configuration for security issues
 model: sonnet
+effort: medium
 ---
 
 # Security Scan: Configuration Audit

@@ -1,6 +1,7 @@
 ---
 description: Verify all review findings have been addressed
 model: sonnet
+effort: medium
 ---
 
 # Review Verification

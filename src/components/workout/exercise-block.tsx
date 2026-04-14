@@ -4,6 +4,7 @@ import { OnboardingHint } from '@/components/onboarding/onboarding-hint'
 import { useOnboardingStore } from '@/stores/onboarding-store'
 import { useActiveWorkoutStore } from '@/stores/active-workout-store'
 import { NoteAffordance } from '@/components/workout/notes/note-affordance'
+import { Icon } from '@/components/icon'
 import { cn } from '@/lib/utils'
 import type { SetType, NoteContent } from '@/domain/types'
 
@@ -15,6 +16,7 @@ interface SetRowData {
   confirmed: boolean
   prescribedWeight?: { value: number; unit: string }
   prescribedReps?: number
+  isPending?: boolean
 }
 
 interface ExerciseBlockProps {
@@ -31,6 +33,11 @@ interface ExerciseBlockProps {
   isConfirming?: boolean
   isBodyweight?: boolean
   isActive?: boolean
+  onSkipExercise?: () => void
+  onAddSet?: () => void
+  onDeleteSet?: (setId: string) => void
+  onUnconfirmSet?: (loggedActivityId: string, setId: string) => void
+  onRemoveExercise?: () => void
 }
 
 export function ExerciseBlock({
@@ -41,6 +48,11 @@ export function ExerciseBlock({
   isConfirming = false,
   isBodyweight = false,
   isActive = true,
+  onSkipExercise,
+  onAddSet,
+  onDeleteSet,
+  onUnconfirmSet,
+  onRemoveExercise,
 }: ExerciseBlockProps) {
   const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
   const hasPrescribed = sets.some((s) => s.prescribedWeight != null || s.prescribedReps != null)
@@ -77,12 +89,24 @@ export function ExerciseBlock({
         >
           {exerciseName}
         </h3>
-        <NoteAffordance
-          value={activityNote}
-          onChange={(next) => setActivityNote(loggedActivityId, next)}
-          level="exercise"
-          variant="inline"
-        />
+        <div className="flex items-center gap-3">
+          <NoteAffordance
+            value={activityNote}
+            onChange={(next) => setActivityNote(loggedActivityId, next)}
+            level="exercise"
+            variant="inline"
+          />
+          {onRemoveExercise && (
+            <button
+              type="button"
+              onClick={onRemoveExercise}
+              className="text-warm-ash/40 transition-colors hover:text-red-500 active:text-red-600"
+              aria-label={`Remove ${exerciseName}`}
+            >
+              <Icon name="delete" size={18} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Column headers */}
@@ -137,13 +161,41 @@ export function ExerciseBlock({
             prescribedWeight={set.prescribedWeight}
             prescribedReps={set.prescribedReps}
             isBodyweight={isBodyweight}
-            loggedSetId={set.id}
+            isPending={!set.confirmed && set.id.startsWith('pending-')}
             onConfirm={(weight, reps, setType) =>
               onConfirmSet(loggedActivityId, set.setNumber, weight, reps, setType)
+            }
+            onDelete={onDeleteSet ? () => onDeleteSet(set.id) : undefined}
+            onUnconfirm={
+              set.confirmed && onUnconfirmSet
+                ? () => onUnconfirmSet(loggedActivityId, set.id)
+                : undefined
             }
           />
         ))}
       </div>
+      {(onAddSet || (isActive && onSkipExercise)) && (
+        <div className="flex px-4 pb-3 pt-1">
+          {onAddSet && (
+            <button
+              type="button"
+              onClick={onAddSet}
+              className="flex-1 py-2 text-xs font-bold uppercase tracking-widest text-warm-ash/60 transition-colors hover:text-warm-ash active:text-ember"
+            >
+              Add set
+            </button>
+          )}
+          {isActive && onSkipExercise && (
+            <button
+              type="button"
+              onClick={onSkipExercise}
+              className="flex-1 py-2 text-xs font-bold uppercase tracking-widest text-warm-ash/60 transition-colors hover:text-warm-ash active:text-ember"
+            >
+              Done
+            </button>
+          )}
+        </div>
+      )}
     </section>
   )
 }

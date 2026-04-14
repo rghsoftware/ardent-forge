@@ -1,6 +1,7 @@
 ---
 description: Create or review Architecture Decision Records
 model: sonnet
+effort: high
 ---
 
 # Architecture Decision Record

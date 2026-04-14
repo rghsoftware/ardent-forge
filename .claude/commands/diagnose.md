@@ -1,6 +1,7 @@
 ---
 description: Check project structure and Cortex health
 model: sonnet
+effort: low
 ---
 
 # Diagnose: Cortex Project Health Check

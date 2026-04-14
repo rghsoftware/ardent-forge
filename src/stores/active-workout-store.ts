@@ -68,6 +68,8 @@ interface ActiveWorkoutState {
   // store's unpauseWorkout action hits the invalid-pausedAt branch (the
   // store cannot render UI itself). Cleared on successful pause/unpause.
   pauseTimingError: string | null
+
+  skippedActivityIds: Set<string>
 }
 
 // ---------------------------------------------------------------------------
@@ -104,6 +106,7 @@ export function setSnapshotContext(ctx: SnapshotContext | null): void {
 }
 
 function _publishCurrentState(): void {
+  // Private-mode workouts have no snapshot context -- publishing is intentionally a no-op.
   if (!_snapshotContext) return
   const state = useActiveWorkoutStore.getState()
   if (!state.workoutLog) return
@@ -143,10 +146,14 @@ interface ActiveWorkoutActions {
     newGroup: LoggedActivityGroup,
     newActivity: LoggedActivity,
   ): void
+  skipActivity(activityId: string): void
+  removeActivity(activityId: string): void
 
   // Set management
   confirmSet(loggedActivityId: string, newSet: LoggedSet): void
   updateSetInPlace(loggedActivityId: string, updatedSet: LoggedSet): void
+  deleteSet(loggedActivityId: string, setId: string): void
+  unconfirmSet(loggedActivityId: string, setId: string): void
   undoLastSet(): void
   clearUndo(): void
 
@@ -158,10 +165,9 @@ interface ActiveWorkoutActions {
   // Elapsed timer setter (owned by the workout log page, see Tech.md D-1)
   setElapsedSeconds(seconds: number): void
 
-  // Notes (F020) -- validate at boundary, store on workoutLog / activity / set
+  // Notes (F020) -- validate at boundary, store on workoutLog / activity
   setSessionNote(content: NoteContent): void
   setActivityNote(activityId: string, content: NoteContent): void
-  setSetNote(setId: string, content: NoteContent): void
 
   // Timer ticks (called by intervals internally)
   tickRest(): void
@@ -181,6 +187,7 @@ const initialState: ActiveWorkoutState = {
   restTimer: null,
   undoAction: null,
   pauseTimingError: null,
+  skippedActivityIds: new Set<string>(),
 }
 
 export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutActions>()(
@@ -234,6 +241,12 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       if (_restInterval) clearInterval(_restInterval)
       _restInterval = null
 
+      // Ephemeral-only fields (e.g. skippedActivityIds, pauseTimingError) are
+      // not persisted and are implicitly cleared by Zustand's non-persistent
+      // initialization when the app starts, so they are intentionally omitted
+      // from this explicit set() call. finishWorkout/discardWorkout still
+      // reset them via `...initialState` because they may have accumulated
+      // values mid-session.
       set({
         workoutLog,
         loggedGroups: groups,
@@ -327,6 +340,32 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       _publishCurrentState()
     },
 
+    skipActivity(activityId: string) {
+      if (!activityId) {
+        console.warn('[active-workout] skipActivity called with empty activityId')
+        return
+      }
+      set((state) => ({
+        skippedActivityIds: new Set([...state.skippedActivityIds, activityId]),
+      }))
+    },
+
+    removeActivity(activityId: string) {
+      if (!activityId) {
+        console.warn('[active-workout] removeActivity called with empty activityId')
+        return
+      }
+      set((state) => ({
+        loggedGroups: state.loggedGroups
+          .map((group) => ({
+            ...group,
+            activities: group.activities.filter((a) => a.id !== activityId),
+          }))
+          .filter((group) => group.activities.length > 0),
+        undoAction: state.undoAction?.loggedActivityId === activityId ? null : state.undoAction,
+      }))
+    },
+
     // ------------------------------------------------------------------
     // Set management
     // ------------------------------------------------------------------
@@ -399,6 +438,44 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         })),
         undoAction: null,
       }))
+    },
+
+    deleteSet(loggedActivityId: string, setId: string) {
+      if (!loggedActivityId || !setId) {
+        console.warn('[active-workout] deleteSet called with missing ids')
+        return
+      }
+      set((state) => ({
+        loggedGroups: state.loggedGroups.map((group) => ({
+          ...group,
+          activities: group.activities.map((activity) => {
+            if (activity.id !== loggedActivityId) return activity
+            return { ...activity, sets: activity.sets.filter((s) => s.id !== setId) }
+          }),
+        })),
+        undoAction: state.undoAction?.setId === setId ? null : state.undoAction,
+      }))
+    },
+
+    unconfirmSet(loggedActivityId: string, setId: string) {
+      if (!loggedActivityId || !setId) {
+        console.warn('[active-workout] unconfirmSet called with missing ids')
+        return
+      }
+      set((prev) => ({
+        loggedGroups: prev.loggedGroups.map((group) => ({
+          ...group,
+          activities: group.activities.map((activity) => {
+            if (activity.id !== loggedActivityId) return activity
+            return {
+              ...activity,
+              sets: activity.sets.map((s) => (s.id === setId ? { ...s, completed: false } : s)),
+            }
+          }),
+        })),
+        undoAction: prev.undoAction?.setId === setId ? null : prev.undoAction,
+      }))
+      _publishCurrentState()
     },
 
     clearUndo() {
@@ -567,37 +644,6 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       }))
       if (!found) {
         console.warn('[active-workout] setActivityNote: activity not found', activityId)
-        return
-      }
-      _publishCurrentState()
-    },
-
-    setSetNote(setId: string, content: NoteContent) {
-      const parsed = noteContentSchema.safeParse(content)
-      if (!parsed.success) {
-        console.warn('[active-workout] setSetNote rejected invalid content:', parsed.error.issues)
-        return
-      }
-      let found = false
-      set((state) => ({
-        loggedGroups: state.loggedGroups.map((group) => ({
-          ...group,
-          activities: group.activities.map((activity) => ({
-            ...activity,
-            sets: activity.sets.map((s) => {
-              if (s.id !== setId) return s
-              found = true
-              return {
-                ...s,
-                notes: parsed.data.text,
-                noteTags: parsed.data.tags,
-              }
-            }),
-          })),
-        })),
-      }))
-      if (!found) {
-        console.warn('[active-workout] setSetNote: set not found', setId)
         return
       }
       _publishCurrentState()

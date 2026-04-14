@@ -80,11 +80,27 @@ describe('SetRow', () => {
     const onConfirm = vi.fn()
     render(<SetRow {...defaultProps} onConfirm={onConfirm} confirmed={true} />)
 
-    // DONE badge should be visible (since variance is null)
-    expect(screen.getByText('DONE')).toBeInTheDocument()
+    // Confirmed state renders an Undo button (checkbox icon) instead of a DONE badge.
+    expect(screen.getByLabelText('Undo set 1')).toBeInTheDocument()
     // No confirm button when confirmed
     expect(screen.queryByLabelText('Confirm set 1')).not.toBeInTheDocument()
     expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  it('tapping the done indicator calls onUnconfirm when provided', async () => {
+    const user = userEvent.setup()
+    const onUnconfirm = vi.fn()
+    render(<SetRow {...defaultProps} confirmed={true} onUnconfirm={onUnconfirm} />)
+
+    const undoBtn = screen.getByLabelText('Undo set 1')
+    await user.click(undoBtn)
+
+    expect(onUnconfirm).toHaveBeenCalledOnce()
+  })
+
+  it('renders undo button for confirmed set with correct aria-label', () => {
+    render(<SetRow {...defaultProps} confirmed={true} onUnconfirm={vi.fn()} />)
+    expect(screen.getByLabelText('Undo set 1')).toBeInTheDocument()
   })
 
   it('pre-fills initialWeight and initialReps', () => {
@@ -99,5 +115,28 @@ describe('SetRow', () => {
     render(<SetRow {...defaultProps} confirmed={true} initialWeight="135" initialReps="5" />)
     // In confirmed state the confirm button is removed and replaced with a status badge
     expect(screen.queryByLabelText('Confirm set 1')).not.toBeInTheDocument()
+  })
+
+  describe('DEL button (swipe-to-delete)', () => {
+    it('renders the DEL button when onDelete prop is provided', () => {
+      render(<SetRow {...defaultProps} onDelete={vi.fn()} />)
+      expect(screen.getByRole('button', { name: 'Delete set' })).toBeInTheDocument()
+    })
+
+    it('does not render the DEL button when onDelete prop is not provided', () => {
+      render(<SetRow {...defaultProps} />)
+      expect(screen.queryByRole('button', { name: 'Delete set' })).not.toBeInTheDocument()
+    })
+
+    it('calls onDelete when the DEL button is clicked', async () => {
+      const user = userEvent.setup()
+      const onDelete = vi.fn()
+      render(<SetRow {...defaultProps} onDelete={onDelete} />)
+
+      const delBtn = screen.getByRole('button', { name: 'Delete set' })
+      await user.click(delBtn)
+
+      expect(onDelete).toHaveBeenCalledOnce()
+    })
   })
 })

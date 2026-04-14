@@ -235,6 +235,70 @@ Request → Load Skills → Assess Complexity → Route → Execute → Commit
 
 **Success = Skills → Complexity Assessment → `/team-plan` → Approval → `/build` or `/team-build` → Improvement**
 
+## Coding Guidelines
+
+Guidelines to reduce common LLM coding mistakes. Biased toward caution over speed. For trivial tasks, use judgment.
+
+### 1. Think Before Coding
+
+Don't assume. Don't hide confusion. Surface tradeoffs.
+
+- State assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them -- don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Read Before You Write
+
+Don't guess what a file contains. Don't rewrite what you haven't read.
+
+- Read the full file (or relevant sections) before modifying it.
+- Check for existing implementations before writing new ones.
+- Look for patterns the codebase already uses -- follow them.
+- If a file is long, read the specific function/section you're changing plus its callers.
+- Never assume file contents from the filename alone.
+
+### 3. Simplicity First
+
+Minimum code that solves the problem. Nothing speculative.
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### 4. Surgical Changes
+
+Touch only what you must. Clean up only your own mess.
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated issues, mention them -- don't fix them.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: every changed line should trace directly to the request.
+
+### 5. Goal-Driven Execution
+
+Define success criteria. Loop until verified.
+
+Transform tasks into verifiable goals:
+- "Add validation" -- write tests for invalid inputs, then make them pass
+- "Fix the bug" -- write a test that reproduces it, then make it pass
+- "Refactor X" -- ensure tests pass before and after
+
+For multi-step tasks, state a brief plan with verification at each step. Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
 ## Design Context
 
 ### Users

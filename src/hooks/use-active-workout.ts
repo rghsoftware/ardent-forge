@@ -14,6 +14,8 @@ import {
   useUpdateLoggedSet,
   useUpdateWorkoutLog,
   useDeleteWorkoutLog,
+  useDeleteLoggedSet,
+  useDeleteLoggedActivity,
 } from '@/hooks/use-workout-logs'
 import { getAdapter } from '@/lib/adapter'
 import { DEFAULT_REST_SECONDS } from '@/lib/workout-utils'
@@ -56,6 +58,7 @@ export function useActiveWorkout() {
   const storeAddExercise = useActiveWorkoutStore((s) => s.addExerciseToWorkout)
   const storeConfirmSet = useActiveWorkoutStore((s) => s.confirmSet)
   const storeUpdateSetInPlace = useActiveWorkoutStore((s) => s.updateSetInPlace)
+  const storeUnconfirmSet = useActiveWorkoutStore((s) => s.unconfirmSet)
   const storeUndoLastSet = useActiveWorkoutStore((s) => s.undoLastSet)
   const storeClearUndo = useActiveWorkoutStore((s) => s.clearUndo)
   const storeFinishWorkout = useActiveWorkoutStore((s) => s.finishWorkout)
@@ -65,6 +68,8 @@ export function useActiveWorkout() {
   const storeAdjustRest = useActiveWorkoutStore((s) => s.adjustRest)
   const storePauseWorkout = useActiveWorkoutStore((s) => s.pauseWorkout)
   const storeUnpauseWorkout = useActiveWorkoutStore((s) => s.unpauseWorkout)
+  const storeDeleteSet = useActiveWorkoutStore((s) => s.deleteSet)
+  const storeRemoveActivity = useActiveWorkoutStore((s) => s.removeActivity)
 
   // ---------------------------------------------------------------------------
   // TanStack Query client (for manual invalidation after program advancement)
@@ -81,6 +86,8 @@ export function useActiveWorkout() {
   const updateLoggedSetMutation = useUpdateLoggedSet()
   const updateWorkoutLogMutation = useUpdateWorkoutLog()
   const deleteWorkoutLogMutation = useDeleteWorkoutLog()
+  const deleteLoggedSetMutation = useDeleteLoggedSet()
+  const deleteLoggedActivityMutation = useDeleteLoggedActivity()
 
   // ---------------------------------------------------------------------------
   // Undo expiry timer
@@ -441,6 +448,9 @@ export function useActiveWorkout() {
 
       storeUndoLastSet()
     } catch (err) {
+      // Clear the pending undo immediately so the expiry timer does not fire
+      // a silent clearUndo() later and diverge the store from DB state.
+      storeClearUndo()
       console.error('[workout] Failed to undo set:', {
         workoutId: workoutLog?.id,
         setId: undoAction?.setId,
@@ -448,7 +458,37 @@ export function useActiveWorkout() {
       })
       throw err
     }
-  }, [workoutLog, undoAction, updateLoggedSetMutation, storeUndoLastSet])
+  }, [workoutLog, undoAction, updateLoggedSetMutation, storeUndoLastSet, storeClearUndo])
+
+  /**
+   * Unconfirm a previously confirmed set. Marks completed=false in the DB so
+   * actual weight/reps are preserved for re-editing, then reflects that in the
+   * store without removing the set.
+   */
+  const unconfirmSet = useCallback(
+    async (loggedActivityId: string, setId: string) => {
+      if (!workoutLog) {
+        throw new Error('No active workout to unconfirm set in')
+      }
+      const currentGroups = useActiveWorkoutStore.getState().loggedGroups
+      const targetSet = findSetById(currentGroups, setId)
+      if (!targetSet) {
+        console.error('[workout] unconfirmSet: set not found in store', { setId })
+        return
+      }
+      // The mutation hook's onError is the single log owner for this
+      // rejection (see error-handling.md "Mutation Hook Log Ownership").
+      // Errors propagate naturally to the caller.
+      await updateLoggedSetMutation.mutateAsync({
+        ...targetSet,
+        completed: false,
+        workoutLogId: workoutLog.id,
+        userId: workoutLog.userId,
+      })
+      storeUnconfirmSet(loggedActivityId, setId)
+    },
+    [workoutLog, updateLoggedSetMutation, storeUnconfirmSet],
+  )
 
   /**
    * Finish the active workout. Updates WorkoutLog.completedAt in DB,
@@ -618,6 +658,53 @@ export function useActiveWorkout() {
   }, [storeUnpauseWorkout, updateWorkoutLogMutation])
 
   /**
+   * Delete a logged set. Deletes the set row from the DB first, then removes
+   * it from the in-memory store. If the DB delete fails the store is left
+   * untouched so the UI accurately reflects persisted state.
+   *
+   * The mutation hook's onError is the single log owner for the rejection
+   * (see error-handling.md "Mutation Hook Log Ownership"). We intentionally
+   * re-throw without additional logging.
+   */
+  const deleteSet = useCallback(
+    async (loggedActivityId: string, setId: string) => {
+      if (!workoutLog) {
+        throw new Error('No active workout to delete set in')
+      }
+      // Hook owns the log; errors propagate naturally to the caller.
+      await deleteLoggedSetMutation.mutateAsync({
+        id: setId,
+        workoutLogId: workoutLog.id,
+      })
+      storeDeleteSet(loggedActivityId, setId)
+    },
+    [workoutLog, deleteLoggedSetMutation, storeDeleteSet],
+  )
+
+  /**
+   * Remove an activity (exercise) from the active workout. Deletes the logged
+   * activity row from the DB (which cascades to its sets via FK on delete) and
+   * only then updates the in-memory store. If the DB delete fails the store
+   * is left untouched so the UI accurately reflects persisted state.
+   *
+   * The mutation hook's onError is the single log owner for the rejection.
+   */
+  const removeActivity = useCallback(
+    async (activityId: string) => {
+      if (!workoutLog) {
+        throw new Error('No active workout to remove activity from')
+      }
+      // Hook owns the log; errors propagate naturally to the caller.
+      await deleteLoggedActivityMutation.mutateAsync({
+        id: activityId,
+        workoutLogId: workoutLog.id,
+      })
+      storeRemoveActivity(activityId)
+    },
+    [workoutLog, deleteLoggedActivityMutation, storeRemoveActivity],
+  )
+
+  /**
    * Discard the active workout. Deletes the WorkoutLog from DB, clears store.
    */
   const discardWorkout = useCallback(async () => {
@@ -659,7 +746,10 @@ export function useActiveWorkout() {
     startProgrammedWorkout,
     addExercise,
     confirmSet,
+    unconfirmSet,
     undoSet,
+    deleteSet,
+    removeActivity,
     finishWorkout,
     resumeWorkout,
     discardWorkout,

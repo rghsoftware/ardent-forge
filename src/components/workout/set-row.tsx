@@ -1,10 +1,8 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
-import { Badge } from '@/components/ui/badge'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Icon } from '@/components/icon'
 import { computeVariance } from '@/lib/set-variance'
-import type { SetType, NoteContent } from '@/domain/types'
-import { NoteAffordance } from '@/components/workout/notes/note-affordance'
-import { useActiveWorkoutStore } from '@/stores/active-workout-store'
+import type { SetType } from '@/domain/types'
+import { cn } from '@/lib/utils'
 
 const SET_TYPES: SetType[] = ['WORKING', 'WARMUP', 'DROP', 'AMRAP', 'PEAK', 'BACKOFF']
 
@@ -19,12 +17,23 @@ interface SetRowProps {
   prescribedReps?: number
   isBodyweight?: boolean
   /**
-   * Logged-set id. When provided, a note affordance is rendered and
-   * tap-to-edit wires directly to the active workout store's setSetNote
-   * action. Omitted for unsaved scaffolds.
+   * When true, the row represents an unconfirmed placeholder (the auto-populated
+   * next-set row). Renders dimmed to distinguish it from confirmed sets.
    */
-  loggedSetId?: string
+  isPending?: boolean
+  /**
+   * When provided, the row supports swipe-to-delete. Tapping the revealed DEL
+   * button calls this handler.
+   */
+  onDelete?: () => void
+  /**
+   * When provided, tapping the done indicator on a confirmed set calls this
+   * handler, allowing the user to un-confirm (remove) the set.
+   */
+  onUnconfirm?: () => void
 }
+
+const SWIPE_THRESHOLD = 64 // px -- full reveal width
 
 export function SetRow({
   setNumber,
@@ -36,30 +45,21 @@ export function SetRow({
   prescribedWeight,
   prescribedReps,
   isBodyweight = false,
-  loggedSetId,
+  isPending = false,
+  onDelete,
+  onUnconfirm,
 }: SetRowProps) {
-  const setSetNote = useActiveWorkoutStore((s) => s.setSetNote)
-  const storedSet = useActiveWorkoutStore((s) => {
-    if (!loggedSetId) return undefined
-    for (const g of s.loggedGroups) {
-      for (const a of g.activities) {
-        const match = a.sets.find((x) => x.id === loggedSetId)
-        if (match) return match
-      }
-    }
-    return undefined
-  })
-  const noteValue = useMemo<NoteContent>(
-    () => ({ text: storedSet?.notes ?? '', tags: storedSet?.noteTags ?? [] }),
-    [storedSet?.notes, storedSet?.noteTags],
-  )
-  const hasNote = noteValue.text.trim().length > 0 || noteValue.tags.length > 0
   const hasPrescription = prescribedWeight != null || prescribedReps != null
 
   const [weight, setWeight] = useState(initialWeight)
   const [reps, setReps] = useState(initialReps)
   const [setType, setSetType] = useState<SetType>('WORKING')
   const [showTypeSelector, setShowTypeSelector] = useState(false)
+
+  // Swipe-to-delete state
+  const [swipeX, setSwipeX] = useState(0)
+  const [isSwiping, setIsSwiping] = useState(false)
+  const touchStartX = useRef(0)
 
   // Sync local state when parent pre-fills new values (e.g. carry-forward from last set)
   useEffect(() => {
@@ -98,177 +98,214 @@ export function SetRow({
     : null
 
   return (
-    <div className="flex items-center gap-2 px-4 py-1">
-      {/* Set number + type */}
-      <div className="relative flex w-12 shrink-0 flex-col items-center">
+    <div className="relative overflow-hidden">
+      {onDelete && (
         <button
           type="button"
-          onClick={() => !confirmed && setShowTypeSelector(!showTypeSelector)}
-          disabled={confirmed}
-          className={`text-center font-display text-sm tabular-nums text-on-surface-variant border-b transition-colors ${
-            confirmed
-              ? 'border-transparent'
-              : showTypeSelector
-                ? 'border-ember'
-                : 'border-warm-ash/25'
-          }`}
-          aria-label={`Set ${setNumber}, type ${setType}`}
+          onClick={() => {
+            onDelete()
+            setSwipeX(0)
+            setIsSwiping(false)
+          }}
+          style={{
+            transform: `translateX(${SWIPE_THRESHOLD - swipeX}px)`,
+            transition: isSwiping ? 'none' : 'transform 200ms',
+          }}
+          className="absolute right-0 top-0 h-full w-16 bg-red-700 text-xs font-bold uppercase tracking-widest text-bone-white"
+          aria-label="Delete set"
         >
-          {setNumber}
+          DEL
         </button>
-        {!confirmed && (
-          <span
-            className={`text-center text-[11px] uppercase tracking-wider transition-colors ${
-              setType === 'WORKING' ? 'text-warm-ash/25' : 'text-warm-ash/60'
+      )}
+      <div
+        style={{
+          transform: `translateX(-${swipeX}px)`,
+          transition: isSwiping ? 'none' : 'transform 200ms',
+        }}
+        className={cn('flex items-center gap-2 px-4 py-1', isPending && 'opacity-40')}
+        onTouchStart={(e) => {
+          touchStartX.current = e.touches[0].clientX
+          setIsSwiping(false)
+        }}
+        onTouchMove={(e) => {
+          const delta = touchStartX.current - e.touches[0].clientX
+          if (delta > 0) {
+            setSwipeX(Math.min(delta, SWIPE_THRESHOLD))
+            setIsSwiping(true)
+          } else if (swipeX > 0) {
+            setSwipeX(Math.max(0, swipeX + delta))
+            setIsSwiping(true)
+          }
+        }}
+        onTouchEnd={() => {
+          if (swipeX >= SWIPE_THRESHOLD) {
+            // latched open -- DEL button is visible
+          } else {
+            setSwipeX(0)
+            setIsSwiping(false)
+          }
+        }}
+      >
+        {/* Set number + type */}
+        <div className="relative flex w-12 shrink-0 flex-col items-center">
+          <button
+            type="button"
+            onClick={() => !confirmed && setShowTypeSelector(!showTypeSelector)}
+            disabled={confirmed}
+            className={`text-center font-display text-sm tabular-nums text-on-surface-variant border-b transition-colors ${
+              confirmed
+                ? 'border-transparent'
+                : showTypeSelector
+                  ? 'border-ember'
+                  : 'border-warm-ash/25'
             }`}
+            aria-label={`Set ${setNumber}, type ${setType}`}
           >
-            {setType === 'WORKING' ? 'W' : setType}
-          </span>
-        )}
-
-        {/* Set type selector dropdown */}
-        {showTypeSelector && !confirmed && (
-          <div className="absolute top-full left-0 z-40 mt-1 flex flex-col bg-surface-gunmetal shadow-lg">
-            {SET_TYPES.map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => {
-                  setSetType(type)
-                  setShowTypeSelector(false)
-                }}
-                className={`min-h-10 px-3 py-1.5 text-left text-xs uppercase tracking-wider transition-colors ${
-                  type === setType
-                    ? 'bg-surface-steel text-ember'
-                    : 'text-bone-white hover:bg-surface-steel/50'
-                }`}
-              >
-                {type}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {hasPrescription ? (
-        <>
-          {/* Prescribed column */}
-          <div className="flex flex-1 flex-col items-center justify-center">
-            <span className="text-[11px] uppercase tracking-wider text-warm-ash/40">
-              {prescribedLabel}
+            {setNumber}
+          </button>
+          {!confirmed && (
+            <span
+              className={`text-center text-[11px] uppercase tracking-wider transition-colors ${
+                setType === 'WORKING' ? 'text-warm-ash/25' : 'text-warm-ash/60'
+              }`}
+            >
+              {setType === 'WORKING' ? 'W' : setType}
             </span>
-          </div>
+          )}
 
-          {/* Actual column -- weight x reps inline */}
-          <div className="flex flex-1 items-center gap-1">
-            {isBodyweight ? (
-              <span className="w-1/2 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
-                BW
+          {/* Set type selector dropdown */}
+          {showTypeSelector && !confirmed && (
+            <div className="absolute top-full left-0 z-40 mt-1 flex flex-col bg-surface-gunmetal shadow-lg">
+              {SET_TYPES.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => {
+                    setSetType(type)
+                    setShowTypeSelector(false)
+                  }}
+                  className={`min-h-10 px-3 py-1.5 text-left text-xs uppercase tracking-wider transition-colors ${
+                    type === setType
+                      ? 'bg-surface-steel text-ember'
+                      : 'text-bone-white hover:bg-surface-steel/50'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {hasPrescription ? (
+          <>
+            {/* Prescribed column */}
+            <div className="flex flex-1 flex-col items-center justify-center">
+              <span className="text-[11px] uppercase tracking-wider text-warm-ash/40">
+                {prescribedLabel}
               </span>
-            ) : (
+            </div>
+
+            {/* Actual column -- weight x reps inline */}
+            <div className="flex flex-1 items-center gap-1">
+              {isBodyweight ? (
+                <span className="w-1/2 text-center text-[11px] uppercase tracking-widest text-warm-ash/60">
+                  BW
+                </span>
+              ) : (
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  disabled={confirmed}
+                  placeholder="--"
+                  className="w-1/2 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
+                  aria-label={`Actual weight for set ${setNumber}`}
+                />
+              )}
+              <span className="text-[11px] text-warm-ash/40">x</span>
               <input
                 type="text"
-                inputMode="decimal"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
+                inputMode="numeric"
+                value={reps}
+                onChange={(e) => setReps(e.target.value)}
                 disabled={confirmed}
                 placeholder="--"
                 className="w-1/2 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
-                aria-label={`Actual weight for set ${setNumber}`}
+                aria-label={`Actual reps for set ${setNumber}`}
               />
-            )}
-            <span className="text-[11px] text-warm-ash/40">x</span>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={reps}
-              onChange={(e) => setReps(e.target.value)}
-              disabled={confirmed}
-              placeholder="--"
-              className="w-1/2 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
-              aria-label={`Actual reps for set ${setNumber}`}
-            />
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Weight input -- ad-hoc path (hidden for bodyweight) */}
-          <div className="flex flex-1 items-center justify-center">
-            {isBodyweight ? (
-              <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">BW</span>
-            ) : (
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Weight input -- ad-hoc path (hidden for bodyweight) */}
+            <div className="flex flex-1 items-center justify-center">
+              {isBodyweight ? (
+                <span className="text-[11px] uppercase tracking-widest text-warm-ash/60">BW</span>
+              ) : (
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  disabled={confirmed}
+                  placeholder="--"
+                  className="w-full border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
+                  aria-label={`Weight for set ${setNumber}`}
+                />
+              )}
+            </div>
+
+            {/* Reps input -- ad-hoc path (unchanged) */}
+            <div className="flex-1">
               <input
                 type="text"
-                inputMode="decimal"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
+                inputMode="numeric"
+                value={reps}
+                onChange={(e) => setReps(e.target.value)}
                 disabled={confirmed}
                 placeholder="--"
                 className="w-full border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
-                aria-label={`Weight for set ${setNumber}`}
+                aria-label={`Reps for set ${setNumber}`}
               />
-            )}
-          </div>
-
-          {/* Reps input -- ad-hoc path (unchanged) */}
-          <div className="flex-1">
-            <input
-              type="text"
-              inputMode="numeric"
-              value={reps}
-              onChange={(e) => setReps(e.target.value)}
-              disabled={confirmed}
-              placeholder="--"
-              className="w-full border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
-              aria-label={`Reps for set ${setNumber}`}
-            />
-          </div>
-        </>
-      )}
-
-      {/* Note affordance -- one tap opens the editor (Spec assertion 1) */}
-      {loggedSetId && (
-        <div className="flex shrink-0 items-center">
-          <NoteAffordance
-            value={noteValue}
-            onChange={(next) => setSetNote(loggedSetId, next)}
-            level="set"
-            variant="inline"
-            className="px-2"
-          />
-          <span className="sr-only">{hasNote ? 'Note attached' : 'No note'}</span>
-        </div>
-      )}
-
-      {/* Confirm / Status */}
-      <div className="flex w-14 shrink-0 items-center justify-center">
-        {confirmed ? (
-          variance === 'met' ? (
-            <Icon name="check_circle" size={22} className="text-green-500" />
-          ) : variance === 'under' ? (
-            <Icon name="arrow_downward" size={22} className="text-amber-500" />
-          ) : (
-            <Badge variant="complete">DONE</Badge>
-          )
-        ) : (
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={
-              isConfirming ||
-              confirmed ||
-              (isBodyweight ? !reps.trim() : !weight.trim() && !reps.trim())
-            }
-            className="flex min-h-12 min-w-12 items-center justify-center text-ember transition-colors hover:text-forge disabled:opacity-40"
-            aria-label={`Confirm set ${setNumber}`}
-          >
-            {isConfirming ? (
-              <span className="text-xs uppercase tracking-wider text-warm-ash">...</span>
-            ) : (
-              <Icon name="check" size={24} />
-            )}
-          </button>
+            </div>
+          </>
         )}
+
+        {/* Confirm / Status */}
+        <div className="flex w-14 shrink-0 items-center justify-center">
+          {confirmed ? (
+            <button
+              type="button"
+              onClick={onUnconfirm}
+              className={`flex min-h-12 min-w-12 items-center justify-center transition-colors ${
+                variance === 'met'
+                  ? 'text-green-500 hover:text-green-400'
+                  : variance === 'under'
+                    ? 'text-amber-500 hover:text-amber-400'
+                    : 'text-bone-white/70 hover:text-bone-white'
+              }`}
+              aria-label={`Undo set ${setNumber}`}
+            >
+              <Icon name="check_box" size={24} fill />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={isConfirming || confirmed || !reps.trim()}
+              className="flex min-h-12 min-w-12 items-center justify-center text-ember transition-colors hover:text-forge disabled:opacity-40"
+              aria-label={`Confirm set ${setNumber}`}
+            >
+              {isConfirming ? (
+                <span className="text-xs uppercase tracking-wider text-warm-ash">...</span>
+              ) : (
+                <Icon name="check_box_outline_blank" size={24} />
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 ---
 description: Execute Steps.md via Agent Teams with peer-to-peer coordination
 model: sonnet
+effort: medium
 ---
 
 # Team Implementation (Agent Teams)

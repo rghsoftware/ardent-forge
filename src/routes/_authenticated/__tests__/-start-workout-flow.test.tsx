@@ -35,6 +35,7 @@ const {
   mockStartProgrammedWorkout,
   mockConfigureDisplayPublisher,
   mockWriteLastGymChoice,
+  mockReadLastGymChoice,
   mockOpenGymPicker,
   capturedComponent,
 } = vi.hoisted(() => {
@@ -43,6 +44,7 @@ const {
   const mockStartProgrammedWorkout = vi.fn()
   const mockConfigureDisplayPublisher = vi.fn()
   const mockWriteLastGymChoice = vi.fn()
+  const mockReadLastGymChoice = vi.fn<() => GymPickerChoice | null>()
   const mockOpenGymPicker = vi.fn<(args: { userId: string }) => Promise<GymPickerChoice | null>>()
   const capturedComponent: { current: React.ComponentType | undefined } = { current: undefined }
   return {
@@ -51,6 +53,7 @@ const {
     mockStartProgrammedWorkout,
     mockConfigureDisplayPublisher,
     mockWriteLastGymChoice,
+    mockReadLastGymChoice,
     mockOpenGymPicker,
     capturedComponent,
   }
@@ -133,6 +136,7 @@ vi.mock('@/lib/display-realtime', () => ({
 
 vi.mock('@/lib/gym-picker-storage', () => ({
   writeLastGymChoice: mockWriteLastGymChoice,
+  readLastGymChoice: mockReadLastGymChoice,
 }))
 
 // Stubs for all the presentational components in the route -- they don't
@@ -202,6 +206,12 @@ describe('TodayPage start-workout flow (F018)', () => {
     vi.clearAllMocks()
     mockStartWorkout.mockResolvedValue({ id: 'workout-abc' })
     mockStartProgrammedWorkout.mockResolvedValue({ id: 'workout-abc' })
+    // Default: no saved gym choice -- exercises the picker path. The B008
+    // regression tests below override this to return a saved gym id.
+    mockReadLastGymChoice.mockReturnValue(null)
+    // writeLastGymChoice returns true on success in production; matching that
+    // here prevents the toast-warning branch in the handlers from firing.
+    mockWriteLastGymChoice.mockReturnValue(true)
   })
 
   // -------------------------------------------------------------------------
@@ -341,5 +351,64 @@ describe('TodayPage start-workout flow (F018)', () => {
     )
 
     errorSpy.mockRestore()
+  })
+
+  // -------------------------------------------------------------------------
+  // B008 regression: the start-workout handlers gate the picker on
+  // readLastGymChoice(), NOT on the firstWorkoutCompleted onboarding flag.
+  //
+  // Before the fix, the handlers opened the picker on every start because
+  // the onboarding flag was used as the gate. These two cases pin the
+  // corrected behavior:
+  //   (1) readLastGymChoice returns a saved gym -> picker is NOT opened
+  //   (2) readLastGymChoice returns null        -> picker IS opened
+  // -------------------------------------------------------------------------
+
+  it('B008 regression: skips the gym picker when a saved gym choice exists', async () => {
+    mockReadLastGymChoice.mockReturnValue('gym-123')
+    const user = userEvent.setup()
+
+    renderTodayPage()
+
+    await user.click(screen.getByRole('button', { name: /execute workout/i }))
+
+    // Workout still starts and navigates, but the picker must not open.
+    await waitFor(() => {
+      expect(mockStartWorkout).toHaveBeenCalledWith('user-1')
+    })
+
+    expect(mockOpenGymPicker).not.toHaveBeenCalled()
+
+    // The saved choice is used to configure the publisher.
+    expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({
+      gymId: 'gym-123',
+      intent: 'broadcasting',
+    })
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/log/$workoutId',
+      params: { workoutId: 'workout-abc' },
+    })
+  })
+
+  it('B008 regression: opens the gym picker when no saved gym choice exists', async () => {
+    mockReadLastGymChoice.mockReturnValue(null)
+    mockOpenGymPicker.mockResolvedValue('gym-456')
+    const user = userEvent.setup()
+
+    renderTodayPage()
+
+    await user.click(screen.getByRole('button', { name: /execute workout/i }))
+
+    await waitFor(() => {
+      expect(mockOpenGymPicker).toHaveBeenCalledWith({ userId: 'user-1' })
+    })
+
+    // Sanity: picker result flows through to publisher configuration.
+    await waitFor(() => {
+      expect(mockConfigureDisplayPublisher).toHaveBeenCalledWith({
+        gymId: 'gym-456',
+        intent: 'broadcasting',
+      })
+    })
   })
 })

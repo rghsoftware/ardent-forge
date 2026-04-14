@@ -135,8 +135,6 @@ export interface LoggedSetRow {
   elevation_gain: unknown
   rpe: number | null
   completed: boolean
-  notes: string | null
-  note_tags: string[]
   created_at: string
   updated_at: string
 }

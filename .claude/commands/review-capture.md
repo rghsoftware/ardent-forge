@@ -1,6 +1,7 @@
 ---
 description: Capture review findings with 4-category triage
 model: sonnet
+effort: medium
 ---
 
 # Review Capture

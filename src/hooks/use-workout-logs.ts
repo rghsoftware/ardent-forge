@@ -140,6 +140,13 @@ export function useDeleteLoggedSet() {
 
   return useMutation({
     mutationFn: ({ id }: { id: string; workoutLogId: string }) => getAdapter().deleteLoggedSet(id),
+    onError: (err, variables) => {
+      console.error('[workout-logs] deleteLoggedSet failed:', {
+        id: variables.id,
+        workoutLogId: variables.workoutLogId,
+        err,
+      })
+    },
     onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
     },
@@ -170,6 +177,13 @@ export function useDeleteLoggedActivity() {
   return useMutation({
     mutationFn: ({ id }: { id: string; workoutLogId: string }) =>
       getAdapter().deleteLoggedActivity(id),
+    onError: (err, variables) => {
+      console.error('[workout-logs] deleteLoggedActivity failed:', {
+        id: variables.id,
+        workoutLogId: variables.workoutLogId,
+        err,
+      })
+    },
     onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
     },
@@ -200,6 +214,13 @@ export function useDeleteLoggedActivityGroup() {
   return useMutation({
     mutationFn: ({ id }: { id: string; workoutLogId: string }) =>
       getAdapter().deleteLoggedActivityGroup(id),
+    onError: (err, variables) => {
+      console.error('[workout-logs] deleteLoggedActivityGroup failed:', {
+        id: variables.id,
+        workoutLogId: variables.workoutLogId,
+        err,
+      })
+    },
     onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ['workout-full', variables.workoutLogId] })
     },

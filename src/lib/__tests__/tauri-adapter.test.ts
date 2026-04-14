@@ -116,7 +116,6 @@ const tauriLoggedSetResponse = {
   elevation_gain: null,
   rpe: 8,
   completed: 1,
-  notes: 'Solid set',
   created_at: now,
   updated_at: now,
 }

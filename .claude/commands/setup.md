@@ -1,6 +1,7 @@
 ---
 description: Initialize project for Cortex workflow
 model: sonnet
+effort: low
 ---
 
 # Setup Cortex

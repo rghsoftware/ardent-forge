@@ -51,7 +51,7 @@ export function NoteAffordance({
         <span aria-hidden="true" className="material-symbols-outlined text-lg">
           edit_note
         </span>
-        <span>{hasNote ? 'Edit Note' : 'Add Note'}</span>
+        <span className="hidden sm:inline">{hasNote ? 'Edit Note' : 'Add Note'}</span>
         {hasNote && <NoteIndicator hasNote />}
       </button>
       <NoteSheet

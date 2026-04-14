@@ -92,6 +92,13 @@ Two related UX gaps in the workout logger:
 **Related:** `src/routes/_authenticated/log.$workoutId.tsx`, workout logger state, set auto-population logic
 **Area:** Workout logger UX
 
+### "Add exercise" pre-populated with frequently used exercises
+
+**Added:** 2026-04-12
+**Context:** When opening the "Add exercise" picker, the search field starts empty with no suggestions. Pre-populating it with the user's most frequently logged exercises (derived from workout history) would reduce search friction, especially on the gym floor where speed matters.
+**Related:** Exercise picker/search component, workout history data, active workout flow
+**Priority:** Medium
+
 ### Split log.$workoutId route into three components
 **Added:** 2026-04-06
 **Context:** `src/routes/_authenticated/log.$workoutId.tsx` is ~800 lines with three distinct rendering paths (event workout, strength workout, post-workout summary) toggled by conditional branches. Splitting into separate route components would clarify ownership, shrink the file, and isolate state hoisting per path.
