@@ -181,10 +181,9 @@ function ActiveWorkoutPage() {
     }
   }, [isActive, showSummary, navigate])
 
-  // Reset minimize state when rest timer ends so the next rest starts expanded
-  useEffect(() => {
-    if (!restTimer) setRestMinimized(false)
-  }, [restTimer])
+  // restMinimized is reset to false in handleConfirmSet (below) so each new
+  // rest timer starts expanded rather than relying on a useEffect to react to
+  // restTimer becoming null.
 
   // ---------------------------------------------------------------------------
   // Elapsed timer ownership (Tech.md D-1)
@@ -400,6 +399,9 @@ function ActiveWorkoutPage() {
       const unit = existingSet?.prescribed?.weight?.unit ?? 'lb'
 
       try {
+        // Reset minimize state before confirming so the incoming rest timer
+        // always starts in the expanded view (avoids a useEffect on restTimer).
+        setRestMinimized(false)
         await confirmSet(loggedActivityId, {
           loggedActivityId,
           setNumber,

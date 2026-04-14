@@ -467,30 +467,25 @@ export function useActiveWorkout() {
    */
   const unconfirmSet = useCallback(
     async (loggedActivityId: string, setId: string) => {
-      try {
-        if (!workoutLog) {
-          throw new Error('No active workout to unconfirm set in')
-        }
-        const currentGroups = useActiveWorkoutStore.getState().loggedGroups
-        const targetSet = findSetById(currentGroups, setId)
-        if (!targetSet) {
-          console.error('[workout] unconfirmSet: set not found in store', { setId })
-          return
-        }
-        await updateLoggedSetMutation.mutateAsync({
-          ...targetSet,
-          completed: false,
-          workoutLogId: workoutLog.id,
-          userId: workoutLog.userId,
-        })
-        storeUnconfirmSet(loggedActivityId, setId)
-      } catch (err) {
-        // The mutation hook's onError is the single log owner for this
-        // rejection (see error-handling.md "Mutation Hook Log Ownership").
-        // Re-throw so the calling component can surface a user-facing error
-        // state without re-logging.
-        throw err
+      if (!workoutLog) {
+        throw new Error('No active workout to unconfirm set in')
       }
+      const currentGroups = useActiveWorkoutStore.getState().loggedGroups
+      const targetSet = findSetById(currentGroups, setId)
+      if (!targetSet) {
+        console.error('[workout] unconfirmSet: set not found in store', { setId })
+        return
+      }
+      // The mutation hook's onError is the single log owner for this
+      // rejection (see error-handling.md "Mutation Hook Log Ownership").
+      // Errors propagate naturally to the caller.
+      await updateLoggedSetMutation.mutateAsync({
+        ...targetSet,
+        completed: false,
+        workoutLogId: workoutLog.id,
+        userId: workoutLog.userId,
+      })
+      storeUnconfirmSet(loggedActivityId, setId)
     },
     [workoutLog, updateLoggedSetMutation, storeUnconfirmSet],
   )
@@ -673,20 +668,15 @@ export function useActiveWorkout() {
    */
   const deleteSet = useCallback(
     async (loggedActivityId: string, setId: string) => {
-      try {
-        if (!workoutLog) {
-          throw new Error('No active workout to delete set in')
-        }
-        await deleteLoggedSetMutation.mutateAsync({
-          id: setId,
-          workoutLogId: workoutLog.id,
-        })
-        storeDeleteSet(loggedActivityId, setId)
-      } catch (err) {
-        // Hook owns the log; re-throw so the calling component can surface
-        // a user-facing error without duplicating the log line.
-        throw err
+      if (!workoutLog) {
+        throw new Error('No active workout to delete set in')
       }
+      // Hook owns the log; errors propagate naturally to the caller.
+      await deleteLoggedSetMutation.mutateAsync({
+        id: setId,
+        workoutLogId: workoutLog.id,
+      })
+      storeDeleteSet(loggedActivityId, setId)
     },
     [workoutLog, deleteLoggedSetMutation, storeDeleteSet],
   )
@@ -701,20 +691,15 @@ export function useActiveWorkout() {
    */
   const removeActivity = useCallback(
     async (activityId: string) => {
-      try {
-        if (!workoutLog) {
-          throw new Error('No active workout to remove activity from')
-        }
-        await deleteLoggedActivityMutation.mutateAsync({
-          id: activityId,
-          workoutLogId: workoutLog.id,
-        })
-        storeRemoveActivity(activityId)
-      } catch (err) {
-        // Hook owns the log; re-throw so the calling component can surface
-        // a user-facing error without duplicating the log line.
-        throw err
+      if (!workoutLog) {
+        throw new Error('No active workout to remove activity from')
       }
+      // Hook owns the log; errors propagate naturally to the caller.
+      await deleteLoggedActivityMutation.mutateAsync({
+        id: activityId,
+        workoutLogId: workoutLog.id,
+      })
+      storeRemoveActivity(activityId)
     },
     [workoutLog, deleteLoggedActivityMutation, storeRemoveActivity],
   )
