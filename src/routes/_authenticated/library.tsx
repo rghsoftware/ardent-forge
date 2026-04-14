@@ -161,13 +161,12 @@ function LibraryPage() {
 
     setStartingTemplateId(templateId)
 
-    const choice = readLastGymChoice() ?? (await openGymPicker({ userId }))
-    if (choice === null) {
-      setStartingTemplateId(null)
-      return
-    }
-
     try {
+      const choice = readLastGymChoice() ?? (await openGymPicker({ userId }))
+      if (choice === null) {
+        return
+      }
+
       const workoutLog = await startProgrammedWorkout(userId, templateId)
       if (choice === 'private') {
         configureDisplayPublisher({ gymId: null, intent: 'private' })

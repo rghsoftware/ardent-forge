@@ -105,6 +105,7 @@ export function SetRow({
           onClick={() => {
             onDelete()
             setSwipeX(0)
+            setIsSwiping(false)
           }}
           style={{
             transform: `translateX(${SWIPE_THRESHOLD - swipeX}px)`,

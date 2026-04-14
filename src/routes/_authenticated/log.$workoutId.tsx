@@ -63,6 +63,8 @@ function ActiveWorkoutPage() {
     confirmSet,
     unconfirmSet,
     undoSet,
+    deleteSet,
+    removeActivity,
     finishWorkout,
     discardWorkout,
     pauseWorkout,
@@ -76,8 +78,6 @@ function ActiveWorkoutPage() {
   } = useActiveWorkout()
 
   const skipActivity = useActiveWorkoutStore((s) => s.skipActivity)
-  const deleteSet = useActiveWorkoutStore((s) => s.deleteSet)
-  const removeActivity = useActiveWorkoutStore((s) => s.removeActivity)
   const skippedActivityIds = useActiveWorkoutStore((s) => s.skippedActivityIds)
 
   const { markFirstWorkoutCompleted } = useOnboarding()
@@ -290,7 +290,11 @@ function ActiveWorkoutPage() {
   // -----------------------------------------------------------------------
 
   const handleFinish = useCallback(async () => {
-    if (!workoutLog) return
+    if (!workoutLog) {
+      console.error('[workout-page] handleFinish blocked: no active workoutLog in store')
+      setPageError('Cannot finish workout: no active session. Please reload.')
+      return
+    }
     // Capture snapshot before store clears it (needed for summary even on success)
     const snapshot = {
       workoutLog: { ...workoutLog },
@@ -375,7 +379,11 @@ function ActiveWorkoutPage() {
       reps: string,
       setType: SetType,
     ) => {
-      if (!workoutLog) return
+      if (!workoutLog) {
+        console.error('[workout-page] handleConfirmSet blocked: no active workoutLog in store')
+        setPageError('Cannot save set: no active session. Please reload.')
+        return
+      }
 
       const weightValue = parseNumericInput(weight)
       // Reps support 0 (failed sets), so use >= 0 check rather than the > 0
@@ -422,8 +430,9 @@ function ActiveWorkoutPage() {
     async (loggedActivityId: string, setId: string) => {
       try {
         await unconfirmSet(loggedActivityId, setId)
-      } catch (err) {
-        console.error('[workout-page] handleUnconfirmSet:', err)
+      } catch {
+        // The underlying mutation hook (useUpdateLoggedSet) is the single log
+        // owner for this rejection. Set a user-facing error without logging.
         setPageError('Failed to undo set.')
       }
     },
@@ -737,7 +746,10 @@ function ActiveWorkoutPage() {
                 // there's already an unconfirmed (completed: false) set in the list --
                 // that happens when the user un-confirms a set.
                 const hasUncompletedSets = activity.sets.some((s) => !s.completed)
-                if ((confirmedSets.length === 0 && !hasUncompletedSets) || pendingInputs[activity.id]) {
+                if (
+                  (confirmedSets.length === 0 && !hasUncompletedSets) ||
+                  pendingInputs[activity.id]
+                ) {
                   const nextSetNumber = setRows.length + 1
                   setRows.push({
                     id: `pending-${activity.id}-${nextSetNumber}`,
@@ -772,14 +784,22 @@ function ActiveWorkoutPage() {
                         if (setId.startsWith('pending-')) {
                           setPendingInputs((prev) => ({ ...prev, [activity.id]: false }))
                         } else {
-                          deleteSet(activity.id, setId)
+                          deleteSet(activity.id, setId).catch(() => {
+                            // Hook already logged; surface a user-facing error.
+                            setPageError('Failed to delete set. Please try again.')
+                          })
                         }
                       }}
                       onUnconfirmSet={handleUnconfirmSet}
                       onSkipExercise={
                         confirmedSets.length > 0 ? () => skipActivity(activity.id) : undefined
                       }
-                      onRemoveExercise={() => removeActivity(activity.id)}
+                      onRemoveExercise={() => {
+                        removeActivity(activity.id).catch(() => {
+                          // Hook already logged; surface a user-facing error.
+                          setPageError('Failed to remove exercise. Please try again.')
+                        })
+                      }}
                     />
                   </div>
                 )

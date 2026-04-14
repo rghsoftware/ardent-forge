@@ -80,8 +80,8 @@ describe('SetRow', () => {
     const onConfirm = vi.fn()
     render(<SetRow {...defaultProps} onConfirm={onConfirm} confirmed={true} />)
 
-    // DONE badge should be visible (since variance is null)
-    expect(screen.getByText('DONE')).toBeInTheDocument()
+    // Confirmed state renders an Undo button (checkbox icon) instead of a DONE badge.
+    expect(screen.getByLabelText('Undo set 1')).toBeInTheDocument()
     // No confirm button when confirmed
     expect(screen.queryByLabelText('Confirm set 1')).not.toBeInTheDocument()
     expect(onConfirm).not.toHaveBeenCalled()

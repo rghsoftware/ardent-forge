@@ -106,6 +106,7 @@ export function setSnapshotContext(ctx: SnapshotContext | null): void {
 }
 
 function _publishCurrentState(): void {
+  // Private-mode workouts have no snapshot context -- publishing is intentionally a no-op.
   if (!_snapshotContext) return
   const state = useActiveWorkoutStore.getState()
   if (!state.workoutLog) return
@@ -240,6 +241,12 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       if (_restInterval) clearInterval(_restInterval)
       _restInterval = null
 
+      // Ephemeral-only fields (e.g. skippedActivityIds, pauseTimingError) are
+      // not persisted and are implicitly cleared by Zustand's non-persistent
+      // initialization when the app starts, so they are intentionally omitted
+      // from this explicit set() call. finishWorkout/discardWorkout still
+      // reset them via `...initialState` because they may have accumulated
+      // values mid-session.
       set({
         workoutLog,
         loggedGroups: groups,
@@ -462,9 +469,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
             if (activity.id !== loggedActivityId) return activity
             return {
               ...activity,
-              sets: activity.sets.map((s) =>
-                s.id === setId ? { ...s, completed: false } : s,
-              ),
+              sets: activity.sets.map((s) => (s.id === setId ? { ...s, completed: false } : s)),
             }
           }),
         })),

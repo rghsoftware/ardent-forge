@@ -14,6 +14,8 @@ import {
   useUpdateLoggedSet,
   useUpdateWorkoutLog,
   useDeleteWorkoutLog,
+  useDeleteLoggedSet,
+  useDeleteLoggedActivity,
 } from '@/hooks/use-workout-logs'
 import { getAdapter } from '@/lib/adapter'
 import { DEFAULT_REST_SECONDS } from '@/lib/workout-utils'
@@ -66,6 +68,8 @@ export function useActiveWorkout() {
   const storeAdjustRest = useActiveWorkoutStore((s) => s.adjustRest)
   const storePauseWorkout = useActiveWorkoutStore((s) => s.pauseWorkout)
   const storeUnpauseWorkout = useActiveWorkoutStore((s) => s.unpauseWorkout)
+  const storeDeleteSet = useActiveWorkoutStore((s) => s.deleteSet)
+  const storeRemoveActivity = useActiveWorkoutStore((s) => s.removeActivity)
 
   // ---------------------------------------------------------------------------
   // TanStack Query client (for manual invalidation after program advancement)
@@ -82,6 +86,8 @@ export function useActiveWorkout() {
   const updateLoggedSetMutation = useUpdateLoggedSet()
   const updateWorkoutLogMutation = useUpdateWorkoutLog()
   const deleteWorkoutLogMutation = useDeleteWorkoutLog()
+  const deleteLoggedSetMutation = useDeleteLoggedSet()
+  const deleteLoggedActivityMutation = useDeleteLoggedActivity()
 
   // ---------------------------------------------------------------------------
   // Undo expiry timer
@@ -442,6 +448,9 @@ export function useActiveWorkout() {
 
       storeUndoLastSet()
     } catch (err) {
+      // Clear the pending undo immediately so the expiry timer does not fire
+      // a silent clearUndo() later and diverge the store from DB state.
+      storeClearUndo()
       console.error('[workout] Failed to undo set:', {
         workoutId: workoutLog?.id,
         setId: undoAction?.setId,
@@ -449,7 +458,7 @@ export function useActiveWorkout() {
       })
       throw err
     }
-  }, [workoutLog, undoAction, updateLoggedSetMutation, storeUndoLastSet])
+  }, [workoutLog, undoAction, updateLoggedSetMutation, storeUndoLastSet, storeClearUndo])
 
   /**
    * Unconfirm a previously confirmed set. Marks completed=false in the DB so
@@ -476,12 +485,10 @@ export function useActiveWorkout() {
         })
         storeUnconfirmSet(loggedActivityId, setId)
       } catch (err) {
-        console.error('[workout] Failed to unconfirm set:', {
-          workoutId: workoutLog?.id,
-          loggedActivityId,
-          setId,
-          err,
-        })
+        // The mutation hook's onError is the single log owner for this
+        // rejection (see error-handling.md "Mutation Hook Log Ownership").
+        // Re-throw so the calling component can surface a user-facing error
+        // state without re-logging.
         throw err
       }
     },
@@ -656,6 +663,63 @@ export function useActiveWorkout() {
   }, [storeUnpauseWorkout, updateWorkoutLogMutation])
 
   /**
+   * Delete a logged set. Deletes the set row from the DB first, then removes
+   * it from the in-memory store. If the DB delete fails the store is left
+   * untouched so the UI accurately reflects persisted state.
+   *
+   * The mutation hook's onError is the single log owner for the rejection
+   * (see error-handling.md "Mutation Hook Log Ownership"). We intentionally
+   * re-throw without additional logging.
+   */
+  const deleteSet = useCallback(
+    async (loggedActivityId: string, setId: string) => {
+      try {
+        if (!workoutLog) {
+          throw new Error('No active workout to delete set in')
+        }
+        await deleteLoggedSetMutation.mutateAsync({
+          id: setId,
+          workoutLogId: workoutLog.id,
+        })
+        storeDeleteSet(loggedActivityId, setId)
+      } catch (err) {
+        // Hook owns the log; re-throw so the calling component can surface
+        // a user-facing error without duplicating the log line.
+        throw err
+      }
+    },
+    [workoutLog, deleteLoggedSetMutation, storeDeleteSet],
+  )
+
+  /**
+   * Remove an activity (exercise) from the active workout. Deletes the logged
+   * activity row from the DB (which cascades to its sets via FK on delete) and
+   * only then updates the in-memory store. If the DB delete fails the store
+   * is left untouched so the UI accurately reflects persisted state.
+   *
+   * The mutation hook's onError is the single log owner for the rejection.
+   */
+  const removeActivity = useCallback(
+    async (activityId: string) => {
+      try {
+        if (!workoutLog) {
+          throw new Error('No active workout to remove activity from')
+        }
+        await deleteLoggedActivityMutation.mutateAsync({
+          id: activityId,
+          workoutLogId: workoutLog.id,
+        })
+        storeRemoveActivity(activityId)
+      } catch (err) {
+        // Hook owns the log; re-throw so the calling component can surface
+        // a user-facing error without duplicating the log line.
+        throw err
+      }
+    },
+    [workoutLog, deleteLoggedActivityMutation, storeRemoveActivity],
+  )
+
+  /**
    * Discard the active workout. Deletes the WorkoutLog from DB, clears store.
    */
   const discardWorkout = useCallback(async () => {
@@ -699,6 +763,8 @@ export function useActiveWorkout() {
     confirmSet,
     unconfirmSet,
     undoSet,
+    deleteSet,
+    removeActivity,
     finishWorkout,
     resumeWorkout,
     discardWorkout,
