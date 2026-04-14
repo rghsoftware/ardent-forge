@@ -585,3 +585,232 @@ describe('notes (F020)', () => {
     expect(roundTripped.loggedGroups[0].activities[0].noteTags).toEqual(['SCALED'])
   })
 })
+
+// ===========================================================================
+// deleteSet (F018 -- PR #109)
+// ===========================================================================
+
+describe('deleteSet', () => {
+  beforeEach(() => {
+    const wl = makeWorkoutLog()
+    const group: LoggedActivityGroupWithActivities = {
+      ...makeLoggedActivityGroup(),
+      activities: [
+        {
+          ...makeLoggedActivity(),
+          sets: [
+            makeLoggedSet({ id: 'ls-a', setNumber: 1 }),
+            makeLoggedSet({ id: 'ls-b', setNumber: 2 }),
+          ],
+        },
+      ],
+    }
+    useActiveWorkoutStore.setState({
+      workoutLog: wl,
+      loggedGroups: [group],
+      elapsedSeconds: 0,
+      restTimer: null,
+      undoAction: null,
+    })
+  })
+
+  it('removes the target set from its activity', () => {
+    getState().deleteSet('la-1', 'ls-a')
+
+    const sets = getState().loggedGroups[0].activities[0].sets
+    expect(sets).toHaveLength(1)
+    expect(sets[0].id).toBe('ls-b')
+  })
+
+  it('clears undoAction when undoAction.setId matches the deleted set', () => {
+    useActiveWorkoutStore.setState({
+      undoAction: {
+        setId: 'ls-a',
+        loggedActivityId: 'la-1',
+        expiresAt: Date.now() + 10_000,
+      },
+    })
+
+    getState().deleteSet('la-1', 'ls-a')
+
+    expect(getState().undoAction).toBeNull()
+  })
+
+  it('does not clear undoAction when setId does not match', () => {
+    const undoAction = {
+      setId: 'ls-other',
+      loggedActivityId: 'la-1',
+      expiresAt: Date.now() + 10_000,
+    }
+    useActiveWorkoutStore.setState({ undoAction })
+
+    getState().deleteSet('la-1', 'ls-a')
+
+    expect(getState().undoAction).toEqual(undoAction)
+  })
+})
+
+// ===========================================================================
+// unconfirmSet (F018 -- PR #109)
+// ===========================================================================
+
+describe('unconfirmSet', () => {
+  beforeEach(() => {
+    const wl = makeWorkoutLog()
+    const group: LoggedActivityGroupWithActivities = {
+      ...makeLoggedActivityGroup(),
+      activities: [
+        {
+          ...makeLoggedActivity(),
+          sets: [
+            makeLoggedSet({ id: 'ls-a', setNumber: 1, completed: true }),
+            makeLoggedSet({ id: 'ls-b', setNumber: 2, completed: true }),
+          ],
+        },
+      ],
+    }
+    useActiveWorkoutStore.setState({
+      workoutLog: wl,
+      loggedGroups: [group],
+      elapsedSeconds: 0,
+      restTimer: null,
+      undoAction: null,
+    })
+  })
+
+  it('sets completed=false on the target set', () => {
+    getState().unconfirmSet('la-1', 'ls-a')
+
+    const sets = getState().loggedGroups[0].activities[0].sets
+    const target = sets.find((s) => s.id === 'ls-a')
+    expect(target?.completed).toBe(false)
+  })
+
+  it('does not affect other sets', () => {
+    getState().unconfirmSet('la-1', 'ls-a')
+
+    const sets = getState().loggedGroups[0].activities[0].sets
+    const other = sets.find((s) => s.id === 'ls-b')
+    expect(other?.completed).toBe(true)
+  })
+})
+
+// ===========================================================================
+// removeActivity (F018 -- PR #109)
+// ===========================================================================
+
+describe('removeActivity', () => {
+  beforeEach(() => {
+    const wl = makeWorkoutLog()
+    const group1: LoggedActivityGroupWithActivities = {
+      ...makeLoggedActivityGroup({ id: 'lag-1' }),
+      activities: [
+        {
+          ...makeLoggedActivity({ id: 'la-1', loggedGroupId: 'lag-1' }),
+          sets: [makeLoggedSet({ id: 'ls-a', loggedActivityId: 'la-1' })],
+        },
+      ],
+    }
+    const group2: LoggedActivityGroupWithActivities = {
+      ...makeLoggedActivityGroup({ id: 'lag-2', ordinal: 2 }),
+      activities: [
+        {
+          ...makeLoggedActivity({ id: 'la-2', loggedGroupId: 'lag-2' }),
+          sets: [makeLoggedSet({ id: 'ls-b', loggedActivityId: 'la-2' })],
+        },
+      ],
+    }
+    useActiveWorkoutStore.setState({
+      workoutLog: wl,
+      loggedGroups: [group1, group2],
+      elapsedSeconds: 0,
+      restTimer: null,
+      undoAction: null,
+    })
+  })
+
+  it('removes the target activity (and empties the group)', () => {
+    getState().removeActivity('la-1')
+
+    const groups = getState().loggedGroups
+    // Group with only the removed activity is pruned
+    expect(groups).toHaveLength(1)
+    expect(groups[0].id).toBe('lag-2')
+    expect(groups[0].activities[0].id).toBe('la-2')
+  })
+
+  it('clears undoAction when the undo belongs to the removed activity', () => {
+    useActiveWorkoutStore.setState({
+      undoAction: {
+        setId: 'ls-a',
+        loggedActivityId: 'la-1',
+        expiresAt: Date.now() + 10_000,
+      },
+    })
+
+    getState().removeActivity('la-1')
+
+    expect(getState().undoAction).toBeNull()
+  })
+
+  it('does not clear undoAction when the undo belongs to a different activity', () => {
+    const undoAction = {
+      setId: 'ls-b',
+      loggedActivityId: 'la-2',
+      expiresAt: Date.now() + 10_000,
+    }
+    useActiveWorkoutStore.setState({ undoAction })
+
+    getState().removeActivity('la-1')
+
+    expect(getState().undoAction).toEqual(undoAction)
+  })
+})
+
+// ===========================================================================
+// skipActivity (F018 -- PR #109)
+// ===========================================================================
+
+describe('skipActivity', () => {
+  it('adds the activity id to skippedActivityIds', () => {
+    getState().skipActivity('la-1')
+
+    const { skippedActivityIds } = getState()
+    expect(skippedActivityIds.has('la-1')).toBe(true)
+    expect(skippedActivityIds.size).toBe(1)
+  })
+
+  it('accumulates multiple skipped activity ids', () => {
+    getState().skipActivity('la-1')
+    getState().skipActivity('la-2')
+
+    const { skippedActivityIds } = getState()
+    expect(skippedActivityIds.size).toBe(2)
+    expect(skippedActivityIds.has('la-1')).toBe(true)
+    expect(skippedActivityIds.has('la-2')).toBe(true)
+  })
+
+  it('finishWorkout resets skippedActivityIds to a fresh empty Set (no shared reference)', () => {
+    // Start a workout so finishWorkout has a realistic lifecycle context.
+    const wl = makeWorkoutLog()
+    getState().startWorkout('user-1', wl)
+
+    getState().skipActivity('la-1')
+    getState().skipActivity('la-2')
+    expect(getState().skippedActivityIds.size).toBe(2)
+
+    // finishWorkout spreads initialState. If initialState.skippedActivityIds
+    // were a shared reference, it would still hold the mutated entries here.
+    getState().finishWorkout()
+
+    const { skippedActivityIds } = getState()
+    expect(skippedActivityIds.size).toBe(0)
+    expect(skippedActivityIds.has('la-1')).toBe(false)
+    expect(skippedActivityIds.has('la-2')).toBe(false)
+
+    // Re-skipping after reset should not resurrect the prior entries.
+    getState().skipActivity('la-3')
+    expect(getState().skippedActivityIds.size).toBe(1)
+    expect(getState().skippedActivityIds.has('la-3')).toBe(true)
+  })
+})

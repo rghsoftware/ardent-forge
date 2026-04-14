@@ -116,4 +116,27 @@ describe('SetRow', () => {
     // In confirmed state the confirm button is removed and replaced with a status badge
     expect(screen.queryByLabelText('Confirm set 1')).not.toBeInTheDocument()
   })
+
+  describe('DEL button (swipe-to-delete)', () => {
+    it('renders the DEL button when onDelete prop is provided', () => {
+      render(<SetRow {...defaultProps} onDelete={vi.fn()} />)
+      expect(screen.getByRole('button', { name: 'Delete set' })).toBeInTheDocument()
+    })
+
+    it('does not render the DEL button when onDelete prop is not provided', () => {
+      render(<SetRow {...defaultProps} />)
+      expect(screen.queryByRole('button', { name: 'Delete set' })).not.toBeInTheDocument()
+    })
+
+    it('calls onDelete when the DEL button is clicked', async () => {
+      const user = userEvent.setup()
+      const onDelete = vi.fn()
+      render(<SetRow {...defaultProps} onDelete={onDelete} />)
+
+      const delBtn = screen.getByRole('button', { name: 'Delete set' })
+      await user.click(delBtn)
+
+      expect(onDelete).toHaveBeenCalledOnce()
+    })
+  })
 })
