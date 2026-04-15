@@ -65,10 +65,17 @@ Browser users who train without the mobile app miss two of the three notificatio
 
 - [ ] Does the rest timer in browser mode currently track expiry in a way the notification layer can hook into, or does a new JS timer need to be introduced alongside the display interpolation hook? The existing `use-timer-interpolation.ts` is display-only and does not emit an expiry event. This determines whether we extend that hook or add a separate timer hook.
 - [ ] What Supabase query does the browser-mode session reminder polling need to make to determine if today's session is scheduled and not yet logged? The Rust implementation queries `program_activations`, `scheduled_sessions`, and `workout_logs`. The browser equivalent needs the same data via the Supabase JS client.
-- [ ] Should the browser permission status in settings also be shown for Tauri users (where the Tauri plugin manages permission separately), or is it browser-only? Current assumption: browser-only display.
+- [x] Should the browser permission status in settings also be shown for Tauri users (where the Tauri plugin manages permission separately), or is it browser-only? **Resolved: browser-only.** `BrowserPermissionStatus` is guarded with `!isTauri()`.
+- [x] Does the rest timer track expiry for notifications? **Resolved:** Added `onExpired?` callback to `startRestTimer` (Tech.md D-1, Option C).
+- [x] Supabase queries for session reminder? **Resolved:** Direct queries to `program_activations`, `blocks`, `block_weeks`, `scheduled_sessions`, `workout_logs`.
+
+## Known Limitations (Phase 1)
+
+- **A-007 `advanceMinutes` not consumed:** The `scheduled_sessions` table lacks a time-of-day column, so the browser poller (like the Rust implementation) cannot compute "N minutes before session start." Both fire once per day within the 06:00-20:59 window regardless of `advanceMinutes`. This will be addressed when a session-scheduled-time field is added.
 
 ## Revision History
 
-| Date       | Change       | ADR |
-| ---------- | ------------ | --- |
-| 2026-04-15 | Initial spec | --  |
+| Date       | Change                                          | ADR |
+| ---------- | ----------------------------------------------- | --- |
+| 2026-04-15 | Initial spec                                    | --  |
+| 2026-04-15 | Phase 1 implementation; open questions resolved | --  |
