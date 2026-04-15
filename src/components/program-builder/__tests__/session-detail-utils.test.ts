@@ -138,6 +138,26 @@ describe('formatSetsReps', () => {
     expect(formatSetsReps(scheme)).toBe('3-5x8-12')
   })
 
+  it('returns mixed range for fixedSets with numeric sets and range reps', () => {
+    const scheme = {
+      type: 'fixedSets',
+      sets: 3,
+      reps: { min: 8, max: 12 },
+      load: { type: 'bodyweight' },
+    } as SetScheme
+    expect(formatSetsReps(scheme)).toBe('3x8-12')
+  })
+
+  it('returns mixed range for fixedSets with range sets and numeric reps', () => {
+    const scheme = {
+      type: 'fixedSets',
+      sets: { min: 3, max: 5 },
+      reps: 5,
+      load: { type: 'bodyweight' },
+    } as SetScheme
+    expect(formatSetsReps(scheme)).toBe('3-5x5')
+  })
+
   it('returns setsxreps for percentageSets', () => {
     const scheme = {
       type: 'percentageSets',
@@ -246,6 +266,11 @@ describe('formatSetsReps', () => {
   it('returns percentage for percentageOfMaxReps', () => {
     const scheme = { type: 'percentageOfMaxReps', percentage: 0.65 } as SetScheme
     expect(formatSetsReps(scheme)).toBe('65% MAX REPS')
+  })
+
+  it('returns -- for unrecognized scheme type', () => {
+    const scheme = { type: 'unknownType' } as unknown as SetScheme
+    expect(formatSetsReps(scheme)).toBe('--')
   })
 })
 
@@ -400,6 +425,21 @@ describe('formatLoad', () => {
     } as SetScheme
     expect(formatLoad(scheme, emptyMaxes, 'ex-1')).toBe('95LB')
   })
+
+  it('returns -- for emom without load', () => {
+    const scheme = { type: 'emom', repsPerMinute: 10, totalMinutes: 20 } as SetScheme
+    expect(formatLoad(scheme, emptyMaxes, 'ex-1')).toBe('--')
+  })
+
+  it('returns -- for descendingReps without load', () => {
+    const scheme = { type: 'descendingReps', repLadder: [21, 15, 9] } as SetScheme
+    expect(formatLoad(scheme, emptyMaxes, 'ex-1')).toBe('--')
+  })
+
+  it('returns -- for unrecognized scheme type', () => {
+    const scheme = { type: 'unknownType' } as unknown as SetScheme
+    expect(formatLoad(scheme, emptyMaxes, 'ex-1')).toBe('--')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -496,6 +536,24 @@ describe('buildGroupedActivities', () => {
     const result = buildGroupedActivities(tpl)
     expect(result[0].setScheme).toBe(bwScheme)
     expect(result[1].setScheme).toBe(rpeScheme)
+  })
+
+  it('silently drops activities belonging to a non-existent group', () => {
+    const tpl = makeTemplateFull(
+      [{ id: 'g1', ordinal: 1 }],
+      [
+        { activityGroupId: 'g1', ordinal: 1, exerciseId: 'ex-1', setScheme: bwScheme },
+        {
+          activityGroupId: 'nonexistent',
+          ordinal: 2,
+          exerciseId: 'ex-orphan',
+          setScheme: bwScheme,
+        },
+      ],
+    )
+    const result = buildGroupedActivities(tpl)
+    expect(result).toHaveLength(1)
+    expect(result[0].exerciseId).toBe('ex-1')
   })
 
   it('handles multiple groups each with multiple activities', () => {
