@@ -1150,20 +1150,24 @@ describe('Program operations', () => {
 
     it('falls back to undefined overrides when overrides JSON is malformed', async () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-      const badRow = { ...scheduledSessionRow, overrides: '{not valid json' }
-      mockClient.mockResponse('programs', 'select', [programRow])
-      mockClient.mockResponse('blocks', 'select', [blockRow])
-      mockClient.mockResponse('block_weeks', 'select', [blockWeekRow])
-      mockClient.mockResponse('scheduled_sessions', 'select', [badRow])
+      try {
+        const badRow = { ...scheduledSessionRow, overrides: '{not valid json' }
+        mockClient.mockResponse('programs', 'select', [programRow])
+        mockClient.mockResponse('blocks', 'select', [blockRow])
+        mockClient.mockResponse('block_weeks', 'select', [blockWeekRow])
+        mockClient.mockResponse('scheduled_sessions', 'select', [badRow])
 
-      const result = await adapter.getProgramFull('prog-001')
+        const result = await adapter.getProgramFull('prog-001')
 
-      expect(result!.scheduledSessions[0].overrides).toBeUndefined()
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[supabase-adapter]'),
-        expect.anything(),
-      )
-      warnSpy.mockRestore()
+        expect(result!.scheduledSessions[0].overrides).toBeUndefined()
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[supabase-adapter]'),
+          expect.anything(),
+        )
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('ss-001'), expect.anything())
+      } finally {
+        warnSpy.mockRestore()
+      }
     })
   })
 

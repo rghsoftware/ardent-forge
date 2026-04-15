@@ -484,13 +484,20 @@ export class SupabaseAdapter implements DataAdapter {
       let overrides: ScheduledSession['overrides']
       if (r.overrides != null) {
         try {
-          const parsed = typeof r.overrides === 'string' ? JSON.parse(r.overrides) : r.overrides
+          const parsed = parseJsonOrValue(r.overrides as string | object, 'overrides')
           overrides = sessionOverridesSchema.parse(parsed)
         } catch (err) {
-          console.warn(
-            `[supabase-adapter] Failed to parse overrides for scheduled session ${r.id as string}, falling back to undefined:`,
-            err,
-          )
+          if (err instanceof z.ZodError) {
+            console.error(
+              `[supabase-adapter] overrides schema validation failed for session ${r.id as string}. Data integrity issue:`,
+              err,
+            )
+          } else {
+            console.warn(
+              `[supabase-adapter] Failed to parse overrides JSON for session ${r.id as string}, falling back to undefined:`,
+              err,
+            )
+          }
           overrides = undefined
         }
       }
@@ -505,9 +512,7 @@ export class SupabaseAdapter implements DataAdapter {
         overrides,
       }
     } catch (err) {
-      throw new Error(
-        `Failed to map scheduled session (${r.id as string}): ${err instanceof Error ? err.message : String(err)}`,
-      )
+      throw new Error(`Failed to map scheduled session (${r.id as string})`, { cause: err })
     }
   }
 
