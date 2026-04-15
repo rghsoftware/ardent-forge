@@ -182,6 +182,14 @@
   - **Depends:** S001-T, S002-T, S003-T, S004-T, S005, S006-T
   - **Parallel:** false
 
+- [ ] S008-T: Test Supabase query error branches in `use-session-reminder-browser`
+  - Cover all five per-query error paths: `activationErr`, `blockErr`, `weekErr`, `sessErr`, `logErr`
+  - For each: mock the relevant Supabase call to return `{ data: null, error: { message: '...' } }`, assert the `[session-reminder-browser]` console.error fires with the correct prefix, assert `sendSessionReminderNotification` is NOT called, assert `_lastRemindedDate` remains null
+  - Reuse the `makeQueryBuilder` helper already in the test file
+  - **Assigned:** builder
+  - **Depends:** S003-T
+  - **Parallel:** false
+
 🏁 MILESTONE: Feature complete -- all assertions verified, full drift check passed
 
 ---
