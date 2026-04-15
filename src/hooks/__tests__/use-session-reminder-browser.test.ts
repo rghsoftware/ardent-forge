@@ -270,4 +270,111 @@ describe('useSessionReminderBrowser', () => {
 
     expect(mockSendSessionReminderNotification).not.toHaveBeenCalled()
   })
+
+  // -------------------------------------------------------------------------
+  // 9. Supabase query error branches
+  // -------------------------------------------------------------------------
+  describe('Supabase query error branches', () => {
+    /**
+     * Build a mock Supabase client where all tables return default data
+     * except the specified table, which returns an error.
+     */
+    function makeMockSupabaseWithError(
+      errorTable:
+        | 'program_activations'
+        | 'blocks'
+        | 'block_weeks'
+        | 'scheduled_sessions'
+        | 'workout_logs',
+    ) {
+      const config = defaultSupabaseConfig()
+      const builders: Record<string, ReturnType<typeof makeQueryBuilder>> = {
+        program_activations: makeQueryBuilder(config.activation),
+        blocks: makeQueryBuilder(config.block),
+        block_weeks: makeQueryBuilder(config.blockWeek),
+        scheduled_sessions: makeQueryBuilder(config.sessions),
+        workout_logs: makeQueryBuilder(config.todayLogs),
+      }
+      builders[errorTable] = makeQueryBuilder(null, { message: `${errorTable} query failed` })
+
+      return {
+        from: vi.fn((table: string) => builders[table] ?? makeQueryBuilder(null)),
+      }
+    }
+
+    it('logs error and skips notification on program_activations error', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockGetSupabaseClient.mockReturnValue(makeMockSupabaseWithError('program_activations'))
+
+      renderHook(() => useSessionReminderBrowser())
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[session-reminder-browser] Failed to query program_activations:',
+        expect.objectContaining({ message: 'program_activations query failed' }),
+      )
+      expect(mockSendSessionReminderNotification).not.toHaveBeenCalled()
+      errorSpy.mockRestore()
+    })
+
+    it('logs error and skips notification on blocks error', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockGetSupabaseClient.mockReturnValue(makeMockSupabaseWithError('blocks'))
+
+      renderHook(() => useSessionReminderBrowser())
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[session-reminder-browser] Failed to query blocks:',
+        expect.objectContaining({ message: 'blocks query failed' }),
+      )
+      expect(mockSendSessionReminderNotification).not.toHaveBeenCalled()
+      errorSpy.mockRestore()
+    })
+
+    it('logs error and skips notification on block_weeks error', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockGetSupabaseClient.mockReturnValue(makeMockSupabaseWithError('block_weeks'))
+
+      renderHook(() => useSessionReminderBrowser())
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[session-reminder-browser] Failed to query block_weeks:',
+        expect.objectContaining({ message: 'block_weeks query failed' }),
+      )
+      expect(mockSendSessionReminderNotification).not.toHaveBeenCalled()
+      errorSpy.mockRestore()
+    })
+
+    it('logs error and skips notification on scheduled_sessions error', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockGetSupabaseClient.mockReturnValue(makeMockSupabaseWithError('scheduled_sessions'))
+
+      renderHook(() => useSessionReminderBrowser())
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[session-reminder-browser] Failed to query scheduled_sessions:',
+        expect.objectContaining({ message: 'scheduled_sessions query failed' }),
+      )
+      expect(mockSendSessionReminderNotification).not.toHaveBeenCalled()
+      errorSpy.mockRestore()
+    })
+
+    it('logs error and skips notification on workout_logs error', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      mockGetSupabaseClient.mockReturnValue(makeMockSupabaseWithError('workout_logs'))
+
+      renderHook(() => useSessionReminderBrowser())
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[session-reminder-browser] Failed to query workout_logs:',
+        expect.objectContaining({ message: 'workout_logs query failed' }),
+      )
+      expect(mockSendSessionReminderNotification).not.toHaveBeenCalled()
+      errorSpy.mockRestore()
+    })
+  })
 })
