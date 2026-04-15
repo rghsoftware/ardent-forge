@@ -5,6 +5,17 @@ High-priority bugs should be addressed before starting new features.
 
 <!-- Add new bugs below this line -->
 
+## B009: `mapScheduledSession` overrides happy-path not covered by any test
+
+**Severity:** Medium
+**File:** `src/lib/__tests__/supabase-adapter.test.ts`
+**Detail:** All existing fixtures set `overrides: null`, so the `if (r.overrides != null)` branch in
+`mapScheduledSession` is never exercised by a green test. Neither the string-parse branch (Tauri/SQLite
+path) nor the object-passthrough branch (Supabase PostgREST path) has coverage.
+**Fix:** Add two tests -- one with `overrides: JSON.stringify({ ... })` asserting the parsed output, one with
+a pre-parsed object asserting direct passthrough. Use a valid `SessionOverrides` fixture in each.
+**Origin:** P19-003 (PR #112 review, 2026-04-15)
+
 ## ~~B001: invokeCommand does not log before re-throwing~~ (Resolved 2026-04-04)
 
 **Severity:** High
@@ -36,11 +47,10 @@ High-priority bugs should be addressed before starting new features.
 **Severity:** Medium
 **Resolution:** Fixed in `5d2335c` -- disable delete-week button when block has only one week.
 
-### B008: Gym selector shown every time a workout is started
-**Added:** 2026-04-12
-**Context:** The "select gym" modal/selector appears on every workout start, even when the user has already chosen a gym in a previous session. The last-selected gym should be persisted and pre-selected so the user only needs to intervene when changing gyms.
-**Related:** `src/stores/active-workout-store.ts`, gym-picker-storage, workout start flow
-**Priority:** Medium
+### ~~B008: Gym selector shown every time a workout is started~~ (Resolved 2026-04-14)
+
+**Severity:** Medium
+**Resolution:** Fixed in PR #109 (gym picker fix -- last-selected gym now persisted across sessions).
 
 ### ~~B007: Active workout only shows one exercise despite multiple being added~~ (Resolved 2026-04-13)
 
