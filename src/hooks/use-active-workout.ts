@@ -411,7 +411,9 @@ export function useActiveWorkout() {
           getNotificationPreferences()
             .then((prefs) => {
               storeStartRestTimer(restSeconds, exerciseName, setNum, () => {
-                sendRestTimerNotification(exerciseName, setNum, prefs)
+                sendRestTimerNotification(exerciseName, setNum, prefs).catch((err) => {
+                  console.error('[workout] Rest timer notification failed:', err)
+                })
               })
             })
             .catch((err) => {

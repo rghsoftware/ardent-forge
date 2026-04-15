@@ -59,7 +59,10 @@ export function NotificationSettings() {
 
   // Merge helper: shallow-merge updated fields with current prefs and persist
   const update = (patch: Partial<NotificationPreferences>) => {
-    if (!prefs) return
+    if (!prefs) {
+      console.error('[notification-settings] update called before preferences loaded')
+      return
+    }
     const next: NotificationPreferences = { ...prefs, ...patch }
     updatePreferences.mutate(next)
   }
@@ -270,10 +273,12 @@ function BrowserPermissionStatus() {
   useEffect(() => {
     if (!('permissions' in navigator)) return
 
+    let unmounted = false
     let status: PermissionStatus | null = null
     navigator.permissions
       .query({ name: 'notifications' as PermissionName })
       .then((s) => {
+        if (unmounted) return
         status = s
         setPermission(s.state as NotificationPermission)
         s.onchange = () => setPermission(s.state as NotificationPermission)
@@ -281,6 +286,7 @@ function BrowserPermissionStatus() {
       .catch((err) => console.warn('[notification-settings] Permission query failed:', err))
 
     return () => {
+      unmounted = true
       if (status) status.onchange = null
     }
   }, [])

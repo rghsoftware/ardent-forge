@@ -28,8 +28,9 @@ export function useSessionReminderBrowser(): void {
         const currentHour = new Date().getHours()
         if (currentHour < 6 || currentHour > 20) return
 
-        // Guard: already reminded today
-        const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+        // Guard: already reminded today (local calendar date, not UTC)
+        const now = new Date()
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
         if (_lastRemindedDate === today) return
 
         const supabase = getSupabaseClient()
@@ -121,11 +122,19 @@ export function useSessionReminderBrowser(): void {
 
         // 4. Fire notification for the first scheduled session
         const session = sessions[0]
-        const sessionName =
-          (session.session_templates as unknown as { name: string })?.name ?? 'Workout'
+        const rawTemplate = session.session_templates as unknown as { name: string } | null
+        if (!rawTemplate?.name) {
+          console.warn(
+            '[session-reminder-browser] session_templates join returned no name for session:',
+            session.id,
+          )
+        }
+        const sessionName = rawTemplate?.name ?? 'Workout'
 
-        await sendSessionReminderNotification(sessionName, prefs)
+        // Set the guard before firing so a notification failure does not cause
+        // a Supabase query spam loop on the next poll interval.
         _lastRemindedDate = today
+        await sendSessionReminderNotification(sessionName, prefs)
       } catch (err) {
         console.error('[session-reminder-browser] Unexpected error during poll:', err)
       }

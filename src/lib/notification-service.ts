@@ -30,8 +30,8 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
   let json: unknown
   try {
     json = JSON.parse(raw)
-  } catch {
-    console.warn('[notification-service] Corrupt JSON in preferences, using defaults')
+  } catch (err) {
+    console.warn('[notification-service] Corrupt JSON in preferences, using defaults', err)
     return { ...DEFAULT_NOTIFICATION_PREFERENCES }
   }
 
@@ -48,8 +48,15 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
 // ---------------------------------------------------------------------------
 
 export async function setNotificationPreferences(prefs: NotificationPreferences): Promise<void> {
-  const validated = notificationPreferencesSchema.parse(prefs)
-  const json = JSON.stringify(validated)
+  const result = notificationPreferencesSchema.safeParse(prefs)
+  if (!result.success) {
+    console.error(
+      '[notification-service] setNotificationPreferences: invalid prefs:',
+      result.error.issues,
+    )
+    throw new Error('Invalid notification preferences')
+  }
+  const json = JSON.stringify(result.data)
 
   if (isTauri()) {
     await invoke('set_app_config', { key: TAURI_CONFIG_KEY, value: json })
@@ -131,7 +138,11 @@ export async function sendPrNotification(
 
   // Use the Web Notification API if available and permitted
   if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification(title, { body })
+    try {
+      new Notification(title, { body })
+    } catch (err) {
+      console.error('[notification-service] Failed to create PR notification:', err)
+    }
   }
 }
 
@@ -164,7 +175,11 @@ export async function sendRestTimerNotification(
   if (exerciseName && setNumber != null) parts.push(`Set ${setNumber}`)
   const body = parts.length > 0 ? parts.join(' \u2014 ') : 'Time to start your next set'
 
-  new Notification(title, { body })
+  try {
+    new Notification(title, { body })
+  } catch (err) {
+    console.error('[notification-service] Failed to create rest timer notification:', err)
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -190,5 +205,9 @@ export async function sendSessionReminderNotification(
   const title = 'SESSION REMINDER'
   const body = `${sessionName} is scheduled for today`
 
-  new Notification(title, { body })
+  try {
+    new Notification(title, { body })
+  } catch (err) {
+    console.error('[notification-service] Failed to create session reminder notification:', err)
+  }
 }
