@@ -80,6 +80,7 @@ interface ActiveWorkoutState {
 // src/routes/_authenticated/log.$workoutId.tsx) per Tech.md D-1. The store
 // only holds the current elapsedSeconds value via setElapsedSeconds.
 let _restInterval: ReturnType<typeof setInterval> | null = null
+let _onRestExpired: (() => void) | null = null
 
 // Tauri event unlisten handles for the Rust rest timer path.
 // In Tauri mode, the timer runs in Rust and ticks arrive via events;
@@ -158,7 +159,12 @@ interface ActiveWorkoutActions {
   clearUndo(): void
 
   // Rest timer
-  startRestTimer(seconds: number, exerciseName?: string, setNumber?: number): void
+  startRestTimer(
+    seconds: number,
+    exerciseName?: string,
+    setNumber?: number,
+    onExpired?: () => void,
+  ): void
   skipRest(): void
   adjustRest(delta: number): void
 
@@ -262,6 +268,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         _restInterval = null
       }
       _cleanupTauriRestListeners()
+      _onRestExpired = null
       if (_snapshotContext) publishSessionEnded(_snapshotContext.userId)
       set({ ...initialState })
     },
@@ -309,6 +316,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         _restInterval = null
       }
       _cleanupTauriRestListeners()
+      _onRestExpired = null
       if (_snapshotContext) publishSessionEnded(_snapshotContext.userId)
       set({ ...initialState })
     },
@@ -486,7 +494,12 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     // Rest timer
     // ------------------------------------------------------------------
 
-    startRestTimer(seconds: number, exerciseName?: string, setNumber?: number) {
+    startRestTimer(
+      seconds: number,
+      exerciseName?: string,
+      setNumber?: number,
+      onExpired?: () => void,
+    ) {
       // Clear any existing rest interval / Tauri listeners
       if (_restInterval) clearInterval(_restInterval)
       _cleanupTauriRestListeners()
@@ -495,6 +508,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         restTimer: { remaining: seconds, total: seconds },
       })
       _publishCurrentState()
+
+      _onRestExpired = onExpired ?? null
 
       if (isTauri()) {
         // Rust-backed timer: register listeners BEFORE invoking the command
@@ -511,6 +526,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
             _unlistenTick = fn
           }),
           listen<void>('timer_expired', () => {
+            _onRestExpired?.()
+            _onRestExpired = null
             _cleanupTauriRestListeners()
             set({ restTimer: null })
             _publishCurrentState()
@@ -553,6 +570,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
           _restInterval = null
         }
       }
+      _onRestExpired = null
       set({ restTimer: null })
       _publishCurrentState()
     },
@@ -657,6 +675,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
 
       if (newRemaining <= 0) {
         // Rest complete -- auto-skip
+        _onRestExpired?.()
+        _onRestExpired = null
         if (_restInterval) {
           clearInterval(_restInterval)
           _restInterval = null
@@ -681,6 +701,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         _restInterval = null
       }
       _cleanupTauriRestListeners()
+      _onRestExpired = null
     },
   }),
 )

@@ -18,6 +18,7 @@ import {
   useDeleteLoggedActivity,
 } from '@/hooks/use-workout-logs'
 import { getAdapter } from '@/lib/adapter'
+import { getNotificationPreferences, sendRestTimerNotification } from '@/lib/notification-service'
 import { DEFAULT_REST_SECONDS } from '@/lib/workout-utils'
 import { computeNextProgramPosition } from '@/lib/program-advancement'
 import { resolveSessionTemplate } from '@/lib/prescription-resolver'
@@ -368,6 +369,7 @@ export function useActiveWorkout() {
       loggedActivityId: string,
       setData: Omit<LoggedSet, 'id'>,
       restSeconds: number = DEFAULT_REST_SECONDS,
+      exerciseName?: string,
     ) => {
       try {
         if (!workoutLog) {
@@ -402,7 +404,21 @@ export function useActiveWorkout() {
         // Skip the global rest timer for zero/negative values. CircuitPanel
         // and similar self-managed timer UIs pass 0 to suppress the duplicate.
         if (restSeconds > 0) {
-          storeStartRestTimer(restSeconds)
+          const setNum = setData.setNumber
+
+          // Read notification prefs (async), then start the rest timer with
+          // an onExpired callback that fires a browser notification.
+          getNotificationPreferences()
+            .then((prefs) => {
+              storeStartRestTimer(restSeconds, exerciseName, setNum, () => {
+                sendRestTimerNotification(exerciseName, setNum, prefs)
+              })
+            })
+            .catch((err) => {
+              // If prefs fail to load, still start the timer without notification
+              console.error('[workout] Failed to load notification preferences:', err)
+              storeStartRestTimer(restSeconds, exerciseName, setNum)
+            })
         }
 
         return savedSet

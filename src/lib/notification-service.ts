@@ -134,3 +134,61 @@ export async function sendPrNotification(
     new Notification(title, { body })
   }
 }
+
+// ---------------------------------------------------------------------------
+// sendRestTimerNotification -- fires a platform notification when rest ends
+//
+// Uses contextual permission request (D-4): if permission is 'default',
+// prompts the user at this natural interaction point rather than up front.
+// Rest timer notifications are exempt from quiet hours.
+// ---------------------------------------------------------------------------
+
+export async function sendRestTimerNotification(
+  exerciseName: string | undefined,
+  setNumber: number | undefined,
+  prefs: NotificationPreferences,
+): Promise<void> {
+  if (!shouldSendNotification('restTimer', prefs)) return
+  if (!('Notification' in window)) return
+  if (Notification.permission === 'denied') return
+
+  // Contextual permission request when default (D-4 from Tech.md)
+  if (Notification.permission === 'default') {
+    const result = await Notification.requestPermission()
+    if (result !== 'granted') return
+  }
+
+  const title = 'REST COMPLETE'
+  const parts: string[] = []
+  if (exerciseName) parts.push(exerciseName)
+  if (exerciseName && setNumber != null) parts.push(`Set ${setNumber}`)
+  const body = parts.length > 0 ? parts.join(' \u2014 ') : 'Time to start your next set'
+
+  new Notification(title, { body })
+}
+
+// ---------------------------------------------------------------------------
+// sendSessionReminderNotification -- fires a reminder for a scheduled session
+//
+// Uses contextual permission request (D-4). Session reminders respect quiet
+// hours (unlike rest timer which is exempt).
+// ---------------------------------------------------------------------------
+
+export async function sendSessionReminderNotification(
+  sessionName: string,
+  prefs: NotificationPreferences,
+): Promise<void> {
+  if (!shouldSendNotification('sessionReminders', prefs)) return
+  if (!('Notification' in window)) return
+  if (Notification.permission === 'denied') return
+
+  if (Notification.permission === 'default') {
+    const result = await Notification.requestPermission()
+    if (result !== 'granted') return
+  }
+
+  const title = 'SESSION REMINDER'
+  const body = `${sessionName} is scheduled for today`
+
+  new Notification(title, { body })
+}
