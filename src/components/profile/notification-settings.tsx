@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import { useNotificationPreferences } from '@/hooks/use-notification-preferences'
 import { Switch } from '@/components/ui/switch'
@@ -58,7 +59,10 @@ export function NotificationSettings() {
 
   // Merge helper: shallow-merge updated fields with current prefs and persist
   const update = (patch: Partial<NotificationPreferences>) => {
-    if (!prefs) return
+    if (!prefs) {
+      console.error('[notification-settings] update called before preferences loaded')
+      return
+    }
     const next: NotificationPreferences = { ...prefs, ...patch }
     updatePreferences.mutate(next)
   }
@@ -120,6 +124,8 @@ export function NotificationSettings() {
         <p className="text-xs text-warning-flare">Failed to save. Please try again.</p>
       )}
 
+      {!isTauri() && 'Notification' in window && <BrowserPermissionStatus />}
+
       {/* Conditional subsections -- only shown when master toggle is on */}
       {prefs.enabled && (
         <div className="space-y-5 border-l-2 border-surface-steel pl-4">
@@ -178,9 +184,9 @@ export function NotificationSettings() {
                 </Select>
               </div>
             )}
-            {isBrowser && (
+            {isBrowser && prefs.sessionReminders.enabled && (
               <p className="text-[11px] leading-relaxed text-warm-ash/60">
-                Session reminders require the native app
+                Notifications are delivered while this tab is open
               </p>
             )}
           </div>
@@ -252,6 +258,55 @@ export function NotificationSettings() {
         </div>
       )}
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// BrowserPermissionStatus -- shows browser notification permission state
+// ---------------------------------------------------------------------------
+
+function BrowserPermissionStatus() {
+  const [permission, setPermission] = useState<NotificationPermission>(
+    'Notification' in window ? Notification.permission : 'default',
+  )
+
+  useEffect(() => {
+    if (!('permissions' in navigator)) return
+
+    let unmounted = false
+    let status: PermissionStatus | null = null
+    navigator.permissions
+      .query({ name: 'notifications' as PermissionName })
+      .then((s) => {
+        if (unmounted) return
+        status = s
+        setPermission(s.state as NotificationPermission)
+        s.onchange = () => setPermission(s.state as NotificationPermission)
+      })
+      .catch((err) => console.warn('[notification-settings] Permission query failed:', err))
+
+    return () => {
+      unmounted = true
+      if (status) status.onchange = null
+    }
+  }, [])
+
+  // granted: no extra UI needed (silent)
+  if (permission === 'granted') return null
+
+  if (permission === 'denied') {
+    return (
+      <p className="text-[11px] leading-relaxed text-warm-ash/60">
+        Notifications are blocked. Enable them in your browser settings.
+      </p>
+    )
+  }
+
+  // default
+  return (
+    <p className="text-[11px] leading-relaxed text-warm-ash/60">
+      Enable notifications in your browser when prompted
+    </p>
   )
 }
 

@@ -30,8 +30,8 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
   let json: unknown
   try {
     json = JSON.parse(raw)
-  } catch {
-    console.warn('[notification-service] Corrupt JSON in preferences, using defaults')
+  } catch (err) {
+    console.warn('[notification-service] Corrupt JSON in preferences, using defaults', err)
     return { ...DEFAULT_NOTIFICATION_PREFERENCES }
   }
 
@@ -48,8 +48,15 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
 // ---------------------------------------------------------------------------
 
 export async function setNotificationPreferences(prefs: NotificationPreferences): Promise<void> {
-  const validated = notificationPreferencesSchema.parse(prefs)
-  const json = JSON.stringify(validated)
+  const result = notificationPreferencesSchema.safeParse(prefs)
+  if (!result.success) {
+    console.error(
+      '[notification-service] setNotificationPreferences: invalid prefs:',
+      result.error.issues,
+    )
+    throw new Error('Invalid notification preferences')
+  }
+  const json = JSON.stringify(result.data)
 
   if (isTauri()) {
     await invoke('set_app_config', { key: TAURI_CONFIG_KEY, value: json })
@@ -131,6 +138,76 @@ export async function sendPrNotification(
 
   // Use the Web Notification API if available and permitted
   if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification(title, { body })
+    } catch (err) {
+      console.error('[notification-service] Failed to create PR notification:', err)
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// sendRestTimerNotification -- fires a platform notification when rest ends
+//
+// Uses contextual permission request (D-4): if permission is 'default',
+// prompts the user at this natural interaction point rather than up front.
+// Rest timer notifications are exempt from quiet hours.
+// ---------------------------------------------------------------------------
+
+export async function sendRestTimerNotification(
+  exerciseName: string | undefined,
+  setNumber: number | undefined,
+  prefs: NotificationPreferences,
+): Promise<void> {
+  if (!shouldSendNotification('restTimer', prefs)) return
+  if (!('Notification' in window)) return
+  if (Notification.permission === 'denied') return
+
+  // Contextual permission request when default (D-4 from Tech.md)
+  if (Notification.permission === 'default') {
+    const result = await Notification.requestPermission()
+    if (result !== 'granted') return
+  }
+
+  const title = 'REST COMPLETE'
+  const parts: string[] = []
+  if (exerciseName) parts.push(exerciseName)
+  if (exerciseName && setNumber != null) parts.push(`Set ${setNumber}`)
+  const body = parts.length > 0 ? parts.join(' \u2014 ') : 'Time to start your next set'
+
+  try {
     new Notification(title, { body })
+  } catch (err) {
+    console.error('[notification-service] Failed to create rest timer notification:', err)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// sendSessionReminderNotification -- fires a reminder for a scheduled session
+//
+// Uses contextual permission request (D-4). Session reminders respect quiet
+// hours (unlike rest timer which is exempt).
+// ---------------------------------------------------------------------------
+
+export async function sendSessionReminderNotification(
+  sessionName: string,
+  prefs: NotificationPreferences,
+): Promise<void> {
+  if (!shouldSendNotification('sessionReminders', prefs)) return
+  if (!('Notification' in window)) return
+  if (Notification.permission === 'denied') return
+
+  if (Notification.permission === 'default') {
+    const result = await Notification.requestPermission()
+    if (result !== 'granted') return
+  }
+
+  const title = 'SESSION REMINDER'
+  const body = `${sessionName} is scheduled for today`
+
+  try {
+    new Notification(title, { body })
+  } catch (err) {
+    console.error('[notification-service] Failed to create session reminder notification:', err)
   }
 }

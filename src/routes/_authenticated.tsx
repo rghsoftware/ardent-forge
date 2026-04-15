@@ -7,6 +7,7 @@ import {
 } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { isTauri, invoke } from '@tauri-apps/api/core'
+import { useSessionReminderBrowser } from '@/hooks/use-session-reminder-browser'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 import { SyncIndicator } from '@/components/layout/sync-indicator'
@@ -36,6 +37,9 @@ function AuthenticatedLayout() {
       navigate({ to: '/sign-in', search: { reason: 'session-expired' } })
     }
   }, [loading, user, isGuest, navigate])
+
+  // Start the browser session reminder scheduler (no-ops in Tauri mode).
+  useSessionReminderBrowser()
 
   // Start the session reminder background scheduler in Tauri mode.
   // The Rust scheduler polls every 60s and respects notification preferences.
