@@ -1169,6 +1169,35 @@ describe('Program operations', () => {
         warnSpy.mockRestore()
       }
     })
+
+    it('parses overrides when stored as a JSON string (Tauri/SQLite path)', async () => {
+      const overridesObj = { activityOverrides: { 'act-001': { exerciseId: 'ex-002' } } }
+      const row = { ...scheduledSessionRow, overrides: JSON.stringify(overridesObj) }
+      mockClient.mockResponse('programs', 'select', [programRow])
+      mockClient.mockResponse('blocks', 'select', [blockRow])
+      mockClient.mockResponse('block_weeks', 'select', [blockWeekRow])
+      mockClient.mockResponse('scheduled_sessions', 'select', [row])
+
+      const result = await adapter.getProgramFull('prog-001')
+
+      expect(result!.scheduledSessions[0].overrides).toEqual(overridesObj)
+    })
+
+    it('passes through overrides when already a parsed object (PostgREST path)', async () => {
+      const overridesObj = { activityOverrides: { 'act-001': { exerciseId: 'ex-002' } } }
+      const row = {
+        ...scheduledSessionRow,
+        overrides: overridesObj as unknown as string,
+      }
+      mockClient.mockResponse('programs', 'select', [programRow])
+      mockClient.mockResponse('blocks', 'select', [blockRow])
+      mockClient.mockResponse('block_weeks', 'select', [blockWeekRow])
+      mockClient.mockResponse('scheduled_sessions', 'select', [row])
+
+      const result = await adapter.getProgramFull('prog-001')
+
+      expect(result!.scheduledSessions[0].overrides).toEqual(overridesObj)
+    })
   })
 
   describe('createProgramFull', () => {
