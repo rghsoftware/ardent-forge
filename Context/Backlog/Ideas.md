@@ -5,18 +5,18 @@ skill. Prioritize via the backlog-prioritize skill.
 
 <!-- Add new ideas below this line -->
 
-## P17 Review: Adapter test coverage gaps (PR #107)
+## ~~P17 Review: Adapter test coverage gaps (PR #107)~~ (Resolved 2026-04-15)
 
 **Added:** 2026-04-12
 **Source:** `Context/Reviews/0017-pr107-camelcase-conv-2026-04-12.md`
-**Priority:** Medium
+**Resolution:** All four items completed in PR #112.
 
 | #       | File                                          | Improvement                                                                                                                                     | Status |
 | ------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| P17-007 | `src/lib/__tests__/adapter-utils.test.ts`     | New file: unit tests for `camelizeKeys` and `parseJsonOrValue` -- already-camelCase passthrough, digit-adjacent keys, multiple/leading underscores, object passthrough, error on malformed JSON | Open   |
-| P17-008 | `src/lib/__tests__/supabase-adapter.test.ts`  | Add `mapScheduledSession` malformed-JSON fallback test: fixture with bad JSON in `overrides`, assert `result.overrides === undefined` and `console.warn` called | Open   |
-| P17-009 | `src/lib/__tests__/supabase-adapter.test.ts`  | Fix JSONB fixtures in `sessionTemplateRow` and `templateActivityRow` to pass pre-parsed objects (not `JSON.stringify`) to exercise the object-passthrough branch of `parseJsonOrValue` | Open   |
-| P17-010 | `src/lib/__tests__/supabase-adapter.test.ts`  | Add `supports1RM` assertion to `getExercises` happy-path test (line 301); add fixture value and assert it round-trips correctly | Open   |
+| P17-007 | `src/lib/__tests__/adapter-utils.test.ts`     | New file: unit tests for `camelizeKeys` and `parseJsonOrValue` -- already-camelCase passthrough, digit-adjacent keys, multiple/leading underscores, object passthrough, error on malformed JSON | Done   |
+| P17-008 | `src/lib/__tests__/supabase-adapter.test.ts`  | Add `mapScheduledSession` malformed-JSON fallback test: fixture with bad JSON in `overrides`, assert `result.overrides === undefined` and `console.warn` called | Done   |
+| P17-009 | `src/lib/__tests__/supabase-adapter.test.ts`  | Fix JSONB fixtures in `sessionTemplateRow` and `templateActivityRow` to pass pre-parsed objects (not `JSON.stringify`) to exercise the object-passthrough branch of `parseJsonOrValue` | Done   |
+| P17-010 | `src/lib/__tests__/supabase-adapter.test.ts`  | Add `supports1RM` assertion to `getExercises` happy-path test (line 301); add fixture value and assert it round-trips correctly | Done   |
 
 ## ~~Chat Data Layer Refinements (PR #33 review suggestions)~~ (Resolved 2026-04-05)
 
@@ -46,12 +46,10 @@ skill. Prioritize via the backlog-prioritize skill.
 **Source:** `Context/Reviews/0009-pr71-enhancement-batch-review.md`
 **Resolution:** Created `src/domain/types/__tests__/chat.test.ts` with 18 tests covering all refinements (conversationSchema, conversationParticipantSchema, messageSchema, mediaAttachmentSchema). All pass.
 
-### Browser notifications for rest timers and session reminders
+### ~~Browser notifications for rest timers and session reminders~~ (Resolved 2026-04-15)
 
 **Added:** 2026-04-05
-**Context:** Rest timer alerts and session reminders currently require the Tauri mobile app for native notifications. The web app should use the Web Notifications API (or Push API) so browser users get the same reminder experience without needing the native app.
-**Related:** `src/components/profile/notification-settings.tsx`, rest timer system, session reminder scheduler
-**Priority:** Medium
+**Resolution:** Implemented in commit `926962e` (F022) -- browser rest timer and session reminder notifications shipped.
 
 ## ~~P9-011: Test for getUnreadCounts batching behavior~~ (Resolved 2026-04-04)
 

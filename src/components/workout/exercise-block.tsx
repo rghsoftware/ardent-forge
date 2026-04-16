@@ -33,7 +33,9 @@ interface ExerciseBlockProps {
   isConfirming?: boolean
   isBodyweight?: boolean
   isActive?: boolean
+  isDone?: boolean
   onSkipExercise?: () => void
+  onExpandToggle?: () => void
   onAddSet?: () => void
   onDeleteSet?: (setId: string) => void
   onUnconfirmSet?: (loggedActivityId: string, setId: string) => void
@@ -48,7 +50,9 @@ export function ExerciseBlock({
   isConfirming = false,
   isBodyweight = false,
   isActive = true,
+  isDone = false,
   onSkipExercise,
+  onExpandToggle,
   onAddSet,
   onDeleteSet,
   onUnconfirmSet,
@@ -57,6 +61,7 @@ export function ExerciseBlock({
   const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
   const hasPrescribed = sets.some((s) => s.prescribedWeight != null || s.prescribedReps != null)
   const noSetsConfirmed = !firstWorkoutCompleted && sets.every((s) => !s.confirmed)
+  const confirmedCount = sets.filter((s) => s.confirmed).length
 
   const setActivityNote = useActiveWorkoutStore((s) => s.setActivityNote)
   const storedActivity = useActiveWorkoutStore((s) => {
@@ -70,6 +75,32 @@ export function ExerciseBlock({
     () => ({ text: storedActivity?.notes ?? '', tags: storedActivity?.noteTags ?? [] }),
     [storedActivity?.notes, storedActivity?.noteTags],
   )
+
+  if (isDone) {
+    return (
+      <section
+        aria-label={`${exerciseName} exercise`}
+        className="bg-surface-pit/40"
+      >
+        <div className="flex items-center gap-3 px-4 py-3">
+          <h3 className="min-w-0 flex-1 truncate font-display text-xs font-medium text-warm-ash/60">
+            {exerciseName}
+          </h3>
+          <span className="shrink-0 bg-surface-gunmetal px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-warm-ash/60">
+            {confirmedCount} {confirmedCount === 1 ? 'SET' : 'SETS'}
+          </span>
+          <button
+            type="button"
+            onClick={onExpandToggle}
+            aria-label={`Expand ${exerciseName}`}
+            className="flex h-12 w-12 shrink-0 items-center justify-center text-warm-ash/60 transition-colors hover:text-warm-ash active:text-ember"
+          >
+            <Icon name="chevron_right" size={20} />
+          </button>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section
@@ -100,7 +131,7 @@ export function ExerciseBlock({
             <button
               type="button"
               onClick={onRemoveExercise}
-              className="text-warm-ash/40 transition-colors hover:text-red-500 active:text-red-600"
+              className="flex h-12 w-12 items-center justify-center text-warm-ash/40 transition-colors hover:text-red-500 active:text-red-600"
               aria-label={`Remove ${exerciseName}`}
             >
               <Icon name="delete" size={18} />
@@ -174,22 +205,22 @@ export function ExerciseBlock({
           />
         ))}
       </div>
-      {(onAddSet || (isActive && onSkipExercise)) && (
+      {(onAddSet || onSkipExercise) && (
         <div className="flex px-4 pb-3 pt-1">
           {onAddSet && (
             <button
               type="button"
               onClick={onAddSet}
-              className="flex-1 py-2 text-xs font-bold uppercase tracking-widest text-warm-ash/60 transition-colors hover:text-warm-ash active:text-ember"
+              className="min-h-12 flex-1 py-2 text-xs font-bold uppercase tracking-widest text-warm-ash/60 transition-colors hover:text-warm-ash active:text-ember"
             >
               Add set
             </button>
           )}
-          {isActive && onSkipExercise && (
+          {onSkipExercise && (
             <button
               type="button"
               onClick={onSkipExercise}
-              className="flex-1 py-2 text-xs font-bold uppercase tracking-widest text-warm-ash/60 transition-colors hover:text-warm-ash active:text-ember"
+              className="min-h-12 flex-1 py-2 text-xs font-bold uppercase tracking-widest text-warm-ash/60 transition-colors hover:text-warm-ash active:text-ember"
             >
               Done
             </button>

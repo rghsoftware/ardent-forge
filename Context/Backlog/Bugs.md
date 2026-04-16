@@ -5,16 +5,11 @@ High-priority bugs should be addressed before starting new features.
 
 <!-- Add new bugs below this line -->
 
-## B009: `mapScheduledSession` overrides happy-path not covered by any test
+## ~~B009: `mapScheduledSession` overrides happy-path not covered by any test~~ (Resolved 2026-04-15)
 
 **Severity:** Medium
 **File:** `src/lib/__tests__/supabase-adapter.test.ts`
-**Detail:** All existing fixtures set `overrides: null`, so the `if (r.overrides != null)` branch in
-`mapScheduledSession` is never exercised by a green test. Neither the string-parse branch (Tauri/SQLite
-path) nor the object-passthrough branch (Supabase PostgREST path) has coverage.
-**Fix:** Add two tests -- one with `overrides: JSON.stringify({ ... })` asserting the parsed output, one with
-a pre-parsed object asserting direct passthrough. Use a valid `SessionOverrides` fixture in each.
-**Origin:** P19-003 (PR #112 review, 2026-04-15)
+**Resolution:** Added three tests in PR #112: string-parse branch (Tauri/SQLite path, line 1173), object-passthrough branch (PostgREST path, line 1186), and malformed-JSON fallback (line 1151). All branches now covered.
 
 ## ~~B001: invokeCommand does not log before re-throwing~~ (Resolved 2026-04-04)
 
