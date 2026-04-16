@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { SupabaseAdapter } from '../supabase-adapter'
 import { createMockSupabaseClient, type MockSupabaseClient } from '@/test/mocks/supabase-client'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -161,7 +161,7 @@ const sessionTemplateRow: SessionTemplateRow = {
   name: 'Heavy Upper',
   description: 'Upper body strength',
   category: 'STRENGTH',
-  rest_between_groups: JSON.stringify({ seconds: 120 }),
+  rest_between_groups: { seconds: 120 } as unknown as string,
   time_cap: null,
   scoring: 'NONE',
   is_public: false,
@@ -188,12 +188,12 @@ const templateActivityRow: ActivityRow = {
   activity_group_id: 'ag-001',
   exercise_id: 'ex-001',
   ordinal: 1,
-  set_scheme: JSON.stringify({
+  set_scheme: {
     type: 'fixedSets',
     sets: 3,
     reps: 5,
     load: { type: 'absolute', weight: { value: 135, unit: 'lb' } },
-  }),
+  } as unknown as string,
   notes: null,
   created_at: now,
   updated_at: now,
@@ -311,6 +311,7 @@ describe('Exercise operations', () => {
         primary: ['QUADS', 'GLUTES'],
         secondary: ['HAMSTRINGS', 'CORE'],
       })
+      expect(result[0].supports1RM).toBe(true)
     })
 
     it('passes category filter to query builder', async () => {
@@ -1145,6 +1146,57 @@ describe('Program operations', () => {
       expect(result!.blocks).toHaveLength(1)
       expect(result!.blockWeeks).toEqual([])
       expect(result!.scheduledSessions).toEqual([])
+    })
+
+    it('falls back to undefined overrides when overrides JSON is malformed', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const badRow = { ...scheduledSessionRow, overrides: '{not valid json' }
+        mockClient.mockResponse('programs', 'select', [programRow])
+        mockClient.mockResponse('blocks', 'select', [blockRow])
+        mockClient.mockResponse('block_weeks', 'select', [blockWeekRow])
+        mockClient.mockResponse('scheduled_sessions', 'select', [badRow])
+
+        const result = await adapter.getProgramFull('prog-001')
+
+        expect(result!.scheduledSessions[0].overrides).toBeUndefined()
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[supabase-adapter]'),
+          expect.anything(),
+        )
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('ss-001'), expect.anything())
+      } finally {
+        warnSpy.mockRestore()
+      }
+    })
+
+    it('parses overrides when stored as a JSON string (Tauri/SQLite path)', async () => {
+      const overridesObj = { activityOverrides: { 'act-001': { exerciseId: 'ex-002' } } }
+      const row = { ...scheduledSessionRow, overrides: JSON.stringify(overridesObj) }
+      mockClient.mockResponse('programs', 'select', [programRow])
+      mockClient.mockResponse('blocks', 'select', [blockRow])
+      mockClient.mockResponse('block_weeks', 'select', [blockWeekRow])
+      mockClient.mockResponse('scheduled_sessions', 'select', [row])
+
+      const result = await adapter.getProgramFull('prog-001')
+
+      expect(result!.scheduledSessions[0].overrides).toEqual(overridesObj)
+    })
+
+    it('passes through overrides when already a parsed object (PostgREST path)', async () => {
+      const overridesObj = { activityOverrides: { 'act-001': { exerciseId: 'ex-002' } } }
+      const row = {
+        ...scheduledSessionRow,
+        overrides: overridesObj as unknown as string,
+      }
+      mockClient.mockResponse('programs', 'select', [programRow])
+      mockClient.mockResponse('blocks', 'select', [blockRow])
+      mockClient.mockResponse('block_weeks', 'select', [blockWeekRow])
+      mockClient.mockResponse('scheduled_sessions', 'select', [row])
+
+      const result = await adapter.getProgramFull('prog-001')
+
+      expect(result!.scheduledSessions[0].overrides).toEqual(overridesObj)
     })
   })
 
