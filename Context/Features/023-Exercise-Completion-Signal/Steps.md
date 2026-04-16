@@ -142,6 +142,36 @@
 
 ---
 
+### Phase 5: Review Follow-up Tasks
+
+- [ ] S005-T: Rewrite A-006 test to properly exercise `handleFinish`. The test
+  must: (1) establish an activity with 0 confirmed sets so the auto-pending row
+  renders, (2) render or invoke FINISH WORKOUT so `handleFinish` actually fires,
+  (3) assert `mockFinishWorkout` was called and the pending row is gone. Current
+  test is vacuously true (P20-002).
+  - **Assigned:** builder-ui
+  - **Depends:** S003-T
+  - **Parallel:** false
+
+- [ ] S006-T: Rewrite A-003 test to establish a pending row before mark-done.
+  The test must use an activity with 0 confirmed sets (triggering the auto-pending
+  row on mount), then click Done, then assert the pending row is removed. Current
+  test uses `act-1` which has confirmed sets so no pending row exists (P20-003).
+  - **Assigned:** builder-ui
+  - **Depends:** S002-T
+  - **Parallel:** false
+
+- [ ] S007-T: Add tests for mixed-modality and programmed-workout banner behavior.
+  (1) Test that `allActivitiesDone` correctly filters CIRCUIT groups -- a workout
+  with straight-set + circuit groups shows the banner once all straight-set
+  activities are done. (2) Test that the all-done banner is absent when
+  `isProgrammedWorkout=true` (P20-008).
+  - **Assigned:** builder-ui
+  - **Depends:** S003-T
+  - **Parallel:** true
+
+---
+
 ## Acceptance Criteria
 
 - [ ] All 8 testable assertions from Spec.md verified (A-001 through A-008)

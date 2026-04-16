@@ -290,7 +290,10 @@ function ActiveWorkoutPage() {
   const allActivitiesDone = useMemo(
     () =>
       loggedGroups.length > 0 &&
-      loggedGroups.flatMap((g) => g.activities).every((a) => skippedActivityIds.has(a.id)),
+      loggedGroups
+        .filter((g) => g.groupType !== 'CIRCUIT')
+        .flatMap((g) => g.activities)
+        .every((a) => skippedActivityIds.has(a.id)),
     [loggedGroups, skippedActivityIds],
   )
 
@@ -443,9 +446,8 @@ function ActiveWorkoutPage() {
     async (loggedActivityId: string, setId: string) => {
       try {
         await unconfirmSet(loggedActivityId, setId)
-      } catch {
-        // The underlying mutation hook (useUpdateLoggedSet) is the single log
-        // owner for this rejection. Set a user-facing error without logging.
+      } catch (err) {
+        console.error('[workout-page] handleUnconfirmSet failed:', { loggedActivityId, setId, err })
         setPageError('Failed to undo set.')
       }
     },
@@ -827,8 +829,8 @@ function ActiveWorkoutPage() {
                         if (setId.startsWith('pending-')) {
                           setPendingInputs((prev) => ({ ...prev, [activity.id]: false }))
                         } else {
-                          deleteSet(activity.id, setId).catch(() => {
-                            // Hook already logged; surface a user-facing error.
+                          deleteSet(activity.id, setId).catch((err) => {
+                            console.error('[workout-page] deleteSet failed:', { activityId: activity.id, setId, err })
                             setPageError('Failed to delete set. Please try again.')
                           })
                         }
@@ -836,8 +838,8 @@ function ActiveWorkoutPage() {
                       onUnconfirmSet={handleUnconfirmSet}
                       onSkipExercise={() => handleMarkDone(activity.id)}
                       onRemoveExercise={() => {
-                        removeActivity(activity.id).catch(() => {
-                          // Hook already logged; surface a user-facing error.
+                        removeActivity(activity.id).catch((err) => {
+                          console.error('[workout-page] removeActivity failed:', { activityId: activity.id, err })
                           setPageError('Failed to remove exercise. Please try again.')
                         })
                       }}

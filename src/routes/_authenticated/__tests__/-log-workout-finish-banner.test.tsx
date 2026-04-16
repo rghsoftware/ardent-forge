@@ -297,15 +297,6 @@ vi.mock('@/components/workout/exercise-block', () => ({
     return (
       <div data-testid={`exercise-block-${props.loggedActivityId}`}>
         <button onClick={props.onSkipExercise}>Done</button>
-        {/* Expose an "Add Set" button so tests can trigger pendingInputs */}
-        <button
-          onClick={() => {
-            // Simulate what the route does when onAddSet fires -- we need
-            // the route's own handler, so we invoke onAddSet via the prop.
-          }}
-        >
-          Add Set
-        </button>
       </div>
     )
   },
@@ -463,21 +454,11 @@ describe('log.$workoutId finish handling + all-done banner (F023 S003-T)', () =>
     const pendingRows = act2Props?.sets.filter((s) => s.isPending) ?? []
     expect(pendingRows).toHaveLength(1)
 
-    // Simulate finish: find and invoke the onFinish prop captured by
-    // WorkoutPausedBar. Since WorkoutPausedBar is mocked to null, we trigger
-    // handleFinish via a direct act call that matches how the route wires it.
-    // We use a "Finish" button that WorkoutPausedBar would render -- instead,
-    // we look at the Add Exercise button in the footer (the footer renders for
-    // !isProgrammedWorkout). The finish flow itself is tested via the
-    // mockFinishWorkout assertion.
-    //
-    // Key assertion: after a re-render triggered by setPendingInputs({}),
-    // the pending row for act-2 is gone.
+    // Note: this test does NOT exercise handleFinish directly (WorkoutPausedBar
+    // is mocked to null). It verifies the all-done banner appears when all
+    // activities are skipped. A proper A-006 handler-level test is tracked as
+    // P20-002 / S005-T.
     await act(async () => {
-      // Manually simulate what handleFinish does: clear pending inputs.
-      // Since we cannot trigger it through UI (WorkoutPausedBar mocked away),
-      // we verify the invariant by re-rendering after storeState indicates
-      // all activities are done (which would happen post-finish).
       storeState.skippedActivityIds = new Set(['act-1', 'act-2'])
       const C = capturedComponent.current!
       rerender(<C />)

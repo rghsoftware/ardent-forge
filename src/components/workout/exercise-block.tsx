@@ -131,7 +131,7 @@ export function ExerciseBlock({
             <button
               type="button"
               onClick={onRemoveExercise}
-              className="text-warm-ash/40 transition-colors hover:text-red-500 active:text-red-600"
+              className="flex h-12 w-12 items-center justify-center text-warm-ash/40 transition-colors hover:text-red-500 active:text-red-600"
               aria-label={`Remove ${exerciseName}`}
             >
               <Icon name="delete" size={18} />
@@ -211,7 +211,7 @@ export function ExerciseBlock({
             <button
               type="button"
               onClick={onAddSet}
-              className="flex-1 py-2 text-xs font-bold uppercase tracking-widest text-warm-ash/60 transition-colors hover:text-warm-ash active:text-ember"
+              className="min-h-12 flex-1 py-2 text-xs font-bold uppercase tracking-widest text-warm-ash/60 transition-colors hover:text-warm-ash active:text-ember"
             >
               Add set
             </button>
@@ -220,7 +220,7 @@ export function ExerciseBlock({
             <button
               type="button"
               onClick={onSkipExercise}
-              className="flex-1 py-2 text-xs font-bold uppercase tracking-widest text-warm-ash/60 transition-colors hover:text-warm-ash active:text-ember"
+              className="min-h-12 flex-1 py-2 text-xs font-bold uppercase tracking-widest text-warm-ash/60 transition-colors hover:text-warm-ash active:text-ember"
             >
               Done
             </button>
