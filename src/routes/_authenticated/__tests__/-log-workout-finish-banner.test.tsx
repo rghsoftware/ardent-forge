@@ -55,8 +55,9 @@ const {
     skipActivity: mockSkipActivity,
   }
 
-  // Mutable workout state -- tests mutate this to change loggedGroups.
+  // Mutable workout state -- tests mutate this to change loggedGroups and flags.
   const workoutState = {
+    isProgrammedWorkout: false,
     loggedGroups: [
       {
         id: 'group-1',
@@ -145,7 +146,7 @@ vi.mock('@/hooks/use-active-workout', () => ({
     },
     loggedGroups: workoutState.loggedGroups,
     isActive: true,
-    isProgrammedWorkout: false,
+    isProgrammedWorkout: workoutState.isProgrammedWorkout,
     elapsedSeconds: 0,
     restTimer: null,
     undoAction: null,
@@ -229,7 +230,11 @@ vi.mock('@/components/workout/workout-header', () => ({
 }))
 
 vi.mock('@/components/workout/workout-paused-bar', () => ({
-  WorkoutPausedBar: () => null,
+  WorkoutPausedBar: (props: { onFinish: () => void }) => (
+    <button data-testid="finish-workout" onClick={props.onFinish}>
+      Finish
+    </button>
+  ),
 }))
 
 vi.mock('@/components/workout/error-banner', () => ({
@@ -364,6 +369,7 @@ describe('log.$workoutId finish handling + all-done banner (F023 S003-T)', () =>
       storeState.skippedActivityIds = new Set(storeState.skippedActivityIds).add(id)
     })
     mockFinishWorkout.mockResolvedValue(undefined)
+    workoutState.isProgrammedWorkout = false
     // Reset to two-activity group
     workoutState.loggedGroups = [
       {
@@ -397,67 +403,38 @@ describe('log.$workoutId finish handling + all-done banner (F023 S003-T)', () =>
   // [A-006] FINISH clears pending input rows before persisting
   // -------------------------------------------------------------------------
 
-  it('[A-006] clicking FINISH calls finishWorkout with no pending rows present', async () => {
-    const { rerender } = renderPage()
+  it('[A-006] clicking FINISH calls finishWorkout and removes pending rows from the DOM', async () => {
+    const user = userEvent.setup()
+    renderPage()
 
-    // Simulate a pending row for act-1 by clicking Done (which would normally
-    // happen after a confirm set), then trigger finish via a FINISH button.
-    // The route renders a "Finish" button via WorkoutPausedBar (mocked to null)
-    // and also via the handleFinish callback itself. We test the mechanism
-    // directly: call handleFinish and assert finishWorkout was invoked.
-    // Since the FINISH button is inside WorkoutPausedBar (mocked away), we
-    // invoke handleFinish indirectly by checking that setPendingInputs({}) runs
-    // before finishWorkout. We do this by verifying that after renderPage(),
-    // if we call handleFinish, finishWorkout is called exactly once and the
-    // ExerciseBlock for act-1 no longer has a pending row in props.
+    // act-2 has 0 confirmed sets => the route auto-adds a pending row for it on mount.
+    const act2PropsBefore = capturedExerciseBlockProps.get('act-2')
+    const pendingRowsBefore = act2PropsBefore?.sets.filter((s) => s.isPending) ?? []
+    expect(pendingRowsBefore).toHaveLength(1)
 
-    // First render: act-1 has 1 confirmed set and (by default logic) no pending
-    // row because confirmedSets.length === 0 is false (it has 1 confirmed set)
-    // and pendingInputs[act-1] is false initially.
-    const act1Props = capturedExerciseBlockProps.get('act-1')
-    const pendingBefore = act1Props?.sets.filter((s) => s.isPending) ?? []
-    expect(pendingBefore).toHaveLength(0)
-
-    // Re-render after finish to check no pending rows appear.
+    // The WorkoutPausedBar mock exposes a FINISH button. Clicking it invokes handleFinish,
+    // which calls setPendingInputs({}) then awaits finishWorkout().
     await act(async () => {
-      const C = capturedComponent.current!
-      rerender(<C />)
+      await user.click(screen.getByTestId('finish-workout'))
     })
 
-    // finishWorkout should not have been called yet.
-    expect(mockFinishWorkout).not.toHaveBeenCalled()
+    // finishWorkout must have been called exactly once.
+    expect(mockFinishWorkout).toHaveBeenCalledOnce()
 
-    // The WorkoutPausedBar is mocked away. To test [A-006], we confirm that
-    // the route wires handleFinish to WorkoutPausedBar's onFinish. Since we
-    // cannot click the finish button directly, we verify the wiring at the
-    // unit level: act-1 has no pending row in the current rendered output,
-    // confirming setPendingInputs({}) would not need to clear anything in this
-    // scenario. For the pending-row clearing path, see the more targeted check
-    // below.
-    expect(capturedExerciseBlockProps.get('act-1')?.sets.filter((s) => s.isPending)).toHaveLength(
-      0,
-    )
+    // After handleFinish resolves, setShowSummary(true) fires and the route
+    // switches to WorkoutSummary -- exercise blocks leave the DOM entirely,
+    // which also removes all pending rows.
+    expect(screen.queryByTestId('exercise-block-act-2')).not.toBeInTheDocument()
   })
 
-  it('[A-006] sets rendered to ExerciseBlock after FINISH have no pending rows', async () => {
-    // This test verifies the contract: when pendingInputs state is non-empty
-    // and handleFinish fires, setPendingInputs({}) runs BEFORE finishWorkout,
-    // so no pending row data is passed to ExerciseBlock on the next render.
-    //
-    // Mechanism: act-2 has zero confirmed sets so the route auto-shows a
-    // pending row for it on mount. We verify the pending row is present, then
-    // simulate the finish flow and verify finishWorkout is called.
-    const { rerender } = renderPage()
-
+  it('all-done banner is visible after all activities are skipped', async () => {
     // act-2 has 0 confirmed sets => route adds a pending row automatically
+    const { rerender } = renderPage()
     const act2Props = capturedExerciseBlockProps.get('act-2')
     const pendingRows = act2Props?.sets.filter((s) => s.isPending) ?? []
     expect(pendingRows).toHaveLength(1)
 
-    // Note: this test does NOT exercise handleFinish directly (WorkoutPausedBar
-    // is mocked to null). It verifies the all-done banner appears when all
-    // activities are skipped. A proper A-006 handler-level test is tracked as
-    // P20-002 / S005-T.
+    // Skip all activities to trigger the all-done banner.
     await act(async () => {
       storeState.skippedActivityIds = new Set(['act-1', 'act-2'])
       const C = capturedComponent.current!
@@ -555,6 +532,81 @@ describe('log.$workoutId finish handling + all-done banner (F023 S003-T)', () =>
 
     renderPage()
 
+    expect(screen.queryByText(/ALL EXERCISES DONE/i)).not.toBeInTheDocument()
+  })
+
+  // -------------------------------------------------------------------------
+  // CIRCUIT filter -- P20-001: CIRCUIT groups are excluded from allActivitiesDone
+  // -------------------------------------------------------------------------
+
+  it('all-done banner appears when straight-set activities are done even if a CIRCUIT group is present', () => {
+    // Set up a workout with one STRAIGHT_SETS group and one CIRCUIT group.
+    // The CIRCUIT group's activities should NOT need to be in skippedActivityIds
+    // for the banner to appear, because allActivitiesDone filters out CIRCUIT groups.
+    workoutState.loggedGroups = [
+      {
+        id: 'group-straight',
+        groupType: 'STRAIGHT_SETS',
+        activities: [
+          {
+            id: 'straight-act-1',
+            exerciseId: 'ex-1',
+            sets: [
+              {
+                id: 'set-s1',
+                completed: true,
+                setNumber: 1,
+                actualWeight: { value: 135, unit: 'lb' },
+                actualReps: 5,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'group-circuit',
+        groupType: 'CIRCUIT',
+        activities: [
+          {
+            id: 'circuit-act-1',
+            exerciseId: 'ex-1',
+            sets: [],
+          },
+          {
+            id: 'circuit-act-2',
+            exerciseId: 'ex-1',
+            sets: [],
+          },
+        ],
+      },
+    ]
+
+    // Only the straight-set activity is in skippedActivityIds.
+    // Circuit activities are intentionally absent.
+    storeState.skippedActivityIds = new Set(['straight-act-1'])
+
+    renderPage()
+
+    // Banner must appear because all non-CIRCUIT activities are done.
+    expect(screen.getByText(/ALL EXERCISES DONE/i)).toBeInTheDocument()
+    expect(screen.getByText(/READY TO FINISH/i)).toBeInTheDocument()
+  })
+
+  // -------------------------------------------------------------------------
+  // Programmed workout -- banner absent when isProgrammedWorkout=true
+  // -------------------------------------------------------------------------
+
+  it('all-done banner is absent when isProgrammedWorkout=true, even if all activities are done', () => {
+    // Mark all activities as done.
+    storeState.skippedActivityIds = new Set(['act-1', 'act-2'])
+    // Switch to a programmed workout context.
+    workoutState.isProgrammedWorkout = true
+
+    renderPage()
+
+    // The entire sticky footer (including the banner) is wrapped in
+    // {!isProgrammedWorkout && (...)} so neither the banner nor the
+    // "Add exercise" button should be present.
     expect(screen.queryByText(/ALL EXERCISES DONE/i)).not.toBeInTheDocument()
   })
 })

@@ -66,6 +66,7 @@ const {
       isDone?: boolean
       onSkipExercise?: () => void
       onExpandToggle?: () => void
+      onAddSet?: () => void
       sets: Array<{ id: string; confirmed: boolean; isPending?: boolean }>
     }
   > = new Map()
@@ -277,6 +278,7 @@ vi.mock('@/components/workout/exercise-block', () => ({
     isDone?: boolean
     onSkipExercise?: () => void
     onExpandToggle?: () => void
+    onAddSet?: () => void
     sets: Array<{ id: string; confirmed: boolean; isPending?: boolean }>
     exerciseName: string
   }) => {
@@ -285,11 +287,13 @@ vi.mock('@/components/workout/exercise-block', () => ({
       isDone: props.isDone,
       onSkipExercise: props.onSkipExercise,
       onExpandToggle: props.onExpandToggle,
+      onAddSet: props.onAddSet,
       sets: props.sets,
     })
     return (
       <div data-testid={`exercise-block-${props.loggedActivityId}`} data-is-done={props.isDone ? 'true' : 'false'}>
         <button onClick={props.onSkipExercise}>Done</button>
+        <button onClick={props.onAddSet}>Add Set</button>
         {props.isDone && (
           <button onClick={props.onExpandToggle} aria-label="Expand">
             Expand
@@ -406,33 +410,44 @@ describe('log.$workoutId mark-done wiring (F023 S002-T)', () => {
 
   it('[A-003] pending input row is cleared when mark-done fires', async () => {
     const user = userEvent.setup()
-    renderPage()
+    const { rerender } = renderPage()
 
-    // Capture onSkipExercise (mark-done handler)
-    const props = capturedExerciseBlockProps.get('act-1')
-    expect(props).toBeDefined()
+    // The fixture has 2 confirmed sets so no pending row is auto-added on mount.
+    // Verify the precondition: no pending row yet.
+    expect(capturedExerciseBlockProps.get('act-1')?.sets.filter((s) => s.isPending)).toHaveLength(0)
 
-    // Simulate the route's pending input state being true by clicking Done:
-    // the handler calls setPendingInputs with {[activityId]: false}.
-    // We can verify this by inspecting the sets passed to ExerciseBlock after
-    // mark-done -- the pending row (isPending: true) should no longer appear.
-    // Since the mock useActiveWorkout returns 2 confirmed sets (no pending),
-    // we first need to check there's no pending row before, then verify the
-    // handler path completes without error.
+    // Click "Add Set" to explicitly set pendingInputs['act-1'] = true via the
+    // route's onAddSet handler. This is the real path that exercises setPendingInputs.
+    await user.click(screen.getByRole('button', { name: 'Add Set' }))
+
+    // Re-render so the component re-derives set rows from the updated pendingInputs state.
+    await act(async () => {
+      const C = capturedComponent.current!
+      rerender(<C />)
+    })
+
+    // PRECONDITION: pending row is now present before clicking Done.
+    const pendingBefore = capturedExerciseBlockProps.get('act-1')?.sets.filter((s) => s.isPending)
+    expect(pendingBefore).toHaveLength(1)
+
+    // Click Done -- triggers handleMarkDone which calls:
+    //   skipActivity(activityId)
+    //   setPendingInputs((prev) => ({ ...prev, [activityId]: false }))
     await user.click(screen.getByRole('button', { name: 'Done' }))
 
-    // skipActivity was called (the handler ran)
-    expect(mockSkipActivity).toHaveBeenCalledOnce()
+    // Re-render to reflect updated pendingInputs state (false) and skippedActivityIds.
+    await act(async () => {
+      const C = capturedComponent.current!
+      rerender(<C />)
+    })
 
-    // Confirmed sets should still be present in the sets passed to ExerciseBlock.
-    const confirmedSets = capturedExerciseBlockProps
-      .get('act-1')
-      ?.sets.filter((s) => s.confirmed)
+    // POSTCONDITION: pending row is gone after mark-done.
+    const pendingAfter = capturedExerciseBlockProps.get('act-1')?.sets.filter((s) => s.isPending)
+    expect(pendingAfter).toHaveLength(0)
+
+    // Confirmed sets are untouched (still 2).
+    const confirmedSets = capturedExerciseBlockProps.get('act-1')?.sets.filter((s) => s.confirmed)
     expect(confirmedSets).toHaveLength(2)
-
-    // No pending row should exist after mark-done.
-    const pendingRows = capturedExerciseBlockProps.get('act-1')?.sets.filter((s) => s.isPending)
-    expect(pendingRows).toHaveLength(0)
   })
 
   // -------------------------------------------------------------------------
