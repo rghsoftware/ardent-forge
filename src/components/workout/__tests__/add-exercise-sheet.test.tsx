@@ -25,6 +25,38 @@ const testExercise: Exercise = {
   updatedAt: '2026-04-01T00:00:00.000Z',
 }
 
+const frequentExerciseA: Exercise = {
+  id: 'freq-1',
+  name: 'Back Squat',
+  aliases: ['squat'],
+  category: 'BARBELL',
+  movementPattern: 'SQUAT',
+  muscleGroups: { primary: ['QUADS'], secondary: ['GLUTES'] },
+  equipmentRequired: ['BARBELL'],
+  supports1RM: true,
+  isBilateral: true,
+  isCustom: false,
+  isPublic: true,
+  createdAt: '2026-04-01T00:00:00.000Z',
+  updatedAt: '2026-04-01T00:00:00.000Z',
+}
+
+const frequentExerciseB: Exercise = {
+  id: 'freq-2',
+  name: 'Deadlift',
+  aliases: ['dl'],
+  category: 'BARBELL',
+  movementPattern: 'HINGE',
+  muscleGroups: { primary: ['HAMSTRINGS'], secondary: ['GLUTES'] },
+  equipmentRequired: ['BARBELL'],
+  supports1RM: true,
+  isBilateral: true,
+  isCustom: false,
+  isPublic: true,
+  createdAt: '2026-04-01T00:00:00.000Z',
+  updatedAt: '2026-04-01T00:00:00.000Z',
+}
+
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
@@ -43,10 +75,21 @@ const mockRecentState = vi.hoisted(() => ({
   data: [] as Exercise[],
   isError: false,
 }))
+const mockFrequentState = vi.hoisted(() => ({
+  data: [] as Exercise[],
+  lastCalledUserId: undefined as string | undefined,
+}))
 
 vi.mock('@/hooks/use-exercises', () => ({
   useExercises: () => mockExercisesState,
   useRecentlyUsedExercises: () => mockRecentState,
+}))
+
+vi.mock('@/hooks/use-frequent-exercises', () => ({
+  useFrequentExercises: (userId: string | undefined) => {
+    mockFrequentState.lastCalledUserId = userId
+    return { data: mockFrequentState.data }
+  },
 }))
 
 // Import after mocks are registered
@@ -72,6 +115,8 @@ describe('AddExerciseSheet', () => {
     mockExercisesState.isError = false
     mockRecentState.data = []
     mockRecentState.isError = false
+    mockFrequentState.data = []
+    mockFrequentState.lastCalledUserId = undefined
   })
 
   it('renders the exercise search input', () => {
@@ -125,5 +170,19 @@ describe('AddExerciseSheet', () => {
   it('does not render when open is false', () => {
     renderWithProviders(<AddExerciseSheet {...defaultProps} open={false} />)
     expect(screen.queryByPlaceholderText('Search exercises')).not.toBeInTheDocument()
+  })
+
+  it('passes frequentExercises from useFrequentExercises to ExercisePickerPanel', () => {
+    mockFrequentState.data = [frequentExerciseA, frequentExerciseB]
+    renderWithProviders(<AddExerciseSheet {...defaultProps} userId="user-123" />)
+
+    expect(screen.getByText('Back Squat')).toBeInTheDocument()
+    expect(screen.getByText('Deadlift')).toBeInTheDocument()
+  })
+
+  it('calls useFrequentExercises with undefined when no userId is provided', () => {
+    renderWithProviders(<AddExerciseSheet {...defaultProps} />)
+
+    expect(mockFrequentState.lastCalledUserId).toBeUndefined()
   })
 })

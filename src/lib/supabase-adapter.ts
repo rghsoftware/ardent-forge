@@ -1625,6 +1625,23 @@ export class SupabaseAdapter implements DataAdapter {
     return uniqueIds
   }
 
+  async getFrequentExerciseIds(
+    userId: string,
+    limit = 8,
+    windowDays = 90,
+  ): Promise<string[]> {
+    const { data, error } = await this.client.rpc('get_frequent_exercise_ids', {
+      uid: userId,
+      lim: limit,
+      window_days: windowDays,
+    })
+    if (error) {
+      console.error('[supabase-adapter] getFrequentExerciseIds failed:', { userId, error })
+      return []
+    }
+    return (data as Array<{ exercise_id: string }>).map((r) => r.exercise_id)
+  }
+
   async getExerciseWorkoutHistory(
     userId: string,
     exerciseId: string,

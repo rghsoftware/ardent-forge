@@ -4,9 +4,9 @@
 **Tech:** Context/Features/024-Frequent-Exercises-Add-Picker/Tech.md
 
 ## Progress
-- **Status:** Not started
+- **Status:** Complete
 - **Current task:** --
-- **Last milestone:** --
+- **Last milestone:** M4 (2026-04-16) -- validation PASS, 2476/2476 tests, 0 lint errors
 
 ## Team Orchestration
 

@@ -39,6 +39,7 @@ export function createMockAdapter(
     // Exercise history operations
     getOneRepMaxHistory: vi.fn().mockResolvedValue([]),
     getRecentlyUsedExerciseIds: vi.fn().mockResolvedValue([]),
+    getFrequentExerciseIds: vi.fn().mockResolvedValue([]),
     getExerciseWorkoutHistory: vi.fn().mockResolvedValue([]),
 
     // User profile operations

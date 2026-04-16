@@ -1511,6 +1511,48 @@ describe('Utility operations', () => {
     })
   })
 
+  describe('getFrequentExerciseIds', () => {
+    it('A-006: returns exercise IDs in ranked order from server response', async () => {
+      mockClient.rpc.mockResolvedValue({
+        data: [
+          { exercise_id: 'id-a', set_count: 10 },
+          { exercise_id: 'id-b', set_count: 5 },
+          { exercise_id: 'id-c', set_count: 3 },
+        ],
+        error: null,
+      })
+
+      const result = await adapter.getFrequentExerciseIds('user-001')
+
+      expect(mockClient.rpc).toHaveBeenCalledWith('get_frequent_exercise_ids', {
+        uid: 'user-001',
+        lim: 8,
+        window_days: 90,
+      })
+      expect(result).toEqual(['id-a', 'id-b', 'id-c'])
+    })
+
+    it('graceful degradation: returns [] and logs error when rpc fails', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      try {
+        mockClient.rpc.mockResolvedValue({
+          data: null,
+          error: { message: 'rpc error' },
+        })
+
+        const result = await adapter.getFrequentExerciseIds('user-001')
+
+        expect(result).toEqual([])
+        expect(errorSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[supabase-adapter]'),
+          expect.anything(),
+        )
+      } finally {
+        errorSpy.mockRestore()
+      }
+    })
+  })
+
   describe('getExerciseWorkoutHistory', () => {
     it('returns workout history grouped by workout log', async () => {
       const joinRows = [

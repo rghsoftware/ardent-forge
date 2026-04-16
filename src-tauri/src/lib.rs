@@ -75,6 +75,7 @@ pub fn run() {
             commands::workout_logs::update_logged_activity,
             commands::workout_logs::update_logged_activity_group,
             commands::workout_logs::get_recently_used_exercise_ids,
+            commands::workout_logs::get_frequent_exercise_ids,
             commands::workout_logs::get_exercise_workout_history,
             commands::workout_logs::create_workout_log_full,
             // Session templates

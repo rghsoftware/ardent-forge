@@ -195,6 +195,13 @@ export interface DataAdapter {
   /** Returns recently used exercise IDs ordered by most recent usage. */
   getRecentlyUsedExerciseIds(userId: string, limit?: number): Promise<string[]>
 
+  /** Returns exercise IDs ranked by completed set count within the given time window. */
+  getFrequentExerciseIds(
+    userId: string,
+    limit?: number,
+    windowDays?: number,
+  ): Promise<string[]>
+
   /** Returns past workouts containing a specific exercise with their sets. */
   getExerciseWorkoutHistory(
     userId: string,
