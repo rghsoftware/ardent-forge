@@ -141,6 +141,9 @@ function ActiveWorkoutPage() {
   const [pendingInputs, setPendingInputs] = useState<Record<string, boolean>>({})
   // restMinimized collapses the full-page rest view to the RestTimerBanner strip
   const [restMinimized, setRestMinimized] = useState(false)
+  // expandedDoneActivityIds tracks which done (skipped) activities the user has
+  // re-expanded to add more sets. Ephemeral session UI -- not persisted.
+  const [expandedDoneActivityIds, setExpandedDoneActivityIds] = useState<Set<string>>(new Set())
 
   // Pause/resume derived state and handlers.
   // Pause UI is hidden on the Tauri (mobile) adapter because pause-state
@@ -284,11 +287,19 @@ function ActiveWorkoutPage() {
     return lastId
   }, [loggedGroups, skippedActivityIds])
 
+  const allActivitiesDone = useMemo(
+    () =>
+      loggedGroups.length > 0 &&
+      loggedGroups.flatMap((g) => g.activities).every((a) => skippedActivityIds.has(a.id)),
+    [loggedGroups, skippedActivityIds],
+  )
+
   // -----------------------------------------------------------------------
   // Handlers
   // -----------------------------------------------------------------------
 
   const handleFinish = useCallback(async () => {
+    setPendingInputs({})
     if (!workoutLog) {
       console.error('[workout-page] handleFinish blocked: no active workoutLog in store')
       setPageError('Cannot finish workout: no active session. Please reload.')
@@ -447,6 +458,23 @@ function ActiveWorkoutPage() {
     setDetectedPrs([])
     navigate({ to: '/' })
   }, [navigate])
+
+  const handleMarkDone = useCallback(
+    (activityId: string) => {
+      skipActivity(activityId)
+      setPendingInputs((prev) => ({ ...prev, [activityId]: false }))
+      setExpandedDoneActivityIds((prev) => {
+        const next = new Set(prev)
+        next.delete(activityId)
+        return next
+      })
+    },
+    [skipActivity],
+  )
+
+  const handleExpandDone = useCallback((activityId: string) => {
+    setExpandedDoneActivityIds((prev) => new Set(prev).add(activityId))
+  }, [])
 
   // -----------------------------------------------------------------------
   // Summary view
@@ -648,10 +676,17 @@ function ActiveWorkoutPage() {
               }
 
               return group.activities.map((activity) => {
-                // Guard: skipped activities never render
-                if (skippedActivityIds.has(activity.id)) return null
                 const exercise = exerciseMap[activity.exerciseId]
                 const modality = getExerciseModality(exercise, group.groupType)
+
+                // Cardio and ruck activities do not have a collapsed done state --
+                // hide them when skipped.
+                if (
+                  skippedActivityIds.has(activity.id) &&
+                  (modality === 'cardio' || modality === 'ruck')
+                ) {
+                  return null
+                }
 
                 // Cardio panel
                 if (modality === 'cardio' && exercise) {
@@ -769,6 +804,10 @@ function ActiveWorkoutPage() {
                   })
                 }
 
+                const isDone =
+                  skippedActivityIds.has(activity.id) &&
+                  !expandedDoneActivityIds.has(activity.id)
+
                 return (
                   <div key={activity.id}>
                     <ExerciseBlock
@@ -779,6 +818,8 @@ function ActiveWorkoutPage() {
                       isConfirming={isConfirmingSet}
                       isBodyweight={exercise?.category === 'BODYWEIGHT'}
                       isActive={activity.id === activeFocusId}
+                      isDone={isDone}
+                      onExpandToggle={() => handleExpandDone(activity.id)}
                       onAddSet={() =>
                         setPendingInputs((prev) => ({ ...prev, [activity.id]: true }))
                       }
@@ -793,9 +834,7 @@ function ActiveWorkoutPage() {
                         }
                       }}
                       onUnconfirmSet={handleUnconfirmSet}
-                      onSkipExercise={
-                        confirmedSets.length > 0 ? () => skipActivity(activity.id) : undefined
-                      }
+                      onSkipExercise={() => handleMarkDone(activity.id)}
                       onRemoveExercise={() => {
                         removeActivity(activity.id).catch(() => {
                           // Hook already logged; surface a user-facing error.
@@ -813,6 +852,11 @@ function ActiveWorkoutPage() {
           Programmed workouts render no footer (the flow is predetermined). */}
           {!isProgrammedWorkout && (
             <div className="sticky bottom-0 z-40 bg-surface-anvil px-4 pt-3 pb-4">
+              {allActivitiesDone && (
+                <p className="mb-3 bg-surface-pit/40 px-4 py-3 text-center text-xs font-bold uppercase tracking-widest text-ember">
+                  ALL EXERCISES DONE -- READY TO FINISH?
+                </p>
+              )}
               {loggedGroups.length === 0 && !firstWorkoutCompleted && (
                 <OnboardingHint hintKey="workout-add-exercise">
                   Tap below to add your first exercise.
