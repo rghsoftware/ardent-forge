@@ -6,7 +6,7 @@
 ## Progress
 - **Status:** Complete
 - **Current task:** --
-- **Last milestone:** M4 (Feature complete -- all assertions A-001 through A-008 verified)
+- **Last milestone:** M4 + Phase 5 review follow-up (S005-T, S006-T, S007-T complete 2026-04-16)
 
 ## Team Orchestration
 
@@ -161,7 +161,7 @@
   - **Depends:** S002-T
   - **Parallel:** false
 
-- [ ] S007-T: Add tests for mixed-modality and programmed-workout banner behavior.
+- [x] S007-T: Add tests for mixed-modality and programmed-workout banner behavior.
   (1) Test that `allActivitiesDone` correctly filters CIRCUIT groups -- a workout
   with straight-set + circuit groups shows the banner once all straight-set
   activities are done. (2) Test that the all-done banner is absent when
