@@ -6,11 +6,9 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { useEffect } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { isTauri, invoke } from '@tauri-apps/api/core'
 import { useSessionReminderBrowser } from '@/hooks/use-session-reminder-browser'
 import { useAuth } from '@/lib/auth'
-import { getAdapter } from '@/lib/adapter'
 import { cn } from '@/lib/utils'
 import { SyncIndicator } from '@/components/layout/sync-indicator'
 import { SidebarNav } from '@/components/layout/sidebar-nav'
@@ -29,8 +27,6 @@ function AuthenticatedLayout() {
   const { user, loading, isGuest } = useAuth()
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const queryClient = useQueryClient()
-
   // beforeLoad only fires on route transitions, not on runtime auth state
   // changes. This effect redirects when auth state changes while the user is
   // already on an authenticated route (e.g., session expiry, sign-out from
@@ -40,17 +36,6 @@ function AuthenticatedLayout() {
       navigate({ to: '/sign-in', search: { reason: 'session-expired' } })
     }
   }, [loading, user, isGuest, navigate])
-
-  // Prefetch frequent exercises so data is ready before the user opens the picker.
-  useEffect(() => {
-    if (!user?.id) return
-    const adapter = getAdapter()
-    queryClient.prefetchQuery({
-      queryKey: ['exercises', 'frequent', user.id],
-      queryFn: () => adapter.getFrequentExerciseIds(user.id, 8, 90),
-      staleTime: 5 * 60 * 1000,
-    })
-  }, [user?.id])
 
   // Start the browser session reminder scheduler (no-ops in Tauri mode).
   useSessionReminderBrowser()

@@ -46,7 +46,7 @@ export function ExercisePickerPanel({
     [onExerciseSelected],
   )
 
-  const showRecent = debouncedQuery.length === 0 && recentExercises.length > 0
+  const showRecent = !searchQuery && recentExercises.length > 0
   const showFrequent = !searchQuery && (frequentExercises?.length ?? 0) > 0
 
   return (

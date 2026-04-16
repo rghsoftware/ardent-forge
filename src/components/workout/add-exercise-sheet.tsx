@@ -29,7 +29,10 @@ export function AddExerciseSheet({
   onExerciseSelected,
   userId,
 }: AddExerciseSheetProps) {
-  const { data: frequentExercises = [] } = useFrequentExercises(userId)
+  const { data: frequentExercises = [], isError: frequentFailed } = useFrequentExercises(userId)
+  if (frequentFailed) {
+    console.warn('[add-exercise-sheet] Frequent exercises query failed; showing empty state')
+  }
 
   const handleSelected = useCallback(
     (exercise: Exercise) => {
