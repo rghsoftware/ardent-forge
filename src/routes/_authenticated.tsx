@@ -27,7 +27,6 @@ function AuthenticatedLayout() {
   const { user, loading, isGuest } = useAuth()
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-
   // beforeLoad only fires on route transitions, not on runtime auth state
   // changes. This effect redirects when auth state changes while the user is
   // already on an authenticated route (e.g., session expiry, sign-out from

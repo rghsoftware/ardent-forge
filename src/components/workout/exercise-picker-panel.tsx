@@ -9,6 +9,7 @@ export interface ExercisePickerPanelProps {
   userId?: string
   onExerciseSelected: (exercise: Exercise) => void
   autoFocus?: boolean
+  frequentExercises?: Exercise[]
 }
 
 /**
@@ -20,6 +21,7 @@ export function ExercisePickerPanel({
   userId,
   onExerciseSelected,
   autoFocus = true,
+  frequentExercises,
 }: ExercisePickerPanelProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedQuery = useDebouncedValue(searchQuery, 200)
@@ -44,7 +46,8 @@ export function ExercisePickerPanel({
     [onExerciseSelected],
   )
 
-  const showRecent = debouncedQuery.length === 0 && recentExercises.length > 0
+  const showRecent = !searchQuery && recentExercises.length > 0
+  const showFrequent = !searchQuery && (frequentExercises?.length ?? 0) > 0
 
   return (
     <div className="flex h-full flex-col">
@@ -57,6 +60,17 @@ export function ExercisePickerPanel({
           <p className="py-8 text-center text-xs text-destructive">
             Could not load exercises. Check your connection and try again.
           </p>
+        )}
+
+        {!exercisesFailed && showFrequent && (
+          <div className="mb-4">
+            <p className="px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-warm-ash/60">
+              Frequent
+            </p>
+            {frequentExercises!.map((ex) => (
+              <ExerciseRow key={ex.id} exercise={ex} onSelect={handleSelect} />
+            ))}
+          </div>
         )}
 
         {!exercisesFailed && showRecent && (
@@ -86,8 +100,10 @@ export function ExercisePickerPanel({
           </div>
         )}
 
-        {!exercisesFailed && debouncedQuery.length === 0 && recentExercises.length === 0 && (
-          <p className="py-8 text-center text-xs text-warm-ash/60">Type to search exercises</p>
+        {!exercisesFailed && !searchQuery && !showFrequent && !showRecent && (
+          <p className="px-4 py-4 text-[11px] uppercase tracking-widest text-warm-ash/40">
+            No history yet -- start a workout to build suggestions.
+          </p>
         )}
       </div>
     </div>

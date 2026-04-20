@@ -1365,6 +1365,33 @@ describe('Exercise history operations', () => {
     })
   })
 
+  describe('getFrequentExerciseIds', () => {
+    it('forwards args to Rust command and returns IDs', async () => {
+      mockInvoke.mockResolvedValue(['id-1', 'id-2'])
+
+      const result = await adapter.getFrequentExerciseIds('user-123', 5, 60)
+
+      expect(mockInvoke).toHaveBeenCalledWith('get_frequent_exercise_ids', {
+        user_id: 'user-123',
+        limit: 5,
+        window_days: 60,
+      })
+      expect(result).toEqual(['id-1', 'id-2'])
+    })
+
+    it('uses default limit and window_days when not provided', async () => {
+      mockInvoke.mockResolvedValue([])
+
+      await adapter.getFrequentExerciseIds('user-123')
+
+      expect(mockInvoke).toHaveBeenCalledWith('get_frequent_exercise_ids', {
+        user_id: 'user-123',
+        limit: 8,
+        window_days: 90,
+      })
+    })
+  })
+
   describe('getExerciseWorkoutHistory', () => {
     it('returns workout history with mapped logs and sets', async () => {
       mockInvoke.mockResolvedValue([

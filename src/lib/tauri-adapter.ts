@@ -1632,6 +1632,18 @@ export class TauriAdapter implements DataAdapter {
     })
   }
 
+  async getFrequentExerciseIds(
+    userId: string,
+    limit = 8,
+    windowDays = 90,
+  ): Promise<string[]> {
+    return invokeCommand<string[]>('get_frequent_exercise_ids', {
+      user_id: userId,
+      limit,
+      window_days: windowDays,
+    })
+  }
+
   async getExerciseWorkoutHistory(
     userId: string,
     exerciseId: string,

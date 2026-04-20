@@ -679,6 +679,43 @@ pub async fn get_recently_used_exercise_ids(
 }
 
 #[tauri::command]
+pub async fn get_frequent_exercise_ids(
+    pool: State<'_, SqlitePool>,
+    user_id: String,
+    limit: Option<i64>,
+    window_days: Option<i64>,
+) -> Result<Vec<String>, AppError> {
+    let lim = limit.unwrap_or(8);
+    let window = window_days.unwrap_or(90);
+
+    #[derive(sqlx::FromRow)]
+    struct FreqRow {
+        exercise_id: String,
+    }
+
+    let rows = sqlx::query_as::<_, FreqRow>(
+        "SELECT la.exercise_id \
+         FROM logged_activities la \
+         JOIN logged_activity_groups lag ON lag.id = la.logged_group_id \
+         JOIN workout_logs wl ON wl.id = lag.workout_log_id \
+         LEFT JOIN logged_sets ls \
+           ON ls.logged_activity_id = la.id AND ls.completed = 1 \
+         WHERE wl.user_id = ? \
+           AND wl.started_at >= datetime('now', '-' || ? || ' days') \
+         GROUP BY la.exercise_id \
+         ORDER BY COUNT(ls.id) DESC \
+         LIMIT ?",
+    )
+    .bind(&user_id)
+    .bind(window)
+    .bind(lim)
+    .fetch_all(pool.inner())
+    .await?;
+
+    Ok(rows.into_iter().map(|r| r.exercise_id).collect())
+}
+
+#[tauri::command]
 pub async fn get_exercise_workout_history(
     pool: State<'_, SqlitePool>,
     user_id: String,

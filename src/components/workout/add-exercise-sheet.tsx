@@ -7,6 +7,7 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 import { ExercisePickerPanel } from './exercise-picker-panel'
+import { useFrequentExercises } from '@/hooks/use-frequent-exercises'
 import type { Exercise } from '@/domain/types'
 
 interface AddExerciseSheetProps {
@@ -28,6 +29,11 @@ export function AddExerciseSheet({
   onExerciseSelected,
   userId,
 }: AddExerciseSheetProps) {
+  const { data: frequentExercises = [], isError: frequentFailed } = useFrequentExercises(userId)
+  if (frequentFailed) {
+    console.warn('[add-exercise-sheet] Frequent exercises query failed; showing empty state')
+  }
+
   const handleSelected = useCallback(
     (exercise: Exercise) => {
       onExerciseSelected(exercise)
@@ -46,7 +52,12 @@ export function AddExerciseSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <ExercisePickerPanel userId={userId} onExerciseSelected={handleSelected} autoFocus={open} />
+        <ExercisePickerPanel
+          userId={userId}
+          onExerciseSelected={handleSelected}
+          autoFocus={open}
+          frequentExercises={frequentExercises}
+        />
       </SheetContent>
     </Sheet>
   )
