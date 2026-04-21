@@ -33,7 +33,7 @@ export interface LoggedActivityGroupWithActivities extends LoggedActivityGroup {
 // Undo action -- tracks the last confirmed set for 10s reversal
 // ---------------------------------------------------------------------------
 
-interface UndoAction {
+export interface UndoAction {
   setId: string
   loggedActivityId: string
   expiresAt: number

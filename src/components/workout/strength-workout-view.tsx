@@ -24,7 +24,14 @@ import {
 } from '@/components/ui/dialog'
 import { getExerciseModality, DEFAULT_CIRCUIT_REPS } from '@/lib/workout-utils'
 import type { Exercise, LoggedSet, SetType } from '@/domain/types'
-import type { LoggedActivityGroupWithActivities } from '@/stores/active-workout-store'
+import type { LoggedActivityGroupWithActivities, UndoAction } from '@/stores/active-workout-store'
+
+type ProgramBannerProps = {
+  programName?: string
+  blockName?: string
+  weekNumber: number
+  dayLabel?: string
+}
 
 interface StrengthWorkoutViewProps {
   workoutLog: { id: string; userId: string }
@@ -62,19 +69,13 @@ interface StrengthWorkoutViewProps {
   skippedActivityIds: Set<string>
   expandedDoneActivityIds: Set<string>
   exerciseMap: Record<string, Exercise>
-  exerciseNames: Record<string, string>
   restTimer: { remaining: number; total: number } | null
   restMinimized: boolean
   setRestMinimized: (minimized: boolean) => void
-  undoAction: { setId: string; expiresAt: number } | null
+  undoAction: UndoAction | null
   pendingInputs: Record<string, boolean>
   setPendingInputs: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
-  programBannerProps: {
-    programName?: string
-    blockName?: string
-    weekNumber?: number
-    dayLabel?: string
-  } | null
+  programBannerProps: ProgramBannerProps | null
   showAddExercise: boolean
   setShowAddExercise: (open: boolean) => void
   showDiscardDialog: boolean
@@ -85,6 +86,7 @@ interface StrengthWorkoutViewProps {
     loggedActivityId: string,
     setData: Omit<LoggedSet, 'id'>,
     restSeconds?: number,
+    exerciseName?: string,
   ) => Promise<unknown>
   deleteSet: (activityId: string, setId: string) => Promise<void>
   removeActivity: (activityId: string) => Promise<void>
@@ -122,7 +124,6 @@ export function StrengthWorkoutView({
   skippedActivityIds,
   expandedDoneActivityIds,
   exerciseMap,
-  exerciseNames,
   restTimer,
   restMinimized,
   setRestMinimized,
@@ -142,6 +143,8 @@ export function StrengthWorkoutView({
   skipRest,
   adjustRest,
 }: StrengthWorkoutViewProps) {
+  const exerciseNames = Object.fromEntries(Object.entries(exerciseMap).map(([k, v]) => [k, v.name]))
+
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
       {pageError && <ErrorBanner message={pageError} onDismiss={() => setPageError(null)} />}
@@ -225,7 +228,11 @@ export function StrengthWorkoutView({
                       rounds={3}
                       onExerciseDone={async (exerciseIndex, round, actualReps) => {
                         const activity = group.activities[exerciseIndex]
-                        if (!activity) return
+                        if (!activity) {
+                          console.error('[strength-workout-view] onExerciseDone: no activity at index', { exerciseIndex, round, groupId: group.id })
+                          setPageError('Failed to record circuit set. Please log it manually.')
+                          return
+                        }
                         try {
                           // Pass restSeconds: 0 -- CircuitPanel runs its own inter-exercise
                           // and inter-round rest, so the global rest timer must not fire.
@@ -241,7 +248,7 @@ export function StrengthWorkoutView({
                             0,
                           )
                         } catch (err) {
-                          console.error('[workout-log] Failed to log circuit set:', err)
+                          console.error('[strength-workout-view] Failed to log circuit set:', err)
                           setPageError('Failed to save circuit set.')
                         }
                       }}
@@ -288,7 +295,7 @@ export function StrengthWorkoutView({
                                 : undefined,
                             })
                           } catch (err) {
-                            console.error('[workout-page] cardio confirmSet:', err)
+                            console.error('[strength-workout-view] cardio confirmSet:', err)
                             setPageError('Failed to save cardio session.')
                           }
                         }}
@@ -321,7 +328,7 @@ export function StrengthWorkoutView({
                                 : undefined,
                             })
                           } catch (err) {
-                            console.error('[workout-page] ruck confirmSet:', err)
+                            console.error('[strength-workout-view] ruck confirmSet:', err)
                             setPageError('Failed to save ruck session.')
                           }
                         }}

@@ -207,6 +207,7 @@ function ActiveWorkoutPage() {
         return Math.max(0, Math.round(elapsedMs / 1000))
       } catch (err) {
         console.error('[workout-log] Failed to compute elapsed:', err)
+        setPageError('Workout timer data is corrupt. Please discard or reload.')
         return 0
       }
     }
@@ -342,7 +343,10 @@ function ActiveWorkoutPage() {
     try {
       await discardWorkout()
       setShowDiscardDialog(false)
-      navigate({ to: '/' })
+      await navigate({ to: '/' }).catch((err) => {
+        console.error('[workout-page] handleDiscard navigation failed:', err)
+        setPageError('Workout discarded but could not navigate home.')
+      })
     } catch (err) {
       console.error('[workout-page] handleDiscard:', err)
       setPageError('Failed to discard workout.')
@@ -435,11 +439,19 @@ function ActiveWorkoutPage() {
     setShowSummary(false)
     setSummaryData(null)
     setDetectedPrs([])
-    navigate({ to: '/' })
+    navigate({ to: '/' }).catch((err) => {
+      console.error('[workout-page] handleSummaryDone navigation failed:', err)
+      setPageError('Could not return to home. Please navigate manually.')
+    })
   }, [navigate])
 
   const handleMarkDone = useCallback(
     (activityId: string) => {
+      if (!activityId) {
+        console.error('[workout-page] handleMarkDone called with empty activityId')
+        setPageError('Could not mark exercise done. Please reload.')
+        return
+      }
       skipActivity(activityId)
       setPendingInputs((prev) => ({ ...prev, [activityId]: false }))
       setExpandedDoneActivityIds((prev) => {
@@ -452,6 +464,11 @@ function ActiveWorkoutPage() {
   )
 
   const handleExpandDone = useCallback((activityId: string) => {
+    if (!activityId) {
+      console.error('[workout-page] handleExpandDone called with empty activityId')
+      setPageError('Could not expand exercise. Please reload.')
+      return
+    }
     setExpandedDoneActivityIds((prev) => new Set(prev).add(activityId))
   }, [])
 
@@ -477,7 +494,10 @@ function ActiveWorkoutPage() {
   // Guard: no active workout
   // -----------------------------------------------------------------------
 
-  if (!workoutLog) return null
+  if (!workoutLog) {
+    console.error('[workout-page] Rendered without active workoutLog')
+    return <div className="min-h-[100dvh] bg-surface-anvil" />
+  }
 
   // -----------------------------------------------------------------------
   // Event log: render EventDetail instead of exercise/set UI
@@ -538,7 +558,6 @@ function ActiveWorkoutPage() {
       skippedActivityIds={skippedActivityIds}
       expandedDoneActivityIds={expandedDoneActivityIds}
       exerciseMap={exerciseMap}
-      exerciseNames={exerciseNames}
       restTimer={restTimer}
       restMinimized={restMinimized}
       setRestMinimized={setRestMinimized}

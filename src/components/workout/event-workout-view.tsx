@@ -14,8 +14,10 @@ import {
 } from '@/components/ui/dialog'
 import type { EventMetadata } from '@/domain/types'
 
+export type EventWorkoutLog = { id: string; eventMetadata: EventMetadata }
+
 interface EventWorkoutViewProps {
-  workoutLog: { id: string; eventMetadata: EventMetadata }
+  workoutLog: EventWorkoutLog
   elapsedSeconds: number
   isPauseSupported: boolean
   isPaused: boolean
