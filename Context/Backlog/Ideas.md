@@ -5,6 +5,14 @@ skill. Prioritize via the backlog-prioritize skill.
 
 <!-- Add new ideas below this line -->
 
+## Move view-local modal state into StrengthWorkoutView (P22-014)
+
+**Added:** 2026-04-20
+**Source:** PR #115 review finding P22-014
+**Priority:** Low
+
+`showAddExercise`, `showDiscardDialog`, `pendingInputs`, and `restMinimized` (4 `useState` calls) are used exclusively inside `StrengthWorkoutView` but are held in the parent route because the extraction was a pure mechanical lift. Moving these into the component cuts the prop interface from ~44 to ~36 props and removes shared-state ownership with no behavioral change. Out of scope for the extraction PR -- do as a standalone refactor.
+
 ## ~~P17 Review: Adapter test coverage gaps (PR #107)~~ (Resolved 2026-04-15)
 
 **Added:** 2026-04-12
