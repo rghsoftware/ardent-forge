@@ -111,7 +111,6 @@ function ActiveWorkoutPage() {
   }, [allExercises])
 
   // Local UI state
-  const [showAddExercise, setShowAddExercise] = useState(false)
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
   const [showSummary, setShowSummary] = useState(false)
   const [pageError, setPageError] = useState<string | null>(null)
@@ -375,7 +374,6 @@ function ActiveWorkoutPage() {
   const handleDiscard = useCallback(async () => {
     try {
       await discardWorkout()
-      setShowDiscardDialog(false)
       await navigate({ to: '/' }).catch((err) => {
         console.error('[workout-page] handleDiscard navigation failed:', err)
         setPageError('Workout discarded but could not navigate home.')
@@ -598,12 +596,6 @@ function ActiveWorkoutPage() {
       pendingInputs={pendingInputs}
       setPendingInputs={setPendingInputs}
       programBannerProps={programBannerProps}
-      showAddExercise={showAddExercise}
-      setShowAddExercise={setShowAddExercise}
-      showDiscardDialog={showDiscardDialog}
-      setShowDiscardDialog={setShowDiscardDialog}
-      pageError={pageError}
-      setPageError={setPageError}
       confirmSet={confirmSet}
       deleteSet={deleteSet}
       removeActivity={removeActivity}

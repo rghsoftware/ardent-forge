@@ -105,8 +105,16 @@ Two related UX gaps in the workout logger:
 **Related:** Exercise picker/search component, workout history data, active workout flow
 **Priority:** Medium
 
-### Split log.$workoutId route into three components
+### P22-014: Move view-local modal state into StrengthWorkoutView
+
+**Added:** 2026-04-21
+**Source:** `Context/Reviews/` P22 review findings (PR #115)
+**Priority:** Medium
+**Context:** Modal state currently lives outside `StrengthWorkoutView`. Moving it inside the component would tighten encapsulation and reduce prop-threading into the view.
+**Related:** `src/routes/_authenticated/log.$workoutId/strength-workout-view.tsx`
+
+### ~~Split log.$workoutId route into three components~~ (Resolved 2026-04-21)
+
 **Added:** 2026-04-06
-**Context:** `src/routes/_authenticated/log.$workoutId.tsx` is ~800 lines with three distinct rendering paths (event workout, strength workout, post-workout summary) toggled by conditional branches. Splitting into separate route components would clarify ownership, shrink the file, and isolate state hoisting per path.
-**Related:** `src/routes/_authenticated/log.$workoutId.tsx`
+**Resolution:** Implemented in PR #115 -- route split into `EventWorkoutView` and `StrengthWorkoutView` child components.
 **Priority:** Medium

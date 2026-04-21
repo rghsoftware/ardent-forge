@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { WorkoutHeader } from '@/components/workout/workout-header'
 import { WorkoutPausedBar } from '@/components/workout/workout-paused-bar'
@@ -76,12 +77,6 @@ interface StrengthWorkoutViewProps {
   pendingInputs: Record<string, boolean>
   setPendingInputs: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
   programBannerProps: ProgramBannerProps | null
-  showAddExercise: boolean
-  setShowAddExercise: (open: boolean) => void
-  showDiscardDialog: boolean
-  setShowDiscardDialog: (open: boolean) => void
-  pageError: string | null
-  setPageError: (error: string | null) => void
   confirmSet: (
     loggedActivityId: string,
     setData: Omit<LoggedSet, 'id'>,
@@ -131,18 +126,15 @@ export function StrengthWorkoutView({
   pendingInputs,
   setPendingInputs,
   programBannerProps,
-  showAddExercise,
-  setShowAddExercise,
-  showDiscardDialog,
-  setShowDiscardDialog,
-  pageError,
-  setPageError,
   confirmSet,
   deleteSet,
   removeActivity,
   skipRest,
   adjustRest,
 }: StrengthWorkoutViewProps) {
+  const [showAddExercise, setShowAddExercise] = useState(false)
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false)
+  const [pageError, setPageError] = useState<string | null>(null)
   const exerciseNames = Object.fromEntries(Object.entries(exerciseMap).map(([k, v]) => [k, v.name]))
 
   return (
