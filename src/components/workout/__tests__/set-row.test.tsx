@@ -139,4 +139,62 @@ describe('SetRow', () => {
       expect(onDelete).toHaveBeenCalledOnce()
     })
   })
+
+  describe('onPendingDirty', () => {
+    it('is called exactly once on first weight edit of a pending row', async () => {
+      const user = userEvent.setup()
+      const onPendingDirty = vi.fn()
+      render(
+        <SetRow
+          setNumber={1}
+          confirmed={false}
+          isPending={true}
+          onConfirm={vi.fn()}
+          onPendingDirty={onPendingDirty}
+        />,
+      )
+
+      const weightInput = screen.getByLabelText('Weight for set 1')
+      await user.type(weightInput, '135')
+
+      expect(onPendingDirty).toHaveBeenCalledOnce()
+    })
+
+    it('is not called on a confirmed (read-only) row', () => {
+      const onPendingDirty = vi.fn()
+      render(
+        <SetRow
+          setNumber={1}
+          confirmed={true}
+          isPending={false}
+          onConfirm={vi.fn()}
+          onPendingDirty={onPendingDirty}
+        />,
+      )
+
+      expect(onPendingDirty).not.toHaveBeenCalled()
+    })
+
+    it('is not called a second time on subsequent field edits', async () => {
+      const user = userEvent.setup()
+      const onPendingDirty = vi.fn()
+      render(
+        <SetRow
+          setNumber={1}
+          confirmed={false}
+          isPending={true}
+          onConfirm={vi.fn()}
+          onPendingDirty={onPendingDirty}
+        />,
+      )
+
+      const weightInput = screen.getByLabelText('Weight for set 1')
+      await user.type(weightInput, '135')
+      expect(onPendingDirty).toHaveBeenCalledOnce()
+
+      const repsInput = screen.getByLabelText('Reps for set 1')
+      await user.type(repsInput, '5')
+      expect(onPendingDirty).toHaveBeenCalledOnce()
+    })
+  })
 })
