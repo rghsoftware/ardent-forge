@@ -40,6 +40,8 @@ interface ExerciseBlockProps {
   onDeleteSet?: (setId: string) => void
   onUnconfirmSet?: (loggedActivityId: string, setId: string) => void
   onRemoveExercise?: () => void
+  /** Called when the user first edits the pending (pre-filled) input row. */
+  onPendingDirty?: () => void
 }
 
 export function ExerciseBlock({
@@ -57,6 +59,7 @@ export function ExerciseBlock({
   onDeleteSet,
   onUnconfirmSet,
   onRemoveExercise,
+  onPendingDirty,
 }: ExerciseBlockProps) {
   const firstWorkoutCompleted = useOnboardingStore((s) => s.firstWorkoutCompleted)
   const hasPrescribed = sets.some((s) => s.prescribedWeight != null || s.prescribedReps != null)
@@ -78,10 +81,7 @@ export function ExerciseBlock({
 
   if (isDone) {
     return (
-      <section
-        aria-label={`${exerciseName} exercise`}
-        className="bg-surface-pit/40"
-      >
+      <section aria-label={`${exerciseName} exercise`} className="bg-surface-pit/40">
         <div className="flex items-center gap-3 px-4 py-3">
           <h3 className="min-w-0 flex-1 truncate font-display text-xs font-medium text-warm-ash/60">
             {exerciseName}
@@ -181,29 +181,33 @@ export function ExerciseBlock({
       )}
 
       <div className="flex flex-col gap-[0.4rem]">
-        {sets.map((set) => (
-          <SetRow
-            key={set.id}
-            setNumber={set.setNumber}
-            initialWeight={set.weight}
-            initialReps={set.reps}
-            confirmed={set.confirmed}
-            isConfirming={isConfirming}
-            prescribedWeight={set.prescribedWeight}
-            prescribedReps={set.prescribedReps}
-            isBodyweight={isBodyweight}
-            isPending={!set.confirmed && set.id.startsWith('pending-')}
-            onConfirm={(weight, reps, setType) =>
-              onConfirmSet(loggedActivityId, set.setNumber, weight, reps, setType)
-            }
-            onDelete={onDeleteSet ? () => onDeleteSet(set.id) : undefined}
-            onUnconfirm={
-              set.confirmed && onUnconfirmSet
-                ? () => onUnconfirmSet(loggedActivityId, set.id)
-                : undefined
-            }
-          />
-        ))}
+        {sets.map((set) => {
+          const isThisPending = !set.confirmed && set.id.startsWith('pending-')
+          return (
+            <SetRow
+              key={set.id}
+              setNumber={set.setNumber}
+              initialWeight={set.weight}
+              initialReps={set.reps}
+              confirmed={set.confirmed}
+              isConfirming={isConfirming}
+              prescribedWeight={set.prescribedWeight}
+              prescribedReps={set.prescribedReps}
+              isBodyweight={isBodyweight}
+              isPending={isThisPending}
+              onPendingDirty={isThisPending ? onPendingDirty : undefined}
+              onConfirm={(weight, reps, setType) =>
+                onConfirmSet(loggedActivityId, set.setNumber, weight, reps, setType)
+              }
+              onDelete={onDeleteSet ? () => onDeleteSet(set.id) : undefined}
+              onUnconfirm={
+                set.confirmed && onUnconfirmSet
+                  ? () => onUnconfirmSet(loggedActivityId, set.id)
+                  : undefined
+              }
+            />
+          )
+        })}
       </div>
       {(onAddSet || onSkipExercise) && (
         <div className="flex px-4 pb-3 pt-1">

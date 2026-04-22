@@ -134,8 +134,20 @@ export function StrengthWorkoutView({
 }: StrengthWorkoutViewProps) {
   const [showAddExercise, setShowAddExercise] = useState(false)
   const [showDiscardDialog, setShowDiscardDialog] = useState(false)
+  const [showFinishDirtyDialog, setShowFinishDirtyDialog] = useState(false)
   const [pageError, setPageError] = useState<string | null>(null)
+  // Tracks which activity IDs have a pending row the user has dirtied (edited).
+  const [pendingDirty, setPendingDirty] = useState<Set<string>>(new Set())
   const exerciseNames = Object.fromEntries(Object.entries(exerciseMap).map(([k, v]) => [k, v.name]))
+
+  // Wraps the parent handleFinish: prompts if any dirty pending rows exist.
+  const handleFinishWithGuard = () => {
+    if (pendingDirty.size > 0) {
+      setShowFinishDirtyDialog(true)
+    } else {
+      handleFinish()
+    }
+  }
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-surface-anvil">
@@ -159,7 +171,7 @@ export function StrengthWorkoutView({
         <WorkoutPausedBar
           isPaused={isPauseSupported && isPaused}
           onResume={handleResume}
-          onFinish={handleFinish}
+          onFinish={handleFinishWithGuard}
           isFinishing={isFinishing}
           canFinish={confirmedSetCount > 0}
           onDiscard={() => setShowDiscardDialog(true)}
@@ -382,8 +394,7 @@ export function StrengthWorkoutView({
                 }
 
                 const isDone =
-                  skippedActivityIds.has(activity.id) &&
-                  !expandedDoneActivityIds.has(activity.id)
+                  skippedActivityIds.has(activity.id) && !expandedDoneActivityIds.has(activity.id)
 
                 return (
                   <div key={activity.id}>
@@ -391,7 +402,15 @@ export function StrengthWorkoutView({
                       exerciseName={exercise?.name ?? 'Unknown Exercise'}
                       sets={setRows}
                       loggedActivityId={activity.id}
-                      onConfirmSet={handleConfirmSet}
+                      onConfirmSet={(loggedActivityId, setNumber, weight, reps, setType) => {
+                        // Clear dirty state for this activity when a set is confirmed.
+                        setPendingDirty((prev) => {
+                          const next = new Set(prev)
+                          next.delete(loggedActivityId)
+                          return next
+                        })
+                        handleConfirmSet(loggedActivityId, setNumber, weight, reps, setType)
+                      }}
                       isConfirming={isConfirmingSet}
                       isBodyweight={exercise?.category === 'BODYWEIGHT'}
                       isActive={activity.id === activeFocusId}
@@ -403,9 +422,18 @@ export function StrengthWorkoutView({
                       onDeleteSet={(setId) => {
                         if (setId.startsWith('pending-')) {
                           setPendingInputs((prev) => ({ ...prev, [activity.id]: false }))
+                          setPendingDirty((prev) => {
+                            const next = new Set(prev)
+                            next.delete(activity.id)
+                            return next
+                          })
                         } else {
                           deleteSet(activity.id, setId).catch((err) => {
-                            console.error('[workout-page] deleteSet failed:', { activityId: activity.id, setId, err })
+                            console.error('[workout-page] deleteSet failed:', {
+                              activityId: activity.id,
+                              setId,
+                              err,
+                            })
                             setPageError('Failed to delete set. Please try again.')
                           })
                         }
@@ -414,10 +442,16 @@ export function StrengthWorkoutView({
                       onSkipExercise={() => handleMarkDone(activity.id)}
                       onRemoveExercise={() => {
                         removeActivity(activity.id).catch((err) => {
-                          console.error('[workout-page] removeActivity failed:', { activityId: activity.id, err })
+                          console.error('[workout-page] removeActivity failed:', {
+                            activityId: activity.id,
+                            err,
+                          })
                           setPageError('Failed to remove exercise. Please try again.')
                         })
                       }}
+                      onPendingDirty={() =>
+                        setPendingDirty((prev) => new Set(prev).add(activity.id))
+                      }
                     />
                   </div>
                 )
@@ -479,6 +513,33 @@ export function StrengthWorkoutView({
             </Button>
             <Button variant="destructive" onClick={handleDiscard} disabled={isDiscarding}>
               {isDiscarding ? 'Discarding...' : 'Discard'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Finish with unconfirmed dirty set confirmation dialog */}
+      <Dialog open={showFinishDirtyDialog} onOpenChange={setShowFinishDirtyDialog}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Unconfirmed set</DialogTitle>
+            <DialogDescription>
+              You have an unconfirmed set that will not be saved. Finish anyway?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowFinishDirtyDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="molten"
+              onClick={() => {
+                setShowFinishDirtyDialog(false)
+                handleFinish()
+              }}
+              disabled={isFinishing}
+            >
+              {isFinishing ? 'Finishing...' : 'Finish'}
             </Button>
           </DialogFooter>
         </DialogContent>
