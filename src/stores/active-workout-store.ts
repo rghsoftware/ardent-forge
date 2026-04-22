@@ -7,8 +7,6 @@ import type {
   LoggedActivityGroup,
   LoggedActivity,
   LoggedSet,
-  Exercise,
-  GroupType,
   NoteContent,
 } from '@/domain/types'
 import { noteContentSchema } from '@/domain/types'
@@ -142,12 +140,7 @@ interface ActiveWorkoutActions {
   unpauseWorkout(): void
 
   // Exercise management
-  addExerciseToWorkout(
-    exercise: Exercise,
-    groupType: GroupType,
-    newGroup: LoggedActivityGroup,
-    newActivity: LoggedActivity,
-  ): void
+  addExerciseToWorkout(newGroup: LoggedActivityGroup, newActivity: LoggedActivity): void
   skipActivity(activityId: string): void
   removeActivity(activityId: string): void
 
@@ -331,12 +324,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
     // Exercise management
     // ------------------------------------------------------------------
 
-    addExerciseToWorkout(
-      _exercise: Exercise,
-      _groupType: GroupType,
-      newGroup: LoggedActivityGroup,
-      newActivity: LoggedActivity,
-    ) {
+    addExerciseToWorkout(newGroup: LoggedActivityGroup, newActivity: LoggedActivity) {
       set((state) => ({
         loggedGroups: [
           ...state.loggedGroups,

@@ -1637,7 +1637,7 @@ export class SupabaseAdapter implements DataAdapter {
     })
     if (error) {
       console.error('[supabase-adapter] getFrequentExerciseIds failed:', { userId, error })
-      return []
+      throw error
     }
     return (data as Array<{ exercise_id: string }>).map((r) => r.exercise_id)
   }

@@ -428,24 +428,22 @@ export function StrengthWorkoutView({
                             return next
                           })
                         } else {
-                          deleteSet(activity.id, setId).catch((err) => {
-                            console.error('[workout-page] deleteSet failed:', {
-                              activityId: activity.id,
-                              setId,
-                              err,
-                            })
+                          deleteSet(activity.id, setId).catch(() => {
                             setPageError('Failed to delete set. Please try again.')
                           })
                         }
                       }}
                       onUnconfirmSet={handleUnconfirmSet}
-                      onSkipExercise={() => handleMarkDone(activity.id)}
+                      onSkipExercise={() => {
+                        setPendingDirty((prev) => {
+                          const next = new Set(prev)
+                          next.delete(activity.id)
+                          return next
+                        })
+                        handleMarkDone(activity.id)
+                      }}
                       onRemoveExercise={() => {
-                        removeActivity(activity.id).catch((err) => {
-                          console.error('[workout-page] removeActivity failed:', {
-                            activityId: activity.id,
-                            err,
-                          })
+                        removeActivity(activity.id).catch(() => {
                           setPageError('Failed to remove exercise. Please try again.')
                         })
                       }}

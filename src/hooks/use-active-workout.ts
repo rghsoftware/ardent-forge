@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   useActiveWorkoutStore,
@@ -342,7 +343,7 @@ export function useActiveWorkout() {
         }
 
         // Update store with DB-assigned IDs
-        storeAddExercise(exercise, groupType, savedGroup, savedActivity)
+        storeAddExercise(savedGroup, savedActivity)
 
         return { group: savedGroup, activity: savedActivity }
       } catch (err) {
@@ -417,9 +418,9 @@ export function useActiveWorkout() {
               })
             })
             .catch((err) => {
-              // If prefs fail to load, still start the timer without notification
               console.error('[workout] Failed to load notification preferences:', err)
               storeStartRestTimer(restSeconds, exerciseName, setNum)
+              toast('Rest notifications unavailable -- check notification permissions.')
             })
         }
 
@@ -492,7 +493,7 @@ export function useActiveWorkout() {
       const targetSet = findSetById(currentGroups, setId)
       if (!targetSet) {
         console.error('[workout] unconfirmSet: set not found in store', { setId })
-        return
+        throw new Error('Set not found -- it may have already been removed.')
       }
       // The mutation hook's onError is the single log owner for this
       // rejection (see error-handling.md "Mutation Hook Log Ownership").

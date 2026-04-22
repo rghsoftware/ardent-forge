@@ -172,6 +172,48 @@
 
 ---
 
+### Phase 6: Review Follow-up Tasks (P22 batch)
+
+- [ ] S008-T: Add test file for `StrengthWorkoutView` covering the finish guard
+  behavior. Three paths required: (1) no dirty rows -- `handleFinish` called
+  directly without showing dialog; (2) dirty row present -- `showFinishDirtyDialog`
+  displayed; (3) dirty row confirmed via dialog -- subsequent Finish proceeds
+  without re-showing dialog. Also verify `pendingDirty` is cleared when
+  `onSkipExercise` fires (P22-009 regression guard).
+  - **Assigned:** builder-ui
+  - **Depends:** none
+  - **Parallel:** true
+
+- [ ] S009-T: Extend `src/components/workout/__tests__/set-row.test.tsx` with
+  `onPendingDirty` prop tests. Required assertions: (1) called exactly once on
+  first weight or reps edit of a pending row; (2) not called on a confirmed
+  (read-only) row; (3) not called a second time on subsequent field edits of the
+  same pending row.
+  - **Assigned:** builder-ui
+  - **Depends:** none
+  - **Parallel:** true
+
+- [ ] S010-T: Add test file for `EventWorkoutView`. Cover: (1) discard dialog
+  triggered via `WorkoutPausedBar.onDiscard`, Cancel path keeps the workout
+  active, Discard path calls `handleDiscard`; (2) `canFinish` is always `true`
+  (no set-count gate); (3) `pageError` set externally renders `ErrorBanner` and
+  is dismissible.
+  - **Assigned:** builder-ui
+  - **Depends:** none
+  - **Parallel:** true
+
+- [ ] S011-T: Add a mixed CIRCUIT + STRENGTH scenario to
+  `src/routes/_authenticated/__tests__/-log-workout-finish-banner.test.tsx`.
+  Scenario: one CIRCUIT group with incomplete activities plus one STRENGTH group
+  where all activities are in `skippedActivityIds`. Assert `allActivitiesDone`
+  is `true` and the "READY TO FINISH?" banner is visible. This guards against
+  regression of the CIRCUIT exclusion filter in `allActivitiesDone`.
+  - **Assigned:** builder-ui
+  - **Depends:** S007-T
+  - **Parallel:** true
+
+---
+
 ## Acceptance Criteria
 
 - [ ] All 8 testable assertions from Spec.md verified (A-001 through A-008)

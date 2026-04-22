@@ -458,8 +458,7 @@ function ActiveWorkoutPage() {
     async (loggedActivityId: string, setId: string) => {
       try {
         await unconfirmSet(loggedActivityId, setId)
-      } catch (err) {
-        console.error('[workout-page] handleUnconfirmSet failed:', { loggedActivityId, setId, err })
+      } catch {
         setPageError('Failed to undo set.')
       }
     },
