@@ -141,6 +141,7 @@ impl RestTimerState {
             // Shrink remaining by shifting started_at earlier (more elapsed).
             let abs_delta = (-delta) as u64;
             let new_elapsed = inner.started_at.elapsed() + Duration::from_secs(abs_delta);
+            // Fallback: saturate to remaining=0 if delta would exceed total elapsed.
             inner.started_at = Instant::now()
                 .checked_sub(new_elapsed)
                 .unwrap_or_else(|| Instant::now() - Duration::from_secs(inner.total as u64));
@@ -175,7 +176,8 @@ mod tests {
         let inner = timer.inner.lock().await;
         assert_eq!(inner.total, 70);
         let remaining = inner.total.saturating_sub(inner.started_at.elapsed().as_secs() as u32);
-        assert_eq!(remaining, 70);
+        // Allow 1s tolerance: elapsed may advance to 1s on slow CI before assertion.
+        assert!(remaining >= 69 && remaining <= 70, "expected remaining ~70, got {remaining}");
     }
 
     #[tokio::test]
@@ -191,7 +193,8 @@ mod tests {
         let inner = timer.inner.lock().await;
         assert_eq!(inner.total, 60);
         let remaining = inner.total.saturating_sub(inner.started_at.elapsed().as_secs() as u32);
-        assert_eq!(remaining, 50);
+        // Allow 1s tolerance: elapsed may advance to 1s on slow CI before assertion.
+        assert!(remaining >= 49 && remaining <= 50, "expected remaining ~50, got {remaining}");
     }
 
     #[tokio::test]

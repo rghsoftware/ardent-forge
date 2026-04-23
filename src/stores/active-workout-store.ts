@@ -168,9 +168,9 @@ interface ActiveWorkoutActions {
   ): void
   skipRest(): void
   adjustRest(delta: number): void
-  // Snaps the rest timer to wall-clock reality -- called by the foreground
-  // detector when the screen wakes after being off. Fires onExpired if the
-  // rest period ended while the screen was dark.
+  // Recalculates remaining time from wall-clock elapsed. If the rest period has
+  // ended, fires onExpired and clears the timer. Safe to call anytime the timer
+  // may have drifted (screen wake, tab resume, etc.).
   recalcRestTimer(): void
 
   // Elapsed timer setter (owned by the workout log page, see Tech.md D-1)
@@ -597,9 +597,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       set((state) => {
         if (!state.restTimer) return {}
         const { total, startedAt } = state.restTimer
-        // For positive delta: extend total so remaining grows (matches Rust behavior).
+        // For positive delta: extend total so remaining grows.
         // For negative delta: shift startedAt earlier so elapsed increases and remaining
-        // shrinks -- total is unchanged (matches Rust behavior).
+        // shrinks -- total is unchanged. Note: Rust saturates via checked_sub on started_at;
+        // JS saturates via Math.max on remaining (startedAt may be over-shifted in state).
         const newTotal = delta >= 0 ? total + delta : total
         const newStartedAt = delta < 0 ? startedAt - (-delta) * 1000 : startedAt
         const newRemaining = Math.max(
@@ -684,18 +685,26 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       const state = get()
       if (!state.restTimer) return
 
-      const newRemaining = state.restTimer.remaining - 1
+      const newRemaining = Math.max(
+        0,
+        Math.round(state.restTimer.total - (Date.now() - state.restTimer.startedAt) / 1000),
+      )
 
       if (newRemaining <= 0) {
         // Rest complete -- auto-skip
-        _onRestExpired?.()
-        _onRestExpired = null
-        if (_restInterval) {
-          clearInterval(_restInterval)
-          _restInterval = null
+        try {
+          _onRestExpired?.()
+        } catch (err) {
+          console.error('[rest-timer] onExpired callback threw:', err)
+        } finally {
+          _onRestExpired = null
+          if (_restInterval) {
+            clearInterval(_restInterval)
+            _restInterval = null
+          }
+          set({ restTimer: null })
+          _publishCurrentState()
         }
-        set({ restTimer: null })
-        _publishCurrentState()
         return
       }
 
@@ -712,14 +721,27 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       const newRemaining = Math.max(0, Math.round(total - (Date.now() - startedAt) / 1000))
 
       if (newRemaining <= 0) {
-        _onRestExpired?.()
-        _onRestExpired = null
-        if (_restInterval) {
-          clearInterval(_restInterval)
-          _restInterval = null
+        // Mirror skipRest: stop Rust timer and clean listeners (Tauri), or clear JS interval.
+        if (isTauri()) {
+          invoke('skip_rest_timer').catch((err) => {
+            console.error('[rest-timer] Failed to cancel expired timer:', err)
+          })
+          _cleanupTauriRestListeners()
+        } else {
+          if (_restInterval) {
+            clearInterval(_restInterval)
+            _restInterval = null
+          }
         }
-        set({ restTimer: null })
-        _publishCurrentState()
+        try {
+          _onRestExpired?.()
+        } catch (err) {
+          console.error('[rest-timer] onExpired callback threw:', err)
+        } finally {
+          _onRestExpired = null
+          set({ restTimer: null })
+          _publishCurrentState()
+        }
         return
       }
 

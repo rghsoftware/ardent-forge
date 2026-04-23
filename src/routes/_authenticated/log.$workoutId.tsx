@@ -244,13 +244,17 @@ function ActiveWorkoutPage() {
             const elapsedMs = now - startedMs - totalPausedMs
             store.setElapsedSeconds(Math.max(0, Math.round(elapsedMs / 1000)))
           }
-        } catch {
-          // Non-critical -- interval will self-correct on next tick.
+        } catch (err) {
+          console.error('[workout-log] Foreground elapsed snap failed:', err)
         }
         // Snap rest timer to wall-clock reality, firing onExpired if needed.
-        store.recalcRestTimer()
+        try {
+          store.recalcRestTimer()
+        } catch (err) {
+          console.error('[workout-log] recalcRestTimer failed on foreground:', err)
+        }
       },
-      () => {},
+      () => { /* No-op: timers use wall-clock timestamps, nothing to freeze on screen-off. */ },
     )
     detector.start()
     return () => detector.stop()

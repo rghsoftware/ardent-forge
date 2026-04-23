@@ -91,22 +91,26 @@ afterEach(() => {
 describe('_onRestExpired callback', () => {
   it('onExpired callback fires exactly once when browser timer counts to zero', () => {
     const onExpired = vi.fn()
+    const start = Date.now()
 
     getState().startRestTimer(3, undefined, undefined, onExpired)
 
-    // Tick 1: remaining 3 -> 2
+    // Tick 1: 1s elapsed, remaining -> 2
+    vi.setSystemTime(start + 1000)
     getState().tickRest()
     expect(onExpired).not.toHaveBeenCalled()
     expect(getState().restTimer).not.toBeNull()
     expect(getState().restTimer!.remaining).toBe(2)
 
-    // Tick 2: remaining 2 -> 1
+    // Tick 2: 2s elapsed, remaining -> 1
+    vi.setSystemTime(start + 2000)
     getState().tickRest()
     expect(onExpired).not.toHaveBeenCalled()
     expect(getState().restTimer).not.toBeNull()
     expect(getState().restTimer!.remaining).toBe(1)
 
-    // Tick 3: remaining 1 -> 0, callback fires and timer clears
+    // Tick 3: 3s elapsed, remaining -> 0, callback fires and timer clears
+    vi.setSystemTime(start + 3000)
     getState().tickRest()
     expect(onExpired).toHaveBeenCalledTimes(1)
     expect(getState().restTimer).toBeNull()
@@ -132,14 +136,15 @@ describe('_onRestExpired callback', () => {
     const callbackA = vi.fn()
     const callbackB = vi.fn()
 
-    // Start timer with callback A
+    // Start timer with callback A, then immediately replace with callback B
     getState().startRestTimer(5, undefined, undefined, callbackA)
-
-    // Start a new timer with callback B before A expires
+    const start = Date.now()
     getState().startRestTimer(2, undefined, undefined, callbackB)
 
     // Tick to zero (2 ticks for the second timer)
+    vi.setSystemTime(start + 1000)
     getState().tickRest()
+    vi.setSystemTime(start + 2000)
     getState().tickRest()
 
     // Only callback B should have been called
@@ -165,12 +170,49 @@ describe('_onRestExpired callback', () => {
   })
 
   it('onExpired is null when no callback provided -- ticking to zero does not throw', () => {
-    // Start rest timer without onExpired parameter
+    const start = Date.now()
     getState().startRestTimer(1)
 
-    // Tick to zero -- the ?. operator should handle null gracefully
+    // Advance to expiry and tick -- the ?. operator should handle null gracefully
+    vi.setSystemTime(start + 1000)
     expect(() => getState().tickRest()).not.toThrow()
     expect(getState().restTimer).toBeNull()
+  })
+
+  it('onExpired throwing during tickRest still clears timer state', () => {
+    const throwing = vi.fn().mockImplementation(() => {
+      throw new Error('callback error')
+    })
+    const start = Date.now()
+    getState().startRestTimer(1, undefined, undefined, throwing)
+
+    // Advance to expiry -- error is caught internally, does not propagate
+    vi.setSystemTime(start + 1000)
+    expect(() => getState().tickRest()).not.toThrow()
+    expect(getState().restTimer).toBeNull()
+    expect(throwing).toHaveBeenCalledTimes(1)
+
+    // Subsequent ticks must not fire the callback again
+    getState().tickRest()
+    expect(throwing).toHaveBeenCalledTimes(1)
+  })
+
+  it('onExpired throwing during recalcRestTimer still clears timer state', () => {
+    const throwing = vi.fn().mockImplementation(() => {
+      throw new Error('callback error')
+    })
+    const start = Date.now()
+    getState().startRestTimer(60, undefined, undefined, throwing)
+
+    // Advance clock past expiry -- error is caught internally, does not propagate
+    vi.setSystemTime(start + 70_000)
+    expect(() => getState().recalcRestTimer()).not.toThrow()
+    expect(getState().restTimer).toBeNull()
+    expect(throwing).toHaveBeenCalledTimes(1)
+
+    // Subsequent calls must be no-ops
+    getState().recalcRestTimer()
+    expect(throwing).toHaveBeenCalledTimes(1)
   })
 
   it('finishWorkout clears onExpired without calling it', () => {
@@ -190,6 +232,69 @@ describe('_onRestExpired callback', () => {
     expect(onExpired).not.toHaveBeenCalled()
     expect(getState().restTimer).toBeNull()
     expect(getState().workoutLog).toBeNull()
+  })
+
+  it('recalcRestTimer fires onExpired and nulls restTimer when timer expired', () => {
+    const onExpired = vi.fn()
+    const start = Date.now()
+    getState().startRestTimer(60, undefined, undefined, onExpired)
+
+    // Advance clock past expiry
+    vi.setSystemTime(start + 70_000)
+
+    getState().recalcRestTimer()
+
+    expect(onExpired).toHaveBeenCalledTimes(1)
+    expect(getState().restTimer).toBeNull()
+  })
+
+  it('recalcRestTimer corrects remaining to wall-clock value when timer still running', () => {
+    const start = Date.now()
+    getState().startRestTimer(60)
+
+    // Advance clock by 20s
+    vi.setSystemTime(start + 20_000)
+
+    getState().recalcRestTimer()
+
+    expect(getState().restTimer).not.toBeNull()
+    expect(getState().restTimer!.remaining).toBe(40)
+  })
+
+  it('recalcRestTimer is a no-op when restTimer is null', () => {
+    expect(getState().restTimer).toBeNull()
+    expect(() => getState().recalcRestTimer()).not.toThrow()
+  })
+
+  it('recalcRestTimer fires onExpired at exact expiry boundary', () => {
+    const onExpired = vi.fn()
+    const start = Date.now()
+    getState().startRestTimer(60, undefined, undefined, onExpired)
+
+    vi.setSystemTime(start + 60_000)
+
+    getState().recalcRestTimer()
+
+    expect(onExpired).toHaveBeenCalledTimes(1)
+    expect(getState().restTimer).toBeNull()
+  })
+
+  it('adjustRest negative delta shifts startedAt earlier and wall-clock recalc confirms it', () => {
+    const start = Date.now()
+    getState().startRestTimer(60)
+
+    getState().adjustRest(-30)
+
+    const timer = getState().restTimer!
+    // startedAt should have been shifted 30s into the past
+    expect(timer.startedAt).toBeLessThanOrEqual(start - 30_000 + 50) // 50ms tolerance
+
+    // Wall-clock recalc after the shift should yield ~30s remaining
+    vi.setSystemTime(start)
+    getState().recalcRestTimer()
+    const afterRecalc = getState().restTimer!
+    expect(afterRecalc.remaining).toBeGreaterThanOrEqual(29)
+    expect(afterRecalc.remaining).toBeLessThanOrEqual(30)
   })
 
   it('discardWorkout clears onExpired without calling it', () => {
