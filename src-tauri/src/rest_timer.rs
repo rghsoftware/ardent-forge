@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -10,9 +11,9 @@ use crate::notification;
 const REST_TIMER_NOTIFICATION_ID: i32 = 1001;
 
 pub struct RestTimerInner {
-    pub remaining: u32,
     pub total: u32,
     pub active: bool,
+    pub started_at: Instant,
     pub exercise_name: Option<String>,
     pub set_number: Option<u32>,
 }
@@ -26,9 +27,9 @@ impl RestTimerState {
     pub fn new() -> Self {
         Self {
             inner: Arc::new(Mutex::new(RestTimerInner {
-                remaining: 0,
                 total: 0,
                 active: false,
+                started_at: Instant::now(),
                 exercise_name: None,
                 set_number: None,
             })),
@@ -51,9 +52,9 @@ impl RestTimerState {
 
         {
             let mut inner = self.inner.lock().await;
-            inner.remaining = seconds;
             inner.total = seconds;
             inner.active = true;
+            inner.started_at = Instant::now();
             inner.exercise_name = exercise_name;
             inner.set_number = set_number;
         }
@@ -70,11 +71,10 @@ impl RestTimerState {
                     break;
                 }
 
-                if guard.remaining > 0 {
-                    guard.remaining -= 1;
-                }
-
-                let remaining = guard.remaining;
+                // Compute remaining from wall clock so the timer self-corrects
+                // after the app is backgrounded (screen off) on mobile.
+                let elapsed = guard.started_at.elapsed().as_secs() as u32;
+                let remaining = guard.total.saturating_sub(elapsed);
                 let total = guard.total;
                 drop(guard);
 
@@ -93,7 +93,6 @@ impl RestTimerState {
                         log::error!("[rest-timer] Failed to emit timer_expired: {e}");
                     }
 
-                    // Build context-aware notification body
                     let mut guard = inner.lock().await;
                     let body = match (&guard.exercise_name, guard.set_number) {
                         (Some(name), Some(num)) => format!("{name} -- Set {num}"),
@@ -136,11 +135,15 @@ impl RestTimerState {
     pub async fn adjust(&self, delta: i32) {
         let mut inner = self.inner.lock().await;
         if delta >= 0 {
-            inner.remaining = inner.remaining.saturating_add(delta as u32);
+            // Extend total so remaining increases by delta.
             inner.total = inner.total.saturating_add(delta as u32);
         } else {
-            let abs_delta = (-delta) as u32;
-            inner.remaining = inner.remaining.saturating_sub(abs_delta);
+            // Shrink remaining by shifting started_at earlier (more elapsed).
+            let abs_delta = (-delta) as u64;
+            let new_elapsed = inner.started_at.elapsed() + Duration::from_secs(abs_delta);
+            inner.started_at = Instant::now()
+                .checked_sub(new_elapsed)
+                .unwrap_or_else(|| Instant::now() - Duration::from_secs(inner.total as u64));
         }
     }
 }
@@ -160,18 +163,19 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn adjust_positive_increments_both_remaining_and_total() {
+    async fn adjust_positive_increments_total_and_remaining() {
         let timer = make_timer();
         {
             let mut inner = timer.inner.lock().await;
-            inner.remaining = 60;
+            inner.started_at = Instant::now();
             inner.total = 60;
             inner.active = true;
         }
         timer.adjust(10).await;
         let inner = timer.inner.lock().await;
-        assert_eq!(inner.remaining, 70);
         assert_eq!(inner.total, 70);
+        let remaining = inner.total.saturating_sub(inner.started_at.elapsed().as_secs() as u32);
+        assert_eq!(remaining, 70);
     }
 
     #[tokio::test]
@@ -179,14 +183,15 @@ mod tests {
         let timer = make_timer();
         {
             let mut inner = timer.inner.lock().await;
-            inner.remaining = 60;
+            inner.started_at = Instant::now();
             inner.total = 60;
             inner.active = true;
         }
         timer.adjust(-10).await;
         let inner = timer.inner.lock().await;
-        assert_eq!(inner.remaining, 50);
         assert_eq!(inner.total, 60);
+        let remaining = inner.total.saturating_sub(inner.started_at.elapsed().as_secs() as u32);
+        assert_eq!(remaining, 50);
     }
 
     #[tokio::test]
@@ -194,14 +199,16 @@ mod tests {
         let timer = make_timer();
         {
             let mut inner = timer.inner.lock().await;
-            inner.remaining = 30;
+            // Simulate 30s already elapsed: started 30s ago, total=60 → remaining=30
+            inner.started_at = Instant::now() - Duration::from_secs(30);
             inner.total = 60;
             inner.active = true;
         }
         timer.adjust(-100).await;
         let inner = timer.inner.lock().await;
-        assert_eq!(inner.remaining, 0);
         assert_eq!(inner.total, 60);
+        let remaining = inner.total.saturating_sub(inner.started_at.elapsed().as_secs() as u32);
+        assert_eq!(remaining, 0);
     }
 
     #[tokio::test]

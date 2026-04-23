@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
+import { createForegroundDetector } from '@/lib/foreground-detector'
 import { useActiveWorkout } from '@/hooks/use-active-workout'
 import { useActiveWorkoutStore } from '@/stores/active-workout-store'
 import { useExercises } from '@/hooks/use-exercises'
@@ -218,13 +219,41 @@ function ActiveWorkoutPage() {
     if (pausedAt) return
 
     const intervalId = setInterval(() => {
-      const prev = useActiveWorkoutStore.getState().elapsedSeconds
-      useActiveWorkoutStore.getState().setElapsedSeconds(prev + 1)
+      setElapsedSeconds(computeElapsed())
     }, 1000)
 
     return () => {
       clearInterval(intervalId)
     }
+  }, [workoutLogId, startedAt, totalPausedMs, pausedAt])
+
+  // ---------------------------------------------------------------------------
+  // Foreground detection -- snap timers when screen wakes after timeout
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!workoutLogId || !startedAt || pausedAt) return
+
+    const detector = createForegroundDetector(
+      () => {
+        // Snap elapsed timer immediately rather than waiting for the next tick.
+        const store = useActiveWorkoutStore.getState()
+        try {
+          const startedMs = new Date(startedAt).getTime()
+          if (Number.isFinite(startedMs)) {
+            const now = Date.now()
+            const elapsedMs = now - startedMs - totalPausedMs
+            store.setElapsedSeconds(Math.max(0, Math.round(elapsedMs / 1000)))
+          }
+        } catch {
+          // Non-critical -- interval will self-correct on next tick.
+        }
+        // Snap rest timer to wall-clock reality, firing onExpired if needed.
+        store.recalcRestTimer()
+      },
+      () => {},
+    )
+    detector.start()
+    return () => detector.stop()
   }, [workoutLogId, startedAt, totalPausedMs, pausedAt])
 
   // Count confirmed sets to determine if FINISH should be enabled

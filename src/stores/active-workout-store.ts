@@ -46,6 +46,7 @@ export interface UndoAction {
 interface RestTimer {
   remaining: number
   total: number
+  startedAt: number // Date.now() ms when this rest period began
 }
 
 // ---------------------------------------------------------------------------
@@ -167,6 +168,10 @@ interface ActiveWorkoutActions {
   ): void
   skipRest(): void
   adjustRest(delta: number): void
+  // Snaps the rest timer to wall-clock reality -- called by the foreground
+  // detector when the screen wakes after being off. Fires onExpired if the
+  // rest period ended while the screen was dark.
+  recalcRestTimer(): void
 
   // Elapsed timer setter (owned by the workout log page, see Tech.md D-1)
   setElapsedSeconds(seconds: number): void
@@ -504,8 +509,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       if (_restInterval) clearInterval(_restInterval)
       _cleanupTauriRestListeners()
 
+      const startedAt = Date.now()
       set({
-        restTimer: { remaining: seconds, total: seconds },
+        restTimer: { remaining: seconds, total: seconds, startedAt },
       })
       _publishCurrentState()
 
@@ -515,13 +521,16 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
         // Rust-backed timer: register listeners BEFORE invoking the command
         // to avoid missing early tick/expired events.
         Promise.all([
-          listen<{ remaining: number }>('timer_tick', (event) => {
-            set({
-              restTimer: {
-                remaining: event.payload.remaining,
-                total: get().restTimer?.total ?? seconds,
-              },
-            })
+          listen<{ remaining: number; total: number }>('timer_tick', (event) => {
+            set((state) => ({
+              restTimer: state.restTimer
+                ? {
+                    ...state.restTimer,
+                    remaining: event.payload.remaining,
+                    total: event.payload.total,
+                  }
+                : null,
+            }))
           }).then((fn) => {
             _unlistenTick = fn
           }),
@@ -587,14 +596,18 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       // update before converging.
       set((state) => {
         if (!state.restTimer) return {}
-        const newRemaining = Math.max(0, state.restTimer.remaining + delta)
-        // For negative delta: only change remaining, not total (matches Rust behavior)
-        const newTotal = delta >= 0 ? state.restTimer.total + delta : state.restTimer.total
+        const { total, startedAt } = state.restTimer
+        // For positive delta: extend total so remaining grows (matches Rust behavior).
+        // For negative delta: shift startedAt earlier so elapsed increases and remaining
+        // shrinks -- total is unchanged (matches Rust behavior).
+        const newTotal = delta >= 0 ? total + delta : total
+        const newStartedAt = delta < 0 ? startedAt - (-delta) * 1000 : startedAt
+        const newRemaining = Math.max(
+          0,
+          Math.round(newTotal - (Date.now() - newStartedAt) / 1000),
+        )
         return {
-          restTimer: {
-            remaining: newRemaining,
-            total: newTotal,
-          },
+          restTimer: { ...state.restTimer, total: newTotal, startedAt: newStartedAt, remaining: newRemaining },
         }
       })
       _publishCurrentState()
@@ -689,6 +702,29 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState & ActiveWorkoutAc
       set({
         restTimer: { ...state.restTimer, remaining: newRemaining },
       })
+    },
+
+    recalcRestTimer() {
+      const state = get()
+      if (!state.restTimer) return
+
+      const { total, startedAt } = state.restTimer
+      const newRemaining = Math.max(0, Math.round(total - (Date.now() - startedAt) / 1000))
+
+      if (newRemaining <= 0) {
+        _onRestExpired?.()
+        _onRestExpired = null
+        if (_restInterval) {
+          clearInterval(_restInterval)
+          _restInterval = null
+        }
+        set({ restTimer: null })
+        _publishCurrentState()
+        return
+      }
+
+      set({ restTimer: { ...state.restTimer, remaining: newRemaining } })
+      _publishCurrentState()
     },
 
     // ------------------------------------------------------------------
