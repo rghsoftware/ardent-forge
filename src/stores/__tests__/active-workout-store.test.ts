@@ -4,7 +4,6 @@ import type {
   LoggedActivityGroup,
   LoggedActivity,
   LoggedSet,
-  Exercise,
   GroupType,
 } from '@/domain/types'
 import type { LoggedActivityGroupWithActivities } from '@/stores/active-workout-store'
@@ -55,24 +54,6 @@ function makeLoggedSet(overrides?: Partial<LoggedSet>): LoggedSet {
     completed: false,
     ...overrides,
   } as LoggedSet
-}
-
-function makeExercise(overrides?: Partial<Exercise>): Exercise {
-  return {
-    id: 'ex-1',
-    createdAt: NOW,
-    updatedAt: NOW,
-    name: 'Bench Press',
-    aliases: [],
-    category: 'BARBELL',
-    movementPattern: 'PUSH',
-    muscleGroups: { primary: ['CHEST'], secondary: ['TRICEPS'] },
-    isBilateral: true,
-    supports1RM: true,
-    equipmentRequired: ['BARBELL', 'BENCH'],
-    isCustom: false,
-    ...overrides,
-  } as Exercise
 }
 
 function makeGroupWithActivities(
@@ -294,18 +275,24 @@ describe('rest timer', () => {
     expect(restTimer!.total).toBe(90)
   })
 
-  it('tickRest decrements remaining by 1', () => {
+  it('tickRest corrects remaining to wall-clock value', () => {
     getState().startRestTimer(90)
+    // Shift startedAt back 1s to simulate 1s of elapsed time
+    useActiveWorkoutStore.setState((s) => ({
+      restTimer: s.restTimer ? { ...s.restTimer, startedAt: s.restTimer.startedAt - 1000 } : null,
+    }))
     getState().tickRest()
 
     expect(getState().restTimer!.remaining).toBe(89)
     expect(getState().restTimer!.total).toBe(90)
   })
 
-  it('tickRest clears restTimer when remaining reaches 0', () => {
+  it('tickRest clears restTimer when elapsed exceeds total', () => {
     getState().startRestTimer(1)
-
-    // One tick brings remaining to 0 (or below), triggering auto-clear
+    // Shift startedAt back 2s so the timer has expired
+    useActiveWorkoutStore.setState((s) => ({
+      restTimer: s.restTimer ? { ...s.restTimer, startedAt: s.restTimer.startedAt - 2000 } : null,
+    }))
     getState().tickRest()
 
     expect(getState().restTimer).toBeNull()
