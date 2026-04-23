@@ -2,14 +2,15 @@
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { ComponentProps, ReactNode } from 'react'
 import type { EventMetadata } from '@/domain/types'
 
 // ---------------------------------------------------------------------------
 // Captured prop refs (vi.hoisted so mocks can reference them)
 // ---------------------------------------------------------------------------
 const { capturedPausedBarProps, capturedErrorBannerProps } = vi.hoisted(() => {
-  const capturedPausedBarProps = { current: null as any }
-  const capturedErrorBannerProps = { current: null as any }
+  const capturedPausedBarProps = { current: null as null | { onDiscard: () => void; canFinish: boolean } }
+  const capturedErrorBannerProps = { current: null as null | { onDismiss: () => void; message?: string } }
   return { capturedPausedBarProps, capturedErrorBannerProps }
 })
 
@@ -21,14 +22,14 @@ vi.mock('@/components/workout/workout-header', () => ({
 }))
 
 vi.mock('@/components/workout/workout-paused-bar', () => ({
-  WorkoutPausedBar: (props: any) => {
+  WorkoutPausedBar: (props: { onDiscard: () => void; canFinish: boolean }) => {
     capturedPausedBarProps.current = props
     return <div data-testid="workout-paused-bar" />
   },
 }))
 
 vi.mock('@/components/workout/error-banner', () => ({
-  ErrorBanner: (props: any) => {
+  ErrorBanner: (props: { onDismiss: () => void; message?: string }) => {
     capturedErrorBannerProps.current = props
     return <div data-testid="error-banner">{props.message}</div>
   },
@@ -43,7 +44,7 @@ vi.mock('@/components/event-builder/event-detail', () => ({
 }))
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, disabled, ...rest }: any) => (
+  Button: ({ children, onClick, disabled, ...rest }: ComponentProps<'button'>) => (
     <button onClick={onClick} disabled={disabled} {...rest}>
       {children}
     </button>
@@ -51,12 +52,12 @@ vi.mock('@/components/ui/button', () => ({
 }))
 
 vi.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ children, open }: any) => (open ? <div data-testid="dialog">{children}</div> : null),
-  DialogContent: ({ children }: any) => <div>{children}</div>,
-  DialogHeader: ({ children }: any) => <div>{children}</div>,
-  DialogTitle: ({ children }: any) => <div>{children}</div>,
-  DialogDescription: ({ children }: any) => <div>{children}</div>,
-  DialogFooter: ({ children }: any) => <div>{children}</div>,
+  Dialog: ({ children, open }: { children?: ReactNode; open?: boolean }) => (open ? <div data-testid="dialog">{children}</div> : null),
+  DialogContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }))
 
 // Import after mocks
@@ -127,7 +128,7 @@ describe('EventWorkoutView', () => {
       render(<EventWorkoutView {...makeProps({ setShowDiscardDialog })} />)
 
       act(() => {
-        capturedPausedBarProps.current.onDiscard()
+        capturedPausedBarProps.current!.onDiscard()
       })
 
       expect(setShowDiscardDialog).toHaveBeenCalledWith(true)
@@ -171,7 +172,7 @@ describe('EventWorkoutView', () => {
   describe('canFinish is always true', () => {
     it('passes canFinish={true} to WorkoutPausedBar', () => {
       render(<EventWorkoutView {...makeProps()} />)
-      expect(capturedPausedBarProps.current.canFinish).toBe(true)
+      expect(capturedPausedBarProps.current!.canFinish).toBe(true)
     })
   })
 
@@ -189,7 +190,7 @@ describe('EventWorkoutView', () => {
       )
 
       act(() => {
-        capturedErrorBannerProps.current.onDismiss()
+        capturedErrorBannerProps.current!.onDismiss()
       })
 
       expect(setPageError).toHaveBeenCalledWith(null)

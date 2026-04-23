@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ComponentProps, ReactNode } from 'react'
 import type { Exercise } from '@/domain/types'
 import type { LoggedActivityGroupWithActivities } from '@/stores/active-workout-store'
 
@@ -22,7 +23,7 @@ vi.mock('@/components/workout/workout-header', () => ({
 }))
 
 vi.mock('@/components/workout/workout-paused-bar', () => ({
-  WorkoutPausedBar: (props: any) => {
+  WorkoutPausedBar: (props: { onFinish?: () => void; onDiscard?: () => void }) => {
     capturedBar.onFinish = props.onFinish
     capturedBar.onDiscard = props.onDiscard
     return <div data-testid="workout-paused-bar" />
@@ -30,7 +31,7 @@ vi.mock('@/components/workout/workout-paused-bar', () => ({
 }))
 
 vi.mock('@/components/workout/error-banner', () => ({
-  ErrorBanner: (props: any) => <div data-testid="error-banner">{props.message}</div>,
+  ErrorBanner: (props: { message?: string }) => <div data-testid="error-banner">{props.message}</div>,
 }))
 
 vi.mock('@/components/workout/workout-header-menu', () => ({
@@ -38,7 +39,7 @@ vi.mock('@/components/workout/workout-header-menu', () => ({
 }))
 
 vi.mock('@/components/workout/exercise-block', () => ({
-  ExerciseBlock: (props: any) => {
+  ExerciseBlock: (props: { loggedActivityId: string; onPendingDirty?: () => void; onSkipExercise?: () => void }) => {
     capturedBlocks[props.loggedActivityId] = props
     return <div data-testid={`exercise-block-${props.loggedActivityId}`} />
   },
@@ -81,7 +82,7 @@ vi.mock('@/components/onboarding/onboarding-hint', () => ({
 }))
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, disabled, ...rest }: any) => (
+  Button: ({ children, onClick, disabled, ...rest }: ComponentProps<'button'>) => (
     <button onClick={onClick} disabled={disabled} {...rest}>
       {children}
     </button>
@@ -89,12 +90,12 @@ vi.mock('@/components/ui/button', () => ({
 }))
 
 vi.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ open, children }: any) => (open ? <>{children}</> : null),
-  DialogContent: ({ children }: any) => <div>{children}</div>,
-  DialogHeader: ({ children }: any) => <div>{children}</div>,
-  DialogTitle: ({ children }: any) => <h2>{children}</h2>,
-  DialogDescription: ({ children }: any) => <p>{children}</p>,
-  DialogFooter: ({ children }: any) => <div>{children}</div>,
+  Dialog: ({ open, children }: { open?: boolean; children?: ReactNode }) => (open ? <>{children}</> : null),
+  DialogContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DialogHeader: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
+  DialogDescription: ({ children }: { children?: ReactNode }) => <p>{children}</p>,
+  DialogFooter: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('@/lib/workout-utils', () => ({

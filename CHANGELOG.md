@@ -2,6 +2,27 @@
 
 All notable changes to Ardent Forge are documented in this file.
 
+## [1.0.0-beta.13] - 2026-04-22
+
+### Features
+
+- **Frequent exercises picker (F024)** -- quick access to recently and frequently used exercises when adding to a workout (#114)
+- **Exercise completion signal (F023)** -- exercises are marked complete when all sets are confirmed (#113)
+- **Browser notifications (F022)** -- rest timer alerts and session reminders via browser notifications
+- **Set UX overhaul** -- checkbox-confirm sets, swipe-to-delete, rest timer minimize, and gym picker fix (#109)
+- **Vault 1RM** -- personal records tracked from confirmed sets (#117)
+
+### Improvements
+
+- **Finish guard** -- warns when unconfirmed set inputs exist before finishing a workout (#117)
+
+### Bug Fixes
+
+- **Timer drift on mobile** -- rest and elapsed timers snap to wall clock after device screen wake (#116)
+- **Connection display names** -- fixed incorrect names shown for connected athletes and gym row UX (#105)
+
+---
+
 ## [1.0.0-beta.12] - 2026-04-12
 
 ### Bug Fixes
