@@ -168,7 +168,8 @@ interface ActiveWorkoutActions {
   ): void
   skipRest(): void
   adjustRest(delta: number): void
-  // Recalculates remaining time from wall-clock elapsed. If the rest period has
+  // Recalculates remaining time from wall-clock elapsed. If still running,
+  // corrects remaining to the current wall-clock value. If the rest period has
   // ended, fires onExpired and clears the timer. Safe to call anytime the timer
   // may have drifted (screen wake, tab resume, etc.).
   recalcRestTimer(): void
