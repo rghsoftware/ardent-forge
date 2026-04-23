@@ -4,7 +4,6 @@ import type {
   LoggedActivityGroup,
   LoggedActivity,
   LoggedSet,
-  Exercise,
   GroupType,
 } from '@/domain/types'
 import type { LoggedActivityGroupWithActivities } from '@/stores/active-workout-store'
@@ -55,24 +54,6 @@ function makeLoggedSet(overrides?: Partial<LoggedSet>): LoggedSet {
     completed: false,
     ...overrides,
   } as LoggedSet
-}
-
-function makeExercise(overrides?: Partial<Exercise>): Exercise {
-  return {
-    id: 'ex-1',
-    createdAt: NOW,
-    updatedAt: NOW,
-    name: 'Bench Press',
-    aliases: [],
-    category: 'BARBELL',
-    movementPattern: 'PUSH',
-    muscleGroups: { primary: ['CHEST'], secondary: ['TRICEPS'] },
-    isBilateral: true,
-    supports1RM: true,
-    equipmentRequired: ['BARBELL', 'BENCH'],
-    isCustom: false,
-    ...overrides,
-  } as Exercise
 }
 
 function makeGroupWithActivities(
