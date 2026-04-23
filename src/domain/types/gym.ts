@@ -68,16 +68,25 @@ export type GymMember = z.infer<typeof gymMemberSchema>
 // conversion is handled in data-mapper, not here.
 // ---------------------------------------------------------------------------
 
-export const gymInvitationSchema = z.object({
-  id: entityId,
-  gymId: entityId,
-  token: z.string().min(1),
-  expiresAt: isoDateTime,
-  maxUses: z.number().int().positive(),
-  usesCount: z.number().int().nonnegative(),
-  createdBy: entityId,
-  createdAt: isoDateTime,
-})
+export const gymInvitationSchema = z
+  .object({
+    id: entityId,
+    gymId: entityId,
+    token: z.string().min(24),
+    expiresAt: isoDateTime,
+    maxUses: z.number().int().positive(),
+    usesCount: z.number().int().nonnegative(),
+    createdBy: entityId,
+    createdAt: isoDateTime,
+  })
+  .refine((v) => v.usesCount <= v.maxUses, {
+    message: 'usesCount must not exceed maxUses',
+    path: ['usesCount'],
+  })
+  .refine((v) => v.expiresAt > v.createdAt, {
+    message: 'expiresAt must be after createdAt',
+    path: ['expiresAt'],
+  })
 export type GymInvitation = z.infer<typeof gymInvitationSchema>
 
 // ---------------------------------------------------------------------------
@@ -87,12 +96,17 @@ export type GymInvitation = z.infer<typeof gymInvitationSchema>
 // primary key, enforcing the single-pending-transfer-per-gym invariant.
 // ---------------------------------------------------------------------------
 
-export const gymOwnershipTransferSchema = z.object({
-  gymId: entityId,
-  proposedBy: entityId,
-  proposedTo: entityId,
-  proposedAt: isoDateTime,
-})
+export const gymOwnershipTransferSchema = z
+  .object({
+    gymId: entityId,
+    proposedBy: entityId,
+    proposedTo: entityId,
+    proposedAt: isoDateTime,
+  })
+  .refine((v) => v.proposedBy !== v.proposedTo, {
+    message: 'proposedBy and proposedTo must be different users',
+    path: ['proposedTo'],
+  })
 export type GymOwnershipTransfer = z.infer<typeof gymOwnershipTransferSchema>
 
 // ---------------------------------------------------------------------------

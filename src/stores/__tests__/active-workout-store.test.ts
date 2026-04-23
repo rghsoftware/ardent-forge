@@ -367,7 +367,6 @@ describe('nested updates', () => {
       undoAction: null,
     })
 
-    const exercise = makeExercise({ id: 'ex-2', name: 'Squat' })
     const newGroup = makeLoggedActivityGroup({ id: 'lag-new', ordinal: 2 })
     const newActivity = makeLoggedActivity({
       id: 'la-new',
@@ -375,7 +374,7 @@ describe('nested updates', () => {
       exerciseId: 'ex-2',
     })
 
-    getState().addExerciseToWorkout(exercise, 'STRAIGHT_SETS', newGroup, newActivity)
+    getState().addExerciseToWorkout(newGroup, newActivity)
 
     const state = getState()
     expect(state.loggedGroups).toHaveLength(2)

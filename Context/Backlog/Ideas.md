@@ -65,13 +65,11 @@ skill. Prioritize via the backlog-prioritize skill.
 **Source:** `Context/Reviews/0009-pr71-enhancement-batch-review.md`
 **Resolution:** TauriAdapter.getUnreadCounts already has 2 unit tests (happy path + empty). The `Promise.allSettled` batching was a suggestion for SupabaseAdapter that was never implemented (still sequential loop). No further action needed; re-open if batching is implemented.
 
-## Aggregated 1RM View
+## ~~P11-012: Aggregated 1RM View~~ (Resolved 2026-04-22)
 
 **Added:** 2026-04-05
 **Source:** `Context/Reviews/0011-pr76-web-responsiveness-review.md` (P11-012)
-**Priority:** Medium
-
-The `OneRmManagement` component was removed from the profile page during the responsiveness overhaul. The per-exercise 1RM management is still accessible on each exercise detail page (`/exercises/$exerciseId`), but the aggregated cross-exercise 1RM view no longer exists. Consider adding an aggregated 1RM summary to the library exercises tab or a dedicated stats/progress page.
+**Resolution:** Restored aggregated 1RM view in Vault 1RM tab -- commit `7fd07f2`.
 
 ### ~~Overhaul web responsiveness for larger screens~~ (Resolved 2026-04-05)
 
@@ -83,30 +81,23 @@ The `OneRmManagement` component was removed from the profile page during the res
 **Added:** 2026-04-05
 **Resolution:** Reordered sidebar nav into logical groups: core tools, reference, social. Commit `1b359d2`.
 
-### Exercise completion signal during active workout
+### ~~Exercise completion signal during active workout~~ (Resolved 2026-04-22)
 
 **Added:** 2026-04-12
-**Source:** User feedback
-**Priority:** Medium
+**Resolution:** Implemented in PR #113 (F023) -- exercise completion signal shipped.
 
-Two related UX gaps in the workout logger:
-
-1. **"Done with this exercise" affordance** -- No explicit way to mark an exercise block as finished mid-workout. Users who finish squats before the planned sets are complete (injury, RPE ceiling, time) have no way to signal they're moving on. Options: a "Mark complete" button per exercise block, a long-press gesture, or a swipe action that collapses the block and flags it as done.
-
-2. **Trailing auto-populated set ambiguity** -- When the logger auto-populates a new set row, it's unclear whether exiting the exercise (or ending the workout) will count that empty row as a logged set or discard it. Users are left guessing whether their volume is being over-counted. Need either: discard empty trailing sets on exit, or show explicit "incomplete set" vs "complete set" state that is visible before saving.
-
-**Related:** `src/routes/_authenticated/log.$workoutId.tsx`, workout logger state, set auto-population logic
-**Area:** Workout logger UX
-
-### "Add exercise" pre-populated with frequently used exercises
+### ~~"Add exercise" pre-populated with frequently used exercises~~ (Resolved 2026-04-22)
 
 **Added:** 2026-04-12
-**Context:** When opening the "Add exercise" picker, the search field starts empty with no suggestions. Pre-populating it with the user's most frequently logged exercises (derived from workout history) would reduce search friction, especially on the gym floor where speed matters.
-**Related:** Exercise picker/search component, workout history data, active workout flow
-**Priority:** Medium
+**Resolution:** Implemented in PR #114 (F024) -- frequent exercises add picker shipped.
 
-### Split log.$workoutId route into three components
+### ~~P22-014: Move view-local modal state into StrengthWorkoutView~~ (Resolved 2026-04-22)
+
+**Added:** 2026-04-21
+**Resolution:** Implemented in commit `689548b` -- modal state encapsulated inside `StrengthWorkoutView`.
+
+### ~~Split log.$workoutId route into three components~~ (Resolved 2026-04-21)
+
 **Added:** 2026-04-06
-**Context:** `src/routes/_authenticated/log.$workoutId.tsx` is ~800 lines with three distinct rendering paths (event workout, strength workout, post-workout summary) toggled by conditional branches. Splitting into separate route components would clarify ownership, shrink the file, and isolate state hoisting per path.
-**Related:** `src/routes/_authenticated/log.$workoutId.tsx`
+**Resolution:** Implemented in PR #115 -- route split into `EventWorkoutView` and `StrengthWorkoutView` child components.
 **Priority:** Medium

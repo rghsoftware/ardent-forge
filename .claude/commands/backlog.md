@@ -1,7 +1,6 @@
 ---
 description: Add to or prioritize the backlog
 model: sonnet
-effort: low
 ---
 
 # Backlog Management
@@ -26,7 +25,10 @@ This command routes to the build agent:
 ## Workflow
 
 ### Step 1: Determine action
-The first parameter ($1) indicates what action to take:
+If $ARGUMENTS is empty, default to `list` (show all open backlog items).
+
+Otherwise, the first parameter ($1) indicates what action to take:
+- `list` — Show all open items from Ideas.md and Bugs.md (default when no args)
 - `add` — Add a new item to Ideas.md or Bugs.md
 - `prioritize` — Order existing items by priority
 - `move` — Move items between Ideas and Bugs
@@ -34,7 +36,13 @@ The first parameter ($1) indicates what action to take:
 
 Additional details provided via $ARGUMENTS.
 
-### Step 2: For `add` action
+### Step 2: For `list` action (default)
+1. Load Context/Backlog/Ideas.md and Context/Backlog/Bugs.md
+2. Display all open items, grouped by file (Ideas / Bugs)
+3. Show priority level if present
+4. Suggest next actions: add an item, prioritize, or start planning a high-priority item
+
+### Step 3: For `add` action
 1. If $ARGUMENTS provided, it contains the item description
 2. If no $ARGUMENTS, ask user for the item description
 3. Determine if item is an idea or a bug
@@ -45,27 +53,27 @@ Additional details provided via $ARGUMENTS.
    - Initial priority (optional)
 6. Confirm entry was added
 
-### Step 3: For `prioritize` action
+### Step 4: For `prioritize` action
 1. Load both Ideas.md and Bugs.md
 2. Present current items
 3. Ask user to reorder by priority
 4. Optionally ask for priority levels (high/medium/low)
 5. Save reordered lists
 
-### Step 4: For `move` action
+### Step 5: For `move` action
 1. Load both backlogs
 2. Present items
 3. Ask which item to move and to which file
 4. Move item between files
 
-### Step 5: For `remove` action
+### Step 6: For `remove` action
 1. Load appropriate backlog file
 2. Present items
 3. Ask which to remove
 4. Remove entry and save file
 5. Optionally ask to archive to Done/ instead
 
-### Step 6: Summary
+### Step 7: Summary
 Present the updated backlog and suggest next steps:
 - Start planning a high-priority item
 - Continue current implementation

@@ -18,9 +18,15 @@ interface SetRowProps {
   isBodyweight?: boolean
   /**
    * When true, the row represents an unconfirmed placeholder (the auto-populated
-   * next-set row). Renders dimmed to distinguish it from confirmed sets.
+   * next-set row). Renders dimmed to distinguish it from confirmed sets and shows
+   * a PENDING label in the status column until the user edits a field.
    */
   isPending?: boolean
+  /**
+   * Fired when the user modifies a weight or reps input on a pending row.
+   * Used by the parent to track whether the pending row has been dirtied.
+   */
+  onPendingDirty?: () => void
   /**
    * When provided, the row supports swipe-to-delete. Tapping the revealed DEL
    * button calls this handler.
@@ -46,6 +52,7 @@ export function SetRow({
   prescribedReps,
   isBodyweight = false,
   isPending = false,
+  onPendingDirty,
   onDelete,
   onUnconfirm,
 }: SetRowProps) {
@@ -55,6 +62,8 @@ export function SetRow({
   const [reps, setReps] = useState(initialReps)
   const [setType, setSetType] = useState<SetType>('WORKING')
   const [showTypeSelector, setShowTypeSelector] = useState(false)
+  // Tracks whether the user has edited any input on a pending row.
+  const [isDirty, setIsDirty] = useState(false)
 
   // Swipe-to-delete state
   const [swipeX, setSwipeX] = useState(0)
@@ -68,6 +77,14 @@ export function SetRow({
   useEffect(() => {
     setReps(initialReps)
   }, [initialReps])
+
+  // Marks the pending row dirty on first user edit and notifies the parent.
+  const markDirty = useCallback(() => {
+    if (!isDirty) {
+      setIsDirty(true)
+      onPendingDirty?.()
+    }
+  }, [isDirty, onPendingDirty])
 
   const handleConfirm = useCallback(() => {
     if (confirmed || isConfirming) return
@@ -217,7 +234,10 @@ export function SetRow({
                   type="text"
                   inputMode="decimal"
                   value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
+                  onChange={(e) => {
+                    setWeight(e.target.value)
+                    if (isPending) markDirty()
+                  }}
                   disabled={confirmed}
                   placeholder="--"
                   className="w-1/2 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
@@ -229,7 +249,10 @@ export function SetRow({
                 type="text"
                 inputMode="numeric"
                 value={reps}
-                onChange={(e) => setReps(e.target.value)}
+                onChange={(e) => {
+                  setReps(e.target.value)
+                  if (isPending) markDirty()
+                }}
                 disabled={confirmed}
                 placeholder="--"
                 className="w-1/2 border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
@@ -248,7 +271,10 @@ export function SetRow({
                   type="text"
                   inputMode="decimal"
                   value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
+                  onChange={(e) => {
+                    setWeight(e.target.value)
+                    if (isPending) markDirty()
+                  }}
                   disabled={confirmed}
                   placeholder="--"
                   className="w-full border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
@@ -257,13 +283,16 @@ export function SetRow({
               )}
             </div>
 
-            {/* Reps input -- ad-hoc path (unchanged) */}
+            {/* Reps input -- ad-hoc path */}
             <div className="flex-1">
               <input
                 type="text"
                 inputMode="numeric"
                 value={reps}
-                onChange={(e) => setReps(e.target.value)}
+                onChange={(e) => {
+                  setReps(e.target.value)
+                  if (isPending) markDirty()
+                }}
                 disabled={confirmed}
                 placeholder="--"
                 className="w-full border-b border-warm-ash/30 bg-transparent py-2 text-center font-display text-sm tabular-nums text-bone-white placeholder:text-warm-ash/40 focus:border-ember focus:outline-none disabled:opacity-60"
@@ -290,6 +319,10 @@ export function SetRow({
             >
               <Icon name="check_box" size={24} fill />
             </button>
+          ) : isPending && !isDirty ? (
+            <span className="text-[10px] font-bold uppercase tracking-widest text-warm-ash/40">
+              PENDING
+            </span>
           ) : (
             <button
               type="button"

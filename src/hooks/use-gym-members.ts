@@ -65,8 +65,7 @@ export function useGymRoster(gymId: string | null | undefined) {
 
       const client = getSupabaseClient()
       if (!client) {
-        console.error('[gym-members] Supabase client not initialized for roster fetch')
-        return sorted.map((m) => ({ ...m, displayName: null }))
+        throw new Error('[gym-members] Supabase client not initialized')
       }
 
       const userIds = sorted.map((m) => m.userId)

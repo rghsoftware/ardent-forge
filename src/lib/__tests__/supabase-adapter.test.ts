@@ -1532,17 +1532,16 @@ describe('Utility operations', () => {
       expect(result).toEqual(['id-a', 'id-b', 'id-c'])
     })
 
-    it('graceful degradation: returns [] and logs error when rpc fails', async () => {
+    it('throws and logs error when rpc fails', async () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       try {
+        const rpcError = { message: 'rpc error' }
         mockClient.rpc.mockResolvedValue({
           data: null,
-          error: { message: 'rpc error' },
+          error: rpcError,
         })
 
-        const result = await adapter.getFrequentExerciseIds('user-001')
-
-        expect(result).toEqual([])
+        await expect(adapter.getFrequentExerciseIds('user-001')).rejects.toEqual(rpcError)
         expect(errorSpy).toHaveBeenCalledWith(
           expect.stringContaining('[supabase-adapter]'),
           expect.anything(),
